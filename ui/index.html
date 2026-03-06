@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Lorevox v4.5 — People + Profiles + Interview Driver</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#0b0b0c; --panel:#111214; --card:#0f1113;
+      --ink:#eaeaea; --muted:#a3a3a3; --border:#232429;
+      --accent:#d97706; --accent-dim: rgba(217,119,6,.15);
+      --good:#166534; --bad:#7f1d1d;
+    }
+    html, body { height:100%; margin:0; overflow:hidden; font-family: Inter, sans-serif; background: var(--bg); color: var(--ink); }
+    .serif{ font-family:"Cormorant Garamond", serif; }
+    .shell{ height:100vh; display:flex; flex-direction:column; }
+    .grid-layout{ height:100%; display:grid; grid-template-columns: 320px 1fr 440px; min-height:0; }
+
+    .sidebar-left{ background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+    .main-stage{ background: radial-gradient(circle at 50% 0%, rgba(245,158,11,0.08), rgba(0,0,0,0) 45%), rgba(255,255,255,0.02);
+                 overflow:auto; padding: 22px; }
+    .chat-panel{ background:var(--panel); border-left:1px solid var(--border); display:flex; flex-direction:column; min-height:0; }
+
+    .card{ background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding: 16px; }
+    .input-ghost{ background: transparent; border-bottom: 1px solid rgba(255,255,255,0.14); border-radius:0; padding: 8px 0;
+                  color:#fff; width:100%; outline:none; transition:.15s; }
+    .input-ghost:focus{ border-bottom-color: var(--accent); }
+
+    .btn{ display:inline-flex; align-items:center; justify-content:center; padding: 8px 12px; border-radius: 8px; font-weight:800; font-size:12px; transition:.15s; cursor:pointer; user-select:none; }
+    .btnPrimary{ background: var(--accent); color:#fff; }
+    .btnGhost{ background: rgba(255,255,255,0.05); color:#e5e5e5; border:1px solid rgba(255,255,255,0.08); }
+    .btnDanger{ background: rgba(127,29,29,.35); color:#ffd2d2; border:1px solid rgba(255,255,255,0.08); }
+
+    .pill{ font-size:10px; padding:2px 7px; border-radius:5px; background:#333; color:#aaa; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .pill.on{ background: var(--good); color:#fff; }
+    .pill.err{ background: var(--bad); color:#ffd2d2; }
+
+    .sb-scroll{ overflow:auto; padding: 14px; min-height:0; }
+    .sb-section-title{ font-size:11px; color:#94a3b8; font-weight:800; letter-spacing:.18em; text-transform:uppercase; margin-bottom:8px; }
+    .sb-item{ padding:10px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02);
+              cursor:pointer; margin-bottom:8px; }
+    .sb-item:hover{ border-color: rgba(217,119,6,.35); }
+    .sb-item.active{ background: var(--accent-dim); border-color: rgba(217,119,6,.5); }
+    .sb-meta{ font-size:10px; color:#8b8b8b; margin-top:4px; }
+
+    .chatScroll{ flex:1; overflow:auto; padding: 16px; display:flex; flex-direction:column; gap: 12px; min-height:0; }
+    .bubble{ max-width: 92%; padding: 12px 14px; border-radius: 14px; font-size: 0.95rem; line-height:1.55; white-space: pre-wrap; }
+    .bubble.user{ align-self:flex-end; background: var(--accent); color:#fff; border-bottom-right-radius: 4px; }
+    .bubble.assistant{ align-self:flex-start; background: #1f1f23; border:1px solid #2f2f35; color:#f2f2f2; border-bottom-left-radius: 4px; }
+    .bubble.system{ align-self:center; background: rgba(255,255,255,0.05); color:#c0c0c0; font-size: 12px; border-radius: 999px; padding: 6px 12px; border:1px solid rgba(255,255,255,0.09); }
+
+    .miniLabel{ font-size:11px; color:#9ca3af; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+
+<body>
+<div class="shell">
+  <header class="p-4 border-b border-[#232429] flex justify-between items-center bg-[#111214] shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="text-xl font-bold tracking-tight text-white">Lorevox <span class="text-amber-600">v4.5</span></div>
+      <div class="flex items-center gap-2">
+        <span id="pillChat" class="pill">CHAT:8000</span>
+        <span id="pillWs" class="pill">WS</span>
+        <span id="pillTts" class="pill">TTS:8001</span>
+      </div>
+      <div class="text-xs text-slate-500 hidden md:block">People · Profiles · Interview Driver · WS-first Chat</div>
+    </div>
+
+    <div class="flex gap-2 items-center">
+      <button id="btnAudio" class="btn btnGhost" onclick="enableAudio()">🔊 Enable Audio</button>
+      <button class="btn btnGhost" onclick="exportZip()">📦 Export</button>
+    </div>
+  </header>
+
+  <div class="grid-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar-left">
+      <div class="sb-scroll">
+        <div class="sb-section-title">People</div>
+        <div class="flex gap-2 mb-3">
+          <button class="btn btnPrimary flex-1" onclick="createPersonFromForm()">+ Create</button>
+          <button class="btn btnGhost" onclick="refreshPeople()">↻</button>
+        </div>
+        <div id="peopleList"></div>
+
+        <div class="sb-section-title mt-6">Chat Sessions</div>
+        <div class="flex gap-2 mb-3">
+          <button class="btn btnGhost flex-1" onclick="newChatSession()">+ New</button>
+          <button class="btn btnGhost" onclick="refreshChatSessions()">↻</button>
+        </div>
+        <div id="sessionsList"></div>
+
+        <div class="mt-6">
+          <button class="btn btnDanger w-full" onclick="deleteCurrentChatSession()">⚠ Delete Current Chat Session</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main stage -->
+    <main class="main-stage">
+      <div class="max-w-3xl mx-auto space-y-4">
+        <div class="flex items-end justify-between gap-3">
+          <div>
+            <h1 class="serif text-3xl text-white leading-tight">Baseline Intake</h1>
+            <div class="text-sm text-slate-400">This writes to <span class="mono">/api/people</span> + <span class="mono">/api/profiles</span>. Then Interview uses <span class="mono">/api/interview/start</span>.</div>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btnGhost" onclick="demoFill()">Demo Fill</button>
+            <button class="btn btnPrimary" onclick="saveProfile()">Save Profile</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="text-xs font-bold text-amber-600 uppercase mb-4">Identity</div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <input class="input-ghost" id="bio_fullname" placeholder="Full legal name">
+            <input class="input-ghost" id="bio_preferred" placeholder="Preferred name">
+            <input class="input-ghost" id="bio_dob" type="date">
+            <input class="input-ghost" id="bio_pob" placeholder="Place of birth (City, State/Country)">
+          </div>
+          <div class="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div class="text-xs text-slate-400">
+              <span class="miniLabel">Active person_id:</span>
+              <span id="activePerson" class="mono text-slate-200">—</span>
+            </div>
+            <div class="text-xs text-slate-500">Tip: click a person on the left to load their profile.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-xs font-bold text-amber-600 uppercase">Family Map</div>
+            <div class="flex gap-3 text-xs">
+              <button class="text-slate-400 hover:text-white" onclick="addKin('Mother')">+ Mother</button>
+              <button class="text-slate-400 hover:text-white" onclick="addKin('Father')">+ Father</button>
+              <button class="text-slate-400 hover:text-white" onclick="addKin('Sibling')">+ Sibling</button>
+            </div>
+          </div>
+          <div id="tblKinship" class="space-y-2"></div>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-bold text-amber-600 uppercase">Interview Driver (v4.2)</div>
+            <div class="text-xs text-slate-400">No plan endpoint required — server returns the next question.</div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <button class="btn btnGhost" onclick="ivStart()">▶ Start / Restart</button>
+            <button class="btn btnGhost" onclick="ivAskInChat()">✨ Ask in Chat</button>
+            <button class="btn btnGhost" onclick="ivSkip()">⤼ Skip</button>
+          </div>
+
+          <div class="mt-4">
+            <div class="text-xs text-slate-500">Current question</div>
+            <div id="ivPrompt" class="mt-1 text-white">—</div>
+            <div class="mt-3">
+              <textarea id="ivAnswer" rows="3" class="w-full rounded-md bg-[#1a1a1d] border border-white/10 px-3 py-2 text-white outline-none focus:border-amber-600/70" placeholder="Type your answer here (then Save & Next)…"></textarea>
+              <div class="flex gap-2 mt-2">
+                <button class="btn btnPrimary flex-1" onclick="ivSaveAndNext()">✓ Save Answer & Next</button>
+                <button class="btn btnGhost" onclick="ivCopyToChat()">↳ Copy to Chat</button>
+              </div>
+              <div class="mt-2 text-[11px] text-slate-500">
+                <span class="miniLabel">Interview session_id:</span> <span id="ivSession" class="mono">—</span>
+                <span class="mx-2">·</span>
+                <span class="miniLabel">question_id:</span> <span id="ivQid" class="mono">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Chat -->
+    <aside class="chat-panel">
+      <div class="p-4 border-b border-[#232429] flex justify-between items-center bg-[#111214] shrink-0">
+        <div>
+          <div class="font-bold text-white text-sm">Interviewer</div>
+          <div class="text-[10px] text-amber-600">WS-first · SSE fallback · DB persists post-stream</div>
+        </div>
+        <label class="flex items-center gap-2 text-xs text-gray-400">
+          <input type="checkbox" id="chkAutoSpeak" checked> TTS
+        </label>
+      </div>
+
+      <div id="chatLog" class="chatScroll"></div>
+
+      <div class="p-4 bg-[#0e0e10] border-t border-[#232429] shrink-0">
+        <textarea id="chatInput" rows="2" class="w-full rounded-md bg-[#1a1a1d] border border-white/10 px-3 py-2 text-white outline-none focus:border-amber-600/70" placeholder="Type here..."></textarea>
+        <div class="flex gap-2 mt-2">
+          <button class="btn btnGhost w-12 text-lg" onclick="toggleRecording()">🎤</button>
+          <button class="btn btnGhost w-12 text-lg" onclick="cancelTurn()" title="Cancel streaming (WS only)">⏹</button>
+          <button class="btn btnPrimary flex-1" onclick="sendUserMessage()">Send</button>
+        </div>
+        <div id="status" class="mt-2 text-[11px] text-slate-500">Ready.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Lorevox v4.5
+   - Chat: WS-first ws://host/api/chat/ws  (start_turn/token/done)
+   - Fallback: POST /api/chat/stream (SSE)
+   - People: /api/people
+   - Profiles: /api/profiles/{person_id}
+   - Interview driver: /api/interview/start + /api/interview/answer
+   ============================================================ */
+
+const ORIGIN = location.origin.includes("8000") ? location.origin : "http://localhost:8000";
+const API = {
+  PING: ORIGIN + "/api/ping",
+  HEALTH: ORIGIN + "/api/health",
+
+  // chat
+  CHAT_SSE: ORIGIN + "/api/chat/stream",
+  CHAT_WS: ORIGIN.replace(/^http/, "ws") + "/api/chat/ws",
+
+  // people + profiles
+  PEOPLE: ORIGIN + "/api/people",
+  PROFILE: (person_id) => ORIGIN + "/api/profiles/" + encodeURIComponent(person_id),
+
+  // chat sessions (legacy endpoints still exist)
+  SNEW: ORIGIN + "/api/session/new",
+  SGET: ORIGIN + "/api/session/get",
+  SLIST: ORIGIN + "/api/sessions/list",
+  STURNS: ORIGIN + "/api/session/turns",
+  SDEL: ORIGIN + "/api/session/delete",
+
+  // interview
+  IV_START: ORIGIN + "/api/interview/start",
+  IV_ANSWER: ORIGIN + "/api/interview/answer",
+
+  // TTS stays on 8001
+  TTS_VOICES: "http://localhost:8001/api/tts/voices",
+  TTS_SPEAK:  "http://localhost:8001/api/tts/speak_stream",
+};
+
+const LS_ACTIVE_CHAT = "lorevox_v45_active_chat";
+const LS_ACTIVE_PERSON = "lorevox_v45_active_person";
+
+let audioUnlocked = false;
+
+// Browser SR (legacy)
+let isRecording = false;
+let recordBaseText = "";
+
+// WS state
+let ws = null;
+let wsReady = false;
+let usingFallback = false;
+let currentAssistantBubble = null;
+let currentTurnId = null;
+
+let state = {
+  person_id: null,
+  profile: { basics: {}, kinship: [] },
+  chat: { conv_id: null, title: "" },
+  interview: { session_id: null, question_id: null, prompt: null, person_id: null },
+};
+
+window.onload = async () => {
+  await checkStatus();
+  await refreshPeople();
+  await hydrateOrCreateChatSession();
+  await refreshChatSessions();
+
+  // try to restore active person
+  const rememberedPerson = localStorage.getItem(LS_ACTIVE_PERSON);
+  if (rememberedPerson) {
+    await loadPerson(rememberedPerson).catch(()=>{});
+  }
+
+  connectWebSocket();
+};
+
+/* ============================================================
+   Status pills
+   ============================================================ */
+async function checkStatus(){
+  try { await fetch(API.PING); on("pillChat"); } catch(e){ err("pillChat"); }
+  try { await fetch(API.TTS_VOICES); on("pillTts"); } catch(e){ err("pillTts"); }
+}
+function on(id){ const el=document.getElementById(id); if(!el) return; el.classList.remove("err"); el.classList.add("on"); }
+function err(id){ const el=document.getElementById(id); if(!el) return; el.classList.remove("on"); el.classList.add("err"); }
+
+/* ============================================================
+   People + Profiles
+   ============================================================ */
+async function refreshPeople(){
+  try{
+    const res = await fetch(API.PEOPLE + "?limit=200&offset=0");
+    const j = await res.json();
+    renderPeople(j.items || j.people || j || []);
+  }catch(e){
+    renderPeople([]);
+  }
+}
+
+function renderPeople(items){
+  const wrap = document.getElementById("peopleList");
+  wrap.innerHTML = "";
+  (items||[]).forEach(p => {
+    const pid = p.id || p.person_id || p.personId || p.uuid;
+    const name = p.display_name || p.displayName || p.name || pid;
+    if(!pid) return;
+    const d = document.createElement("div");
+    d.className = "sb-item" + (pid === state.person_id ? " active" : "");
+    d.onclick = () => loadPerson(pid);
+    d.innerHTML = `<div class="font-bold text-white text-sm truncate">${esc(name)}</div>` +
+                  `<div class="sb-meta mono">${esc(pid)}</div>`;
+    wrap.appendChild(d);
+  });
+
+  if((items||[]).length === 0){
+    wrap.innerHTML = `<div class="text-xs text-slate-500">No people yet. Fill Identity, then “+ Create”.</div>`;
+  }
+}
+
+async function createPersonFromForm(){
+  const basics = scrapeBasicsOnly();
+  const display_name = basics.fullname || basics.preferred || "Unnamed";
+  const body = {
+    display_name,
+    role: "subject",
+    date_of_birth: basics.dob || null,
+    place_of_birth: basics.pob || null,
+  };
+
+  try{
+    const res = await fetch(API.PEOPLE, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+    const j = await res.json();
+    const pid = j.id || j.person_id || j.personId;
+    if(!pid) throw new Error("create person: missing id");
+    systemBubble(`✅ Person created: ${display_name}`);
+    await refreshPeople();
+    await loadPerson(pid);
+  }catch(e){
+    systemBubble("⚠ Could not create person (is the API running /api/people?).");
+  }
+}
+
+async function loadPerson(person_id){
+  state.person_id = person_id;
+  document.getElementById("activePerson").innerText = person_id || "—";
+  localStorage.setItem(LS_ACTIVE_PERSON, person_id);
+
+  // load profile
+  try{
+    const res = await fetch(API.PROFILE(person_id));
+    const j = await res.json();
+    const profile = j.profile || j || {};
+    state.profile = normalizeProfile(profile);
+  }catch(e){
+    // start empty
+    state.profile = { basics: {}, kinship: [] };
+  }
+
+  hydrateProfileForm();
+  renderPeopleFromCurrentListActive(person_id);
+}
+
+function renderPeopleFromCurrentListActive(person_id){
+  // quick re-render without refetch
+  const nodes = document.querySelectorAll("#peopleList .sb-item");
+  nodes.forEach(n => n.classList.remove("active"));
+  // rely on full refresh for perfect mapping
+  refreshPeople().catch(()=>{});
+}
+
+function normalizeProfile(p){
+  // tolerate different shapes
+  const basics = (p.basics || p.basic || p.identity || p.profile?.basics || {}) || {};
+  const kinship = (p.kinship || p.family || p.relatives || []) || [];
+  return {
+    basics: {
+      fullname: basics.fullname || basics.full_name || basics.name || "",
+      preferred: basics.preferred || basics.nickname || "",
+      dob: basics.dob || basics.date_of_birth || "",
+      pob: basics.pob || basics.place_of_birth || "",
+    },
+    kinship: Array.isArray(kinship) ? kinship : [],
+  };
+}
+
+async function saveProfile(){
+  if(!state.person_id){
+    systemBubble("No person selected. Click + Create (People) first.");
+    return;
+  }
+  scrapeProfileForm();
+
+  const payload = { basics: state.profile.basics, kinship: state.profile.kinship };
+
+  try{
+    const res = await fetch(API.PROFILE(state.person_id), {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ profile: payload })
+    });
+    if(!res.ok) throw new Error("save profile failed");
+    systemBubble("💾 Profile saved.");
+
+    // optional: nudge Lori in chat
+    await sendHidden(`[SYSTEM: Profile updated for person_id ${state.person_id}. Profile JSON: ${JSON.stringify(payload)}. Confirm briefly and ask ONE follow-up question.]`);
+  }catch(e){
+    systemBubble("⚠ Profile save failed (check /api/profiles/{person_id}).");
+  }
+}
+
+/* Profile form */
+function hydrateProfileForm(){
+  const b = state.profile.basics || {};
+  setv("bio_fullname", b.fullname || "");
+  setv("bio_preferred", b.preferred || "");
+  setv("bio_dob", b.dob || "");
+  setv("bio_pob", b.pob || "");
+
+  const tbl = document.getElementById("tblKinship");
+  tbl.innerHTML = "";
+  (state.profile.kinship || []).forEach(k => addKinRow(k.relation || "Sibling", k));
+  if((state.profile.kinship||[]).length === 0) addKin("Mother");
+}
+
+function scrapeBasicsOnly(){
+  return {
+    fullname: getv("bio_fullname").trim(),
+    preferred: getv("bio_preferred").trim(),
+    dob: getv("bio_dob").trim(),
+    pob: getv("bio_pob").trim(),
+  };
+}
+
+function scrapeProfileForm(){
+  state.profile.basics = scrapeBasicsOnly();
+
+  const kin = [];
+  document.querySelectorAll("#tblKinship .kinrow").forEach(row => {
+    const name = row.querySelector('[data-key="name"]').value.trim();
+    const relation = row.querySelector('[data-key="relation"]').value.trim();
+    const pob = row.querySelector('[data-key="pob"]').value.trim();
+    const occupation = row.querySelector('[data-key="occupation"]').value.trim();
+    if(name) kin.push({name, relation, pob, occupation});
+  });
+  state.profile.kinship = kin;
+}
+
+function addKin(kind){ addKinRow(kind, {}); }
+function addKinRow(kind, data){
+  const tbl = document.getElementById("tblKinship");
+  const div = document.createElement("div");
+  div.className = "kinrow data-entry relative p-4 bg-white/5 rounded-lg border border-white/10";
+  div.innerHTML = `
+    <button class="absolute top-3 right-3 text-red-400 hover:text-red-300" title="Remove">✕</button>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+      <input class="input-ghost" data-key="name" placeholder="Name" value="${escAttr(data.name||"")}">
+      <select class="input-ghost" data-key="relation">
+        ${["Mother","Father","Sibling","Spouse","Grandparent"].map(x => `<option ${((data.relation||kind)===x)?"selected":""}>${x}</option>`).join("")}
+      </select>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input class="input-ghost" data-key="pob" placeholder="Birthplace" value="${escAttr(data.pob||"")}">
+      <input class="input-ghost" data-key="occupation" placeholder="Occupation" value="${escAttr(data.occupation||"")}">
+    </div>
+  `;
+  div.querySelector("button").onclick = () => div.remove();
+  tbl.appendChild(div);
+}
+
+function demoFill(){
+  setv("bio_fullname", "Christopher Todd Horne");
+  setv("bio_preferred", "Chris");
+  setv("bio_pob", "Williston, North Dakota");
+  if(document.querySelectorAll("#tblKinship .kinrow").length === 0) addKin("Mother");
+}
+
+/* ============================================================
+   Interview Driver (v4.2)
+   ============================================================ */
+async function ivStart(){
+  if(!state.person_id){
+    systemBubble("Pick or create a person first.");
+    return;
+  }
+
+  try{
+    const res = await fetch(API.IV_START, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ person_id: state.person_id, plan_id: "default" })
+    });
+    if(!res.ok) throw new Error("iv start failed");
+    const j = await res.json();
+
+    state.interview.session_id = j.session_id;
+    state.interview.person_id = j.person_id;
+    state.interview.question_id = j.next_question?.id || null;
+    state.interview.prompt = j.next_question?.prompt || null;
+
+    renderInterview();
+    systemBubble("▶ Interview started.");
+
+  }catch(e){
+    systemBubble("⚠ Interview start failed (check /api/interview/start). ");
+  }
+}
+
+function renderInterview(){
+  document.getElementById("ivSession").innerText = state.interview.session_id || "—";
+  document.getElementById("ivQid").innerText = state.interview.question_id || "—";
+  document.getElementById("ivPrompt").innerText = state.interview.prompt || "—";
+}
+
+async function ivSaveAndNext(){
+  if(!state.interview.session_id || !state.interview.question_id){
+    await ivStart();
+    if(!state.interview.session_id || !state.interview.question_id) return;
+  }
+
+  const answer = (document.getElementById("ivAnswer").value || "").trim();
+  if(!answer){
+    systemBubble("Type an answer first (Interview box). Use Skip if needed.");
+    return;
+  }
+
+  try{
+    const res = await fetch(API.IV_ANSWER, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        session_id: state.interview.session_id,
+        question_id: state.interview.question_id,
+        answer,
+        skipped: false
+      })
+    });
+    if(!res.ok) throw new Error("iv answer failed");
+    const j = await res.json();
+
+    // advance
+    if(j.done){
+      systemBubble("✅ Interview complete.");
+      state.interview.question_id = null;
+      state.interview.prompt = null;
+      renderInterview();
+      return;
+    }
+
+    const nxt = j.next_question || null;
+    state.interview.question_id = nxt?.id || null;
+    state.interview.prompt = nxt?.prompt || null;
+
+    document.getElementById("ivAnswer").value = "";
+    renderInterview();
+    systemBubble("✓ Saved. Next question ready.");
+
+  }catch(e){
+    systemBubble("⚠ Save answer failed (check /api/interview/answer). ");
+  }
+}
+
+async function ivSkip(){
+  if(!state.interview.session_id || !state.interview.question_id){
+    await ivStart();
+    if(!state.interview.session_id || !state.interview.question_id) return;
+  }
+  try{
+    const res = await fetch(API.IV_ANSWER, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        session_id: state.interview.session_id,
+        question_id: state.interview.question_id,
+        answer: "",
+        skipped: true
+      })
+    });
+    if(!res.ok) throw new Error("iv skip failed");
+    const j = await res.json();
+    if(j.done){
+      systemBubble("✅ Interview complete.");
+      state.interview.question_id = null;
+      state.interview.prompt = null;
+      renderInterview();
+      return;
+    }
+    const nxt = j.next_question || null;
+    state.interview.question_id = nxt?.id || null;
+    state.interview.prompt = nxt?.prompt || null;
+    renderInterview();
+    systemBubble("⤼ Skipped. Next question ready.");
+  }catch(e){
+    systemBubble("⚠ Skip failed.");
+  }
+}
+
+async function ivAskInChat(){
+  if(!state.interview.prompt){
+    await ivStart();
+  }
+  if(state.interview.prompt){
+    await sendHidden(`Ask exactly this question, then stop: "${state.interview.prompt}"`);
+  }
+}
+
+function ivCopyToChat(){
+  const txt = (document.getElementById("ivAnswer").value || "").trim();
+  if(!txt) return;
+  setv("chatInput", txt);
+  systemBubble("↳ Copied to chat input.");
+}
+
+/* ============================================================
+   Chat sessions (legacy)
+   ============================================================ */
+async function refreshChatSessions(){
+  try{
+    const res = await fetch(API.SLIST + "?limit=50");
+    const j = await res.json();
+    renderChatSessions(j.items || []);
+  }catch(e){
+    renderChatSessions([]);
+  }
+}
+
+async function newChatSession(){
+  const res = await fetch(API.SNEW, {method:"POST"});
+  const j = await res.json();
+  await loadChatSession(j.conv_id || j.id);
+  systemBubble("New chat session created.");
+  await refreshChatSessions();
+}
+
+async function hydrateOrCreateChatSession(){
+  const remembered = localStorage.getItem(LS_ACTIVE_CHAT);
+  if(remembered){
+    try { await loadChatSession(remembered); return; } catch(e){}
+  }
+  await newChatSession();
+}
+
+async function loadChatSession(conv_id){
+  const res = await fetch(API.SGET + "?conv_id=" + encodeURIComponent(conv_id));
+  const j = await res.json();
+
+  state.chat.conv_id = conv_id;
+  state.chat.title = j.title || "";
+  localStorage.setItem(LS_ACTIVE_CHAT, conv_id);
+
+  await loadChatTurns(conv_id);
+  await refreshChatSessions();
+}
+
+async function loadChatTurns(conv_id){
+  document.getElementById("chatLog").innerHTML = "";
+  const res = await fetch(API.STURNS + "?conv_id=" + encodeURIComponent(conv_id));
+  const j = await res.json();
+  const items = j.items || [];
+  if(items.length === 0){
+    appendBubble("assistant", "I'm ready. Pick a person (left), start an interview, or just chat.");
+    return;
+  }
+  items.forEach(t => appendBubble(t.role === "user" ? "user" : "assistant", t.content, false));
+  bottom();
+}
+
+function renderChatSessions(items){
+  const wrap = document.getElementById("sessionsList");
+  wrap.innerHTML = "";
+  (items||[]).forEach(it => {
+    const d = document.createElement("div");
+    d.className = "sb-item" + (it.conv_id === state.chat.conv_id ? " active" : "");
+    d.onclick = () => loadChatSession(it.conv_id);
+    d.innerHTML = `<div class="font-bold text-white text-sm truncate">${esc(it.title || it.conv_id)}</div><div class="sb-meta">${esc(it.updated_at||"")}</div>`;
+    wrap.appendChild(d);
+  });
+}
+
+async function deleteCurrentChatSession(){
+  if(!state.chat.conv_id) return;
+  if(!confirm("Delete this chat session from the database? This cannot be undone.")) return;
+  await fetch(API.SDEL + "?conv_id=" + encodeURIComponent(state.chat.conv_id), {method:"DELETE"});
+  localStorage.removeItem(LS_ACTIVE_CHAT);
+  await newChatSession();
+}
+
+/* ============================================================
+   WebSocket connect + fallback
+   ============================================================ */
+function connectWebSocket() {
+  try {
+    ws = new WebSocket(API.CHAT_WS);
+  } catch (e) {
+    console.warn("WS init failed -> SSE fallback:", e);
+    enableSseFallback();
+    return;
+  }
+
+  ws.onopen = () => {
+    wsReady = true;
+    usingFallback = false;
+    setStatus("Connected (WebSocket). ");
+    on("pillWs");
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      handleAgentMessage(msg);
+    } catch (e) {
+      console.warn("Non-JSON WS message:", event.data);
+    }
+  };
+
+  ws.onclose = () => {
+    wsReady = false;
+    if (!usingFallback) {
+      console.warn("WS closed -> SSE fallback.");
+      enableSseFallback();
+    }
+    setTimeout(() => {
+      if (usingFallback) connectWebSocket();
+    }, 3000);
+  };
+
+  ws.onerror = () => {
+    if (!usingFallback) enableSseFallback();
+  };
+}
+
+function enableSseFallback() {
+  usingFallback = true;
+  wsReady = false;
+  setStatus("SSE fallback.");
+  err("pillWs");
+}
+
+function cancelTurn() {
+  if (ws && wsReady && !usingFallback && currentTurnId) {
+    ws.send(JSON.stringify({ type: "cancel_turn", turn_id: currentTurnId }));
+    setStatus("Cancel requested (WS). ");
+  }
+}
+
+function handleAgentMessage(msg) {
+  switch (msg.type) {
+    case "status":
+      setStatus(`Lori: ${msg.state || "..."}`);
+      break;
+    case "token":
+      streamBubble(msg.delta || "");
+      break;
+    case "done": {
+      const fullText = msg.final_text || "";
+      finalizeBubble(fullText);
+      setStatus("Saved to DB transcript (WS). ");
+      refreshChatSessions().catch(()=>{});
+      if (document.getElementById("chkAutoSpeak").checked) speak(fullText);
+      break;
+    }
+    case "error":
+      finalizeBubble("");
+      systemBubble("⚠ WS error: " + (msg.message || "unknown"));
+      enableSseFallback();
+      break;
+    default:
+      break;
+  }
+}
+
+function streamBubble(delta) {
+  if (!currentAssistantBubble) {
+    currentAssistantBubble = appendBubble("assistant", "", true);
+  }
+  currentAssistantBubble.innerText += delta;
+  bottom();
+}
+
+function finalizeBubble(fullText) {
+  if (currentAssistantBubble) {
+    currentAssistantBubble.innerText = fullText || "";
+    currentAssistantBubble = null;
+  }
+  currentTurnId = null;
+}
+
+/* ============================================================
+   Chat send (WS-first, SSE fallback)
+   ============================================================ */
+async function sendUserMessage(){
+  const text = getv("chatInput").trim();
+  if(!text) return;
+
+  setv("chatInput","");
+  appendBubble("user", text);
+
+  if (ws && wsReady && !usingFallback) {
+    currentTurnId = `turn-${Date.now()}`;
+    currentAssistantBubble = null;
+    setStatus("Sending (WebSocket) ...");
+
+    ws.send(JSON.stringify({
+      type: "start_turn",
+      session_id: state.chat.conv_id || "default",
+      message: text,
+      params: { temperature: 0.7, turn_id: currentTurnId }
+    }));
+    return;
+  }
+
+  await streamChatSse(text);
+}
+
+async function sendHidden(text){
+  await streamChatSse(text, true);
+}
+
+async function streamChatSse(text, hidden=false){
+  const bubble = hidden ? null : appendBubble("assistant", "…");
+  let full = "";
+
+  const profileJson = {
+    person_id: state.person_id,
+    profile: state.profile,
+  };
+
+  const sys = `
+You are Lorevox.
+Behavior:
+- One question at a time.
+- Short acknowledgement, then a question.
+- Never invent facts.
+- Use the PROFILE_JSON as context but do not assume missing details.
+PROFILE_JSON: ${JSON.stringify(profileJson)}
+`.trim();
+
+  const body = {
+    messages: [
+      {role:"system", content: sys},
+      {role:"user", content: text}
+    ],
+    temp: 0.7,
+    max_new: 512,
+    conv_id: state.chat.conv_id
+  };
+
+  try{
+    setStatus("Sending (SSE) ...");
+    const res = await fetch(API.CHAT_SSE, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      const chunk = decoder.decode(value, {stream:true});
+      const lines = chunk.split("\n");
+      for(const line of lines){
+        const s = line.trim();
+        if(!s) continue;
+        try{
+          const j = JSON.parse(s.replace(/^data:\s*/,""));
+          const delta = j.delta || j.token || "";
+          if(delta){
+            full += delta;
+            if(bubble){
+              bubble.innerText = full;
+              bottom();
+            }
+          }
+        }catch(e){}
+      }
+    }
+
+    if(!hidden){
+      if(document.getElementById("chkAutoSpeak").checked) speak(full);
+      setStatus("Saved to DB transcript (SSE). ");
+      await refreshChatSessions();
+    }
+  }catch(e){
+    if(bubble) bubble.innerText = "Offline (is :8000 running?)";
+    setStatus("Offline.");
+  }
+}
+
+/* ============================================================
+   Export
+   ============================================================ */
+async function exportZip(){
+  if(!state.chat.conv_id){ alert("No chat session"); return; }
+
+  const zip = new JSZip();
+  zip.file("active_person.json", JSON.stringify({person_id: state.person_id, profile: state.profile}, null, 2));
+
+  // transcript
+  try{
+    const res = await fetch(API.STURNS + "?conv_id=" + encodeURIComponent(state.chat.conv_id));
+    const j = await res.json();
+    const txt = (j.items||[]).map(m => `${(m.role||"").toUpperCase()}: ${m.content}`).join("\n\n");
+    zip.file("transcript.txt", txt);
+  }catch(e){
+    zip.file("transcript.txt", "(unable to fetch transcript from server)");
+  }
+
+  // interview snapshot
+  zip.file("interview_state.json", JSON.stringify(state.interview, null, 2));
+  zip.file("meta.json", JSON.stringify({ exported_at: new Date().toISOString(), origin: ORIGIN, chat_conv_id: state.chat.conv_id }, null, 2));
+
+  const blob = await zip.generateAsync({type:"blob"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `lorevox_${state.chat.conv_id}.zip`;
+  a.click();
+}
+
+/* ============================================================
+   TTS
+   ============================================================ */
+function enableAudio(){
+  audioUnlocked = true;
+  try{
+    const a = new Audio();
+    a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA=";
+    a.play().catch(()=>{});
+  }catch(e){}
+  document.getElementById("btnAudio").style.display="none";
+  systemBubble("Audio enabled.");
+}
+
+async function speak(text){
+  if(!audioUnlocked) return;
+  try{
+    const res = await fetch(API.TTS_SPEAK, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({text, voice:"lori"})});
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      const chunk = decoder.decode(value, {stream:true});
+      const lines = chunk.split("\n");
+      for(const line of lines){
+        const s = line.trim();
+        if(!s) continue;
+        try{
+          const j = JSON.parse(s);
+          if(j.wav_b64){
+            const audio = new Audio("data:audio/wav;base64," + j.wav_b64);
+            await audio.play().catch(()=>{});
+            return;
+          }
+        }catch(e){}
+      }
+    }
+  }catch(e){}
+}
+
+/* ============================================================
+   Browser Speech Recognition (optional)
+   ============================================================ */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+if(SR){
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.onresult = (e) => {
+    let interim = "", final = "";
+    for(let i=e.resultIndex; i<e.results.length; ++i){
+      if(e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    setv("chatInput", (recordBaseText + " " + final + interim).trim());
+  };
+}
+function toggleRecording(){
+  if(!recognition) return alert("Mic not supported in this browser");
+  if(isRecording){ recognition.stop(); isRecording=false; }
+  else { recordBaseText=getv("chatInput"); recognition.start(); isRecording=true; }
+}
+
+/* ============================================================
+   UI helpers
+   ============================================================ */
+function appendBubble(role, text, scroll=true){
+  const d = document.createElement("div");
+  d.className = "bubble " + role;
+  d.innerText = text;
+  document.getElementById("chatLog").appendChild(d);
+  if(scroll) bottom();
+  return d;
+}
+function systemBubble(t){ appendBubble("system", t); }
+function bottom(){ const c=document.getElementById("chatLog"); c.scrollTop = c.scrollHeight; }
+function setStatus(t){ document.getElementById("status").innerText = t; }
+function getv(id){ return document.getElementById(id).value || ""; }
+function setv(id, v){ document.getElementById(id).value = v; }
+function esc(s){ return (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+function escAttr(s){ return esc(s).replaceAll('"',"&quot;"); }
+</script>
+</body>
+</html>

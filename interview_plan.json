@@ -1,0 +1,143 @@
+{
+  "id": "lorevox-interview-v42",
+  "title": "LoreVox Full Questionnaire Interview (v4.2)",
+  "description": "Auto-next interview plan that mirrors basic-info.html. Text questions write to the Answers log and optionally update the Profile JSON via profile_path. Form-section questions are intended to be filled via your basic-info style UI and posted back to the same /api/interview/answer endpoint.",
+  "sections": [
+    {
+      "id": "personal_information",
+      "title": "Personal Information",
+      "questions": [
+        {"id": "full_name", "prompt": "What is your full legal name?", "kind": "text", "required": true, "profile_path": "full_name"},
+        {"id": "preferred_name", "prompt": "What name do you prefer to be called?", "kind": "text", "required": false, "profile_path": "preferred_name"},
+        {"id": "birth_order", "prompt": "What is your birth order (e.g., 1st, 2nd, 3rd)?", "kind": "text", "required": false, "profile_path": "birth_order"},
+        {"id": "date_of_birth", "prompt": "What is your date of birth? (YYYY-MM-DD)", "kind": "text", "required": true, "profile_path": "date_of_birth"},
+        {"id": "time_of_birth", "prompt": "Do you know your time of birth? (HH:MM, optional)", "kind": "text", "required": false, "profile_path": "time_of_birth"},
+        {"id": "place_of_birth", "prompt": "Where were you born? (City, State/Province, Country)", "kind": "text", "required": false, "profile_path": "place_of_birth"}
+      ]
+    },
+
+    {
+      "id": "family_and_heritage",
+      "title": "Family and Heritage",
+      "questions": [
+        {"id": "parents", "prompt": "Let’s capture your parents. Use the form section to add one or more parents.", "kind": "form_section", "required": false, "profile_path": "parents", "meta": {"form_section": "parents-table"}},
+        {"id": "grandparents", "prompt": "Now your grandparents. Use the form section to add one or more grandparents.", "kind": "form_section", "required": false, "profile_path": "grandparents", "meta": {"form_section": "grandparents-table"}},
+        {"id": "siblings", "prompt": "Now your siblings. Use the form section to add siblings.", "kind": "form_section", "required": false, "profile_path": "siblings", "meta": {"form_section": "siblings-table"}}
+      ]
+    },
+
+    {
+      "id": "early_years",
+      "title": "Early Years",
+      "questions": [
+        {"id": "first_memory", "prompt": "What is your very first memory?", "kind": "long_text", "required": false, "profile_path": "first_memory"},
+        {"id": "favorite_toy", "prompt": "What was your favorite toy or game as a child?", "kind": "long_text", "required": false, "profile_path": "favorite_toy"},
+        {"id": "significant_event", "prompt": "What was the most significant event from your early years?", "kind": "long_text", "required": false, "profile_path": "significant_event"}
+      ]
+    },
+
+    {
+      "id": "adolescence",
+      "title": "Adolescence",
+      "questions": [
+        {"id": "schooling", "prompt": "Tell me about your schooling—schools, favorite subjects, achievements.", "kind": "long_text", "required": false, "profile_path": "schooling"},
+        {"id": "friendships", "prompt": "Tell me about your friendships—names, personalities, and memories.", "kind": "long_text", "required": false, "profile_path": "friendships"},
+        {"id": "extracurricular", "prompt": "What extracurricular activities did you do?", "kind": "long_text", "required": false, "profile_path": "extracurricular"},
+        {"id": "part_time_jobs", "prompt": "Did you have part-time jobs as a teenager? What do you remember?", "kind": "long_text", "required": false, "profile_path": "part_time_jobs"}
+      ]
+    },
+
+    {
+      "id": "young_adulthood",
+      "title": "Young Adulthood",
+      "questions": [
+        {"id": "higher_education", "prompt": "Tell me about higher education—schools, degrees, and what you studied.", "kind": "long_text", "required": false, "profile_path": "higher_education"},
+        {"id": "military_service", "prompt": "Any military service? If yes, branch/roles/locations.", "kind": "long_text", "required": false, "profile_path": "military_service"},
+        {"id": "early_career", "prompt": "Tell me about your early career—first serious jobs and lessons learned.", "kind": "long_text", "required": false, "profile_path": "early_career"}
+      ]
+    },
+
+    {
+      "id": "marriage_and_family",
+      "title": "Marriage and Family",
+      "questions": [
+        {"id": "spouse", "prompt": "Let’s add spouse information in the form.", "kind": "form_section", "required": false, "profile_path": "spouse", "meta": {"form_section": "spouse-table"}},
+        {"id": "proposal_story", "prompt": "Tell me the proposal story.", "kind": "long_text", "required": false, "profile_path": "proposal_story"},
+        {"id": "wedding_details", "prompt": "Tell me about your wedding—date, place, and memorable moments.", "kind": "long_text", "required": false, "profile_path": "wedding_details"},
+        {"id": "children", "prompt": "Now add children in the form.", "kind": "form_section", "required": false, "profile_path": "children", "meta": {"form_section": "children-table"}},
+        {"id": "family_life", "prompt": "Describe your family life—what a typical day looked like and what mattered most.", "kind": "long_text", "required": false, "profile_path": "family_life"},
+        {"id": "family_traditions", "prompt": "Add family traditions in the form (or describe them if you prefer).", "kind": "form_section", "required": false, "profile_path": "family_traditions", "meta": {"form_section": "family-traditions-table"}}
+      ]
+    },
+
+    {
+      "id": "career_and_achievements",
+      "title": "Career and Achievements",
+      "questions": [
+        {"id": "career_progression", "prompt": "Walk me through your career progression—roles, promotions, achievements.", "kind": "long_text", "required": false, "profile_path": "career_progression"},
+        {"id": "community_involvement", "prompt": "How have you been involved in your community (volunteer work, service, etc.)?", "kind": "long_text", "required": false, "profile_path": "community_involvement"},
+        {"id": "mentorship", "prompt": "Who mentored you, and who did you mentor?", "kind": "long_text", "required": false, "profile_path": "mentorship"}
+      ]
+    },
+
+    {
+      "id": "later_years",
+      "title": "Later Years",
+      "questions": [
+        {"id": "retirement", "prompt": "What has retirement (or later life) looked like for you?", "kind": "long_text", "required": false, "profile_path": "retirement"},
+        {"id": "life_lessons", "prompt": "What are the most important life lessons you’ve learned?", "kind": "long_text", "required": false, "profile_path": "life_lessons"},
+        {"id": "advice_for_future", "prompt": "What advice would you like to leave for future generations?", "kind": "long_text", "required": false, "profile_path": "advice_for_future"}
+      ]
+    },
+
+    {
+      "id": "hobbies_and_events",
+      "title": "Hobbies and Events",
+      "questions": [
+        {"id": "hobbies", "prompt": "What hobbies have you developed over the years?", "kind": "long_text", "required": false, "profile_path": "hobbies"},
+        {"id": "world_events", "prompt": "What major world events impacted your life, and how?", "kind": "long_text", "required": false, "profile_path": "world_events"},
+        {"id": "personal_challenges", "prompt": "Tell me about personal challenges you faced and how you overcame them.", "kind": "long_text", "required": false, "profile_path": "personal_challenges"},
+        {"id": "travel", "prompt": "Tell me about travel that shaped you—favorite destinations and why.", "kind": "long_text", "required": false, "profile_path": "travel"}
+      ]
+    },
+
+    {
+      "id": "health_and_wellness",
+      "title": "Health and Wellness",
+      "questions": [
+        {"id": "health_milestones", "prompt": "Any major health milestones or challenges?", "kind": "long_text", "required": false, "profile_path": "health_milestones"},
+        {"id": "lifestyle_changes", "prompt": "What lifestyle changes improved your health?", "kind": "long_text", "required": false, "profile_path": "lifestyle_changes"},
+        {"id": "wellness_tips", "prompt": "What tips do you have for maintaining physical and mental well-being?", "kind": "long_text", "required": false, "profile_path": "wellness_tips"}
+      ]
+    },
+
+    {
+      "id": "technology_and_beliefs",
+      "title": "Technology and Beliefs",
+      "questions": [
+        {"id": "first_tech_experience", "prompt": "What was your first memorable experience with technology?", "kind": "long_text", "required": false, "profile_path": "first_tech_experience"},
+        {"id": "favorite_gadgets", "prompt": "What are your favorite gadgets or tools, and why?", "kind": "long_text", "required": false, "profile_path": "favorite_gadgets"},
+        {"id": "zodiac_sign", "prompt": "What is your astrological sign, and does it reflect your personality?", "kind": "long_text", "required": false, "profile_path": "zodiac_sign"},
+        {"id": "zodiac_traits", "prompt": "What traits do you associate with your sign?", "kind": "long_text", "required": false, "profile_path": "zodiac_traits"},
+        {"id": "cultural_practices", "prompt": "Any cultural or religious practices you observe?", "kind": "long_text", "required": false, "profile_path": "cultural_practices"}
+      ]
+    },
+
+    {
+      "id": "additional_notes",
+      "title": "Additional Notes",
+      "questions": [
+        {"id": "unfinished_dreams", "prompt": "Any unfinished dreams or goals?", "kind": "long_text", "required": false, "profile_path": "unfinished_dreams"},
+        {"id": "messages_for_future", "prompt": "Any message you want to leave for future generations?", "kind": "long_text", "required": false, "profile_path": "messages_for_future"}
+      ]
+    },
+
+    {
+      "id": "pets",
+      "title": "Pets",
+      "questions": [
+        {"id": "pets", "prompt": "Add pets in the form (or describe them if you prefer).", "kind": "form_section", "required": false, "profile_path": "pets", "meta": {"form_section": "pets-table"}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <title>Lorevox — Interview Studio (DB-driven)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{ --accent:#fdb201 }
+    body{ background:#f8fafc; color:#0f172a; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial; }
+    .card{ background:#fff; border:1px solid #e5e7eb; border-radius:1rem; padding:1.1rem }
+    .btn{ display:inline-flex; align-items:center; justify-content:center; font-weight:800;
+      border-radius:9999px; padding:.55rem 1.05rem; border:1px solid #cbd5e1; background:#fff; transition:.15s; user-select:none; -webkit-tap-highlight-color: transparent; }
+    .btn:hover{ background:#f1f5f9 }
+    .btn:active{ transform: translateY(1px); }
+    .btn-accent{ background:var(--accent); border-color:#f59e0b }
+    .btn-danger{ background:#fee2e2; border-color:#ef4444; color:#991b1b }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; }
+    .input{ width:100%; border:1px solid #cbd5e1; border-radius:.75rem; padding:.75rem .9rem; background:#fff }
+    .scrollbox{ height:55vh; overflow:auto; display:flex; flex-direction:column; gap:1rem; -webkit-overflow-scrolling: touch; }
+    .bubble{ border:1px solid #e5e7eb; border-radius:1rem; padding:.8rem 1.1rem; white-space:pre-wrap; max-width:88%; line-height:1.6; word-break: break-word; }
+    .bubble.user{ background:#fef3c7; align-self:flex-start; border-bottom-left-radius:0; }
+    .bubble.assistant{ background:#fff; align-self:flex-end; border-bottom-right-radius:0; box-shadow:0 2px 4px rgba(0,0,0,0.05); }
+    .mono{ font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:.78rem; color:#64748b; }
+
+    .roadmap-item{ font-size:.82rem; padding:.28rem .55rem; border-radius:.35rem; transition:.15s; border:1px solid transparent; }
+    .roadmap-item.pending{ color:#94a3b8; }
+    .roadmap-item.active{ background:#fef3c7; color:#92400e; font-weight:900; border:1px solid #f59e0b; }
+    .roadmap-item.done{ background:#ecfeff; color:#0f766e; border:1px solid #99f6e4; }
+    .rm-row{ display:flex; align-items:center; gap:.5rem; margin-bottom:.25rem; }
+    .rm-dot{ width:.5rem; height:.5rem; border-radius:9999px; background:#e2e8f0; flex:0 0 auto; }
+    .rm-dot.done{ background:#22c55e; }
+    .rm-cb{ width: 1rem; height: 1rem; accent-color: #22c55e; }
+
+    .mode-badge{ font-size:.65rem; padding:2px 8px; border-radius:6px; text-transform:uppercase; font-weight:900; letter-spacing:.04em; }
+    .mode-interviewer{ background:#dcfce7; color:#166534; border:1px solid #86efac; }
+    .mode-biographer{ background:#fef3c7; color:#92400e; border:1px solid #fdba74; }
+
+    .pulse { animation:pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .btn-record.active{ background:#fee2e2; border-color:#ef4444; color:#ef4444; animation:pulse 1.5s infinite; }
+
+    .drawer{ position:fixed; inset:0; display:none; z-index:60; }
+    .drawer.open{ display:block; }
+    .drawer-backdrop{ position:absolute; inset:0; background:rgba(15,23,42,.55); }
+    .drawer-panel{ position:absolute; top:0; left:0; height:100%; width:min(360px, 92vw); background:#f8fafc;
+      border-right:1px solid #e5e7eb; padding:12px; overflow:auto; -webkit-overflow-scrolling: touch; }
+    .drawer-close{ position:sticky; top:0; background:#f8fafc; padding-bottom:10px; z-index:1; }
+
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(15,23,42,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:70; }
+    .modal{ width:min(760px, 100%); background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px; }
+    .modal h3{ font-weight:900; font-size:1.05rem; margin-bottom:6px; }
+    .modal p{ font-size:.95rem; color:#334155; }
+    .modal .modal-actions{ margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+
+    .pill{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:9999px; border:1px solid #e2e8f0; background:#fff; font-size:11px; }
+    .pill-dot{ width:8px; height:8px; border-radius:9999px; background:#22c55e; }
+    .pill-dot.bad{ background:#f59e0b; }
+    .pill-dot.dead{ background:#ef4444; }
+
+    @media (max-width: 1024px){ .scrollbox{ height:50vh; } }
+    @media (max-width: 640px){
+      body{ padding:12px !important; }
+      .scrollbox{ height:46vh; }
+      .bubble{ max-width:92%; }
+      .card{ padding:1rem; border-radius:1rem; }
+      .btn{ padding:.6rem .95rem; }
+      footer.card{ position: sticky; bottom: 10px; z-index: 30; box-shadow: 0 10px 25px rgba(2,6,23,.08); }
+      .scrollbox{ scroll-margin-bottom: 220px; }
+    }
+  </style>
+</head>
+<body class="p-6">
+
+  <!-- Memoir warning modal -->
+  <div id="memoirModal" class="modal-backdrop">
+    <div class="modal">
+      <h3>Generate Memoir Mode?</h3>
+      <p class="mb-2">This switches from questionnaire interviewing to drafting memoir output. Recommendation: finish the interview plan first.</p>
+      <p class="mono text-[12px] text-slate-500">You can return to Interview mode anytime — everything stays in your local DB.</p>
+      <div class="modal-actions">
+        <button id="btnCancelMemoir" class="btn">Cancel</button>
+        <button id="btnConfirmMemoir" class="btn btn-accent">Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Drawer (sidebar) -->
+  <div id="drawer" class="drawer">
+    <div id="drawerBackdrop" class="drawer-backdrop"></div>
+    <div class="drawer-panel">
+      <div class="drawer-close flex items-center justify-between">
+        <div class="font-black text-slate-800">Controls</div>
+        <button id="btnCloseDrawer" class="btn">Close</button>
+      </div>
+      <div id="drawerSidebarMount"></div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <aside id="desktopSidebar" class="lg:col-span-1 space-y-4 hidden lg:block">
+      <div id="sidebarInner" class="space-y-4"></div>
+    </aside>
+
+    <main class="lg:col-span-3 space-y-4">
+      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <button id="btnOpenDrawer" class="btn lg:hidden" title="Open controls">☰</button>
+            <h1 class="text-2xl font-black text-slate-800">🎙️ Lorevox Interview Studio</h1>
+          </div>
+          <span id="modeBadgeTop" class="mode-badge mode-interviewer lg:hidden">Interviewer</span>
+        </div>
+
+        <div class="flex flex-wrap gap-2 items-center">
+          <span id="pillApi" class="pill"><span id="dotApi" class="pill-dot"></span>API <span id="txtApi" class="mono text-[11px] text-slate-500">checking…</span></span>
+          <span id="pillTts" class="pill"><span id="dotTts" class="pill-dot"></span>TTS <span id="txtTts" class="mono text-[11px] text-slate-500">checking…</span></span>
+          <span id="pillStt" class="pill"><span id="dotStt" class="pill-dot"></span>STT <span id="txtStt" class="mono text-[11px] text-slate-500">checking…</span></span>
+          <span class="mono text-xs text-slate-500 hidden sm:inline">DB interview → memoir (local-first)</span>
+        </div>
+      </header>
+
+      <div class="card p-0 overflow-hidden shadow-sm">
+        <div id="chatTranscript" class="scrollbox p-4 sm:p-6 bg-slate-50/50"></div>
+      </div>
+
+      <footer class="card space-y-3 shadow-md">
+        <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+          <div class="flex-1">
+            <textarea id="chatInput" rows="3" class="input p-3 sm:p-4 text-base sm:text-lg" spellcheck="true" placeholder="Record fills this box; Send submits."></textarea>
+
+            <div class="mt-2 flex flex-wrap gap-2 items-center">
+              <button id="btnClearBox" class="btn">Clear Box</button>
+              <button id="btnSkip" class="btn">Skip Question</button>
+              <span class="mono text-[11px] text-slate-400">Shortcut: <span class="mono">Ctrl</span> + <span class="mono">Enter</span> to Send</span>
+            </div>
+          </div>
+
+          <div class="flex sm:flex-col gap-2">
+            <button id="btnRecord" class="btn btn-record w-full sm:w-40">🎤 Record</button>
+            <button id="btnSend" class="btn btn-accent w-full sm:w-40 h-12 sm:h-16 shadow-lg">Send</button>
+          </div>
+        </div>
+
+        <div class="card bg-slate-50/60 border-slate-200 p-3">
+          <div class="flex items-center justify-between">
+            <div class="mono text-[11px] text-slate-500">Last Assistant Output (operator review)</div>
+            <div class="flex gap-2">
+              <button id="btnCopyLast" class="btn text-xs">Copy</button>
+              <button id="btnSpeakLast" class="btn text-xs">Speak</button>
+            </div>
+          </div>
+          <div id="lastAssistantPanel" class="text-sm text-slate-700 mt-2 whitespace-pre-wrap"></div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs mono text-gray-400">
+          <span id="audioStatus" class="flex items-center gap-2">
+            <span id="statusDot" class="w-2 h-2 rounded-full bg-green-500"></span>
+            <span id="statusText">System Ready</span>
+          </span>
+          <span>Interview answers save to DB · One question at a time · TTS optional</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+
+// ----------------------
+// Endpoints
+// ----------------------
+const ORIGIN = window.location.origin;
+const HOSTNAME = window.location.hostname;
+const PROTOCOL = window.location.protocol;
+
+const DEFAULT_TTS_PORT = 8001;
+const DEFAULT_TTS_BASE = `${PROTOCOL}//${HOSTNAME}:${DEFAULT_TTS_PORT}`;
+let TTS_BASE = DEFAULT_TTS_BASE;
+
+// API
+const API = {
+  ping: `${ORIGIN}/api/ping`,
+  people_list: `${ORIGIN}/api/people?limit=200&offset=0`,
+  people_create: `${ORIGIN}/api/people`,
+  interview_start: `${ORIGIN}/api/interview/start`,
+  interview_answer: `${ORIGIN}/api/interview/answer`,
+  // LLM stream endpoint for memoir generation (optional)
+  chat_stream: `${ORIGIN}/api/chat/stream`,
+};
+
+(function applyEndpointOverrides(){
+  try {
+    const u = new URL(location.href);
+    const tts = u.searchParams.get("tts");
+    if (tts) TTS_BASE = tts.replace(/\/+$/,'');
+  } catch(e){}
+})();
+
+// ----------------------
+// State
+// ----------------------
+const SAVE_KEY = "lorevox_interview_ui_v1";
+
+let MODE = "INTERVIEW"; // INTERVIEW | BIOGRAPHER
+let people = [];
+let activePersonId = null;
+let activePersonName = null;
+
+let interviewSessionId = null;
+let activeQuestion = null; // {id, section_id, prompt, ...}
+
+let chatHistory = []; // for memoir generation only
+let lastAssistantText = "";
+
+// Roadmap (UI-only); mirrors your plan sections, but interview driver is authoritative.
+const INTERVIEW_ROADMAP = [
+  { id:"personal",   label:"Personal Information" },
+  { id:"heritage",   label:"Family and Heritage" },
+  { id:"early",      label:"Early Years" },
+  { id:"adolescence",label:"Adolescence" },
+  { id:"young",      label:"Young Adulthood" },
+  { id:"marriage",   label:"Marriage and Family" },
+  { id:"career",     label:"Career and Achievements" },
+  { id:"later",      label:"Later Years" },
+  { id:"hobbies",    label:"Hobbies and Events" },
+  { id:"health",     label:"Health and Wellness" },
+  { id:"tech",       label:"Technology and Beliefs" },
+  { id:"notes",      label:"Additional Notes" }
+];
+let sectionIndex = 0;
+let sectionDone = new Array(INTERVIEW_ROADMAP.length).fill(false);
+
+// ----------------------
+// UI: sidebar
+// ----------------------
+function buildSidebarHTML(){
+  return `
+    <div class="card">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-black text-lg">👤 Subject</h2>
+        <span id="modeBadge" class="mode-badge ${MODE === 'BIOGRAPHER' ? 'mode-biographer' : 'mode-interviewer'}">${MODE === 'BIOGRAPHER' ? 'Biographer' : 'Interviewer'}</span>
+      </div>
+
+      <div class="space-y-2">
+        <div class="mono text-[11px] text-slate-500">Active person</div>
+        <div class="font-bold" id="activePersonLabel">${activePersonName ? activePersonName : 'None selected'}</div>
+        <div class="mono text-[11px] text-slate-500">Interview session</div>
+        <div class="mono break-all" id="activeSessionLabel">${interviewSessionId || 'Not started'}</div>
+      </div>
+
+      <div class="mt-3 grid grid-cols-2 gap-2">
+        <button id="btnPickPerson" class="btn w-full">Pick</button>
+        <button id="btnNewPerson" class="btn w-full btn-accent">New</button>
+      </div>
+
+      <div class="mt-3 grid grid-cols-2 gap-2">
+        <button id="btnStartInterview" class="btn w-full">Start</button>
+        <button id="btnAskNext" class="btn w-full">Ask Next</button>
+      </div>
+
+      <div class="mt-3 space-y-2">
+        <button id="btnGenerateMemoir" class="btn btn-accent w-full border-2 border-orange-600">✍️ Generate Memoir</button>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-200">
+        <div class="font-black text-slate-700">📜 Roadmap (operator)</div>
+        <div class="mono text-[11px] text-slate-500">(Interview engine still controls question order.)</div>
+        <div class="flex gap-2 my-2">
+          <button id="btnPrevSection" class="btn w-1/2">◀ Prev</button>
+          <button id="btnNextSection" class="btn w-1/2">Next ▶</button>
+        </div>
+        <div id="roadmap" class="select-none"></div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-200">
+        <div class="font-black text-slate-700">🔊 Voice</div>
+        <div class="mt-2 text-xs mono text-slate-600 space-y-2">
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="chkAutoSpeak" checked>Auto-Voice</label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="chkVoiceEnabled" checked>Voice Enabled</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnStopAudio" class="btn btn-danger w-full">⏸ Stop</button>
+            <button id="btnTestVoice" class="btn w-full btn-accent">Test</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-200">
+        <div class="font-black text-slate-700">⬇️ Export</div>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <button id="btnExportJson" class="btn w-full">JSON</button>
+          <button id="btnExportTxt" class="btn w-full">TXT</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <button id="btnNewSession" class="btn w-full">New</button>
+          <button id="btnClearSaved" class="btn w-full">Clear Saved</button>
+        </div>
+        <div class="mono text-[10px] text-slate-400 mt-2" id="saveBadge">Not saved yet</div>
+      </div>
+    </div>
+  `;
+}
+
+function mountSidebar(){
+  $("#sidebarInner").innerHTML = buildSidebarHTML();
+  $("#drawerSidebarMount").innerHTML = buildSidebarHTML();
+  bindSidebarHandlers();
+  renderRoadmap();
+}
+
+// ----------------------
+// Drawer
+// ----------------------
+function openDrawer(){ $("#drawer").classList.add("open"); }
+function closeDrawer(){ $("#drawer").classList.remove("open"); }
+$("#btnOpenDrawer").onclick = openDrawer;
+$("#btnCloseDrawer").onclick = closeDrawer;
+$("#drawerBackdrop").onclick = closeDrawer;
+window.addEventListener("resize", () => { if (window.innerWidth >= 1024) closeDrawer(); });
+
+// ----------------------
+// Modal
+// ----------------------
+function openModal(id){ $(id).style.display = "flex"; }
+function closeModal(id){ $(id).style.display = "none"; }
+$("#btnCancelMemoir").onclick = () => closeModal("#memoirModal");
+
+// ----------------------
+// Status + pills
+// ----------------------
+function setStatus(text, colorClass){
+  $("#statusText").textContent = text;
+  $("#statusDot").className = "w-2 h-2 rounded-full " + (colorClass || "bg-green-500");
+}
+function setPill(which, state, text){
+  const dot = which === "api" ? $("#dotApi") : which === "tts" ? $("#dotTts") : $("#dotStt");
+  const txt = which === "api" ? $("#txtApi") : which === "tts" ? $("#txtTts") : $("#txtStt");
+  dot.className = "pill-dot" + (state === "ok" ? "" : state === "warn" ? " bad" : " dead");
+  txt.textContent = text;
+}
+async function ping(url, timeoutMs=2500){
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try{
+    const res = await fetch(url, { method:"GET", signal: ctrl.signal });
+    clearTimeout(t);
+    return res.ok;
+  }catch(e){
+    clearTimeout(t);
+    return false;
+  }
+}
+
+// ----------------------
+// Chat UI
+// ----------------------
+function appendBubble(role, text){
+  const div = document.createElement("div");
+  div.className = `bubble ${role}`;
+  div.innerHTML = `<div class="text-xs opacity-40 mb-1 mono">${String(role).toUpperCase()}</div><div class="bubbleContent"></div>`;
+  div.querySelector(".bubbleContent").innerText = text;
+  $("#chatTranscript").appendChild(div);
+  $("#chatTranscript").scrollTop = $("#chatTranscript").scrollHeight;
+  return div;
+}
+function updateLastAssistantPanel(text){
+  lastAssistantText = (text || "").trim();
+  $("#lastAssistantPanel").innerText = lastAssistantText;
+}
+$("#btnCopyLast").onclick = async () => { try { await navigator.clipboard.writeText(lastAssistantText || ""); } catch(e){} };
+
+// ----------------------
+// Roadmap render
+// ----------------------
+function renderRoadmap(){
+  const wrap = document.querySelectorAll("#roadmap");
+  wrap.forEach(node => {
+    node.innerHTML = "";
+    INTERVIEW_ROADMAP.forEach((s, i) => {
+      const row = document.createElement("div");
+      row.className = "rm-row";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "rm-cb";
+      cb.checked = !!sectionDone[i];
+
+      const dot = document.createElement("span");
+      dot.className = "rm-dot" + (sectionDone[i] ? " done" : "");
+
+      const item = document.createElement("div");
+      item.className = "roadmap-item flex-1 " + (i === sectionIndex ? "active" : sectionDone[i] ? "done" : "pending");
+      item.textContent = s.label;
+
+      item.onclick = () => { sectionIndex = i; renderRoadmap(); saveSession(); };
+      cb.onchange = () => {
+        sectionDone[i] = cb.checked;
+        if (i === sectionIndex && sectionDone[i] && sectionIndex < INTERVIEW_ROADMAP.length - 1) sectionIndex += 1;
+        renderRoadmap();
+        saveSession();
+      };
+
+      row.appendChild(cb);
+      row.appendChild(dot);
+      row.appendChild(item);
+      node.appendChild(row);
+    });
+  });
+}
+
+// ----------------------
+// STT: WebSpeech (simple)
+// ----------------------
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+let recordBaseText = "";
+let finalTranscript = "";
+let recordInterim = "";
+
+function sttEngineName(){ return Recognition ? "WebSpeech" : "None"; }
+function setRecordUI(active){
+  if (active){
+    $("#btnRecord").innerText = "🛑 Stop";
+    $("#btnRecord").classList.add("active");
+    setStatus("Recording…", "bg-red-500 pulse");
+  } else {
+    $("#btnRecord").innerText = "🎤 Record";
+    $("#btnRecord").classList.remove("active");
+    setStatus("System Ready", "bg-green-500");
+  }
+}
+function appendToTextbox(text){
+  const base = (recordBaseText || "").trim();
+  const add  = (text || "").trim();
+  $("#chatInput").value = (base + " " + add).trim();
+}
+async function startRecording(){
+  if (!Recognition) { alert("SpeechRecognition not available in this browser."); return; }
+  recordBaseText = ($("#chatInput").value || "").trim();
+  finalTranscript = "";
+  recordInterim = "";
+
+  recognition = new Recognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = "en-US";
+
+  recognition.onresult = (e) => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; ++i) {
+      const frag = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalTranscript += frag + " ";
+      else interim += frag;
+    }
+    recordInterim = interim;
+    appendToTextbox((finalTranscript + recordInterim).trim());
+  };
+  recognition.onend = () => {
+    if (isRecording) { try { recognition.start(); } catch(err){} return; }
+    setRecordUI(false);
+  };
+  recognition.onerror = () => {
+    try { recognition.stop(); } catch(e){}
+    isRecording = false;
+    setRecordUI(false);
+    setStatus("Mic error (try again)", "bg-yellow-500");
+  };
+
+  isRecording = true;
+  setRecordUI(true);
+  try{ recognition.start(); } catch(e){ isRecording=false; setRecordUI(false); }
+}
+function stopRecording(){
+  if (!isRecording) return;
+  isRecording = false;
+  try { recognition && recognition.stop(); } catch(e){}
+  recognition = null;
+  appendToTextbox((finalTranscript + recordInterim).trim());
+  setRecordUI(false);
+  saveSession();
+}
+$("#btnRecord").onclick = () => { if (!isRecording) startRecording(); else stopRecording(); };
+
+// ----------------------
+// TTS
+// ----------------------
+class AudioQueuePlayer{
+  constructor(){ this.queue=[]; this.playing=false; this.currentAudio=null; }
+  enqueue(blob){ this.queue.push(blob); if (!this.playing) this.playNext(); }
+  stopAll(){
+    this.queue=[]; this.playing=false;
+    if (this.currentAudio){ try{ this.currentAudio.pause(); this.currentAudio.currentTime=0; }catch(e){} }
+    this.currentAudio=null;
+    setStatus("Audio stopped", "bg-yellow-500");
+  }
+  async playNext(){
+    if (this.queue.length === 0){ this.playing=false; this.currentAudio=null; setStatus("System Ready", "bg-green-500"); return; }
+    stopRecording();
+    this.playing=true;
+    setStatus("Speaking…", "bg-red-500 pulse");
+    const blob = this.queue.shift();
+    const audio = new Audio(URL.createObjectURL(blob));
+    this.currentAudio = audio;
+    audio.onended = () => this.playNext();
+    audio.play().catch(() => this.playNext());
+  }
+}
+const audioPlayer = new AudioQueuePlayer();
+
+function anyChecked(selector){ return [...document.querySelectorAll(selector)].some(x => x && x.checked); }
+function isVoiceAllowed(){ return anyChecked("#chkAutoSpeak") && anyChecked("#chkVoiceEnabled"); }
+function ttsClean(text){
+  let t = (text || "").trim();
+  t = t.replace(/\[\[.*?\]\]/g, "");
+  t = t.replace(/[ ]{2,}/g, " ").trim();
+  return t;
+}
+async function triggerVoiceStream(text){
+  if (!isVoiceAllowed()) return;
+  const clean = ttsClean(text);
+  if (!clean) return;
+
+  try{
+    stopRecording();
+    const response = await fetch(`${TTS_BASE}/api/tts/speak_stream`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ text: clean, voice:"librarian" })
+    });
+    if (!response.ok) throw new Error(`TTS HTTP ${response.status}`);
+
+    const reader = response.body?.getReader?.();
+    if (!reader) throw new Error("No stream body.");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true){
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream:true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines){
+        if (!line.trim()) continue;
+        try{
+          const j = JSON.parse(line);
+          if (j.wav_b64){
+            const binary = atob(j.wav_b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+            audioPlayer.enqueue(new Blob([bytes], { type:"audio/wav" }));
+          }
+        } catch(e){}
+      }
+    }
+  } catch(e){
+    setStatus("TTS error", "bg-yellow-500");
+  }
+}
+
+// ----------------------
+// People picker
+// ----------------------
+async function refreshPeople(){
+  const res = await fetch(API.people_list);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const j = await res.json();
+  people = j.people || [];
+  saveSession();
+}
+
+async function pickPerson(){
+  await refreshPeople();
+  if (!people.length){ alert("No people yet. Click New."); return; }
+
+  // Simple prompt picker (fast + reliable). Replace later with modal.
+  const options = people.map((p, i) => `${i+1}) ${p.display_name} (${p.role || 'role?'})`).join("\n");
+  const sel = prompt("Pick a person by number:\n\n" + options);
+  const idx = parseInt(sel || "", 10) - 1;
+  if (!(idx >= 0 && idx < people.length)) return;
+
+  const p = people[idx];
+  activePersonId = p.id;
+  activePersonName = p.display_name;
+  interviewSessionId = null;
+  activeQuestion = null;
+
+  mountSidebar();
+  appendBubble("assistant", `Selected: ${activePersonName}. Click Start to begin the interview plan.`);
+  saveSession();
+}
+
+async function createPerson(){
+  const name = prompt("New person display name:");
+  if (!name) return;
+  const role = prompt("Role (subject, father, mother, etc) — optional:") || null;
+
+  const res = await fetch(API.people_create, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ display_name:name, role })
+  });
+  if (!res.ok){
+    const t = await res.text();
+    alert("Create failed: " + t);
+    return;
+  }
+  await refreshPeople();
+  const created = people.find(p => p.display_name === name) || null;
+  if (created){
+    activePersonId = created.id;
+    activePersonName = created.display_name;
+  }
+  mountSidebar();
+  appendBubble("assistant", `Created: ${name}. Click Start to begin the interview plan.`);
+  saveSession();
+}
+
+// ----------------------
+// Interview driver (DB authoritative)
+// ----------------------
+function showQuestion(q){
+  if (!q) return;
+  activeQuestion = q;
+  // update roadmap highlight based on section_id
+  const idx = INTERVIEW_ROADMAP.findIndex(s => s.id === q.section_id);
+  if (idx >= 0) sectionIndex = idx;
+  renderRoadmap();
+
+  appendBubble("assistant", q.prompt);
+  updateLastAssistantPanel(q.prompt);
+  triggerVoiceStream(q.prompt);
+
+  saveSession();
+}
+
+async function startInterview(){
+  if (!activePersonId){ alert("Pick or create a person first."); return; }
+  const res = await fetch(API.interview_start, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ person_id: activePersonId, plan_id: "default" })
+  });
+  if (!res.ok){
+    const t = await res.text();
+    alert("Start failed: " + t);
+    return;
+  }
+  const j = await res.json();
+  interviewSessionId = j.session_id;
+  mountSidebar();
+  appendBubble("assistant", `Interview started for ${activePersonName}.`);
+  showQuestion(j.next_question);
+}
+
+async function submitAnswer(answerText, skipped=false){
+  if (!interviewSessionId || !activeQuestion){
+    alert("Interview not started. Click Start.");
+    return;
+  }
+
+  const answer = (answerText || "").trim();
+
+  appendBubble("user", skipped ? "(skipped)" : answer);
+
+  const res = await fetch(API.interview_answer, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      session_id: interviewSessionId,
+      question_id: activeQuestion.id,
+      answer: answer,
+      skipped: !!skipped,
+    })
+  });
+  if (!res.ok){
+    const t = await res.text();
+    appendBubble("assistant", "Server error saving answer: " + t);
+    return;
+  }
+
+  const j = await res.json();
+  if (j.done){
+    activeQuestion = null;
+    appendBubble("assistant", "✅ Interview complete. You can now generate memoir output.");
+    updateLastAssistantPanel("Interview complete.");
+    saveSession();
+    return;
+  }
+
+  showQuestion(j.next_question);
+}
+
+async function askNext(){
+  if (!interviewSessionId || !activeQuestion){
+    alert("Start interview first.");
+    return;
+  }
+  appendBubble("assistant", "(Operator) Please answer the current question, then Send.");
+}
+
+// ----------------------
+// Memoir generation (optional LLM)
+// ----------------------
+function buildMemoirSystemPrompt(){
+  return `You are a professional memoir biographer.\n\nRULES:\n- Use only facts explicitly stated in the transcript below.\n- Do not invent people, places, dates, jobs, or events.\n- Write chronologically.\n- Output: (1) a short chapter outline, then (2) Chapter 1 only.\n- End with exactly 5 follow-up questions (numbered 1-5) to fill gaps.\n- Plain text only. No markdown bullets, no asterisks, no bold.\n`;
+}
+
+async function generateMemoir(){
+  // If you want strict DB-driven generation later, we can add a server endpoint.
+  // For now, we use the on-page transcript as the source of truth.
+  MODE = "BIOGRAPHER";
+  mountSidebar();
+
+  openModal("#memoirModal");
+}
+
+$("#btnConfirmMemoir").onclick = async () => {
+  closeModal("#memoirModal");
+  MODE = "BIOGRAPHER";
+  mountSidebar();
+
+  // Build transcript from bubbles for now (fast). Later: server export.
+  const transcript = chatHistoryToText();
+
+  const userPrompt =
+    "Write a memoir draft based on this interview transcript.\n\n" +
+    "Transcript:\n" + transcript;
+
+  appendBubble("user", "(Generate memoir)");
+  const bubble = appendBubble("assistant", "...");
+  const textTarget = bubble.querySelector(".bubbleContent");
+
+  let fullReply = "";
+
+  const response = await fetch(API.chat_stream, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      messages: [
+        { role:"system", content: buildMemoirSystemPrompt() },
+        { role:"user", content: userPrompt }
+      ],
+      temp: 0.8,
+      conv_id: `memoir_${Date.now()}`
+    })
+  });
+
+  if (!response.ok){
+    textTarget.innerText = `Chat API error: HTTP ${response.status}`;
+    return;
+  }
+
+  const reader = response.body?.getReader?.();
+  if (!reader){
+    textTarget.innerText = "Chat API error: no stream body.";
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  while (true){
+    const { value, done } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
+    for (const line of lines){
+      if (!line.trim()) continue;
+      try{
+        const j = JSON.parse(line);
+        if (j.delta){
+          fullReply += j.delta;
+          textTarget.innerText = fullReply;
+          $("#chatTranscript").scrollTop = $("#chatTranscript").scrollHeight;
+        }
+      } catch(e){}
+    }
+  }
+
+  updateLastAssistantPanel(fullReply);
+  triggerVoiceStream(fullReply);
+};
+
+function chatHistoryToText(){
+  const lines = [];
+  const nodes = document.querySelectorAll("#chatTranscript .bubble");
+  nodes.forEach(n => {
+    const role = n.classList.contains("user") ? "SPEAKER" : "ARCHIVIST";
+    const content = n.querySelector(".bubbleContent")?.innerText || "";
+    if (!content.trim()) return;
+    lines.push(role + ":");
+    lines.push(content.trim());
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
+// ----------------------
+// Send (INTERVIEW: saves answer to DB; BIOGRAPHER: normal chat)
+// ----------------------
+async function send(){
+  const raw = $("#chatInput").value || "";
+  const text = raw.trim();
+  if (!text) return;
+
+  stopRecording();
+  $("#chatInput").value = "";
+
+  if (MODE === "INTERVIEW"){
+    await submitAnswer(text, false);
+    return;
+  }
+
+  // BIOGRAPHER free chat (optional)
+  appendBubble("user", text);
+  const bubble = appendBubble("assistant", "...");
+  const textTarget = bubble.querySelector(".bubbleContent");
+  let fullReply = "";
+
+  const response = await fetch(API.chat_stream, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      messages: [{ role:"system", content: buildMemoirSystemPrompt() }, { role:"user", content: text }],
+      temp: 0.7,
+      conv_id: `chat_${Date.now()}`
+    })
+  });
+  if (!response.ok){ textTarget.innerText = `Chat API error: HTTP ${response.status}`; return; }
+
+  const reader = response.body?.getReader?.();
+  if (!reader){ textTarget.innerText = "Chat API error: no stream body."; return; }
+
+  const decoder = new TextDecoder();
+  while (true){
+    const { value, done } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
+    for (const line of lines){
+      if (!line.trim()) continue;
+      try{
+        const j = JSON.parse(line);
+        if (j.delta){ fullReply += j.delta; textTarget.innerText = fullReply; }
+      } catch(e){}
+    }
+  }
+
+  updateLastAssistantPanel(fullReply);
+  triggerVoiceStream(fullReply);
+  saveSession();
+}
+
+$("#btnSend").onclick = send;
+$("#chatInput").onkeydown = (e) => {
+  if ((e.key === "Enter" && e.ctrlKey) || (e.key === "Enter" && !e.shiftKey && !e.ctrlKey)) {
+    e.preventDefault();
+    send();
+  }
+};
+
+// Skip
+$("#btnSkip").onclick = async () => {
+  stopRecording();
+  $("#chatInput").value = "";
+  await submitAnswer("", true);
+};
+
+$("#btnClearBox").onclick = () => {
+  const ok = confirm("Clear the textbox? (Does not affect the transcript.)");
+  if (!ok) return;
+  $("#chatInput").value = "";
+};
+
+// ----------------------
+// Exports
+// ----------------------
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildExportPayload(){
+  return {
+    exported_at: new Date().toISOString(),
+    mode: MODE,
+    active_person_id: activePersonId,
+    active_person_name: activePersonName,
+    interview_session_id: interviewSessionId,
+    active_question: activeQuestion,
+    roadmap: INTERVIEW_ROADMAP,
+    section_index: sectionIndex,
+    section_done: sectionDone,
+    endpoints: { origin: ORIGIN, tts: TTS_BASE },
+    transcript_text: chatHistoryToText(),
+  };
+}
+
+function buildTranscriptTxt(){
+  const p = buildExportPayload();
+  const lines = [];
+  lines.push("Lorevox Interview Transcript");
+  lines.push("Person: " + (p.active_person_name || ""));
+  lines.push("Interview session: " + (p.interview_session_id || ""));
+  lines.push("Exported: " + p.exported_at);
+  lines.push("");
+  lines.push(p.transcript_text);
+  return lines.join("\n");
+}
+
+function exportJson(){
+  const payload = buildExportPayload();
+  const name = (activePersonName || "person").replace(/[^a-z0-9]+/gi,"_").toLowerCase();
+  downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" }), `lorevox_${name}_${Date.now()}.json`);
+}
+function exportTxt(){
+  const name = (activePersonName || "person").replace(/[^a-z0-9]+/gi,"_").toLowerCase();
+  downloadBlob(new Blob([buildTranscriptTxt()], { type:"text/plain;charset=utf-8" }), `lorevox_${name}_${Date.now()}.txt`);
+}
+
+// ----------------------
+// Persistence
+// ----------------------
+let saveTimer = null;
+function setSaveBadge(msg){ document.querySelectorAll("#saveBadge").forEach(x => x && (x.innerText = msg)); }
+
+function buildSave(){
+  return {
+    saved_at: new Date().toISOString(),
+    mode: MODE,
+    activePersonId,
+    activePersonName,
+    interviewSessionId,
+    activeQuestion,
+    sectionIndex,
+    sectionDone,
+    tts_base: TTS_BASE,
+    transcript_html: $("#chatTranscript").innerHTML,
+    lastAssistantText,
+    voice: {
+      auto: anyChecked("#chkAutoSpeak"),
+      enabled: anyChecked("#chkVoiceEnabled")
+    }
+  };
+}
+
+function saveSession(){
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    try{
+      localStorage.setItem(SAVE_KEY, JSON.stringify(buildSave()));
+      setSaveBadge("Saved ✓ " + new Date().toLocaleTimeString());
+    }catch(e){
+      setSaveBadge("Save failed (storage full?)");
+    }
+  }, 250);
+}
+
+function loadSession(){
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return false;
+  try{
+    const s = JSON.parse(raw);
+    MODE = s.mode || MODE;
+    activePersonId = s.activePersonId || null;
+    activePersonName = s.activePersonName || null;
+    interviewSessionId = s.interviewSessionId || null;
+    activeQuestion = s.activeQuestion || null;
+    sectionIndex = Number.isFinite(s.sectionIndex) ? s.sectionIndex : 0;
+    sectionDone = Array.isArray(s.sectionDone) ? s.sectionDone : sectionDone;
+    if (s.tts_base) TTS_BASE = s.tts_base;
+
+    $("#chatTranscript").innerHTML = s.transcript_html || "";
+    updateLastAssistantPanel(s.lastAssistantText || "");
+
+    mountSidebar();
+    setSaveBadge("Resumed ✓ " + (s.saved_at ? new Date(s.saved_at).toLocaleString() : ""));
+    return true;
+  } catch(e){
+    return false;
+  }
+}
+
+// ----------------------
+// Sidebar handlers
+// ----------------------
+function bindAll(selector, handler){ document.querySelectorAll(selector).forEach(el => el && (el.onclick = handler)); }
+
+function bindSidebarHandlers(){
+  bindAll("#btnPickPerson", () => pickPerson());
+  bindAll("#btnNewPerson", () => createPerson());
+  bindAll("#btnStartInterview", () => startInterview());
+  bindAll("#btnAskNext", () => askNext());
+
+  bindAll("#btnPrevSection", () => { sectionIndex = Math.max(sectionIndex - 1, 0); renderRoadmap(); saveSession(); });
+  bindAll("#btnNextSection", () => { sectionIndex = Math.min(sectionIndex + 1, INTERVIEW_ROADMAP.length - 1); renderRoadmap(); saveSession(); });
+
+  bindAll("#btnGenerateMemoir", () => generateMemoir());
+
+  bindAll("#btnStopAudio", () => audioPlayer.stopAll());
+  bindAll("#btnTestVoice", () => triggerVoiceStream("Audio test. Lorevox voice online."));
+  bindAll("#btnSpeakLast", () => { if (lastAssistantText) triggerVoiceStream(lastAssistantText); });
+
+  bindAll("#btnExportJson", () => exportJson());
+  bindAll("#btnExportTxt", () => exportTxt());
+
+  bindAll("#btnNewSession", () => {
+    const ok = confirm("Start a NEW UI session? (Does not delete DB data.)");
+    if (!ok) return;
+    audioPlayer.stopAll();
+    stopRecording();
+    MODE = "INTERVIEW";
+    interviewSessionId = null;
+    activeQuestion = null;
+    sectionIndex = 0;
+    sectionDone = new Array(INTERVIEW_ROADMAP.length).fill(false);
+    $("#chatTranscript").innerHTML = "";
+    updateLastAssistantPanel("");
+    mountSidebar();
+    appendBubble("assistant", "New UI session started. Pick a person and click Start.");
+    saveSession();
+  });
+
+  bindAll("#btnClearSaved", () => {
+    const ok = confirm("Clear saved UI state on this device?");
+    if (!ok) return;
+    try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+    setSaveBadge("Saved state cleared");
+  });
+
+  // Voice toggles stop audio when disabled
+  document.querySelectorAll("#chkVoiceEnabled, #chkAutoSpeak").forEach(x => {
+    if (x) x.addEventListener("change", () => { if (!isVoiceAllowed()) audioPlayer.stopAll(); saveSession(); });
+  });
+}
+
+// ----------------------
+// Connectivity checks
+// ----------------------
+(async function runPings(){
+  const apiOk = await ping(API.ping) || await ping(`${ORIGIN}/docs`);
+  setPill("api", apiOk ? "ok" : "warn", apiOk ? "online" : "offline");
+
+  const ttsOk = await ping(`${TTS_BASE}/api/tts/voices`) || await ping(`${TTS_BASE}/docs`);
+  setPill("tts", ttsOk ? "ok" : "dead", ttsOk ? "online" : "offline");
+
+  if (Recognition) setPill("stt", "ok", "WebSpeech");
+  else setPill("stt", "dead", "none");
+})();
+
+// ----------------------
+// Init
+// ----------------------
+(function init(){
+  mountSidebar();
+  const resumed = loadSession();
+  if (!resumed){
+    appendBubble("assistant", "Pick or create a person, then click Start to begin the DB-driven interview plan.");
+    setSaveBadge("Not saved yet");
+    saveSession();
+  }
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+# =========================================================
+# Corkybot v10 — Blackwell LLM Requirements (RTX 5080 sm_120)
+# CUDA Toolkit 12.8 | Torch installed separately (cu128)
+# =========================================================
+
+# ---------------- Core API & Server ----------------
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-dotenv>=1.0.1
+pydantic>=2.10.0
+python-multipart>=0.0.9
+aiofiles>=23.2.1
+requests>=2.31.0
+
+# ---------------- LLM Stack (Blackwell) -------------
+transformers>=4.52.1,<4.56
+accelerate>=1.1.0
+bitsandbytes>=0.45.0
+einops>=0.7.0
+sentencepiece>=0.2.0
+safetensors>=0.4.2
+
+# flash-attn is great, but can fail to build in some environments.
+# If it fails, you can comment it out and your app can still run (slower attention).
+flash-attn>=2.8.0
+
+# Unsloth is optional; can help training/inference, but may pull its own pins.
+unsloth
+
+# ---------------- QLoRA / Training ------------------
+datasets>=2.20.0
+peft>=0.14.0
+trl>=0.12.0
+
+# ---------------- Retrieval / RAG -------------------
+sentence-transformers>=3.0.0
+faiss-cpu>=1.9.0
+chromadb>=0.5.0
+numpy>=2.1.0
+scipy>=1.13.0
+pyyaml>=6.0.1
+
+# ---------------- Conversion / OCR ------------------
+ebooklib>=0.18
+pymupdf>=1.24.0
+pypandoc>=1.14
+beautifulsoup4>=4.12.3
+pillow>=10.4.0
+pytesseract>=0.3.10
+
+# ---------------- Utilities -------------------------
+tqdm>=4.67.0
+psutil>=5.9.0
+packaging>=23.0

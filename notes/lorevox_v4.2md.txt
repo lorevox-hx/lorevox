@@ -1,0 +1,443 @@
+# Lorevox v4.2 — README (Spec + Implementation Notes)
+
+Lorevox is a **local-first memoir + oral-history studio** that captures voice + text over time, supports media + timeline, and runs end-to-end on a laptop (CPU) with optional NVIDIA GPU acceleration for faster, higher-quality AI.
+
+This document is **README-style** and intentionally practical:
+- what Lorevox is
+- how the stack is split
+- how to run it locally
+- how the interview engine works
+- how the timeline system works
+- what’s implemented now vs what’s planned for v4.2
+
+
+
+## 0) Platform + Local-only guarantee
+
+### Local-only (today)
+Lorevox is being built to run **entirely on your own machine**:
+- the SQLite database lives under `DATA_DIR` on local disk
+- models run locally (CPU or NVIDIA GPU)
+- no required cloud dependencies for core capture + storage
+
+Network use is optional and explicit (e.g., downloading models once, or pulling open-source updates). The default posture is **offline-capable**.
+
+### Current development environment (this build)
+- **Host OS:** Windows 11 (desktop)
+- **Linux runtime:** WSL2 running **Ubuntu 24.04 LTS**
+- **Primary GPU:** NVIDIA **RTX 5080 “Blackwell”**
+- **RAM:** 128 GB
+- **Goal:** maximize local model quality and speed while keeping the DB and media local-first
+
+### Future target environment
+After the desktop build stabilizes, the same stack is intended to run on a **laptop** (CPU-only acceptable, with optional NVIDIA GPU acceleration if available). The design goal is: *same DB schema, same UI, same endpoints* — just different hardware budgets.
+
+---
+
+---
+
+## 1) What Lorevox is (product spec)
+
+Lorevox is built for **long-horizon interviewing**:
+- you can return to the same person’s story **weeks/months later**
+- the system stays calm, structured, and consistent
+- the database is canonical (your data is the product)
+
+Primary use cases:
+- family oral history
+- memoir drafting
+- life timeline building with photos/audio/video attached
+- ongoing “life documentation” (not one-off interviews)
+
+Core UX rules:
+- **one question at a time**
+- brief acknowledgements, no therapy/advice mode
+- gentle follow-ups for names/dates/places
+- preserve the speaker’s narrative as primary data
+
+Default persona: **Lori** (neutral interviewer)
+
+---
+
+## 2) Repo layout (recommended)
+
+A clean split between:
+- **static website** (deployable to shared hosting)
+- **local app** (FastAPI + SQLite + UI + optional TTS)
+
+Example layout:
+
+```
+lorevox/
+  public_html/              # static site (Hostinger / shared hosting)
+  server/                   # local app stack (runs on laptop/desktop)
+    code/
+      api/                  # FastAPI app + routers
+      db.py                 # SQLite access layer
+      tools/                # import/export/setup scripts
+    ui/                     # local UI (served by FastAPI at /ui)
+    requirements.blackwell.txt
+    requirements.tts.txt
+  READMEpublic.md
+  README.DEV.md
+```
+
+---
+
+## 3) Architecture (local runtime)
+
+**Local-first note:** the DB, media, and core inference are designed to run locally by default; online connectivity is optional.
+
+
+### 3.1 Two-process design (recommended)
+
+**Process A — Core app (LLM mode)**
+- FastAPI
+- session + interview APIs
+- SQLite persistence
+- optional RAG retrieval
+- serves the UI
+
+**Process B — TTS service (optional)**
+- isolated environment
+- avoids blocking the core token stream
+- can run CPU-only or GPU depending on your setup
+
+Typical ports:
+- **:8000** core app
+- **:8001** TTS service
+
+### 3.2 Mode switching (USE_TTS)
+
+The same FastAPI project can boot in two different modes:
+
+- `USE_TTS=0` → **LLM mode**: API + sessions + RAG + interview + UI mount
+- `USE_TTS=1` → **TTS mode**: only the TTS router (and warmup)
+
+This separation is intentional:
+- keeps GPU VRAM for the LLM
+- TTS restarts don’t interrupt interviews
+- simpler troubleshooting
+
+---
+
+## 4) Quickstart (local)
+
+> Adjust paths for your machine. The key is: **DATA_DIR lives on a fast local disk**.
+
+### 4.1 Terminal A — Core app (LLM mode)
+
+```bash
+fuser -k 8000/tcp || true
+cd /path/to/lorevox/server
+source .venv-blackwell/bin/activate
+
+export USE_TTS=0
+export DATA_DIR="/home/$USER/lorevox_data"
+
+python -m uvicorn code.api.main:app --host 0.0.0.0 --port 8000
+```
+
+### 4.2 Terminal B — TTS service (optional)
+
+```bash
+fuser -k 8001/tcp || true
+cd /path/to/lorevox/server
+source .venv-tts/bin/activate
+
+export USE_TTS=1
+export DATA_DIR="/home/$USER/lorevox_data"
+export TTS_MODEL="tts_models/en/vctk/vits"
+export TTS_GPU=0
+export TTS_SPEAKER_LORI="p335"
+
+python -m uvicorn code.api.main:app --host 0.0.0.0 --port 8001
+```
+
+### 4.3 Open the UI
+
+If `UI_DIR` exists and is mounted by the server:
+- `http://localhost:8000/ui`
+
+---
+
+## 5) Environment variables
+
+### 5.1 Common
+
+- `DATA_DIR`  
+  Root data directory. Recommended to store on Linux filesystem (fast disk).
+
+- `USE_TTS`  
+  `0` (core/LLM mode) or `1` (TTS mode)
+
+- `UI_DIR` (LLM mode)  
+  Filesystem path to the UI directory to mount at `/ui`
+
+### 5.2 Model / LLM (typical)
+
+Exact names may differ by build, but common patterns:
+- `MODEL_ID` / `BASE_MODEL_ID`
+- quantization flags
+- `MAX_NEW_TOKENS`, `TEMPERATURE`, `TOP_P`
+
+### 5.3 TTS
+
+- `TTS_MODEL` (Coqui model id)
+- `TTS_GPU` (0/1)
+- `TTS_SPEAKER_LORI` (e.g., `p335`)
+
+---
+
+## 6) Data model: what exists now vs v4.2 target
+
+### 6.1 Implemented now (in the current code snapshot)
+
+The current `db.py` implements:
+- `sessions` (conversation metadata, stored as JSON payload)
+- `turns` (immutable log of messages)
+- `rag_docs` + `rag_chunks` (simple lexical RAG indexing + retrieval)
+
+This already supports:
+- durable conversation sessions
+- transcript export
+- lightweight RAG
+
+### 6.2 v4.2 target (Lorevox “people + interview + timeline”)
+
+v4.2 expands the canonical model beyond “chat sessions” into **biography subjects**:
+
+**People**
+- the subject of the memoir (and related family members as entities)
+
+**Profiles (baseline questionnaire)**
+- a flexible JSON document mirroring the intake UI
+- versioned history so edits are reversible/auditable
+
+**Interview plan**
+- sections + ordered questions
+- optional mapping of certain questions into profile JSON paths
+
+**Timeline**
+- dated events (hard facts)
+- media attached to events (photo/audio/video/docs)
+
+> Note: if your repo is mid-transition, keep the current `sessions/turns` tables and **add** the v4.2 tables; do not break provenance.
+
+---
+
+## 7) Interview engine (how it works)
+
+### 7.1 Components
+
+1) **Interview Plan**
+- a JSON file or DB tables defining:
+  - sections
+  - ordered questions
+  - question metadata (type, required, optional profile mapping path)
+
+2) **Interview State / Pointer**
+- for each (person, session), store:
+  - current section
+  - current question
+  - completed status
+
+3) **Answer Log**
+- immutable storage of:
+  - question id
+  - prompt asked
+  - answer text
+  - timestamps
+  - optional tags (topic, confidence, etc.)
+
+### 7.2 Engine loop (behavior contract)
+
+For each turn:
+1) determine the **next question** (from pointer + plan)
+2) Lori asks **only that one question**
+3) user answers
+4) system stores answer and advances pointer
+5) (optional) after each section, produce a **section summary** (non-canonical; derived)
+
+### 7.3 Lori persona constraints (developer spec)
+
+Lori is for capture—not debate, not therapy, not “fixing” the story.
+
+Rules:
+- one question at a time
+- short acknowledgements
+- gentle follow-ups for clarity
+- never invent facts
+- never “correct” the speaker’s memory
+- preserve raw narrative; summaries are secondary and derived
+
+---
+
+## 8) Timeline system (how it works)
+
+Timeline is the “hard facts layer”:
+- dated events with titles/descriptions
+- consistent fields for sorting, filtering, and later memoir drafting
+- media attachments that live on disk but are referenced from SQLite
+
+### 8.1 Event fields (recommended)
+
+- `event_date` (ISO date)
+- `event_title`
+- `event_description`
+- `location_name` (optional)
+- `lat/lon` (optional)
+
+### 8.2 Media fields (recommended)
+
+- `file_path` (canonical path under DATA_DIR)
+- `mime_type`
+- `sha256` (optional integrity)
+- `taken_at` (optional)
+- `exif_json` (optional)
+- link to an `event_id` (optional)
+
+### 8.3 Why timeline is separate from interviews
+
+- interviews are narrative (messy, human, evolving)
+- timeline is structured (sortable, queryable, attachable)
+
+You want both:
+- the timeline for “what happened when”
+- the transcripts for “what it felt like / what they remember”
+
+---
+
+## 9) API surface (typical)
+
+Your exact routes may differ per build, but the pattern is stable.
+
+### 9.1 Health
+- `GET /api/health`
+
+### 9.2 Sessions (chat)
+- create/list/get/delete session
+- stream chat output (NDJSON or SSE)
+
+### 9.3 RAG
+- add doc
+- query chunks
+- fetch chunks by id
+
+### 9.4 Interview (v4.2 target)
+- load interview plan
+- start/resume interview for (person)
+- get next question
+- submit answer & advance
+- section summary
+- export interview transcript
+
+### 9.5 Timeline (v4.2 target)
+- add/update/delete timeline events
+- attach media to events
+- list events by date range
+- export timeline as JSON/CSV
+
+---
+
+## 10) Storage locations
+
+Under `DATA_DIR` (recommended):
+
+```
+DATA_DIR/
+  db/
+    lorevox.sqlite3
+  media/
+    photos/
+    audio/
+    video/
+    docs/
+  exports/
+    json/
+    transcripts/
+    memoir_drafts/
+  logs/
+```
+
+---
+
+## 11) Roadmap (practical)
+
+### Phase 1 — Stable sessions + UI
+- sessions + turns are durable
+- UI can start/resume conversations reliably
+
+### Phase 2 — Baseline intake → profile JSON
+- intake UI saves into `profiles.profile_json`
+- version history table for edits
+
+### Phase 3 — Interview plan + pointer
+- plan tables or plan JSON import
+- pointer state stored per person/session
+
+### Phase 4 — Timeline + media
+- create events
+- attach files
+- export timeline
+
+### Phase 5 — Memoir drafting
+- timeline + interview chunks → chapter drafts
+- export to markdown/docx
+
+### Phase 6 — RAG upgrades
+- move from lexical-only to embeddings (optional)
+- keep lexical fallback for offline robustness
+
+---
+
+## 12) Troubleshooting
+
+### UI not loading
+- confirm UI mount:
+  - `UI_DIR` exists on disk
+  - server logs show “UI mounted at /ui”
+- open:
+  - `http://localhost:8000/ui`
+
+### TTS not speaking
+- confirm TTS server running on :8001
+- confirm CORS origins allow :8000 → :8001
+- confirm `TTS_MODEL` and speaker id (`p335`) are valid for the model
+
+### DB location confusion
+- confirm `DATA_DIR`
+- confirm DB appears at:
+  - `DATA_DIR/db/<db_name>`
+
+---
+
+## 13) License
+Choose later:
+- private (default for local-first family history)
+- MIT/Apache-2.0 if you intend open-source release
+
+---
+
+## Appendix A — Current DB tables (implemented)
+
+- `sessions(conv_id, title, updated_at, payload_json)`
+- `turns(conv_id, role, content, ts, anchor_id, meta_json)`
+- `rag_docs(id, title, source, created_at, text)`
+- `rag_chunks(id, doc_id, chunk_index, text)`
+
+---
+
+## Appendix B — v4.2 DB tables (target)
+
+Recommended additions (names can be adjusted):
+- `people`
+- `profiles` + `profile_versions`
+- `relationships`
+- `timeline_events`
+- `media`
+- `interview_sections`
+- `interview_questions`
+- `interview_answers`
+- `interview_state`
+
