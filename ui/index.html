@@ -165,6 +165,7 @@
             <div class="mt-3">
               <textarea id="ivAnswer" rows="3" class="w-full rounded-md bg-[#1a1a1d] border border-white/10 px-3 py-2 text-white outline-none focus:border-amber-600/70" placeholder="Type your answer here (then Save & Next)…"></textarea>
               <div class="flex gap-2 mt-2">
+                <button id="btnMicIv" class="btn btnGhost w-12 text-lg" onclick="toggleRecording('ivAnswer')" title="Record spoken answer → Whisper STT">🎤</button>
                 <button class="btn btnPrimary flex-1" onclick="ivSaveAndNext()">✓ Save Answer & Next</button>
                 <button class="btn btnGhost" onclick="ivCopyToChat()">↳ Copy to Chat</button>
               </div>
@@ -197,7 +198,7 @@
       <div class="p-4 bg-[#0e0e10] border-t border-[#232429] shrink-0">
         <textarea id="chatInput" rows="2" class="w-full rounded-md bg-[#1a1a1d] border border-white/10 px-3 py-2 text-white outline-none focus:border-amber-600/70" placeholder="Type here..."></textarea>
         <div class="flex gap-2 mt-2">
-          <button class="btn btnGhost w-12 text-lg" onclick="toggleRecording()">🎤</button>
+          <button id="btnMicChat" class="btn btnGhost w-12 text-lg" onclick="toggleRecording('chatInput')" title="Hold to record — releases when you click again">🎤</button>
           <button class="btn btnGhost w-12 text-lg" onclick="cancelTurn()" title="Cancel streaming (WS only)">⏹</button>
           <button class="btn btnPrimary flex-1" onclick="sendUserMessage()">Send</button>
         </div>
@@ -251,16 +252,253 @@ const LS_ACTIVE_PERSON = "lorevox_v45_active_person";
 
 let audioUnlocked = false;
 
-// Browser SR (legacy)
-let isRecording = false;
-let recordBaseText = "";
-
 // WS state
 let ws = null;
 let wsReady = false;
 let usingFallback = false;
 let currentAssistantBubble = null;
 let currentTurnId = null;
+
+/* ============================================================
+   TTS — sentence-streaming pipeline
+   Instead of waiting for the full LLM response then synthesizing
+   everything at once, we detect sentence boundaries as tokens
+   arrive and fire a TTS request per sentence immediately.
+   Each WAV is decoded by AudioContext and added to an ordered
+   playback queue — so audio starts ~1-2 s after the first
+   sentence completes from the LLM, not after the whole response.
+   ============================================================ */
+let _audioCtx = null;
+let _audioQueue = [];   // {buffer: AudioBuffer, seq: number}[]
+let _audioPlaying = false;
+let _ttsBuf = "";       // tokens not yet dispatched to TTS
+let _ttsTurnSeq = 0;    // monotonic sequence number within a turn
+
+// Sentence boundary: end-of-sentence punctuation + optional close quote,
+// followed by whitespace + uppercase (or end of string).
+// We deliberately do NOT split on abbreviations (Mr. Dr. etc.) — those
+// typically don't precede an uppercase word boundary in interview speech.
+const _SENT_RE = /^(.*?[.!?]["')\]]*)\s+(?=[A-Z])/;
+
+function _extractSentence(buf) {
+  const m = buf.match(_SENT_RE);
+  if (m) return { sentence: m[1].trim(), rest: buf.slice(m[0].length) };
+  return { sentence: null, rest: buf };
+}
+
+function _getAudioCtx() {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return _audioCtx;
+}
+
+function _playNextAudio() {
+  if (_audioQueue.length === 0) { _audioPlaying = false; return; }
+  _audioPlaying = true;
+  const { buffer } = _audioQueue.shift();
+  const ctx = _getAudioCtx();
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(ctx.destination);
+  src.onended = _playNextAudio;
+  src.start();
+}
+
+async function _decodeAndEnqueue(wav_b64, seq) {
+  if (!audioUnlocked) return;
+  try {
+    const ctx = _getAudioCtx();
+    const bytes = Uint8Array.from(atob(wav_b64), c => c.charCodeAt(0));
+    const buffer = await ctx.decodeAudioData(bytes.buffer.slice(0));
+    _audioQueue.push({ buffer, seq });
+    _audioQueue.sort((a, b) => a.seq - b.seq);
+    if (!_audioPlaying) _playNextAudio();
+  } catch(e) { console.warn("[TTS] decode failed", e); }
+}
+
+async function _speakSentence(text, seq) {
+  if (!audioUnlocked || !text.trim()) return;
+  try {
+    const res = await fetch(API.TTS_SPEAK, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ text: text.trim(), voice: "lori" })
+    });
+    if (!res.ok) return;
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = dec.decode(value, { stream: true });
+      for (const line of chunk.split("\n")) {
+        const s = line.trim();
+        if (!s) continue;
+        try {
+          const j = JSON.parse(s);
+          if (j.wav_b64) await _decodeAndEnqueue(j.wav_b64, seq);
+        } catch(e) {}
+      }
+    }
+  } catch(e) { console.warn("[TTS] sentence failed", e); }
+}
+
+// Drain _ttsBuf: extract complete sentences and fire TTS.
+// force=true flushes remaining tail (used at turn end).
+function _flushTtsBuf(force = false) {
+  if (!document.getElementById("chkAutoSpeak").checked) return;
+  while (true) {
+    const { sentence, rest } = _extractSentence(_ttsBuf);
+    if (sentence) {
+      _speakSentence(sentence, ++_ttsTurnSeq);
+      _ttsBuf = rest;
+    } else { break; }
+  }
+  if (force && _ttsBuf.trim()) {
+    _speakSentence(_ttsBuf.trim(), ++_ttsTurnSeq);
+    _ttsBuf = "";
+  }
+}
+
+// Call at the start of each new turn to reset the pipeline.
+function _resetTtsPipeline() {
+  _ttsBuf = "";
+  _ttsTurnSeq = 0;
+  // Stop and clear pending audio from previous turn
+  if (_audioPlaying) {
+    try { _getAudioCtx().suspend(); _getAudioCtx().resume(); } catch(e){}
+  }
+  _audioQueue = [];
+  _audioPlaying = false;
+}
+
+/* ============================================================
+   Mic / STT — MediaRecorder → local Whisper (/api/stt/transcribe)
+   Falls back to browser SpeechRecognition if MediaRecorder
+   is unavailable.  Target element is passed in so we can
+   drive both the chat textarea and the interview answer box.
+   ============================================================ */
+let _mediaRec = null;
+let _mediaChunks = [];
+let _mediaTarget = null;   // element id to fill with transcript
+
+async function _startMediaRec(targetId) {
+  if (!navigator.mediaDevices || !window.MediaRecorder) return false;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+                   ? "audio/webm;codecs=opus"
+                   : "audio/webm";
+    _mediaRec = new MediaRecorder(stream, { mimeType: mime });
+    _mediaChunks = [];
+    _mediaTarget = targetId;
+    _mediaRec.ondataavailable = e => { if (e.data.size > 0) _mediaChunks.push(e.data); };
+    _mediaRec.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(_mediaChunks, { type: mime });
+      await _sttTranscribe(blob, _mediaTarget);
+    };
+    _mediaRec.start(250);  // 250 ms timeslices so onstop fires quickly
+    return true;
+  } catch(e) {
+    console.warn("[STT] MediaRecorder failed:", e);
+    return false;
+  }
+}
+
+function _stopMediaRec() {
+  if (_mediaRec && _mediaRec.state !== "inactive") {
+    _mediaRec.stop();
+    _mediaRec = null;
+  }
+}
+
+async function _sttTranscribe(blob, targetId) {
+  setStatus("Transcribing …");
+  try {
+    const fd = new FormData();
+    fd.append("file", blob, "recording.webm");
+    const res = await fetch(ORIGIN + "/api/stt/transcribe", { method: "POST", body: fd });
+    const j = await res.json();
+    if (j.ok && j.text) {
+      const el = document.getElementById(targetId);
+      if (el) el.value = (el.value + " " + j.text).trim();
+      setStatus("Transcribed. Review and send.");
+    } else {
+      setStatus("Transcription empty.");
+    }
+  } catch(e) {
+    setStatus("STT error: " + e.message);
+  }
+}
+
+// Legacy browser SR state (kept as fallback)
+let _srActive = false;
+let _srBase = "";
+const _SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let _recognition = null;
+if (_SR) {
+  _recognition = new _SR();
+  _recognition.continuous = true;
+  _recognition.interimResults = true;
+  _recognition.onresult = (e) => {
+    let interim = "", final = "";
+    for (let i = e.resultIndex; i < e.results.length; ++i) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    setv("chatInput", (_srBase + " " + final + interim).trim());
+  };
+}
+
+// targetId defaults to chatInput; pass "ivAnswer" for interview mic
+async function toggleRecording(targetId = "chatInput") {
+  const btn = document.getElementById(targetId === "chatInput" ? "btnMicChat" : "btnMicIv");
+
+  // If a MediaRecorder session is active → stop it
+  if (_mediaRec && _mediaRec.state !== "inactive") {
+    _stopMediaRec();
+    if (btn) btn.textContent = "🎤";
+    setStatus("Processing audio …");
+    return;
+  }
+
+  // If legacy SR is active → stop it
+  if (_srActive && _recognition) {
+    _recognition.stop();
+    _srActive = false;
+    if (btn) btn.textContent = "🎤";
+    return;
+  }
+
+  // Try MediaRecorder → local Whisper first
+  const ok = await _startMediaRec(targetId);
+  if (ok) {
+    if (btn) btn.textContent = "⏹";
+    setStatus("🔴 Recording … tap mic again to stop.");
+    return;
+  }
+
+  // Fall back to browser SpeechRecognition
+  if (_recognition) {
+    _srBase = getv(targetId);
+    _recognition.onresult = (e) => {
+      let interim = "", final = "";
+      for (let i = e.resultIndex; i < e.results.length; ++i) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      setv(targetId, (_srBase + " " + final + interim).trim());
+    };
+    _recognition.start();
+    _srActive = true;
+    if (btn) btn.textContent = "⏹";
+    return;
+  }
+
+  alert("Microphone not available in this browser.");
+}
 
 let state = {
   person_id: null,
@@ -507,7 +745,7 @@ async function ivStart(){
     state.interview.question_id = j.next_question?.id || null;
     state.interview.prompt = j.next_question?.prompt || null;
 
-    renderInterview();
+    renderInterview(true);  // speak first question
     systemBubble("▶ Interview started.");
 
   }catch(e){
@@ -515,10 +753,15 @@ async function ivStart(){
   }
 }
 
-function renderInterview(){
+function renderInterview(speakQuestion = false){
   document.getElementById("ivSession").innerText = state.interview.session_id || "—";
   document.getElementById("ivQid").innerText = state.interview.question_id || "—";
   document.getElementById("ivPrompt").innerText = state.interview.prompt || "—";
+  // Speak the question aloud so the subject hears it without needing to read
+  if (speakQuestion && state.interview.prompt && audioUnlocked) {
+    _resetTtsPipeline();
+    speak(state.interview.prompt);
+  }
 }
 
 async function ivSaveAndNext(){
@@ -561,7 +804,7 @@ async function ivSaveAndNext(){
     state.interview.prompt = nxt?.prompt || null;
 
     document.getElementById("ivAnswer").value = "";
-    renderInterview();
+    renderInterview(true);  // speak next question
     systemBubble("✓ Saved. Next question ready.");
 
   }catch(e){
@@ -597,7 +840,7 @@ async function ivSkip(){
     const nxt = j.next_question || null;
     state.interview.question_id = nxt?.id || null;
     state.interview.prompt = nxt?.prompt || null;
-    renderInterview();
+    renderInterview(true);  // speak skipped-to question
     systemBubble("⤼ Skipped. Next question ready.");
   }catch(e){
     systemBubble("⚠ Skip failed.");
@@ -757,15 +1000,21 @@ function handleAgentMessage(msg) {
     case "status":
       setStatus(`Lori: ${msg.state || "..."}`);
       break;
-    case "token":
-      streamBubble(msg.delta || "");
+    case "token": {
+      const delta = msg.delta || "";
+      streamBubble(delta);
+      // Accumulate and fire TTS per sentence as tokens arrive
+      _ttsBuf += delta;
+      _flushTtsBuf(false);
       break;
+    }
     case "done": {
       const fullText = msg.final_text || "";
       finalizeBubble(fullText);
       setStatus("Saved to DB transcript (WS). ");
       refreshChatSessions().catch(()=>{});
-      if (document.getElementById("chkAutoSpeak").checked) speak(fullText);
+      // Flush any tail text not yet dispatched (short final clause, e.g. "Tell me more.")
+      _flushTtsBuf(true);
       break;
     }
     case "error":
@@ -807,6 +1056,7 @@ async function sendUserMessage(){
   if (ws && wsReady && !usingFallback) {
     currentTurnId = `turn-${Date.now()}`;
     currentAssistantBubble = null;
+    _resetTtsPipeline();
     setStatus("Sending (WebSocket) ...");
 
     ws.send(JSON.stringify({
@@ -924,68 +1174,21 @@ async function exportZip(){
 }
 
 /* ============================================================
-   TTS
+   TTS / Audio
    ============================================================ */
 function enableAudio(){
   audioUnlocked = true;
-  try{
-    const a = new Audio();
-    a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA=";
-    a.play().catch(()=>{});
-  }catch(e){}
+  // Resume AudioContext (browsers require a user gesture)
+  try { _getAudioCtx().resume(); } catch(e){}
   document.getElementById("btnAudio").style.display="none";
-  systemBubble("Audio enabled.");
+  systemBubble("Audio enabled. Lori will speak each sentence as it arrives.");
 }
 
+// speak() is kept for SSE fallback path — it still synthesises the full text
+// once, but uses the same AudioContext queue so playback is consistent.
 async function speak(text){
-  if(!audioUnlocked) return;
-  try{
-    const res = await fetch(API.TTS_SPEAK, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({text, voice:"lori"})});
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    while(true){
-      const {done, value} = await reader.read();
-      if(done) break;
-      const chunk = decoder.decode(value, {stream:true});
-      const lines = chunk.split("\n");
-      for(const line of lines){
-        const s = line.trim();
-        if(!s) continue;
-        try{
-          const j = JSON.parse(s);
-          if(j.wav_b64){
-            const audio = new Audio("data:audio/wav;base64," + j.wav_b64);
-            await audio.play().catch(()=>{});
-            return;
-          }
-        }catch(e){}
-      }
-    }
-  }catch(e){}
-}
-
-/* ============================================================
-   Browser Speech Recognition (optional)
-   ============================================================ */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition = null;
-if(SR){
-  recognition = new SR();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.onresult = (e) => {
-    let interim = "", final = "";
-    for(let i=e.resultIndex; i<e.results.length; ++i){
-      if(e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    setv("chatInput", (recordBaseText + " " + final + interim).trim());
-  };
-}
-function toggleRecording(){
-  if(!recognition) return alert("Mic not supported in this browser");
-  if(isRecording){ recognition.stop(); isRecording=false; }
-  else { recordBaseText=getv("chatInput"); recognition.start(); isRecording=true; }
+  if(!audioUnlocked || !text.trim()) return;
+  _speakSentence(text, ++_ttsTurnSeq);
 }
 
 /* ============================================================

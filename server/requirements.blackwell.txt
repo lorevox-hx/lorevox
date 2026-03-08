@@ -48,6 +48,12 @@ beautifulsoup4>=4.12.3
 pillow>=10.4.0
 pytesseract>=0.3.10
 
+# ---------------- STT (local Whisper) ---------------
+# faster-whisper preferred — runs on CUDA fp16, ~5-10x faster than openai-whisper
+faster-whisper>=1.0.0
+# openai-whisper is the automatic CPU fallback (uncomment if faster-whisper won't install)
+# openai-whisper>=20231117
+
 # ---------------- Utilities -------------------------
 tqdm>=4.67.0
 psutil>=5.9.0

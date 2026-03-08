@@ -50,6 +50,7 @@ from .routers import (  # type: ignore
     ping,
     calendar,
     facts,
+    stt,
 )
 
 # Core Entity & State Routers
@@ -63,6 +64,7 @@ app.include_router(db_inspector.router)
 app.include_router(ping.router)
 app.include_router(calendar.router)
 app.include_router(facts.router)
+app.include_router(stt.router)
 
 # Real LLM Routers (REST and WS)
 app.include_router(llm_api.router)
