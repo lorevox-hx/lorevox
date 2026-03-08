@@ -333,6 +333,25 @@ def init_db() -> None:
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_rag_chunks_doc ON rag_chunks(doc_id, chunk_index);")
 
+    # -----------------------------
+    # Section summaries  (persisted at section boundaries)
+    # -----------------------------
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS section_summaries (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          person_id TEXT NOT NULL,
+          section_id TEXT NOT NULL,
+          section_title TEXT NOT NULL DEFAULT '',
+          summary TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(session_id) REFERENCES interview_sessions(id) ON DELETE CASCADE
+        );
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_section_summaries_session ON section_summaries(session_id, section_id);")
+
     con.commit()
     con.close()
 
@@ -1015,6 +1034,107 @@ def rag_query(query: str, k: int = 5, only_ids: Optional[List[str]] = None, only
             )
     hits.sort(key=lambda x: (-x["score"], x["title"]))
     return hits[:k]
+
+
+# -----------------------------------------------------------------------------
+# Section summaries
+# -----------------------------------------------------------------------------
+def save_section_summary(
+    session_id: str,
+    person_id: str,
+    section_id: str,
+    section_title: str,
+    summary: str,
+) -> Dict[str, Any]:
+    init_db()
+    sid = _uuid()
+    now = _now_iso()
+    con = _connect()
+    con.execute(
+        """
+        INSERT OR REPLACE INTO section_summaries(id,session_id,person_id,section_id,section_title,summary,created_at)
+        VALUES(?,?,?,?,?,?,?);
+        """,
+        (sid, session_id, person_id, section_id, section_title or "", summary or "", now),
+    )
+    con.commit()
+    con.close()
+    return {
+        "id": sid, "session_id": session_id, "person_id": person_id,
+        "section_id": section_id, "section_title": section_title,
+        "summary": summary, "created_at": now,
+    }
+
+
+def list_section_summaries(session_id: str) -> List[Dict[str, Any]]:
+    init_db()
+    con = _connect()
+    rows = con.execute(
+        """
+        SELECT id,session_id,person_id,section_id,section_title,summary,created_at
+        FROM section_summaries WHERE session_id=? ORDER BY created_at ASC;
+        """,
+        (session_id,),
+    ).fetchall()
+    con.close()
+    return [dict(r) for r in rows]
+
+
+# -----------------------------------------------------------------------------
+# Interview progress helper
+# -----------------------------------------------------------------------------
+def get_interview_progress(session_id: str, plan_id: str) -> Dict[str, Any]:
+    """
+    Return total questions, answered count, and current section info.
+    Used for the UI progress indicator.
+    """
+    init_db()
+    con = _connect()
+
+    total = con.execute(
+        "SELECT COUNT(*) AS n FROM interview_questions WHERE plan_id=?;",
+        (plan_id,),
+    ).fetchone()["n"]
+
+    answered = con.execute(
+        "SELECT COUNT(*) AS n FROM interview_answers WHERE session_id=?;",
+        (session_id,),
+    ).fetchone()["n"]
+
+    # Current active question details
+    sess_row = con.execute(
+        "SELECT active_question_id FROM interview_sessions WHERE id=?;",
+        (session_id,),
+    ).fetchone()
+    active_qid = sess_row["active_question_id"] if sess_row else None
+
+    current_section_title = ""
+    current_question_ord = 0
+    if active_qid:
+        q_row = con.execute(
+            """
+            SELECT iq.ord, isec.title
+            FROM interview_questions iq
+            LEFT JOIN interview_sections isec ON isec.id = iq.section_id
+            WHERE iq.id=?;
+            """,
+            (active_qid,),
+        ).fetchone()
+        if q_row:
+            current_question_ord = int(q_row["ord"] or 0)
+            current_section_title = q_row["title"] or ""
+
+    con.close()
+
+    pct = round((answered / total * 100)) if total > 0 else 0
+    return {
+        "total": int(total),
+        "answered": int(answered),
+        "remaining": max(0, int(total) - int(answered)),
+        "percent": pct,
+        "current_ord": current_question_ord,
+        "current_section": current_section_title,
+    }
 
 
 # -----------------------------------------------------------------------------

@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .. import db
+from ..db import save_section_summary, get_interview_progress
 from ..archive import (
     ensure_session as archive_ensure_session,
     append_event as archive_append_event,
@@ -64,6 +65,14 @@ class AnswerInterviewRequest(BaseModel):
     skipped: bool = False
 
 
+class ProgressOut(BaseModel):
+    total: int
+    answered: int
+    remaining: int
+    percent: int
+    current_section: str
+
+
 class AnswerInterviewResponse(BaseModel):
     done: bool
     next_question: Optional[QuestionOut]
@@ -75,6 +84,9 @@ class AnswerInterviewResponse(BaseModel):
 
     followups_inserted: int = 0
     final_memoir: Optional[str] = None
+
+    # Progress indicator
+    progress: Optional[ProgressOut] = None
 
 
 def _qout(row: Optional[dict]) -> Optional[QuestionOut]:
@@ -197,6 +209,14 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
         if generated_summary:
             summary_section_id = current_section
             summary_section_title = section_title
+            # Persist summary to DB so it is not lost after the API response
+            save_section_summary(
+                session_id=req.session_id,
+                person_id=sess["person_id"],
+                section_id=current_section,
+                section_title=section_title,
+                summary=generated_summary,
+            )
 
     followups_inserted = 0
     final_memoir: Optional[str] = None
@@ -224,6 +244,16 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
     # Memory Archive — rebuild human-readable transcript
     archive_rebuild_txt(person_id=sess["person_id"], session_id=req.session_id)
 
+    # Progress indicator
+    progress_data = get_interview_progress(req.session_id, sess.get("plan_id", "default"))
+    progress_out = ProgressOut(
+        total=progress_data["total"],
+        answered=progress_data["answered"],
+        remaining=progress_data["remaining"],
+        percent=progress_data["percent"],
+        current_section=progress_data["current_section"],
+    )
+
     return AnswerInterviewResponse(
         done=next_q is None,
         next_question=_qout(dict(next_q)) if next_q else None,
@@ -232,4 +262,24 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
         summary_section_title=summary_section_title,
         followups_inserted=followups_inserted,
         final_memoir=final_memoir,
+        progress=progress_out,
     )
+
+
+@router.get("/progress")
+def api_progress(session_id: str):
+    """Return progress for the UI progress bar."""
+    sess = db.get_interview_session(session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    return get_interview_progress(session_id, sess.get("plan_id", "default"))
+
+
+@router.get("/summaries")
+def api_summaries(session_id: str):
+    """Return all persisted section summaries for a session."""
+    sess = db.get_interview_session(session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    from ..db import list_section_summaries
+    return {"summaries": list_section_summaries(session_id)}
