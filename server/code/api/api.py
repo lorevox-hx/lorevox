@@ -5,12 +5,9 @@ import json
 import time
 import pathlib
 import threading
-import tempfile
-import shutil
 from datetime import datetime
-from functools import lru_cache
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Body, UploadFile, File, Form, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 import torch
@@ -101,35 +98,8 @@ def _save_chat_memory_fs(conv_id: str, messages: List[Dict[str, Any]]) -> Dict[s
             f.write(json.dumps(m, ensure_ascii=False) + "\n")
     return {"dir": str(target_dir), "json": str(json_path), "txt": str(txt_path), "jsonl": str(jsonl_path)}
 
-# ---------------- STT Engine ----------------
-@lru_cache(maxsize=1)
-def _load_stt_engine():
-    model_name = os.getenv("STT_MODEL", "base").strip() or "base"
-    try:
-        from faster_whisper import WhisperModel
-        device = "cuda" if (torch.cuda.is_available() and os.getenv("STT_GPU", "0") in ("1","true","True")) else "cpu"
-        compute_type = "float16" if device == "cuda" else "int8"
-        return ("faster_whisper", WhisperModel(model_name, device=device, compute_type=compute_type))
-    except Exception as e:
-        print(f"[STT] Unavailable: {e}")
-        return ("none", None)
-
-@router.post("/stt/transcribe")
-def stt_transcribe(file: UploadFile = File(...), lang: str = Form("en"), prompt: str = Form("")):
-    kind, engine = _load_stt_engine()
-    if kind == "none" or engine is None:
-        raise HTTPException(501, "STT engine unavailable.")
-    suffix = pathlib.Path(file.filename or "audio.webm").suffix or ".webm"
-    tmpdir = pathlib.Path(tempfile.mkdtemp(prefix="stt_"))
-    try:
-        audio_path = tmpdir / f"audio{suffix}"
-        with open(audio_path, "wb") as f:
-            f.write(file.file.read())
-        segments, info = engine.transcribe(str(audio_path), language=(lang or "en"), initial_prompt=(prompt or None), vad_filter=True)
-        text = " ".join((seg.text or "").strip() for seg in segments).strip()
-        return {"ok": True, "text": text}
-    finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
+# STT is handled by routers/stt.py (POST /api/stt/transcribe).
+# That router supports STT_GPU, STT_MODEL, STT_DEVICE, lang, and initial_prompt.
 
 # ---------------- PATCHED Model load ----------------
 def _load_model():
