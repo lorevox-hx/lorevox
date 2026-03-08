@@ -6,6 +6,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .. import db
+from ..archive import (
+    ensure_session as archive_ensure_session,
+    append_event as archive_append_event,
+    rebuild_txt as archive_rebuild_txt,
+)
 from ..interview_engine import (
     add_followup_questions,
     followups_exist,
@@ -96,6 +101,16 @@ def start_interview(req: StartInterviewRequest) -> StartInterviewResponse:
     if not sess:
         raise HTTPException(status_code=500, detail="Failed to create interview session")
 
+    # Memory Archive — create session directory + meta.json
+    archive_ensure_session(
+        person_id=req.person_id,
+        session_id=sess["id"],
+        mode="interview_driver",
+        title=f"Interview ({req.plan_id})",
+        started_at=sess.get("started_at"),
+        extra_meta={"plan_id": req.plan_id},
+    )
+
     # FIXED: Added the required 3rd argument (current_question_id=None) for the start
     next_q = db.get_next_question(sess["id"], req.plan_id, None)
     if next_q:
@@ -132,6 +147,27 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
         question_id=req.question_id,
         answer=req.answer,
         skipped=req.skipped,
+    )
+
+    # Memory Archive — append question prompt + user answer
+    _q_prompt = (current_q.get("prompt") or "") if current_q else ""
+    if _q_prompt:
+        archive_append_event(
+            person_id=sess["person_id"],
+            session_id=req.session_id,
+            role="assistant",
+            content=_q_prompt,
+            question_id=req.question_id,
+            section_id=current_q.get("section_id") if current_q else None,
+        )
+    archive_append_event(
+        person_id=sess["person_id"],
+        session_id=req.session_id,
+        role="user",
+        content=req.answer if not req.skipped else "",
+        question_id=req.question_id,
+        section_id=current_q.get("section_id") if current_q else None,
+        meta={"skipped": bool(req.skipped)},
     )
 
     # 2) Find the next question (Passing the current question ID)
@@ -184,6 +220,9 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
     # 5) Update active_question_id
     if next_q:
         db.set_session_active_question(req.session_id, next_q["id"])
+
+    # Memory Archive — rebuild human-readable transcript
+    archive_rebuild_txt(person_id=sess["person_id"], session_id=req.session_id)
 
     return AnswerInterviewResponse(
         done=next_q is None,

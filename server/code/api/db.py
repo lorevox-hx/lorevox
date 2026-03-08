@@ -228,6 +228,77 @@ def init_db() -> None:
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_interview_a_session_ts ON interview_answers(session_id, ts);")
 
+    # -----------------------------
+    # Facts  (atomic, source-backed claims)
+    # -----------------------------
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS facts (
+          id TEXT PRIMARY KEY,
+          person_id TEXT NOT NULL,
+          session_id TEXT,
+          fact_type TEXT NOT NULL DEFAULT 'general',
+          statement TEXT NOT NULL,
+          date_text TEXT DEFAULT '',
+          date_normalized TEXT DEFAULT '',
+          confidence REAL DEFAULT 0.0,
+          status TEXT NOT NULL DEFAULT 'extracted',
+          inferred INTEGER NOT NULL DEFAULT 0,
+          source_turn_index INTEGER,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          meta_json TEXT NOT NULL DEFAULT '{}',
+          FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
+        );
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_facts_person ON facts(person_id, created_at);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_facts_session ON facts(session_id);")
+
+    # -----------------------------
+    # Life phases  (e.g. "childhood", "first marriage", "OT career")
+    # -----------------------------
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS life_phases (
+          id TEXT PRIMARY KEY,
+          person_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          start_date TEXT DEFAULT '',
+          end_date TEXT DEFAULT '',
+          date_precision TEXT DEFAULT 'year',
+          description TEXT DEFAULT '',
+          ord INTEGER DEFAULT 0,
+          created_at TEXT NOT NULL,
+          meta_json TEXT NOT NULL DEFAULT '{}',
+          FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
+        );
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_life_phases_person ON life_phases(person_id, ord);")
+
+    # -----------------------------
+    # Migrate timeline_events: add new calendar columns if missing
+    # -----------------------------
+    existing_cols = {
+        row[1] for row in cur.execute("PRAGMA table_info(timeline_events);").fetchall()
+    }
+    calendar_cols = {
+        "end_date": "ALTER TABLE timeline_events ADD COLUMN end_date TEXT DEFAULT '';",
+        "date_precision": "ALTER TABLE timeline_events ADD COLUMN date_precision TEXT DEFAULT 'exact_day';",
+        "is_approximate": "ALTER TABLE timeline_events ADD COLUMN is_approximate INTEGER DEFAULT 0;",
+        "confidence": "ALTER TABLE timeline_events ADD COLUMN confidence REAL DEFAULT 1.0;",
+        "status": "ALTER TABLE timeline_events ADD COLUMN status TEXT DEFAULT 'reviewed';",
+        "source_session_ids": "ALTER TABLE timeline_events ADD COLUMN source_session_ids TEXT DEFAULT '[]';",
+        "source_fact_ids": "ALTER TABLE timeline_events ADD COLUMN source_fact_ids TEXT DEFAULT '[]';",
+        "tags": "ALTER TABLE timeline_events ADD COLUMN tags TEXT DEFAULT '[]';",
+        "display_date": "ALTER TABLE timeline_events ADD COLUMN display_date TEXT DEFAULT '';",
+        "phase_id": "ALTER TABLE timeline_events ADD COLUMN phase_id TEXT DEFAULT '';",
+    }
+    for col_name, alter_sql in calendar_cols.items():
+        if col_name not in existing_cols:
+            cur.execute(alter_sql)
+
     # Default plan (safe even if empty)
     now = _now_iso()
     cur.execute(
@@ -944,3 +1015,288 @@ def rag_query(query: str, k: int = 5, only_ids: Optional[List[str]] = None, only
             )
     hits.sort(key=lambda x: (-x["score"], x["title"]))
     return hits[:k]
+
+
+# -----------------------------------------------------------------------------
+# Facts  (atomic, source-backed claims)
+# -----------------------------------------------------------------------------
+def add_fact(
+    person_id: str,
+    statement: str,
+    fact_type: str = "general",
+    date_text: str = "",
+    date_normalized: str = "",
+    confidence: float = 0.0,
+    status: str = "extracted",
+    inferred: bool = False,
+    session_id: Optional[str] = None,
+    source_turn_index: Optional[int] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    init_db()
+    fid = _uuid()
+    now = _now_iso()
+    con = _connect()
+    con.execute(
+        """
+        INSERT INTO facts(
+          id,person_id,session_id,fact_type,statement,
+          date_text,date_normalized,confidence,status,inferred,
+          source_turn_index,created_at,updated_at,meta_json
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+        """,
+        (
+            fid, person_id, session_id, fact_type or "general", statement,
+            date_text or "", date_normalized or "",
+            float(confidence or 0.0), status or "extracted",
+            1 if inferred else 0, source_turn_index, now, now,
+            _json_dump(meta or {}),
+        ),
+    )
+    con.commit()
+    con.close()
+    return {
+        "id": fid, "person_id": person_id, "session_id": session_id,
+        "fact_type": fact_type, "statement": statement,
+        "date_text": date_text, "date_normalized": date_normalized,
+        "confidence": float(confidence or 0.0), "status": status or "extracted",
+        "inferred": bool(inferred), "created_at": now,
+    }
+
+
+def list_facts(
+    person_id: str,
+    status: Optional[str] = None,
+    limit: int = 200,
+    offset: int = 0,
+) -> List[Dict[str, Any]]:
+    init_db()
+    con = _connect()
+    if status:
+        rows = con.execute(
+            """
+            SELECT id,person_id,session_id,fact_type,statement,date_text,
+                   date_normalized,confidence,status,inferred,source_turn_index,created_at,meta_json
+            FROM facts WHERE person_id=? AND status=?
+            ORDER BY created_at ASC LIMIT ? OFFSET ?;
+            """,
+            (person_id, status, int(limit), int(offset)),
+        ).fetchall()
+    else:
+        rows = con.execute(
+            """
+            SELECT id,person_id,session_id,fact_type,statement,date_text,
+                   date_normalized,confidence,status,inferred,source_turn_index,created_at,meta_json
+            FROM facts WHERE person_id=?
+            ORDER BY created_at ASC LIMIT ? OFFSET ?;
+            """,
+            (person_id, int(limit), int(offset)),
+        ).fetchall()
+    con.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["meta"] = _json_load(d.pop("meta_json", "{}"), {})
+        d["inferred"] = bool(d.get("inferred"))
+        out.append(d)
+    return out
+
+
+def update_fact_status(fact_id: str, status: str) -> bool:
+    init_db()
+    now = _now_iso()
+    con = _connect()
+    cur = con.execute(
+        "UPDATE facts SET status=?, updated_at=? WHERE id=?;",
+        (status, now, fact_id),
+    )
+    con.commit()
+    con.close()
+    return cur.rowcount > 0
+
+
+def delete_fact(fact_id: str) -> bool:
+    init_db()
+    con = _connect()
+    cur = con.execute("DELETE FROM facts WHERE id=?;", (fact_id,))
+    con.commit()
+    con.close()
+    return cur.rowcount > 0
+
+
+# -----------------------------------------------------------------------------
+# Life phases
+# -----------------------------------------------------------------------------
+def add_life_phase(
+    person_id: str,
+    title: str,
+    start_date: str = "",
+    end_date: str = "",
+    date_precision: str = "year",
+    description: str = "",
+    ord: int = 0,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    init_db()
+    pid_val = _uuid()
+    now = _now_iso()
+    con = _connect()
+    con.execute(
+        """
+        INSERT INTO life_phases(
+          id,person_id,title,start_date,end_date,date_precision,
+          description,ord,created_at,meta_json
+        ) VALUES(?,?,?,?,?,?,?,?,?,?);
+        """,
+        (
+            pid_val, person_id, title,
+            start_date or "", end_date or "", date_precision or "year",
+            description or "", int(ord or 0), now, _json_dump(meta or {}),
+        ),
+    )
+    con.commit()
+    con.close()
+    return {
+        "id": pid_val, "person_id": person_id, "title": title,
+        "start_date": start_date, "end_date": end_date,
+        "date_precision": date_precision, "description": description,
+        "ord": int(ord or 0), "created_at": now,
+    }
+
+
+def list_life_phases(person_id: str) -> List[Dict[str, Any]]:
+    init_db()
+    con = _connect()
+    rows = con.execute(
+        """
+        SELECT id,person_id,title,start_date,end_date,date_precision,
+               description,ord,created_at,meta_json
+        FROM life_phases WHERE person_id=? ORDER BY ord ASC, start_date ASC;
+        """,
+        (person_id,),
+    ).fetchall()
+    con.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["meta"] = _json_load(d.pop("meta_json", "{}"), {})
+        out.append(d)
+    return out
+
+
+def delete_life_phase(phase_id: str) -> bool:
+    init_db()
+    con = _connect()
+    cur = con.execute("DELETE FROM life_phases WHERE id=?;", (phase_id,))
+    con.commit()
+    con.close()
+    return cur.rowcount > 0
+
+
+# -----------------------------------------------------------------------------
+# Enhanced timeline event  (wraps existing add_timeline_event with new fields)
+# -----------------------------------------------------------------------------
+def add_calendar_event(
+    person_id: str,
+    title: str,
+    start_date: str,
+    end_date: str = "",
+    date_precision: str = "exact_day",
+    display_date: str = "",
+    body: str = "",
+    kind: str = "event",
+    is_approximate: bool = False,
+    confidence: float = 1.0,
+    status: str = "reviewed",
+    source_session_ids: Optional[List[str]] = None,
+    source_fact_ids: Optional[List[str]] = None,
+    tags: Optional[List[str]] = None,
+    phase_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Extended timeline event with full calendar metadata.
+    Adds to timeline_events table using the new columns.
+    """
+    init_db()
+    eid = _uuid()
+    now = _now_iso()
+    full_meta = dict(meta or {})
+    con = _connect()
+    con.execute(
+        """
+        INSERT INTO timeline_events(
+          id,person_id,date,title,body,kind,created_at,meta_json,
+          end_date,date_precision,is_approximate,confidence,status,
+          source_session_ids,source_fact_ids,tags,display_date,phase_id
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+        """,
+        (
+            eid, person_id, start_date, title, body or "", kind or "event", now,
+            _json_dump(full_meta),
+            end_date or "", date_precision or "exact_day",
+            1 if is_approximate else 0, float(confidence or 1.0),
+            status or "reviewed",
+            _json_dump(source_session_ids or []),
+            _json_dump(source_fact_ids or []),
+            _json_dump(tags or []),
+            display_date or start_date,
+            phase_id or "",
+        ),
+    )
+    con.commit()
+    con.close()
+    return {
+        "id": eid, "person_id": person_id,
+        "start_date": start_date, "end_date": end_date,
+        "title": title, "body": body, "kind": kind,
+        "date_precision": date_precision, "display_date": display_date or start_date,
+        "is_approximate": is_approximate, "confidence": float(confidence or 1.0),
+        "status": status, "created_at": now,
+        "source_session_ids": source_session_ids or [],
+        "source_fact_ids": source_fact_ids or [],
+        "tags": tags or [],
+        "phase_id": phase_id,
+    }
+
+
+def list_calendar_events(
+    person_id: str, limit: int = 500, offset: int = 0
+) -> List[Dict[str, Any]]:
+    """Return enriched timeline events with calendar fields."""
+    init_db()
+    con = _connect()
+    rows = con.execute(
+        """
+        SELECT id,person_id,date,title,body,kind,created_at,meta_json,
+               COALESCE(end_date,'') as end_date,
+               COALESCE(date_precision,'exact_day') as date_precision,
+               COALESCE(is_approximate,0) as is_approximate,
+               COALESCE(confidence,1.0) as confidence,
+               COALESCE(status,'reviewed') as status,
+               COALESCE(source_session_ids,'[]') as source_session_ids,
+               COALESCE(source_fact_ids,'[]') as source_fact_ids,
+               COALESCE(tags,'[]') as tags,
+               COALESCE(display_date,'') as display_date,
+               COALESCE(phase_id,'') as phase_id
+        FROM timeline_events
+        WHERE person_id=?
+        ORDER BY date ASC, created_at ASC
+        LIMIT ? OFFSET ?;
+        """,
+        (person_id, int(limit), int(offset)),
+    ).fetchall()
+    con.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["meta"] = _json_load(d.pop("meta_json", "{}"), {})
+        d["is_approximate"] = bool(d.get("is_approximate"))
+        d["source_session_ids"] = _json_load(d.get("source_session_ids"), [])
+        d["source_fact_ids"] = _json_load(d.get("source_fact_ids"), [])
+        d["tags"] = _json_load(d.get("tags"), [])
+        d["start_date"] = d.pop("date", "")
+        if not d.get("display_date"):
+            d["display_date"] = d["start_date"]
+        out.append(d)
+    return out

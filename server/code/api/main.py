@@ -47,7 +47,9 @@ from .routers import (  # type: ignore
     sessions,
     db_inspector,
     chat_ws,
-    ping,  # add /api/ping
+    ping,
+    calendar,
+    facts,
 )
 
 # Core Entity & State Routers
@@ -59,6 +61,8 @@ app.include_router(interview.router)
 app.include_router(sessions.router)
 app.include_router(db_inspector.router)
 app.include_router(ping.router)
+app.include_router(calendar.router)
+app.include_router(facts.router)
 
 # Real LLM Routers (REST and WS)
 app.include_router(llm_api.router)

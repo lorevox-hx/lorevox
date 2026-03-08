@@ -11,6 +11,11 @@ from transformers import TextIteratorStreamer, StoppingCriteriaList
 from ..db import export_turns, persist_turn_transaction
 from ..api import _load_model, _apply_chat_template, StopOnEvent, _normalize_role
 from ..prompt_composer import compose_system_prompt
+from ..archive import (
+    ensure_session as archive_ensure_session,
+    append_event as archive_append_event,
+    rebuild_txt as archive_rebuild_txt,
+)
 
 router = APIRouter(prefix="/api/chat", tags=["chat-ws"])
 
@@ -31,6 +36,26 @@ async def ws_chat(ws: WebSocket):
     current_task: Optional[asyncio.Task] = None
 
     async def generate_and_stream(conv_id: str, user_text: str, params: Dict[str, Any]) -> None:
+        # Extract person_id from params (sent by UI)
+        person_id: Optional[str] = params.get("person_id") or None
+
+        # Memory Archive — ensure session exists and log user message
+        if person_id:
+            archive_ensure_session(
+                person_id=person_id,
+                session_id=conv_id,
+                mode="chat_ws",
+                title="Chat (WS)",
+                extra_meta={"ws": True},
+            )
+            archive_append_event(
+                person_id=person_id,
+                session_id=conv_id,
+                role="user",
+                content=user_text,
+                meta={"ws": True},
+            )
+
         # Load once per process (api.py caches globals)
         model, tok = _load_model()
 
@@ -110,6 +135,17 @@ async def ws_chat(ws: WebSocket):
             model_name="local-llm-ws",
             meta={"ws": True, "cancelled": ev.is_set()},
         )
+
+        # Memory Archive — log assistant reply + rebuild transcript
+        if person_id:
+            archive_append_event(
+                person_id=person_id,
+                session_id=conv_id,
+                role="assistant",
+                content=final_text,
+                meta={"ws": True, "cancelled": ev.is_set()},
+            )
+            archive_rebuild_txt(person_id=person_id, session_id=conv_id)
 
         await _ws_send(ws, {"type": "done", "final_text": final_text})
 

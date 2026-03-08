@@ -813,7 +813,7 @@ async function sendUserMessage(){
       type: "start_turn",
       session_id: state.chat.conv_id || "default",
       message: text,
-      params: { temperature: 0.7, turn_id: currentTurnId }
+      params: { temperature: 0.7, turn_id: currentTurnId, person_id: state.person_id || null }
     }));
     return;
   }
