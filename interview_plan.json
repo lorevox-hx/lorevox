@@ -117,8 +117,6 @@
       "questions": [
         {"id": "first_tech_experience", "prompt": "What was your first memorable experience with technology?", "kind": "long_text", "required": false, "profile_path": "first_tech_experience"},
         {"id": "favorite_gadgets", "prompt": "What are your favorite gadgets or tools, and why?", "kind": "long_text", "required": false, "profile_path": "favorite_gadgets"},
-        {"id": "zodiac_sign", "prompt": "What is your astrological sign, and does it reflect your personality?", "kind": "long_text", "required": false, "profile_path": "zodiac_sign"},
-        {"id": "zodiac_traits", "prompt": "What traits do you associate with your sign?", "kind": "long_text", "required": false, "profile_path": "zodiac_traits"},
         {"id": "cultural_practices", "prompt": "Any cultural or religious practices you observe?", "kind": "long_text", "required": false, "profile_path": "cultural_practices"}
       ]
     },
