@@ -1,1183 +1,478 @@
-# Lorevox Ingestion
-
-This document defines how **Lorevox** ingests source material into the archive.
-
-Lorevox must handle many source types:
-
-- interview audio
-- video
-- typed notes
-- scanned PDFs
-- handwritten notes
-- digital photos
-- born-digital documents
-- letters, records, and family-history materials
-
-The ingestion system exists to ensure that all incoming material is:
-
-1. preserved in original form
-2. classified correctly
-3. processed with the right extraction pipeline
-4. stored with provenance
-5. reviewed before historical facts are promoted
-
-Lorevox is **person-first** and **timeline-first**, not document-first.
-The archive is organized around people and sessions, while documents and media are attached as source materials.
+# Lorevox — Ingestion Pipeline Specification
 
 ---
 
-# Core Principles
+## Philosophy and Memory Safety
 
-## 1. Original source is immutable
-The original uploaded file is never modified or overwritten.
+Lorevox is built around three layers:
 
-## 2. Derived text is not truth
-OCR, transcription, captioning, and AI extraction produce **candidate text** and **candidate facts**, not verified truth.
+- **Archive** — immutable source material, exactly as received, never edited
+- **History** — reviewed, human-approved facts and events extracted from the archive
+- **Memoir** — AI-generated narrative built from History, always traceable back to Archive
 
-## 3. Every ingested item gets a sidecar record
-Each asset receives a machine-readable metadata file describing:
+Every ingestion decision must preserve this separation. No extracted text ever becomes a fact automatically. No AI suggestion bypasses human review. No source file is ever modified.
 
-- source type
-- processing status
-- review status
-- provenance
-- linked people
-- linked sessions
-- linked events
+### Memory Safety Rules
 
-## 4. Ingestion pipeline depends on source type
-Lorevox should not process all files the same way.
-
-Different pipelines are required for:
-
-- typed OCR
-- handwriting review
-- photo metadata extraction
-- audio transcription
-- video transcription
-- born-digital document parsing
-
-## 5. Review is mandatory for uncertain extraction
-Especially for:
-
-- handwriting
-- low-quality scans
-- mixed-layout documents
-- old photocopies
-- ambiguous names/dates
-- family-history notes with corrections or margin notes
+1. **Raw in, clean out.** Source files enter the Archive exactly as received — no renaming, no reformatting, no modification of any kind.
+2. **No silent promotion.** A claim (extracted text, AI interpretation) only becomes a fact when a human explicitly approves it.
+3. **Approximate dates stay approximate.** If a source says "sometime in the late sixties," the record stores `approx_year: 1965–1969`. We never invent precision.
+4. **Provenance is permanent.** Every fact in History links to the source claim, which links to the source asset, which links to the original file.
+5. **Conflicts surface, never merge.** When two sources say different things, both are preserved and flagged for human resolution — never auto-merged.
+6. **Extraction is optional.** An asset can remain permanently in the Archive as an approved source without any facts ever being extracted from it.
+7. **AI suggestions are proposals.** LLM-extracted entities and relationships go into the Review Queue as claims, not into the History layer directly.
+8. **The queue is honest.** If something is uncertain or unreviewed, it shows as uncertain or unreviewed — never silently discarded, never silently promoted.
 
 ---
 
-# Ingestion Flow
+## Ingestion Goals
 
-The general ingestion flow is:
+The ingestion pipeline converts raw incoming material into Archive-layer assets with accurate metadata, clean provenance records, and a populated Review Queue. It does not touch the History layer. It does not create facts.
 
-```text
-inbox
-  ↓
-fingerprint + classify
-  ↓
-copy original to immutable store
-  ↓
-run pipeline by source_type
-  ↓
-create sidecar metadata
-  ↓
-generate derived outputs
-  ↓
-assign review state
-  ↓
-link to people / sessions / events
-  ↓
-promote approved outputs to archive indices
-```
+**What ingestion produces:**
+
+- A fingerprinted, immutable source file in the correct archive folder
+- A `meta.json` sidecar with all available metadata
+- A `links.json` sidecar recording relationships to people, sessions, and other assets
+- For text-bearing assets: a text extraction in the correct lane with review state set
+- For AI-extracted entities: claims in the Review Queue, not facts
 
 ---
 
-# Ingestion Lanes
+## Intake Lanes
 
-Lorevox currently defines these primary ingestion lanes:
+Six processing lanes handle all asset types. Lane assignment happens at ingest time and is permanent.
 
-## 1. typed_ocr
-
-For:
-- scanned typed notes
-- old typewritten family history
-- printed letters
-- clean PDFs
-- forms
-- newspaper clippings
-- legible machine-printed records
-
-Processing:
-- OCR or PDF text extraction
-- page image generation if needed
-- text cleanup
-- candidate metadata extraction
-- candidate entity extraction
-
-## 2. handwriting_review
-
-For:
-- handwritten notes
-- cursive letters
-- photo backs with writing
-- margin notes
-- partially handwritten forms
-- notebooks
-- index cards
-
-Processing:
-- preserve image/PDF
-- attempt handwriting extraction if available
-- segment page/regions if needed
-- create low-confidence text candidate
-- force review queue
-
-## 3. photo_metadata
-
-For:
-- digital photos
-- scanned photos
-- screenshots
-- images shared from phone/computer
-- photos with embedded EXIF/XMP/QuickTime metadata
-
-Processing:
-- extract metadata
-- create thumbnail/preview
-- detect timestamp and GPS if present
-- detect file creation context
-- allow optional captioning / face tagging / person linking
-
-## 4. audio_transcript
-
-For:
-- interview recordings
-- voice memos
-- oral history clips
-
-Processing:
-- audio normalization if needed
-- speech-to-text
-- diarization if available
-- transcript.jsonl generation
-- transcript.txt generation
-- candidate topic/entity extraction
-
-## 5. video_transcript
-
-For:
-- interview videos
-- family-history video clips
-- smartphone video
-
-Processing:
-- extract media metadata
-- extract audio track
-- speech-to-text
-- optional frame sampling
-- optional OCR from visible text frames (names on screen, captions, title cards)
-- candidate topic/entity extraction
-
-## 6. born_digital_doc
-
-For:
-- DOCX
-- TXT
-- Markdown
-- HTML
-- email exports (.eml, .mbox)
-- JSON or structured files
-- digitally created PDFs
-
-Processing:
-- text extraction
-- metadata extraction
-- normalization into document text layer
-- candidate tagging
-
-**Email exports require separate header extraction.**
-Email headers (`From`, `To`, `Date`, `Subject`, `Cc`) are structured metadata — not body text —
-and are often the most reliable date and correspondent source in old family correspondence.
-They must be extracted into their own fields, not collapsed into the body text layer.
-
-Example email asset schema:
-
-```json
-{
-  "asset_id": "doc_0088",
-  "asset_type": "document",
-  "source_type": "born_digital_doc",
-  "document_kind": "email",
-  "email_headers": {
-    "from": "Janice Horne <janice.horne@example.com>",
-    "to": ["Chris Horne <dev@lorevox.com>"],
-    "cc": [],
-    "subject": "Dad's papers from the storage unit",
-    "date": "2019-11-04T09:22:00-07:00",
-    "message_id": "<abc123@mail.example.com>"
-  },
-  "email_body": {
-    "text_path": "derived/extracted.txt",
-    "has_attachments": true,
-    "attachments": [
-      {
-        "filename": "dad_discharge_1953.pdf",
-        "mime_type": "application/pdf",
-        "size": 204800,
-        "ingested_as": "doc_0089"
-      }
-    ]
-  },
-  "candidate_correspondents": [
-    {"name": "Janice Horne", "person_id": "janice_horne", "role": "sender"},
-    {"name": "Chris Horne", "person_id": "chris_horne", "role": "recipient"}
-  ],
-  "timeline": {
-    "candidate_anchor": true,
-    "candidate_date": "2019-11-04",
-    "date_source": "email_header_date"
-  }
-}
-```
-
-Email attachments should be ingested as separate assets in their appropriate lane
-(e.g., a PDF attachment goes through `typed_ocr`, not `born_digital_doc`) and linked
-back to the parent email via `related_asset_ids` in `links.json`.
+| Lane | Asset types | Processing |
+|------|------------|------------|
+| `audio_transcript` | Voice recordings, interviews, phone calls | Faster-Whisper STT → transcript → STT review queue |
+| `video_transcript` | Videos, home movies, recorded calls | Audio track → STT + keyframe OCR → transcript + frame analysis |
+| `typed_ocr` | Scanned typed documents, letters, forms | Tesseract OCR → text extraction → auto-reviewable |
+| `handwriting_review` | Handwritten letters, diaries, notes | HTR (Tesseract/Kraken) → mandatory human review |
+| `photo_metadata` | Photographs (digital or scanned prints) | ExifTool extraction → metadata review; no OCR unless explicitly tagged |
+| `born_digital_doc` | PDFs, Word docs, emails, web exports | Native text extraction → entity detection → Review Queue |
 
 ---
 
-# Folder Structure
-
-Lorevox uses an inbox for raw intake and a person-first archive for durable storage.
-
-## Top-level structure
+## Folder Structure
 
 ```
 DATA_DIR/
-  inbox/
-    typed_ocr/
-    handwriting_review/
-    photo_metadata/
-    audio_transcript/
-    video_transcript/
-    born_digital_doc/
-    rejected/
-    quarantine/
-
-  ingest/
-    jobs/
-    logs/
-    staging/
-    cache/
-    fingerprints/
-
-  memory/
-    archive/
-      people/
-        <person_id>/
-          profile/
-            person.json
-            aliases.json
-
-          sessions/
-            <session_id>/
-              meta.json
-              transcript.jsonl
-              transcript.txt
-              source/
-                audio_original.ext
-                video_original.ext
-                images/
-                docs/
-
-          documents/
-            <doc_id>/
-              original/
-                source.ext
-              derived/
-                extracted.txt
-                ocr.json
-                preview.jpg
-                pages/
-              meta.json
-              links.json
-
-          photos/
-            <asset_id>/
-              original/
-                image.ext
-              derived/
-                exif.json
-                preview.jpg
-                caption.txt
-                faces.json
-              meta.json
-              links.json
-
-          media/
-            <asset_id>/
-              original/
-                source.ext
-              derived/
-                transcript.txt
-                transcript.jsonl
-                waveform.json
-                preview.jpg
-                keyframes/
-              meta.json
-              links.json
-
-          extracted/
-            claims.jsonl
-            entities.jsonl
-            relationships.jsonl
-            candidate_events.jsonl
-
-          review/
-            queue.jsonl
-            approvals.jsonl
-            rejections.jsonl
-            edits.jsonl
-            conflict_flags.jsonl
-
-          timeline/
-            events.jsonl
-            event_links.jsonl
-
-          calendar/
-            projections.json
-            life_phases.json
-
-          narrative/
-            chapter_01.md
-            chapter_02.md
+├── inbox/                          # Staging only — nothing lives here permanently
+│   └── [uploaded files land here, processed within minutes]
+│
+└── memory/
+    └── archive/
+        └── people/
+            └── <person_id>/        # e.g., person_001
+                ├── assets/
+                │   ├── documents/  # typed_ocr, born_digital_doc
+                │   ├── audio/      # audio_transcript
+                │   ├── video/      # video_transcript
+                │   ├── photos/     # photo_metadata
+                │   └── handwriting/ # handwriting_review
+                │
+                ├── derived/        # Generated files — do not edit directly
+                │   ├── transcripts/
+                │   ├── keyframes/  # Extracted video frames for OCR review
+                │   └── calendar/   # Generated timeline views
+                │
+                └── review/
+                    └── queue/      # Pending claims awaiting human decision
 ```
+
+**Notes:**
+- `inbox/` is a transit zone. Files should clear it within a processing session.
+- `derived/` is write-once from the pipeline. Human edits go into the History layer, not here.
+- `calendar/` and keyframes are generated — editing the source asset regenerates them.
 
 ---
 
-# Ingestion Job Model
+## Asset Identity and Fingerprinting
 
-Every ingestion action should create a job record.
-
-## Job states
+Every asset gets a stable identity at ingest time.
 
 ```
-queued
-processing
-completed
-failed
-needs_review
-rejected
+sha256: <hash of file bytes at ingestion>        # Deduplication key
+asset_id: doc_0042                               # Stable short ID (doc_, img_, med_)
+ingested_at: 2024-11-15T14:22:00Z               # Ingestion timestamp (UTC)
+ingested_by: system | <user_id>                  # Who or what ran the ingest
 ```
 
-## Example job record
+**Deduplication:** If SHA256 matches an existing asset, the ingest is rejected with a duplicate notice. The user can choose to link to the existing asset instead.
+
+**Asset ID series:**
+- `doc_####` — documents (typed, handwritten, born-digital)
+- `img_####` — images and photographs
+- `med_####` — audio and video
+
+---
+
+## Sidecar Files
+
+Every asset has two sidecar files stored alongside it.
+
+### `meta.json`
+
+Canonical metadata for the asset. Schema varies by lane — see `schemas/ingestion_sidecar_examples.json` for complete examples per asset type.
+
+All `meta.json` files share a common header:
 
 ```json
 {
-  "job_id": "job_20260308_0001",
-  "created_at": "2026-03-08T09:15:00-07:00",
-  "source_path": "DATA_DIR/inbox/typed_ocr/family_notes_box1_001.pdf",
-  "source_type": "typed_ocr",
-  "pipeline": "ocr_pdf_v1",
-  "status": "completed",
-  "person_ids": ["janice_horne", "kent_horne"],
-  "session_id": null,
-  "outputs": [
-    "memory/archive/people/janice_horne/documents/doc_0001/derived/extracted.txt",
-    "memory/archive/people/janice_horne/documents/doc_0001/meta.json"
-  ],
-  "review_state": "review_required"
+  "schema_version": "1.0",
+  "asset_id": "img_0031",
+  "sha256": "a1b2c3...",
+  "lane": "photo_metadata",
+  "original_filename": "christmas_1971.jpg",
+  "ingested_at": "2024-11-15T14:22:00Z",
+  "ingested_by": "system",
+  "review_state": "unreviewed",
+  "processing_state": "pending"
 }
 ```
 
----
+### `links.json`
 
-# Asset Identity and Fingerprinting
-
-Every ingested item should receive a stable asset ID and a content fingerprint.
-
-## Goals
-- prevent duplicate imports
-- preserve provenance
-- allow re-processing without replacing original
-- detect same file in multiple lanes
-
-## Suggested identifiers
-- `doc_####` for documents
-- `img_####` for photos
-- `med_####` for audio/video media
-- `job_########` for ingest jobs
-
-## Fingerprint fields
-- sha256
-- file size
-- original filename
-- import timestamp
-- mime type
-
-## Example
+Records all known relationships for this asset at ingest time. Updated as review decisions are made.
 
 ```json
 {
-  "asset_id": "doc_0001",
-  "sha256": "abc123...",
-  "file_size": 483221,
-  "mime_type": "application/pdf",
-  "original_filename": "family_notes_box1_001.pdf",
-  "imported_at": "2026-03-08T09:15:00-07:00"
-}
-```
-
----
-
-# Sidecar Metadata Schema
-
-Each ingested asset gets a `meta.json`.
-This is the canonical metadata record for the source item.
-
-## Common fields
-
-```json
-{
-  "asset_id": "doc_0001",
-  "asset_type": "document",
-  "source_type": "typed_ocr",
-  "document_kind": "family_history_notes",
-  "title": "Family history notes, box 1, item 1",
-  "description": "Scanned typed family history notes.",
-  "person_ids": ["janice_horne", "kent_horne"],
-  "session_id": null,
-  "event_ids": [],
-  "tags": ["family history", "typed notes"],
-  "status": "active",
-  "review_state": "review_required",
-  "processing_state": "completed",
-  "confidence": 0.82,
-  "language": "en",
-  "created_at": "2026-03-08T09:15:00-07:00",
-  "updated_at": "2026-03-08T09:18:40-07:00",
-  "source_file": {
-    "original_filename": "family_notes_box1_001.pdf",
-    "stored_path": "memory/archive/people/janice_horne/documents/doc_0001/original/source.pdf",
-    "sha256": "abc123...",
-    "mime_type": "application/pdf",
-    "file_size": 483221
-  },
-  "provenance": {
-    "import_method": "manual_upload",
-    "imported_by": "user",
-    "capture_device": null,
-    "capture_date": null
-  },
-  "processing": {
-    "pipeline": "ocr_pdf_v1",
-    "engine": "ocr_engine_name",
-    "engine_version": "1.0.0"
-  }
-}
-```
-
----
-
-# Links Sidecar Schema
-
-Each asset may also have a `links.json` that records its archive relationships.
-
-## Purpose
-- attach source to people
-- attach source to sessions
-- attach source to events
-- attach source to claims/facts
-
-## Example
-
-```json
-{
-  "asset_id": "doc_0001",
-  "person_ids": ["janice_horne", "kent_horne"],
-  "session_ids": [],
-  "event_ids": [],
-  "claim_ids": [],
-  "fact_ids": [],
-  "chapter_ids": [],
-  "related_asset_ids": []
-}
-```
-
----
-
-# Source-Type Specific Schemas
-
-## Typed OCR document
-
-```json
-{
-  "asset_id": "doc_0001",
-  "asset_type": "document",
-  "source_type": "typed_ocr",
-  "document_kind": "family_history_notes",
-  "page_count": 6,
-  "ocr": {
-    "status": "completed",
-    "review_required": true,
-    "avg_confidence": 0.86,
-    "has_embedded_text": false,
-    "text_path": "derived/extracted.txt",
-    "ocr_json_path": "derived/ocr.json"
-  },
-  "layout": {
-    "multi_column": false,
-    "contains_tables": false,
-    "contains_handwriting": false
-  }
-}
-```
-
-## Handwriting review document
-
-```json
-{
-  "asset_id": "doc_0042",
-  "asset_type": "document",
-  "source_type": "handwriting_review",
-  "document_kind": "handwritten_notes",
-  "page_count": 3,
-  "ocr": {
-    "status": "attempted",
-    "review_required": true,
-    "avg_confidence": 0.34,
-    "text_path": "derived/extracted.txt",
-    "ocr_json_path": "derived/ocr.json"
-  },
-  "handwriting": {
-    "present": true,
-    "style": "cursive",
-    "legibility": "low",
-    "mixed_print_and_script": true
-  }
-}
-```
-
-## Photo metadata asset
-
-```json
-{
-  "asset_id": "img_0010",
-  "asset_type": "photo",
-  "source_type": "photo_metadata",
-  "document_kind": "family_photo",
-  "photo": {
-    "datetime_original": "2025-07-14T13:22:10+02:00",
-    "file_created_at": "2025-07-14T13:22:11+02:00",
-    "gps": {
-      "lat": 43.295,
-      "lon": -0.368
-    },
-    "location_label": "Pau, France",
-    "camera_make": "Apple",
-    "camera_model": "iPhone 15 Pro",
-    "orientation": 1
-  },
-  "timeline": {
-    "candidate_anchor": true,
-    "candidate_date": "2025-07-14",
-    "candidate_location": "Pau, France",
-    "date_source": "exif_datetime_original"
-  },
-  "user_stated_date": {
-    "value": null,
-    "confidence": null,
-    "note": null
-  }
-}
-```
-
-## Video transcript asset
-
-```json
-{
-  "asset_id": "med_0012",
-  "asset_type": "media",
-  "source_type": "video_transcript",
-  "document_kind": "interview_video",
-  "media": {
-    "duration_seconds": 2847,
-    "width": 1920,
-    "height": 1080,
-    "frame_rate": 29.97,
-    "audio_channels": 2,
-    "sample_rate": 48000,
-    "codec_video": "h264",
-    "codec_audio": "aac"
-  },
-  "quicktime_metadata": {
-    "creation_date": "2026-01-15T14:32:00-07:00",
-    "location": {
-      "lat": 35.687,
-      "lon": -105.937
-    },
-    "location_label": "Santa Fe, New Mexico",
-    "make": "Apple",
-    "model": "iPhone 15 Pro"
-  },
-  "transcription": {
-    "status": "completed",
-    "review_required": false,
-    "language": "en",
-    "diarization": true,
-    "engine": "faster-whisper",
-    "model": "large-v3",
-    "transcript_txt_path": "derived/transcript.txt",
-    "transcript_jsonl_path": "derived/transcript.jsonl"
-  },
-  "frame_analysis": {
-    "status": "completed",
-    "sampled_frames": 48,
-    "sample_interval_seconds": 60,
-    "ocr_applied": true,
-    "ocr_targets": ["title_cards", "name_lower_thirds", "on_screen_captions", "visible_documents"],
-    "keyframes_path": "derived/keyframes/",
-    "text_found": [
-      {
-        "frame_index": 3,
-        "timecode": "00:03:12",
-        "text": "Kent Horne — Santa Fe, 2026",
-        "confidence": 0.91,
-        "region": "lower_third"
-      }
-    ]
-  },
-  "timeline": {
-    "candidate_anchor": true,
-    "candidate_date": "2026-01-15",
-    "candidate_location": "Santa Fe, New Mexico",
-    "date_source": "quicktime_creation_date"
-  }
-}
-```
-
-**Note on video frame OCR:** Title cards, name lower-thirds (the text overlays that identify
-speakers), date/location captions, and any visible documents or certificates in frame can all
-be extracted as text. These often contain names and dates that are more reliable than speech
-alone — a title card saying "Kent Horne, 1962–2026" is a high-confidence biographical fact.
-Frame samples should be stored in `keyframes/` and their OCR output linked back to the video
-asset, not silently merged into the transcript.
-
----
-
-## Audio transcript asset
-
-```json
-{
-  "asset_id": "med_0007",
-  "asset_type": "media",
-  "source_type": "audio_transcript",
-  "document_kind": "interview_audio",
-  "media": {
-    "duration_seconds": 3724,
-    "audio_channels": 1,
-    "sample_rate": 44100
-  },
-  "transcription": {
-    "status": "completed",
-    "review_required": false,
-    "language": "en",
-    "diarization": true,
-    "engine": "faster-whisper",
-    "model": "large-v3",
-    "transcript_txt_path": "derived/transcript.txt",
-    "transcript_jsonl_path": "derived/transcript.jsonl"
-  }
-}
-```
-
----
-
-# Derived Output Files
-
-Derived outputs must never replace originals.
-
-## Document-derived outputs
-
-```
-derived/
-  extracted.txt
-  ocr.json
-  preview.jpg
-  pages/
-    page_0001.jpg
-    page_0002.jpg
-```
-
-## Photo-derived outputs
-
-```
-derived/
-  exif.json
-  preview.jpg
-  caption.txt
-  faces.json
-```
-
-## Media-derived outputs
-
-```
-derived/
-  transcript.txt
-  transcript.jsonl
-  waveform.json
-  keyframes/
-    frame_0001.jpg
-    frame_0002.jpg
-```
-
----
-
-# Review States
-
-Every ingested asset should have a `review_state`.
-
-## Allowed review states
-
-**`unreviewed`**
-Imported but not yet examined by a human.
-
-**`review_required`**
-Needs human review before extracted content can be trusted.
-
-**`in_review`**
-Currently being reviewed or edited.
-
-**`approved_source_only`**
-Original source approved for archive, but extracted text/facts not yet approved.
-
-**`approved_text`**
-Derived text has been reviewed and accepted.
-
-**`approved_metadata`**
-Metadata (dates, persons, tags) has been reviewed and accepted.
-
-**`approved_for_extraction`**
-Source is approved for claim/fact extraction.
-
-**`partially_approved`**
-Some parts approved, others still uncertain.
-
-**`rejected_extraction`**
-Extraction output is not trustworthy. Source is preserved but not promoted.
-
-**`rejected_asset`**
-Asset should not be used in Lorevox history flow.
-
-## Recommended defaults by lane
-
-| Lane | Default review_state |
-|------|---------------------|
-| typed_ocr | review_required |
-| handwriting_review | review_required |
-| photo_metadata | unreviewed |
-| audio_transcript | approved_source_only |
-| video_transcript | approved_source_only |
-| born_digital_doc | review_required |
-
----
-
-# Processing States
-
-Assets also track `processing_state` (system workflow, not human trust).
-
-```
-queued
-classified
-copied
-processed
-failed
-partial
-archived
-```
-
----
-
-# Review Outcomes
-
-Review should create explicit decision records, not silent edits.
-
-## Review decision types
-
-- approve
-- approve_with_edit
-- reject
-- split_asset
-- merge_duplicate
-- relink_person
-- relink_session
-- relink_event
-- mark_uncertain
-- promote_to_claims
-- hold_for_later
-
-## Example review record
-
-```json
-{
-  "review_id": "rev_0009",
-  "asset_id": "doc_0001",
-  "reviewed_at": "2026-03-08T10:22:00-07:00",
-  "reviewed_by": "user",
-  "decision": "approve_with_edit",
-  "notes": "Corrected OCR reading of 'LaPlante'. Kept date uncertain.",
-  "changes": [
+  "asset_id": "img_0031",
+  "person_links": [
     {
-      "field": "title",
-      "old": "Family history nofes",
-      "new": "Family history notes"
+      "person_id": "person_001",
+      "confidence": "definite",
+      "link_status": "confirmed",
+      "source": "user_stated"
     }
   ],
-  "resulting_review_state": "approved_text"
+  "session_links": [
+    {
+      "session_id": "session_004",
+      "role": "reference_material"
+    }
+  ],
+  "related_assets": [
+    {
+      "asset_id": "doc_0015",
+      "relationship": "correspondence_thread"
+    }
+  ]
 }
 ```
 
 ---
 
-# Promotion Rules
+## Review States
 
-An asset moves through trust levels. Higher levels unlock downstream processing.
-
-| Level | Name | Unlocks |
-|-------|------|---------|
-| 1 | Archived source | File preserved and linked to person |
-| 2 | Approved text | Derived text usable for search and summarization |
-| 3 | Approved metadata | Dates, persons, tags confirmed |
-| 4 | Extraction-ready | Claim/entity/event generation allowed |
-| 5 | Historical promotion | Approved claims can enter timeline review |
-
----
-
-# OCR and Text Rules
-
-## Typed OCR
-Use OCR output as candidate text. Allowed uses after review:
-- search
-- summarization
-- entity extraction
-- claim extraction
-
-## Handwriting
-Handwriting extraction defaults to low trust.
-
-Rules:
-- never auto-promote handwriting OCR directly to facts
-- keep original image visible beside extracted text during review
-- require explicit review before claim extraction
-- preserve uncertain words and unreadable segments with markup
-
-Example uncertain text markup:
-```
-"We moved to [Santa Fe?] around [1974?] after the winter."
-```
-
----
-
-# Photo Metadata Rules
-
-Photos can provide valuable timeline anchors, but metadata is not always reliable.
-
-## Accept metadata as candidate evidence, not absolute truth
-
-A photo timestamp may reflect:
-- real capture time ← preferred
-- copied file time
-- edited image export time
-- wrong camera clock
-
-## Track date sources separately
-
-There are up to four independent date signals for a photo — never collapse them into one.
-
-```json
-{
-  "datetime_original": "2025-07-14T13:22:10",
-  "file_created_at": "2025-07-14T13:22:11",
-  "imported_at": "2026-03-08T09:00:00",
-  "user_stated_date": {
-    "value": null,
-    "confidence": null,
-    "note": null
-  },
-  "candidate_event_date": "2025-07-14",
-  "date_source": "exif_datetime_original"
-}
-```
-
-**`user_stated_date`** is populated when a person looks at an old photo and says something like
-"I think this was Christmas 1971" or "that must be before we moved." This is a distinct evidence
-source from EXIF and carries its own confidence level — typically lower than a camera timestamp
-but higher than an AI guess. Store the verbatim note alongside the parsed date so the reasoning
-is preserved.
-
-Example of a user-stated date on an old scanned print (no EXIF):
-
-```json
-{
-  "datetime_original": null,
-  "file_created_at": "2026-02-14T10:33:00",
-  "imported_at": "2026-02-14T10:33:05",
-  "user_stated_date": {
-    "value": "1971-12",
-    "confidence": 0.55,
-    "note": "Chris said: 'I think this was Christmas 1971, based on the tree in the background'"
-  },
-  "candidate_event_date": "1971-12",
-  "date_source": "user_stated"
-}
-```
-
-## GPS rules
-- GPS is useful but optional
-- Missing GPS does not weaken a photo as a source
-- GPS should be stored separately from narrative assumptions
-- Reverse-geocode GPS to city/country label when available
-
----
-
-# Session Linking
-
-Some ingested items belong to an interview session; others are stand-alone.
-
-**Session-linked examples:**
-- interview audio
-- documents discussed during an interview
-- photos attached to a recorded session
-
-**Stand-alone examples:**
-- scanned box of old family notes
-- old typed memoir drafts
-- digital family photo upload
-
-Assets can be linked to a person before being linked to a session.
-Person linkage is required; session linkage is optional.
-
----
-
-# Person Linking
-
-Lorevox is person-first. Every asset should try to link to one or more people.
-
-## Linking states
+Every asset has a `review_state` that reflects its position in the human review workflow.
 
 | State | Meaning |
 |-------|---------|
-| identified | Person confirmed by user |
-| candidate | AI or user suggests this person, not confirmed |
-| unknown | No person identified |
-| multiple_possible | Could be any of several people |
-
-## Example — typed note about two people
-
-```json
-{
-  "person_links": [
-    {"person_id": "janice_horne", "status": "identified"},
-    {"person_id": "kent_horne", "status": "identified"}
-  ]
-}
-```
-
-## Example — unlabeled old photo
-
-```json
-{
-  "person_links": [
-    {"person_id": "janice_horne", "status": "candidate"},
-    {"person_id": "kent_horne", "status": "candidate"}
-  ]
-}
-```
+| `unreviewed` | Asset received; no human has looked at it |
+| `review_required` | Pipeline flagged this for mandatory review (e.g., handwriting, uncertain OCR) |
+| `in_review` | A reviewer has opened this asset |
+| `approved_source_only` | Human confirmed this is a genuine source; no text extraction requested |
+| `approved_text` | Extracted text reviewed and accepted |
+| `approved_metadata` | Metadata (dates, people, places) reviewed and accepted |
+| `approved_for_extraction` | Text and metadata approved; AI claim extraction is authorized |
+| `partially_approved` | Some sections approved, others pending or rejected |
+| `rejected_extraction` | Text or metadata rejected; asset stays in archive but extraction blocked |
+| `rejected_asset` | Asset rejected entirely (duplicate, irrelevant, or corrupt) |
 
 ---
 
-# Claim Extraction Gate
+## Processing States
 
-Lorevox should not extract claims from every asset automatically.
+Separate from review state — tracks pipeline execution, not human decisions.
 
-## Minimum conditions for claim extraction
-- original file archived
-- sidecar metadata created
-- review state is at least `approved_text` or `approved_source_only`
-- person link exists (or is intentionally `unknown`)
-- extraction pipeline available for source type
-
-## Claim extraction blocked when
-- OCR confidence is critically low
-- handwriting is unreadable and unreviewed
-- duplicate asset not resolved
-- person linkage is too uncertain
-- file is in quarantine or rejected state
+| State | Meaning |
+|-------|---------|
+| `pending` | Queued, not yet started |
+| `processing` | Currently running |
+| `ocr_complete` | Text extraction done, awaiting review |
+| `stt_complete` | Speech-to-text done, awaiting review |
+| `metadata_extracted` | Exif/header metadata extracted |
+| `claims_queued` | AI entity extraction complete; claims in Review Queue |
+| `complete` | All pipeline steps done |
+| `failed` | Pipeline error; details in processing log |
+| `quarantined` | File flagged as potentially corrupt, malicious, or unreadable |
 
 ---
 
-# Quarantine and Rejected Items
+## Promotion Levels
 
-## Quarantine
-Use for:
-- corrupt files
-- unsupported file types
-- password-protected files
-- files with unreadable structure
-
-## Rejected
-Use for:
-- accidental uploads
-- unrelated files
-- confirmed duplicates the user does not want
-- test files
+Text and metadata move through five promotion levels. Moving up requires an explicit human decision.
 
 ```
-DATA_DIR/inbox/quarantine/
-DATA_DIR/inbox/rejected/
+Level 1 — Archived Source
+  File stored, fingerprinted, sidecar written. No human review yet.
+
+Level 2 — Approved Text
+  Human has reviewed the raw extraction and confirmed it is accurate.
+
+Level 3 — Approved Metadata
+  Human has reviewed and confirmed dates, people, places, and context.
+
+Level 4 — Extraction Ready
+  Human has authorized AI entity and claim extraction from this asset.
+
+Level 5 — Historical Promotion
+  One or more specific claims from this asset have been approved as facts
+  and added to the History layer.
 ```
+
+Promotion is per-asset and per-claim. An asset at Level 4 may have only three of its ten extracted claims promoted to Level 5.
 
 ---
 
-# Search Indexing Rules
+## Lane-Specific Rules
 
-Search should be built across multiple layers:
-- source metadata
-- approved extracted text
-- captions
-- transcripts
-- tags
-- person links
-- event links
+### Audio Transcript
 
-Search must clearly distinguish which layer produced each result:
-- original source hit
-- OCR text hit
-- transcript hit
-- AI-generated summary hit
+- STT engine: Faster-Whisper (CUDA fp16, large-v3 model)
+- `initial_prompt` seeded with all known names from the person's people registry to improve proper noun accuracy
+- After transcription: all detected proper nouns highlighted for inline review before saving
+- Speaker diarization stored as `speaker_A`, `speaker_B` etc. — human assigns names during review
+- Transcript stored in `derived/transcripts/` with segment timestamps
+- Original audio file is never modified
 
-Lorevox should never hide which layer a search result came from.
+### Video Transcript
 
----
+- Audio track processed identically to `audio_transcript` lane
+- Keyframe sampling at regular intervals (default: 1 per 30 seconds) stored in `derived/keyframes/`
+- OCR targets in keyframes: title cards, name lower-thirds, on-screen captions, date stamps
+- Frame OCR text stored separately from audio transcript — not merged
+- QuickTime/MP4 container metadata extracted (creation date, camera model, GPS if present)
 
-# Minimal Review UI Requirements
+### Typed OCR
 
-Any Lorevox review screen for ingestion should show:
-- source preview (image, audio player, PDF viewer)
-- original filename
-- source type
-- linked person(s)
-- extracted text (alongside original where possible)
-- confidence scores
-- metadata fields
-- review decision buttons
+- Tesseract with language detection
+- Confidence score per word stored; words below threshold flagged for review
+- Multi-page documents produce one transcript with page break markers
+- Auto-reviewable (does not require mandatory human review before claim extraction can be authorized)
 
-## Recommended actions
-- Approve source
-- Approve text
-- Edit metadata
-- Correct person links
-- Send to extraction
-- Reject
-- Hold
-- Mark uncertain
+### Handwriting Review
 
----
+- HTR (Tesseract or Kraken depending on script)
+- **Always `review_required`** — handwriting extraction never auto-promoted
+- Uncertain words marked as `[word?]` in the transcript
+- Review UI shows original image beside extracted text, side by side
+- Reviewer can correct inline; corrections stored as a separate edit layer, not overwriting the HTR output
 
-# Implementation Order
+### Photo Metadata
 
-## Phase 1 — Foundation
-- inbox lanes (folder structure)
-- asset fingerprinting (sha256 + asset_id)
-- sidecar `meta.json`
-- sidecar `links.json`
-- `typed_ocr` pipeline
-- `audio_transcript` pipeline (already partially built)
-- manual review state transitions
+- ExifTool extracts: camera make/model, capture datetime, GPS coordinates, lens info, XMP tags, embedded caption
+- GPS reverse-geocoded to human-readable location label (stored alongside raw coordinates)
+- `user_stated_date`: separate from EXIF — stores what the subject said about when the photo was taken
+  ```json
+  "user_stated_date": {
+    "value": "Christmas 1971",
+    "confidence": "approximate",
+    "note": "Subject said 'I think this was Christmas 1971'"
+  }
+  ```
+- No OCR applied to photos unless asset is explicitly tagged `contains_embedded_text`
+- People in photos identified via `person_links` in `links.json`, not embedded in `meta.json`
 
-## Phase 2 — Expanded Intake
-- `handwriting_review` lane
-- `photo_metadata` extraction (ExifTool)
-- GPS reverse-geocoding
-- thumbnail/preview generation
-- person linking UI
-- session linking UI
+### Born-Digital Documents
 
-## Phase 3 — Intelligence Layer
-- automatic duplicate detection (sha256 fingerprints)
-- event candidate generation from approved assets
-- review queue dashboard
-- bulk metadata edits
-- claim extraction promotion workflow
+- Native text extraction (no OCR needed for machine-created PDFs and Word docs)
+- Emails treated as a sub-type: email headers (`From`, `To`, `Date`, `Subject`, `Cc`) extracted as structured metadata separate from body text
+  ```json
+  "email_headers": {
+    "from": "margaret.brennan@example.com",
+    "to": ["tom.brennan@example.com"],
+    "date": "1998-12-24T19:43:00-05:00",
+    "subject": "Christmas plans"
+  }
+  ```
+- Email attachments ingested as separate assets in the appropriate lane — not embedded in the email asset record
+- Candidate correspondents from email headers added to `links.json` with `link_status: candidate` pending human confirmation
 
 ---
 
-# End-to-End Examples
+## Date Precision
 
-## Typed family-history PDF
+Dates are never invented. Store what is known.
 
-```
-1. User scans typed family history notes to PDF
-2. PDF goes into inbox/typed_ocr/
-3. Lorevox fingerprints file (sha256)
-4. Lorevox copies original → documents/doc_0001/original/source.pdf
-5. OCR runs → derived/extracted.txt (avg_confidence: 0.86)
-6. Lorevox creates meta.json and links.json
-7. review_state = "review_required"
-8. User reviews, corrects OCR errors ("LaPlante" not "LaPlants")
-9. review_state = "approved_text"
-10. Claim extraction is allowed
-11. Claims enter review queue
-12. Approved claims become facts / timeline events
-```
-
-## Handwritten note (photographed)
-
-```
-1. User photographs handwritten note on phone
-2. Image goes into inbox/handwriting_review/
-3. Lorevox archives original image → documents/doc_0042/original/image.jpg
-4. Handwriting extraction attempted → avg_confidence: 0.34
-5. Uncertain words marked: "We moved to [Santa Fe?] around [1974?]"
-6. review_state = "review_required"
-7. User compares original image to extracted text
-8. User edits text manually: "We moved to Santa Fe around 1974"
-9. review_state = "approved_text"
-10. Claim extraction proceeds, date stored as approx_year: 1974
-```
-
-## Digital photo with EXIF and GPS
-
-```
-1. User shares digital family photo from phone
-2. Image goes into inbox/photo_metadata/
-3. Lorevox extracts EXIF: datetime_original = "2025-07-14T13:22:10+02:00"
-4. GPS extracted: lat=43.295, lon=-0.368 → reverse-geocoded: "Pau, France"
-5. Creates preview, exif.json, meta.json
-6. candidate_anchor = true, candidate_date = "2025-07-14"
-7. review_state = "unreviewed"
-8. User confirms: person=chris_horne, event=France trip 2025
-9. Photo becomes archive evidence anchored to timeline event ev_0042
-```
+| Precision value | Example stored |
+|----------------|----------------|
+| `exact_day` | `1971-12-25` |
+| `month` | `1971-12` |
+| `year` | `1971` |
+| `approx_year` | `~1971` |
+| `decade` | `1970s` |
+| `season` | `summer 1971` |
+| `range` | `1969–1973` |
+| `relative` | `two years after they married` |
+| `unknown_ordered` | known to be after event X, before event Y |
+| `unknown` | no date information available |
 
 ---
 
-# Summary
+## Person and Session Linking
 
-Lorevox ingestion is the entry point into the memory system.
+Assets are linked to people and interview sessions at ingest time when the link is unambiguous, and during review for everything else.
 
-Designed correctly, it can absorb:
-- live interviews
-- old family-history notes (typed and handwritten)
-- scanned documents and letters
-- PDFs
-- digital photos with GPS and timestamp metadata
-- legacy media
+**Person link confidence values:**
+- `definite` — user explicitly identified this person
+- `probable` — name or face match with high confidence
+- `possible` — weak signal, requires confirmation
+- `unknown` — no identification yet
 
-Without confusing extracted candidate text with verified historical truth.
+**Person link status values:**
+- `confirmed` — human reviewed and accepted
+- `candidate` — pipeline suggestion, pending review
+- `rejected` — human reviewed and rejected the link
 
-The ingestion layer's job is not to produce facts.
-Its job is to safely bring sources into the archive so that facts can be produced — carefully, with human oversight, and with full provenance at every step.
+---
+
+## Claim Extraction Gate
+
+AI entity and claim extraction only runs when a human has explicitly set `review_state: approved_for_extraction`. This is never set automatically.
+
+**What extraction produces:**
+- Named entities (people, places, organizations, dates)
+- Candidate facts (statements of what happened, when, to whom)
+- Candidate relationships (person A married person B, person A worked at X)
+
+All outputs go into the Review Queue as claims with:
+- `confidence` score
+- `source_asset_id` and `source_text_span`
+- `claim_type`
+- `review_state: pending`
+
+None of this touches the History layer until a human approves individual claims.
+
+---
+
+## Quarantine and Rejection
+
+**Quarantine** (`processing_state: quarantined`):
+- File is unreadable, corrupt, or zero bytes
+- File type does not match declared extension
+- File contains executable content or unexpected embedded scripts
+- Held for human inspection before any further processing
+
+**Rejected extraction** (`review_state: rejected_extraction`):
+- Human reviewed the text/metadata and determined it is not usable (illegible, wrong person, irrelevant)
+- Asset remains in Archive permanently
+- No claims extracted; no promotion possible
+
+**Rejected asset** (`review_state: rejected_asset`):
+- Human determined this asset should not be in the archive at all
+- Asset record and sidecars retained for audit trail
+- File moved to `archive/rejected/` — never deleted
+
+---
+
+## Review Queue
+
+The Review Queue is the interface between pipeline output and human judgment.
+
+Each queue item contains:
+- `queue_id` — unique identifier
+- `asset_id` — source asset
+- `claim_type` — what kind of claim this is
+- `claim_text` — the extracted text
+- `source_span` — character range in the source transcript
+- `confidence` — pipeline confidence score
+- `review_state` — pending / approved / rejected / deferred
+- `reviewer_id` — who reviewed it (null if pending)
+- `reviewed_at` — timestamp of decision
+
+**Review decisions:**
+- `approved` — claim becomes a fact candidate in History
+- `rejected` — claim discarded, not extracted
+- `needs_correction` — claim text edited by reviewer, then approved
+- `deferred` — moved to later; stays in queue
+
+---
+
+## Search Indexing
+
+Assets become searchable after `review_state` reaches `approved_text` or higher.
+
+Indexed fields:
+- Full transcript text (audio, video, typed, handwriting)
+- Document body (born-digital)
+- `meta.json` fields: filename, description, user_stated_date note, caption
+- Person and session names from `links.json`
+
+Not indexed until approved:
+- Raw HTR output below confidence threshold
+- Pending claims in the Review Queue
+
+---
+
+## Schema Reference
+
+Concrete `meta.json` and `links.json` examples for all asset types are in:
+
+```
+schemas/ingestion_sidecar_examples.json
+```
+
+That file contains complete, realistic example payloads for:
+- Common meta header (all lanes)
+- Common links structure (all lanes)
+- `typed_ocr` asset
+- `handwriting_review` asset
+- `photo_metadata` asset with full EXIF
+- `photo_metadata` asset with no EXIF and `user_stated_date`
+- `audio_transcript` asset
+- `video_transcript` asset with frame analysis
+- `born_digital_doc` asset
+- `email` asset with structured headers
+- Review state reference array
+- Processing state reference array
+- Person link status values
+- Review decision types
+- Review queue item example
+
+---
+
+## Implementation Phases
+
+### Phase 1 — Foundation (Build First)
+
+- Inbox watcher: detect new files, assign `asset_id`, compute SHA256, write skeleton `meta.json`
+- Lane router: classify asset type and assign lane
+- ExifTool integration: extract photo and video container metadata
+- Basic Review Queue: store claims, display pending items, accept approve/reject decisions
+
+### Phase 2 — Text Extraction
+
+- Faster-Whisper STT pipeline for audio and video
+- Tesseract OCR pipeline for typed documents
+- HTR pipeline for handwriting (mandatory review gate enforced)
+- Native text extraction for PDFs and Word documents
+- Email header parser: structured extraction of From/To/Date/Subject/Cc
+
+### Phase 3 — AI Extraction (Only After Phase 2 Is Stable)
+
+- Named entity recognition on approved transcripts
+- Candidate fact and relationship extraction
+- Era-aware world events context injection
+- LLM follow-up quality prompts seeded with known names from people registry
+
+---
+
+## End-to-End Example: Scanned Letter
+
+**Source:** A scanned JPEG of a handwritten letter from 1943.
+
+1. File dropped in `inbox/`.
+2. Pipeline computes SHA256, assigns `img_0044`, writes skeleton `meta.json` with `lane: handwriting_review`, `review_state: review_required`, `processing_state: pending`.
+3. HTR runs. Transcript saved to `derived/transcripts/img_0044_htr.txt` with uncertain words marked `[word?]`. Processing state → `ocr_complete`.
+4. Review UI presents: original scan on left, HTR transcript on right. Reviewer corrects three words, confirms the rest.
+5. Reviewer sets `review_state: approved_text`. Reviewer adds `user_stated_date: "Christmas 1943"` based on subject's recollection.
+6. Reviewer links to `person_001` (the letter's author) in `links.json` with `confidence: definite`, `link_status: confirmed`.
+7. Reviewer sets `review_state: approved_metadata`. Processing state → `complete`.
+8. Reviewer sets `review_state: approved_for_extraction`. AI extraction runs; three claims queued.
+9. Reviewer approves two claims (date, location mentioned). One claim (uncertain name) deferred.
+10. Two approved claims → History layer as facts, each linking back to `img_0044`.
+
+The original scan has never been modified. Every decision is recorded with who made it and when.

@@ -1,0 +1,548 @@
+{
+  "schema_version": "1.0",
+  "notes": [
+    "These are example sidecar payloads for Lorevox ingestion lanes.",
+    "Examples are intentionally concrete and human-readable rather than formal JSON Schema documents.",
+    "Derived text, OCR, handwriting extraction, and metadata remain candidate evidence until reviewed.",
+    "Asset IDs, paths, and timestamps are examples only."
+  ],
+  "common_meta_example": {
+    "asset_id": "doc_0001",
+    "asset_type": "document",
+    "source_type": "typed_ocr",
+    "document_kind": "family_history_notes",
+    "title": "Family history notes, box 1, item 1",
+    "description": "Scanned typed family history notes.",
+    "person_ids": ["janice_horne", "kent_horne"],
+    "session_id": null,
+    "event_ids": [],
+    "tags": ["family history", "typed notes"],
+    "status": "active",
+    "review_state": "review_required",
+    "processing_state": "completed",
+    "confidence": 0.82,
+    "language": "en",
+    "created_at": "2026-03-08T09:15:00-07:00",
+    "updated_at": "2026-03-08T09:18:40-07:00",
+    "source_file": {
+      "original_filename": "family_notes_box1_001.pdf",
+      "stored_path": "memory/archive/people/janice_horne/documents/doc_0001/original/source.pdf",
+      "sha256": "abc123...",
+      "mime_type": "application/pdf",
+      "file_size": 483221
+    },
+    "provenance": {
+      "import_method": "manual_upload",
+      "imported_by": "user",
+      "capture_device": null,
+      "capture_date": null
+    },
+    "processing": {
+      "pipeline": "ocr_pdf_v1",
+      "engine": "ocr_engine_name",
+      "engine_version": "1.0.0"
+    }
+  },
+  "common_links_example": {
+    "asset_id": "doc_0001",
+    "person_ids": ["janice_horne", "kent_horne"],
+    "session_ids": [],
+    "event_ids": [],
+    "claim_ids": [],
+    "fact_ids": [],
+    "chapter_ids": [],
+    "related_asset_ids": []
+  },
+  "typed_ocr_document": {
+    "meta": {
+      "asset_id": "doc_0001",
+      "asset_type": "document",
+      "source_type": "typed_ocr",
+      "document_kind": "family_history_notes",
+      "title": "Family history notes, box 1, item 1",
+      "person_ids": ["janice_horne", "kent_horne"],
+      "tags": ["family history", "typed notes"],
+      "review_state": "review_required",
+      "processing_state": "completed",
+      "page_count": 6,
+      "ocr": {
+        "status": "completed",
+        "review_required": true,
+        "avg_confidence": 0.86,
+        "has_embedded_text": false,
+        "text_path": "derived/extracted.txt",
+        "ocr_json_path": "derived/ocr.json",
+        "ocr_confidence_path": "derived/ocr_confidence.json"
+      },
+      "layout": {
+        "multi_column": false,
+        "contains_tables": false,
+        "contains_handwriting": false
+      },
+      "source_file": {
+        "original_filename": "family_notes_box1_001.pdf",
+        "stored_path": "memory/archive/people/janice_horne/documents/doc_0001/original/source.pdf",
+        "sha256": "abc123...",
+        "mime_type": "application/pdf",
+        "file_size": 483221
+      },
+      "processing": {
+        "pipeline": "ocr_pdf_v1",
+        "engine": "ocrmypdf+tesseract",
+        "engine_version": "v1"
+      }
+    },
+    "links": {
+      "asset_id": "doc_0001",
+      "person_ids": ["janice_horne", "kent_horne"],
+      "session_ids": [],
+      "event_ids": [],
+      "claim_ids": [],
+      "fact_ids": [],
+      "chapter_ids": [],
+      "related_asset_ids": []
+    }
+  },
+  "handwriting_review_document": {
+    "meta": {
+      "asset_id": "doc_0042",
+      "asset_type": "document",
+      "source_type": "handwriting_review",
+      "document_kind": "handwritten_notes",
+      "title": "Loose handwritten family notes",
+      "person_ids": ["janice_horne"],
+      "tags": ["family history", "handwriting"],
+      "review_state": "review_required",
+      "processing_state": "completed",
+      "page_count": 3,
+      "ocr": {
+        "status": "attempted",
+        "review_required": true,
+        "avg_confidence": 0.34,
+        "text_path": "derived/extracted.txt",
+        "ocr_json_path": "derived/ocr.json"
+      },
+      "handwriting": {
+        "present": true,
+        "style": "cursive",
+        "legibility": "low",
+        "mixed_print_and_script": true,
+        "mandatory_review": true
+      },
+      "source_file": {
+        "original_filename": "note_front_back.jpg",
+        "stored_path": "memory/archive/people/janice_horne/documents/doc_0042/original/source.jpg",
+        "sha256": "def456...",
+        "mime_type": "image/jpeg",
+        "file_size": 1822044
+      },
+      "processing": {
+        "pipeline": "handwriting_attempt_v1",
+        "engine": "vision_llm_or_htr_service",
+        "engine_version": "v1"
+      }
+    },
+    "links": {
+      "asset_id": "doc_0042",
+      "person_ids": ["janice_horne"],
+      "session_ids": [],
+      "event_ids": [],
+      "claim_ids": [],
+      "fact_ids": [],
+      "chapter_ids": [],
+      "related_asset_ids": []
+    }
+  },
+  "photo_metadata_asset": {
+    "meta": {
+      "asset_id": "img_0010",
+      "asset_type": "photo",
+      "source_type": "photo_metadata",
+      "document_kind": "family_photo",
+      "title": "Bastille Day photo in Pau",
+      "person_ids": ["chris_horne"],
+      "tags": ["France trip", "Bastille Day", "travel"],
+      "review_state": "unreviewed",
+      "processing_state": "completed",
+      "photo": {
+        "datetime_original": "2025-07-14T13:22:10+02:00",
+        "file_created_at": "2025-07-14T13:22:11+02:00",
+        "gps": {
+          "lat": 43.295,
+          "lon": -0.368
+        },
+        "location_label": "Pau, France",
+        "camera_make": "Google",
+        "camera_model": "Pixel",
+        "orientation": 1
+      },
+      "user_stated_date": {
+        "value": null,
+        "confidence": null,
+        "note": null
+      },
+      "timeline": {
+        "candidate_anchor": true,
+        "candidate_date": "2025-07-14",
+        "candidate_location": "Pau, France",
+        "date_source": "exif_datetime_original"
+      },
+      "derived": {
+        "exif_json_path": "derived/exif.json",
+        "preview_path": "derived/preview.jpg",
+        "caption_path": "derived/caption.txt",
+        "faces_json_path": "derived/faces.json"
+      },
+      "source_file": {
+        "original_filename": "IMG_0042.JPG",
+        "stored_path": "memory/archive/people/chris_horne/photos/img_0010/original/image.jpg",
+        "sha256": "ghi789...",
+        "mime_type": "image/jpeg",
+        "file_size": 6231884
+      },
+      "processing": {
+        "pipeline": "photo_metadata_v1",
+        "engine": "exiftool+vision_optional",
+        "engine_version": "v1"
+      }
+    },
+    "links": {
+      "asset_id": "img_0010",
+      "person_ids": ["chris_horne"],
+      "session_ids": [],
+      "event_ids": [],
+      "claim_ids": [],
+      "fact_ids": [],
+      "chapter_ids": [],
+      "related_asset_ids": []
+    }
+  },
+  "photo_no_exif_user_stated_date": {
+    "_note": "Example: old scanned print with no EXIF — date comes from user statement",
+    "meta": {
+      "asset_id": "img_0055",
+      "asset_type": "photo",
+      "source_type": "photo_metadata",
+      "document_kind": "historical_photo",
+      "title": "Unknown family photo, estimated Christmas 1971",
+      "person_ids": ["janice_horne", "kent_horne"],
+      "tags": ["Christmas", "1971", "family"],
+      "review_state": "unreviewed",
+      "processing_state": "completed",
+      "photo": {
+        "datetime_original": null,
+        "file_created_at": "2026-02-14T10:33:00-07:00",
+        "gps": null,
+        "location_label": null,
+        "camera_make": null,
+        "camera_model": null
+      },
+      "user_stated_date": {
+        "value": "1971-12",
+        "confidence": 0.55,
+        "note": "Chris said: 'I think this was Christmas 1971, based on the tree in the background'"
+      },
+      "timeline": {
+        "candidate_anchor": true,
+        "candidate_date": "1971-12",
+        "candidate_location": null,
+        "date_source": "user_stated"
+      }
+    }
+  },
+  "audio_transcript_asset": {
+    "meta": {
+      "asset_id": "med_0007",
+      "asset_type": "media",
+      "source_type": "audio_transcript",
+      "document_kind": "interview_audio",
+      "title": "Interview session 03 audio",
+      "person_ids": ["kent_horne"],
+      "session_id": "session_03",
+      "tags": ["interview", "oral history"],
+      "review_state": "approved_source_only",
+      "processing_state": "completed",
+      "media": {
+        "duration_seconds": 3724,
+        "audio_channels": 1,
+        "sample_rate": 44100
+      },
+      "transcription": {
+        "status": "completed",
+        "review_required": false,
+        "language": "en",
+        "diarization": true,
+        "engine": "faster-whisper",
+        "model": "large-v3",
+        "transcript_txt_path": "derived/transcript.txt",
+        "transcript_jsonl_path": "derived/transcript.jsonl"
+      },
+      "source_file": {
+        "original_filename": "kent_session_03.wav",
+        "stored_path": "memory/archive/people/kent_horne/media/med_0007/original/source.wav",
+        "sha256": "jkl012...",
+        "mime_type": "audio/wav",
+        "file_size": 148322144
+      },
+      "processing": {
+        "pipeline": "stt_audio_v1",
+        "engine": "faster-whisper",
+        "engine_version": "v1"
+      }
+    },
+    "links": {
+      "asset_id": "med_0007",
+      "person_ids": ["kent_horne"],
+      "session_ids": ["session_03"],
+      "event_ids": [],
+      "claim_ids": [],
+      "fact_ids": [],
+      "chapter_ids": [],
+      "related_asset_ids": []
+    }
+  },
+  "video_transcript_asset": {
+    "meta": {
+      "asset_id": "med_0011",
+      "asset_type": "media",
+      "source_type": "video_transcript",
+      "document_kind": "interview_video",
+      "title": "Interview session 01 video",
+      "person_ids": ["janice_horne"],
+      "session_id": "session_01",
+      "tags": ["interview", "video"],
+      "review_state": "approved_source_only",
+      "processing_state": "completed",
+      "media": {
+        "duration_seconds": 4180,
+        "width": 1920,
+        "height": 1080,
+        "frame_rate": 29.97,
+        "audio_channels": 2,
+        "sample_rate": 48000,
+        "codec_video": "h264",
+        "codec_audio": "aac"
+      },
+      "quicktime_metadata": {
+        "creation_date": "2026-01-15T14:32:00-07:00",
+        "location": {
+          "lat": 35.687,
+          "lon": -105.937
+        },
+        "location_label": "Santa Fe, New Mexico",
+        "make": "Apple",
+        "model": "iPhone 15 Pro"
+      },
+      "transcription": {
+        "status": "completed",
+        "review_required": false,
+        "language": "en",
+        "diarization": true,
+        "engine": "faster-whisper",
+        "model": "large-v3",
+        "transcript_txt_path": "derived/transcript.txt",
+        "transcript_jsonl_path": "derived/transcript.jsonl"
+      },
+      "frame_analysis": {
+        "status": "completed",
+        "sampled_frames": 48,
+        "sample_interval_seconds": 60,
+        "ocr_applied": true,
+        "ocr_targets": ["title_cards", "name_lower_thirds", "on_screen_captions", "visible_documents"],
+        "keyframes_path": "derived/keyframes/",
+        "text_found": [
+          {
+            "frame_index": 3,
+            "timecode": "00:03:12",
+            "text": "Kent Horne — Santa Fe, 2026",
+            "confidence": 0.91,
+            "region": "lower_third"
+          }
+        ]
+      },
+      "derived": {
+        "waveform_json_path": "derived/waveform.json",
+        "shots_json_path": "derived/shots.json",
+        "keyframes_dir": "derived/keyframes/"
+      },
+      "source_file": {
+        "original_filename": "janice_session_01.mp4",
+        "stored_path": "memory/archive/people/janice_horne/media/med_0011/original/source.mp4",
+        "sha256": "mno345...",
+        "mime_type": "video/mp4",
+        "file_size": 844221114
+      },
+      "processing": {
+        "pipeline": "video_stt_v1",
+        "engine": "ffmpeg+faster-whisper",
+        "engine_version": "v1"
+      }
+    },
+    "links": {
+      "asset_id": "med_0011",
+      "person_ids": ["janice_horne"],
+      "session_ids": ["session_01"],
+      "event_ids": [],
+      "claim_ids": [],
+      "fact_ids": [],
+      "chapter_ids": [],
+      "related_asset_ids": []
+    }
+  },
+  "born_digital_doc": {
+    "meta": {
+      "asset_id": "doc_0102",
+      "asset_type": "document",
+      "source_type": "born_digital_doc",
+      "document_kind": "memoir_draft",
+      "title": "Janice draft memoir notes",
+      "person_ids": ["janice_horne"],
+      "tags": ["memoir draft", "born digital"],
+      "review_state": "review_required",
+      "processing_state": "completed",
+      "text_extraction": {
+        "status": "completed",
+        "text_path": "derived/extracted.txt",
+        "normalized_from": "docx"
+      },
+      "source_file": {
+        "original_filename": "janice_notes.docx",
+        "stored_path": "memory/archive/people/janice_horne/documents/doc_0102/original/source.docx",
+        "sha256": "pqr678...",
+        "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "file_size": 94421
+      },
+      "processing": {
+        "pipeline": "born_digital_parse_v1",
+        "engine": "doc_parser",
+        "engine_version": "v1"
+      }
+    },
+    "links": {
+      "asset_id": "doc_0102",
+      "person_ids": ["janice_horne"],
+      "session_ids": [],
+      "event_ids": [],
+      "claim_ids": [],
+      "fact_ids": [],
+      "chapter_ids": [],
+      "related_asset_ids": []
+    }
+  },
+  "email_asset": {
+    "_note": "Email born_digital_doc with structured headers treated separately from body text",
+    "meta": {
+      "asset_id": "doc_0088",
+      "asset_type": "document",
+      "source_type": "born_digital_doc",
+      "document_kind": "email",
+      "title": "Dad's papers from the storage unit",
+      "person_ids": ["janice_horne", "chris_horne"],
+      "tags": ["family history", "correspondence"],
+      "review_state": "review_required",
+      "processing_state": "completed",
+      "email_headers": {
+        "from": "Janice Horne <janice.horne@example.com>",
+        "to": ["Chris Horne <dev@lorevox.com>"],
+        "cc": [],
+        "subject": "Dad's papers from the storage unit",
+        "date": "2019-11-04T09:22:00-07:00",
+        "message_id": "<abc123@mail.example.com>"
+      },
+      "email_body": {
+        "text_path": "derived/extracted.txt",
+        "has_attachments": true,
+        "attachments": [
+          {
+            "filename": "dad_discharge_1953.pdf",
+            "mime_type": "application/pdf",
+            "size": 204800,
+            "ingested_as": "doc_0089"
+          }
+        ]
+      },
+      "candidate_correspondents": [
+        {"name": "Janice Horne", "person_id": "janice_horne", "role": "sender"},
+        {"name": "Chris Horne", "person_id": "chris_horne", "role": "recipient"}
+      ],
+      "timeline": {
+        "candidate_anchor": true,
+        "candidate_date": "2019-11-04",
+        "date_source": "email_header_date"
+      },
+      "source_file": {
+        "original_filename": "storage_unit_email.eml",
+        "stored_path": "memory/archive/people/janice_horne/documents/doc_0088/original/source.eml",
+        "sha256": "stu901...",
+        "mime_type": "message/rfc822",
+        "file_size": 18440
+      }
+    },
+    "links": {
+      "asset_id": "doc_0088",
+      "person_ids": ["janice_horne", "chris_horne"],
+      "session_ids": [],
+      "event_ids": [],
+      "claim_ids": [],
+      "fact_ids": [],
+      "chapter_ids": [],
+      "related_asset_ids": ["doc_0089"]
+    }
+  },
+  "review_states": [
+    "unreviewed",
+    "review_required",
+    "in_review",
+    "approved_source_only",
+    "approved_text",
+    "approved_metadata",
+    "approved_for_extraction",
+    "partially_approved",
+    "rejected_extraction",
+    "rejected_asset"
+  ],
+  "processing_states": [
+    "queued",
+    "classified",
+    "copied",
+    "processed",
+    "partial",
+    "failed",
+    "archived"
+  ],
+  "person_link_status_values": [
+    "identified",
+    "candidate",
+    "unknown",
+    "multiple_possible"
+  ],
+  "review_decision_types": [
+    "approve",
+    "approve_with_edit",
+    "reject",
+    "split_asset",
+    "merge_duplicate",
+    "relink_person",
+    "relink_session",
+    "relink_event",
+    "mark_uncertain",
+    "promote_to_claims",
+    "hold_for_later"
+  ],
+  "review_decision_example": {
+    "review_id": "rev_0009",
+    "asset_id": "doc_0001",
+    "reviewed_at": "2026-03-08T10:22:00-07:00",
+    "reviewed_by": "user",
+    "decision": "approve_with_edit",
+    "notes": "Corrected OCR reading of 'LaPlante'. Kept date uncertain.",
+    "changes": [
+      {
+        "field": "title",
+        "old": "Family history nofes",
+        "new": "Family history notes"
+      }
+    ],
+    "resulting_review_state": "approved_text"
+  }
+}
