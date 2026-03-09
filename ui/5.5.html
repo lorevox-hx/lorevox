@@ -413,11 +413,11 @@
             <div class="flex items-center justify-between mb-2">
               <div class="card-label mb-0">Family Map</div>
               <div class="flex gap-2 text-xs flex-wrap">
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Mother')">+ Mother</button>
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Father')">+ Father</button>
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Sibling')">+ Sibling</button>
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Spouse')">+ Spouse</button>
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Child')">+ Child</button>
+                <button class="btn btn-ghost btn-sm" onclick="addKin('Mother')">Add mother</button>
+                <button class="btn btn-ghost btn-sm" onclick="addKin('Father')">Add father</button>
+                <button class="btn btn-ghost btn-sm" onclick="addKin('Sibling')">Add sibling</button>
+                <button class="btn btn-ghost btn-sm" onclick="addKin('Spouse')">Add spouse</button>
+                <button class="btn btn-ghost btn-sm" onclick="addKin('Child')">Add child</button>
               </div>
             </div>
             <!-- Column headers -->
@@ -1279,7 +1279,7 @@ function addPetRow(data){
     <input class="input-ghost" style="min-width:110px;flex:1" data-p="species" placeholder="Species/breed" value="${escAttr(data.species||"")}">
     <input class="input-ghost" style="width:70px"             data-p="from"   placeholder="Year got"    value="${escAttr(data.from||"")}">
     <input class="input-ghost" style="width:70px"             data-p="to"     placeholder="Year lost"   value="${escAttr(data.to||"")}">
-    <div style="flex:2;min-width:130px"><div class="text-xs text-slate-600 mb-0.5">Best remembered for</div><input class="input-ghost" style="width:100%" data-p="notes" placeholder="Memorable stories, quirks, routines, or why this pet mattered." value="${escAttr(data.notes||"")}"></div>
+    <div style="flex:2;min-width:130px"><div class="text-xs text-slate-600 mb-0.5">Best remembered for</div><input class="input-ghost" style="width:100%" data-p="notes" placeholder="A story, habit, or detail that captures who they were." value="${escAttr(data.notes||"")}"></div>
     <button class="text-red-400 hover:text-red-300 text-sm flex-shrink-0" onclick="this.closest('.petrow').remove();updateArchiveReadiness()">✕</button>`;
   t.appendChild(d);
   updateArchiveReadiness();
