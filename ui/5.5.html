@@ -944,8 +944,10 @@ const API = {
   PING:       ORIGIN + "/api/ping",
   TTS_VOICES: TTS_ORIG + "/api/tts/voices",
   PEOPLE:     ORIGIN + "/api/people",
+  PERSON:     (id) => `${ORIGIN}/api/people/${id}`,
   PROFILE:    (id) => `${ORIGIN}/api/profiles/${id}`,
   SESS_NEW:   ORIGIN + "/api/session/new",
+  SESS_PUT:   ORIGIN + "/api/session/put",
   SESS_LIST:  ORIGIN + "/api/sessions/list",
   SESS_TURNS: (id) => `${ORIGIN}/api/session/turns?conv_id=${encodeURIComponent(id)}`,
   CHAT_SSE:   ORIGIN + "/api/chat/stream",
@@ -956,7 +958,27 @@ const API = {
   TL_ADD:     ORIGIN + "/api/timeline/add",
 };
 
-/* ── 25-Section Interview Roadmap ── */
+/* ── Backend plan section ID → UI roadmap ID mapping ── */
+/* interview_plan.json uses different IDs than the UI roadmap.
+   This table translates backend summary_section_id values into UI IDs
+   so that auto-complete and progress marking work correctly. */
+const PLAN_ID_MAP = {
+  personal_information:  "identity",
+  family_and_heritage:   "origins",
+  early_years:           "early_home",
+  adolescence:           "teen",
+  young_adulthood:       "first_job",
+  marriage_and_family:   "marriage",
+  career_and_achievements:"career",
+  later_years:           "lessons",
+  hobbies_and_events:    "hobbies",
+  health_and_wellness:   "challenges",
+  technology_and_beliefs:"technology",
+  additional_notes:      "legacy",
+  pets:                  "pets",
+};
+
+/* ── 37-Section Interview Roadmap ── */
 const INTERVIEW_ROADMAP = [
   {id:"identity",    label:"Identity & Name",         emoji:"🪪", tags:["personal"]},
   {id:"origins",     label:"Family Origins",           emoji:"🌍", tags:["family","heritage"]},
@@ -1303,6 +1325,21 @@ async function saveProfile(){
     sysBubble("💾 Profile saved.");
     updateProfileStatus();
     updateArchiveReadiness();
+    // Sync session payload so Lori knows who she's talking to across the whole session
+    if(state.chat?.conv_id){
+      fetch(API.SESS_PUT,{method:"POST",headers:ctype(),body:JSON.stringify({
+        conv_id:state.chat.conv_id,
+        payload:{profile:state.profile,person_id:state.person_id}
+      })}).catch(()=>{});
+    }
+    // Sync display_name / date_of_birth / place_of_birth back to the people table
+    // so the sidebar and timeline birth row stay current
+    const b=state.profile.basics;
+    fetch(API.PERSON(state.person_id),{method:"PATCH",headers:ctype(),body:JSON.stringify({
+      display_name:b.preferred||b.fullname||undefined,
+      date_of_birth:b.dob||undefined,
+      place_of_birth:b.pob||undefined
+    })}).catch(()=>{});
   }catch{ sysBubble("⚠ Save failed — is the server running?"); }
 }
 
@@ -2099,7 +2136,9 @@ async function processInterviewAnswer(text, skipped=false){
       state.interview.prompt=j.next_question.prompt;
     }
     if(j.summary_section_id){
-      const idx=INTERVIEW_ROADMAP.findIndex(s=>s.id===j.summary_section_id);
+      // Translate backend plan ID → UI roadmap ID (they use different naming conventions)
+      const uiId=PLAN_ID_MAP[j.summary_section_id]||j.summary_section_id;
+      const idx=INTERVIEW_ROADMAP.findIndex(s=>s.id===uiId);
       if(idx>=0){ sectionDone[idx]=true; sectionIndex=Math.min(idx+1,INTERVIEW_ROADMAP.length-1);
         persistSectionDone(); renderRoadmap(); renderMemoirChapters(); updateSidebar(); }
     }
@@ -2127,8 +2166,8 @@ async function ivSaveAsMemory(){
   const title=s?`${s.label} — memory`:"Memory";
   try{
     await fetch(API.TL_ADD,{method:"POST",headers:ctype(),body:JSON.stringify({
-      person_id:state.person_id,title,notes:ans,ts:new Date().toISOString().split("T")[0],
-      event_type:"personal",source:"interview"})});
+      person_id:state.person_id,title,description:ans,ts:new Date().toISOString().split("T")[0],
+      kind:"personal"})});
     captureState="saved"; renderCaptureChip();
     sysBubble("📁 Saved as memory to Timeline.");
     renderTimeline();
@@ -2240,7 +2279,7 @@ async function sendSystemPrompt(instruction){
 async function streamSse(text,overrideBubble=null){
   setLoriState("thinking");
   const bubble=overrideBubble||appendBubble("ai","…");
-  const sys=`You are Lori, a warm oral historian and memoir biographer working for Lorevox. PROFILE: ${JSON.stringify({person_id:state.person_id,profile:state.profile})}`;
+  const sys=`You are Lori, a warm oral historian and memoir biographer working for Lorevox. PROFILE_JSON: ${JSON.stringify({person_id:state.person_id,profile:state.profile})}`;
   const body={messages:[{role:"system",content:sys},{role:"user",content:text}],
     temp:0.7,max_new:512,conv_id:state.chat.conv_id||"default"};
   let full="";

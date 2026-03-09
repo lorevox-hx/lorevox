@@ -25,17 +25,19 @@ router = APIRouter(prefix="/api/interview", tags=["interview"])
 
 # Mirrors your interview plan JSON end_of_section_summary fields.
 SECTION_END_INSTRUCTIONS: dict[str, str] = {
-    "personal": "Summarize the user's basic identity details and naming/birth stories.",
-    "heritage": "Summarize the user's family origins, key figures, and heritage stories.",
-    "early": "Summarize the user's early memories and sense of home.",
-    "adolescence": "Summarize the user's teenage identity, friendships, and defining experiences.",
-    "young": "Summarize the user's early adult experiences and transitions.",
-    "marriage": "Summarize the user's relationships, partnerships, and family beginnings.",
-    "career": "Summarize the user's work history and early career development.",
-    "later": "Summarize the user's later-life reflections and evolving priorities.",
-    "hobbies": "Summarize the user's interests, passions, and meaningful events.",
-    "health": "Summarize the user's wellness journey and personal resilience.",
-    "followups": "Summarize any additional clarifications and details gathered in follow-up questions.",
+    "personal_information":      "Summarize the user's basic identity details and naming/birth stories.",
+    "family_and_heritage":       "Summarize the user's family origins, key figures, and heritage stories.",
+    "early_years":               "Summarize the user's early memories and sense of home.",
+    "adolescence":               "Summarize the user's teenage identity, friendships, and defining experiences.",
+    "young_adulthood":           "Summarize the user's early adult experiences and transitions.",
+    "marriage_and_family":       "Summarize the user's relationships, partnerships, and family beginnings.",
+    "career_and_achievements":   "Summarize the user's work history and career highlights.",
+    "later_years":               "Summarize the user's later-life reflections and evolving priorities.",
+    "hobbies_and_events":        "Summarize the user's interests, passions, and meaningful events.",
+    "health_and_wellness":       "Summarize the user's wellness journey and personal resilience.",
+    "technology_and_beliefs":    "Summarize the user's relationship with technology, values, and beliefs.",
+    "additional_notes":          "Summarize any additional clarifications and details gathered in follow-up questions.",
+    "pets":                      "Summarize the user's cherished pets and the memories associated with them.",
 }
 
 
@@ -151,6 +153,10 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
 
     person = db.get_person(sess["person_id"]) or {"display_name": "the speaker"}
     person_name = (person.get("display_name") or "the speaker").strip() or "the speaker"
+    # Fetch pronouns from profile so Lori uses the correct ones in section summaries and memoir drafts
+    _profile_raw = db.get_profile(sess["person_id"]) or {}
+    _basics = (_profile_raw.get("profile") or _profile_raw).get("basics") or {}
+    person_pronouns: str = (_basics.get("pronouns") or "").strip()
 
     # FIXED: Replaced add_interview_answer with add_answer
     db.add_answer(
@@ -197,7 +203,11 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
     if boundary and current_section:
         section_meta = get_section_meta(sess["plan_id"], current_section) or {"title": current_section}
         section_title = (section_meta.get("title") or current_section).strip()
-        instruction = SECTION_END_INSTRUCTIONS.get(current_section, "Summarize the key details from this section.")
+        # Exact match first, then prefix-match fallback for any unlisted sections
+        instruction = SECTION_END_INSTRUCTIONS.get(
+            current_section,
+            next((v for k, v in SECTION_END_INSTRUCTIONS.items() if current_section.startswith(k)), "Summarize the key details from this section.")
+        )
         transcript = get_section_transcript(req.session_id, current_section)
 
         generated_summary = draft_section_summary(
@@ -205,6 +215,7 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
             instruction=instruction,
             transcript=transcript,
             person_name=person_name,
+            pronouns=person_pronouns,
         )
         if generated_summary:
             summary_section_id = current_section
@@ -235,7 +246,7 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
         else:
             # Follow-ups exist and we're out of questions => done. Draft final memoir.
             full_transcript = get_session_transcript(req.session_id)
-            final_memoir = draft_final_memoir(transcript=full_transcript, person_name=person_name)
+            final_memoir = draft_final_memoir(transcript=full_transcript, person_name=person_name, pronouns=person_pronouns)
 
     # 5) Update active_question_id
     if next_q:

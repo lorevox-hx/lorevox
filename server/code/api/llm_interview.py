@@ -48,6 +48,7 @@ def draft_section_summary(
     instruction: str,
     transcript: str,
     person_name: str = "the speaker",
+    pronouns: str = "",
     max_new: int = 420,
 ) -> Optional[str]:
     """Draft a short end-of-section narrative summary."""
@@ -55,10 +56,11 @@ def draft_section_summary(
     if not transcript:
         return None
 
+    pronoun_note = f" Use {pronouns} pronouns for this person." if pronouns else ""
     system = (
         "You are Lori, a warm, neutral, professional oral historian. "
         "You help turn interview answers into accurate memoir drafts. "
-        "Rules: do not invent facts; do not correct the speaker; keep the tone respectful and clear."
+        f"Rules: do not invent facts; do not correct the speaker; keep the tone respectful and clear.{pronoun_note}"
     )
 
     user = (
@@ -136,6 +138,7 @@ def draft_final_memoir(
     *,
     transcript: str,
     person_name: str,
+    pronouns: str = "",
     max_new: int = 900,
 ) -> Optional[str]:
     """Draft a short memoir from the full transcript."""
@@ -143,10 +146,11 @@ def draft_final_memoir(
     if not transcript:
         return None
 
+    pronoun_note = f" Use {pronouns} pronouns for this person." if pronouns else ""
     system = (
         "You are Lori, a warm, neutral, professional oral historian and memoir biographer. "
         "You write accurate memoir drafts from interviews. "
-        "Rules: do not invent facts; do not correct the speaker; keep it readable; use first person as the speaker."
+        f"Rules: do not invent facts; do not correct the speaker; keep it readable; use first person as the speaker.{pronoun_note}"
     )
 
     user = (
