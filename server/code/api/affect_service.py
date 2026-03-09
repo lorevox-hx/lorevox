@@ -93,6 +93,12 @@ class AffectStateManager:
         """
         Accept an incoming affect event.
         Returns True if a meaningful state change was detected.
+
+        Time source: always uses server-received time (time.time()) for the rolling
+        window — never the client-supplied event.timestamp. This prevents clock skew,
+        delayed delivery, and test-event timestamp inconsistencies from corrupting
+        the window logic. The client timestamp is preserved in AffectEvent for DB
+        audit purposes only; it plays no role in rolling-state computation.
         """
         sid = event.session_id
 
@@ -106,18 +112,19 @@ class AffectStateManager:
         if event.duration_ms < self.MIN_DURATION_MS:
             return False
 
-        now = event.timestamp
+        # Server-receipt time — authoritative for all window operations
+        received_at = time.time()
 
         # Initialise session window
         if sid not in self._windows:
             self._windows[sid] = deque()
             self._recent_events[sid] = deque(maxlen=5)
 
-        # Add to rolling window
-        self._windows[sid].append((now, event.affect_state, event.confidence))
+        # Add to rolling window using server time
+        self._windows[sid].append((received_at, event.affect_state, event.confidence))
 
-        # Prune old events outside the window
-        cutoff = now - self.WINDOW_SECONDS
+        # Prune old events outside the window (server-time based)
+        cutoff = received_at - self.WINDOW_SECONDS
         while self._windows[sid] and self._windows[sid][0][0] < cutoff:
             self._windows[sid].popleft()
 

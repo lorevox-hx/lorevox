@@ -82,6 +82,8 @@ Resources are shown **below** Lori's message — the acknowledgment comes first.
 
 Each resource is a clean tap-to-call card. Not a list. Not a paragraph.
 
+**Display behavior:** Basic resource cards appear immediately below Lori's message — no click required to see them. The "Show support options" button expands a fuller panel (additional context, alternate contacts, online chat links). Cards are never hidden until the person acts.
+
 | Resource | Contact |
 |---|---|
 | Crisis & Suicide Prevention | **988** — call or text (US) |
@@ -99,13 +101,24 @@ When `interview_softened = true` (set after any safety trigger + "Continue talki
 - Roadmap pressure suppressed (no "you have X sections remaining" nudges)
 - `interview_softened` resets after 3 prompts or when the person reaches a new section
 
-### Delete Segment (Session Review — not the overlay)
+### Sensitive Segment Review UI (Session Review — not the overlay)
 
-In the session review panel, any segment flagged `sensitive: true` gets:
-- A visible "This segment is private" indicator
-- A "Remove this segment" option (permanent delete from session)
-- A confirmation dialog before deletion: _"This will permanently remove this part of the session. This cannot be undone."_
-This is not in the interruption overlay — it belongs in the quiet, deliberate review flow.
+In the session review panel, any segment flagged `sensitive: true` must explicitly expose all four controls:
+
+```
+┌─ [🔒 Private] [Excluded from memoir] ─────────────────────────────────┐
+│  "...transcript text of segment..."                                     │
+│                                                                         │
+│  [ Include in writing ]    [ Remove this segment ]                      │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Private badge** — always visible on flagged segments; uses a design-system lock icon (not emoji)
+- **Excluded from memoir badge** — always visible; shows that segment is not in the auto-draft
+- **Include in writing** — person explicitly opts this segment into the memoir draft; confirmation: _"This will include this part of your story in your memoir draft. You can remove it again at any time."_
+- **Remove this segment** — permanent delete from session; confirmation: _"This will permanently remove this part of the session. This cannot be undone."_
+
+These four controls are always visible together on sensitive segments. No hunting. No guessing. This is not in the interruption overlay — it belongs in the quiet, deliberate review flow.
 
 ### Hard Limits — What the System Never Does
 - Never discusses, suggests, or references methods of suicide or self-harm
@@ -135,7 +148,7 @@ This is not in the interruption overlay — it belongs in the quiet, deliberate 
 ## Track B — Emotion Signal Layer
 
 ### Mandate
-- Use camera and mic signals to assist the interview
+- Use camera signals to assist the interview in v6.1; add mic/voice-tone support in v6.2
 - Feed signals back as **gentle assists** — never hard claims
 - **Never label a person's emotion as fact**
 - The system's job: notice signs → adapt quietly → occasionally check in — nothing more
@@ -281,7 +294,7 @@ Stored as: timeline markers with `affect_state` field, visible as soft color-cod
 - `classifyEmotion(landmarks)` — rule-based geometry → raw emotion (internal)
 - `mapToAffectState(rawEmotion, confidence)` — maps to interview-safe affect state
 - `emitAffectEvent(event)` — fires to interview engine + session log (affect_state only)
-- `renderEmotionArc()` — timeline visualization using affect_state
+- `renderAffectArc()` — timeline visualization using affect_state
 - Settings toggle: "Emotion-aware interview mode" (default off)
 - Small green camera indicator dot in interview UI when active
 - Camera permission card at interview start (opt-in)
@@ -331,7 +344,7 @@ Stored as: timeline markers with `affect_state` field, visible as soft color-cod
 | B4 | `mapToAffectState()` — internal mapping layer | 6.1.html |
 | B5 | `emitAffectEvent()` → interview engine adaptive responses | 6.1.html |
 | B6 | Affect log → session state (affect_state only, no raw geometry) | 6.1.html |
-| B7 | `renderEmotionArc()` → timeline markers with affect_state | 6.1.html |
+| B7 | `renderAffectArc()` → timeline markers with affect_state | 6.1.html |
 | B8 | Settings toggle for emotion-aware mode | 6.1.html |
 
 ---

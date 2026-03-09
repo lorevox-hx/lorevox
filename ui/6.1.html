@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Lorevox v6.1 — Life Archive Studio</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- v6.1: MediaPipe Face Mesh (browser-side affect sensing — Track B) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/interview.css">
+  <link rel="stylesheet" href="css/safety.css">
+  <link rel="stylesheet" href="css/permissions.css">
+  <link rel="stylesheet" href="css/affect.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- ══════════════════ TOP BAR ══════════════════ -->
+  <div class="top-bar">
+    <button class="btn-icon" id="btnToggleSb"    onclick="toggleSidebar()"  title="Toggle people &amp; roadmap">☰</button>
+    <span class="serif text-indigo-400 font-semibold text-lg tracking-wide">Lorevox</span>
+    <span class="text-slate-600 text-xs hidden sm:block">Life Archive Studio</span>
+    <span class="text-slate-700 text-xs hidden sm:block">v6.1</span>
+    <div class="flex-1"></div>
+    <button class="btn-icon" id="btnFocus" onclick="toggleFocus()" title="Focus mode — hide panels">⊡</button>
+    <button class="btn-icon" id="btnDevMode" onclick="toggleDevMode()" title="Developer mode">⚙</button>
+    <button class="btn-icon" id="btnToggleChat" onclick="toggleChat()" title="Toggle interviewer panel">▶</button>
+    <span id="pillChat"  class="pill pill-off hidden dev-only">Chat</span>
+    <span id="pillTts"   class="pill pill-off hidden dev-only">TTS</span>
+    <span id="pillWs"    class="pill pill-off hidden dev-only">WS</span>
+  </div>
+
+  <div class="grid-layout" id="gridLayout">
+
+    <!-- ══════════════════ SIDEBAR LEFT ══════════════════ -->
+    <aside class="sidebar-left">
+      <div class="sb-body">
+
+        <!-- Active person summary -->
+        <div id="activeSummary" class="mb-3 hidden">
+          <div class="px-2 py-2 rounded-lg bg-indigo-600/10 border border-indigo-600/20">
+            <div id="summaryName" class="font-bold text-indigo-400 text-sm truncate"></div>
+            <div class="flex items-center gap-2 mt-1 flex-wrap">
+              <span id="summaryGen"  class="text-xs text-slate-400"></span>
+              <span id="summaryProg" class="text-xs text-slate-500"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- People -->
+        <div class="sb-section-title">People</div>
+        <div id="peopleList" class="mb-3 space-y-1"></div>
+
+        <!-- Roadmap -->
+        <div class="sb-section-title mt-3">Interview Roadmap</div>
+        <div id="roadmapList" class="space-y-0.5 mb-3"></div>
+        <div class="flex gap-1 mb-3">
+          <button class="btn btn-ghost btn-sm flex-1" onclick="prevSection()">← Prev</button>
+          <button class="btn btn-ghost btn-sm flex-1" onclick="nextSection()">Next →</button>
+        </div>
+
+        <!-- Sessions -->
+        <div class="sb-section-title mt-2">Recent Sessions</div>
+        <div id="sessionsList" class="space-y-1"></div>
+
+      </div>
+    </aside>
+
+    <!-- ══════════════════ MAIN STAGE ══════════════════ -->
+    <main class="main-stage">
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button id="tab-profile"   class="tab-btn active"  onclick="showTab('profile')">👤 Profile</button>
+        <button id="tab-interview" class="tab-btn"         onclick="showTab('interview')">🎙 Interview</button>
+        <button id="tab-events"    class="tab-btn"         onclick="showTab('events')">💡 Memory Triggers</button>
+        <button id="tab-timeline"  class="tab-btn"         onclick="showTab('timeline')">📅 Timeline</button>
+        <button id="tab-memoir"    class="tab-btn"         onclick="showTab('memoir')">📖 Memoir Draft</button>
+        <button id="tab-obituary"  class="tab-btn"         onclick="showTab('obituary')">🕊 Obituary Draft</button>
+        <button id="tab-review"    class="tab-btn"         onclick="showTab('review')">🔒 Private Segments</button>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           PROFILE
+      ══════════════════════════════════════════════════ -->
+      <div id="pane-profile" class="tab-pane">
+        <div class="max-w-2xl mx-auto">
+
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <h1 class="serif text-2xl text-white">Person Profile</h1>
+              <p class="text-xs text-slate-500 mt-0.5">Start the archive with the details that help Lori ask better, more personal questions.</p>
+            </div>
+            <div class="flex gap-2 flex-shrink-0 mt-1">
+              <button class="btn btn-ghost" onclick="demoFill()">Demo Fill</button>
+              <button class="btn btn-ghost" onclick="saveProfile()">Save</button>
+              <button class="btn btn-primary" onclick="createPersonFromForm()">+ New Person</button>
+            </div>
+          </div>
+
+          <!-- Identity -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-3">
+              <div class="card-label mb-0">Personal Details</div>
+              <span id="profileStatusBadge" class="profile-status none">No person selected</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <input class="input-ghost" id="bio_fullname"  placeholder="Full legal name">
+              <input class="input-ghost" id="bio_preferred" placeholder="Name used in conversation">
+              <div>
+                <label class="text-xs text-slate-500 block mb-1">Date of Birth</label>
+                <input class="input-ghost" id="bio_dob" type="date" onchange="onDobChange()">
+              </div>
+              <input class="input-ghost" id="bio_pob" placeholder="Place of birth">
+              <input class="input-ghost" id="bio_culture" placeholder="Family roots / cultural background">
+              <div>
+                <label class="text-xs text-slate-500 block mb-1">Primary country context</label>
+                <select class="input-ghost" id="bio_country" onchange="onCountryChange()">
+                  <option value="us">United States</option>
+                  <option value="uk">United Kingdom</option>
+                  <option value="canada">Canada</option>
+                  <option value="mexico">Mexico</option>
+                  <option value="australia">Australia</option>
+                  <option value="global">Global / Other</option>
+                </select>
+              </div>
+            </div>
+            <!-- Pronoun + phonetic row -->
+            <div class="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label class="text-xs text-slate-500 block mb-1">Pronouns</label>
+                <select class="input-ghost" id="bio_pronouns" onchange="onPronounsChange()">
+                  <option value="">Not specified</option>
+                  <option value="she/her">she/her</option>
+                  <option value="he/him">he/him</option>
+                  <option value="they/them">they/them</option>
+                  <option value="custom">Custom…</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500 block mb-1">Phonetic pronunciation</label>
+                <input class="input-ghost" id="bio_phonetic" placeholder="e.g. noo-YEN, MIGH-kul">
+              </div>
+            </div>
+            <div id="bio_pronouns_custom_wrap" class="mt-2 hidden">
+              <input class="input-ghost" id="bio_pronouns_custom" placeholder="Enter custom pronouns (e.g. ze/zir)">
+            </div>
+            <p class="text-xs text-slate-600 mt-2">Pronouns shape how Lori writes obituary and memoir drafts. Phonetic spelling helps TTS say names correctly.</p>
+            <!-- Badges -->
+            <div class="mt-3 flex items-center gap-3 flex-wrap">
+              <span id="genBadge"   class="gen-badge hidden"></span>
+              <span id="ageDisplay" class="text-xs text-slate-400 hidden"></span>
+            </div>
+            <!-- Dev info — dev mode only -->
+            <details class="mt-2 dev-only hidden">
+              <summary class="text-xs text-slate-600 cursor-pointer hover:text-slate-400">Developer info</summary>
+              <div class="mt-1 text-xs text-slate-500 mono" id="activePerson">No person loaded</div>
+            </details>
+          </div>
+
+          <!-- Family Map -->
+          <div class="card">
+            <div class="card-label mb-1">Family Map</div>
+            <p class="text-xs text-slate-500 mb-3">Map the people who shaped this person's life — family, partners, and chosen connections.</p>
+            <div class="flex gap-2 text-xs flex-wrap mb-2">
+              <span class="filter-group-label">Immediate:</span>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Mother')">Add mother</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Father')">Add father</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Sibling')">Add sibling</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Spouse')">Add spouse</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Child')">Add child</button>
+            </div>
+            <div class="flex gap-2 text-xs flex-wrap mb-2">
+              <span class="filter-group-label">Extended:</span>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Grandparent')">Add grandparent</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Adoptive parent')">Adoptive parent</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Adopted child')">Adopted child</button>
+            </div>
+            <div class="flex gap-2 text-xs flex-wrap mb-3">
+              <span class="filter-group-label">Chosen:</span>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Chosen family')">Chosen family</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Guardian')">Guardian</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Former spouse')">Former spouse</button>
+            </div>
+            <!-- Column headers -->
+            <div class="flex gap-2 px-2 mb-1 text-xs text-slate-600 font-semibold">
+              <span style="min-width:110px;flex:1">Name</span>
+              <span style="min-width:100px">Relationship</span>
+              <span style="flex:1;min-width:90px">Birthplace</span>
+              <span style="flex:1;min-width:90px">Occupation</span>
+              <span style="min-width:70px">Deceased</span>
+              <span style="width:20px"></span>
+            </div>
+            <div id="tblKinship" class="space-y-2"></div>
+          </div>
+
+          <!-- Pets -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-3">
+              <div class="card-label mb-0">🐾 Pets &amp; Animals</div>
+              <button class="btn btn-ghost btn-sm" onclick="addPet()">+ Add Pet</button>
+            </div>
+            <div id="tblPets">
+              <div class="text-xs text-slate-500 italic">
+                Pets are powerful memory anchors — favorite stories often surface here.
+              </div>
+            </div>
+          </div>
+
+          <!-- Archive Readiness -->
+          <div class="card">
+            <div class="card-label">Archive Readiness</div>
+            <div id="readinessChecks" class="space-y-0.5"></div>
+            <p class="text-xs text-slate-600 mt-3">Complete these basics so Lori can ask better, more personal questions.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           INTERVIEW
+      ══════════════════════════════════════════════════ -->
+      <div id="pane-interview" class="tab-pane hidden">
+        <div class="max-w-2xl mx-auto">
+
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <h1 class="serif text-2xl text-white">Interview Session</h1>
+              <div id="ivSectionLabel" class="text-xs text-indigo-400/80 mt-0.5">No section active — select one from the roadmap</div>
+            </div>
+            <div class="flex gap-2 flex-shrink-0 mt-1">
+              <button class="btn btn-primary" onclick="ivStart()">Begin Section</button>
+              <button class="btn btn-ghost"   onclick="ivAskInChat()">Ask Again</button>
+              <button class="btn btn-ghost"   onclick="ivSkip()">Skip for Now</button>
+            </div>
+          </div>
+          <!-- Mode + note bar -->
+          <div class="flex items-center gap-3 mb-4 flex-wrap">
+            <div class="flex gap-1">
+              <button class="mode-btn active" id="modeChronBtn" onclick="setInterviewMode('chronological')">Chronological</button>
+              <button class="mode-btn" id="modeThemeBtn" onclick="setInterviewMode('thematic')">Thematic</button>
+            </div>
+            <span class="text-xs text-slate-600">You can answer sections in any order.</span>
+            <button class="mode-btn" id="youthModeBtn" onclick="toggleYouthSections()">Youth Mode: Off</button>
+            <!-- v6.1 emotion-aware toggle -->
+            <button class="emotion-btn" id="emotionAwareBtn" onclick="toggleEmotionAware()"
+              title="When on, Lori uses gentle camera cues to pace the interview">
+              <span id="cameraDot" class="camera-dot off"></span>
+              Affect-aware: Off
+            </button>
+          </div>
+
+          <!-- v6.1 Permission card (shown once before first interview start) -->
+          <div id="permCard" class="perm-card hidden">
+            <div class="perm-card-title">🎙 This interview works best with:</div>
+            <div class="perm-row">
+              <button class="perm-toggle on" id="permMicToggle" onclick="togglePermMic()" title="Toggle microphone"></button>
+              <div>
+                <div class="perm-label">Microphone — for voice responses</div>
+                <div class="perm-sub">Records your voice so Lori can hear and transcribe your answers.</div>
+              </div>
+            </div>
+            <div class="perm-row">
+              <button class="perm-toggle" id="permCamToggle" onclick="togglePermCam()" title="Toggle camera"></button>
+              <div>
+                <div class="perm-label">Camera — helps Lori pace the interview more gently</div>
+                <div class="perm-sub">Video is processed on this device and is not saved. Lori uses gentle signals to adapt her pacing.</div>
+              </div>
+            </div>
+            <div class="perm-privacy-note">Everything is processed on this device. Video is not saved or transmitted.</div>
+            <div class="flex gap-2 mt-4">
+              <button class="btn btn-primary flex-1" onclick="confirmPermCard()">Start Interview</button>
+              <button class="btn btn-ghost" onclick="dismissPermCard()">Skip</button>
+            </div>
+          </div>
+
+          <!-- Current Prompt — dominant, large -->
+          <div class="card" style="border-color:rgba(124,156,255,.22);">
+            <div class="text-xs text-slate-500 font-semibold uppercase tracking-widest mb-3">Current Prompt</div>
+            <div class="iv-prompt-text" id="ivPrompt">Select a person and click Begin Section to start.</div>
+
+            <div class="mt-5">
+              <!-- Capture chip -->
+              <div class="flex items-center gap-2 mb-2">
+                <div class="text-xs text-slate-500 font-semibold">Captured answer</div>
+                <span id="captureChip" class="capture-chip hidden"></span>
+              </div>
+              <textarea id="ivAnswer" rows="4" class="input-ghost"
+                placeholder="The answer can be captured from Lori or typed here directly. Edit freely before saving."
+                oninput="onIvAnswerEdit()"></textarea>
+              <div class="flex gap-2 mt-3">
+                <button class="btn btn-primary flex-1" onclick="ivSaveAndNext()">Save &amp; Continue</button>
+                <button class="btn btn-ghost" onclick="ivSaveAsMemory()" title="Pin this to the Timeline as a memory without marking the section complete">Save as Memory</button>
+              </div>
+            </div>
+
+            <!-- Session / Q details — behind disclosure -->
+            <details class="mt-3">
+              <summary class="text-xs text-slate-600 cursor-pointer hover:text-slate-400">Session details</summary>
+              <div class="mt-1 text-xs text-slate-500 mono flex gap-4">
+                <span>Session ID: <span id="ivSession">—</span></span>
+                <span>Question ID: <span id="ivQid">—</span></span>
+              </div>
+            </details>
+          </div>
+
+          <!-- Memory Triggers for this Section — accordion -->
+          <div class="card" style="padding:10px 15px;">
+            <div class="accordion-trigger" onclick="toggleAccordion('accTriggers')">
+              <div class="acc-label">💡 Helpful Memory Prompts</div>
+              <span class="acc-arrow" id="arrTriggers">▶</span>
+            </div>
+            <div class="accordion-body" id="accTriggers">
+              <div id="contextTriggers" class="pt-2 text-xs text-slate-500">
+                Set a date of birth on the Profile tab to see age-anchored triggers.
+              </div>
+            </div>
+          </div>
+
+          <!-- Section Notes — accordion -->
+          <div class="card" style="padding:10px 15px;">
+            <div class="accordion-trigger" onclick="toggleAccordion('accDraft')">
+              <div class="acc-label">📝 Section Notes</div>
+              <span class="acc-arrow" id="arrDraft">▶</span>
+            </div>
+            <div class="accordion-body" id="accDraft">
+              <div class="pt-2 flex justify-end mb-1">
+                <button class="btn btn-ghost btn-sm" onclick="copyDraftOutput()">Copy</button>
+              </div>
+              <textarea id="outputPane" rows="8" class="input-ghost" readonly
+                placeholder="Section summaries and memoir drafts appear here…"></textarea>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           WORLD EVENTS / MEMORY TRIGGERS
+      ══════════════════════════════════════════════════ -->
+      <div id="pane-events" class="tab-pane hidden">
+        <div class="max-w-2xl mx-auto">
+
+          <div class="flex items-end justify-between mb-2">
+            <h1 class="serif text-2xl text-white">Memory Triggers</h1>
+          </div>
+          <p class="text-xs text-slate-500 mb-3">
+            Click any event to have Lori ask about that moment in the person's life.
+          </p>
+
+          <!-- Personalized context strip -->
+          <div id="evtContextStrip" class="context-strip mb-4 hidden"></div>
+
+          <!-- Secondary cultural lens -->
+          <div class="flex items-center flex-wrap gap-2 mb-2">
+            <span class="filter-group-label">Cultural lens:</span>
+            <select id="evtSecondaryCountry" class="input-ghost" style="width:auto;padding:3px 8px;font-size:11px" onchange="renderEventsGrid()">
+              <option value="">None (primary country only)</option>
+              <option value="mexico">Mexico / Latin America</option>
+              <option value="uk">United Kingdom / Europe</option>
+              <option value="canada">Canada</option>
+              <option value="australia">Australia</option>
+              <option value="global">Global</option>
+            </select>
+          </div>
+          <!-- Grouped filter chips -->
+          <div class="flex items-center flex-wrap gap-2 mb-2">
+            <span class="filter-group-label">History:</span>
+            <span class="filter-chip active" data-f="all"        onclick="setEvtFilter('all',this)">All</span>
+            <span class="filter-chip" data-f="war"               onclick="setEvtFilter('war',this)">⚔️ War</span>
+            <span class="filter-chip" data-f="technology"        onclick="setEvtFilter('technology',this)">💡 Tech</span>
+            <span class="filter-chip" data-f="politics"          onclick="setEvtFilter('politics',this)">🏛 Politics</span>
+            <span class="filter-chip" data-f="health"            onclick="setEvtFilter('health',this)">🏥 Health</span>
+            <span class="filter-chip" data-f="economics"         onclick="setEvtFilter('economics',this)">📈 Economics</span>
+          </div>
+          <div class="flex items-center flex-wrap gap-2 mb-2">
+            <span class="filter-group-label">Everyday Life:</span>
+            <span class="filter-chip" data-f="culture"           onclick="setEvtFilter('culture',this)">🎵 Culture</span>
+            <span class="filter-chip" data-f="cars"              onclick="setEvtFilter('cars',this)">🚗 Cars</span>
+            <span class="filter-chip" data-f="music"             onclick="setEvtFilter('music',this)">🎸 Music</span>
+          </div>
+          <div class="flex items-center flex-wrap gap-2 mb-4">
+            <span class="filter-group-label">Life &amp; Tradition:</span>
+            <span class="filter-chip" data-f="family_life"       onclick="setEvtFilter('family_life',this)">👨‍👩‍👧 Family Life</span>
+            <span class="filter-chip" data-f="food"              onclick="setEvtFilter('food',this)">🍽 Food &amp; Traditions</span>
+            <span class="filter-chip" data-f="faith"             onclick="setEvtFilter('faith',this)">🕊 Faith &amp; Rituals</span>
+            <span class="filter-chip" data-f="local"             onclick="setEvtFilter('local',this)">📍 Local Events</span>
+          </div>
+
+          <!-- Age-filter explainer — always visible, updates with DOB -->
+          <div id="evtAgeHint" class="text-xs text-slate-600 mb-3 italic"></div>
+          <!-- Sparse trigger note — shown for younger users -->
+          <div id="evtSparseNote" class="text-xs text-slate-500 mb-3 italic hidden"></div>
+
+          <!-- Manual cultural memory prompt -->
+          <div class="flex gap-2 mb-4">
+            <input class="input-ghost flex-1" id="evtCustomPrompt"
+              placeholder="Add your own trigger — a festival, family tradition, or local memory…"
+              style="font-size:12px" onkeydown="if(event.key==='Enter') fireCustomPrompt()">
+            <button class="btn btn-ghost btn-sm" onclick="fireCustomPrompt()">Ask Lori</button>
+          </div>
+
+          <div id="eventsGrid"></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           TIMELINE
+      ══════════════════════════════════════════════════ -->
+      <div id="pane-timeline" class="tab-pane hidden">
+        <div class="max-w-2xl mx-auto">
+
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <h1 class="serif text-2xl text-white">Life Timeline</h1>
+              <p class="text-xs text-slate-500 mt-0.5">A life history built from interview milestones and historical context.</p>
+            </div>
+            <div class="flex gap-2 flex-shrink-0 mt-1">
+              <button class="btn btn-ghost btn-sm" id="btnTLworld"
+                onclick="showWorldOnTL=!showWorldOnTL;renderTimeline()">
+                World Context: On
+              </button>
+              <button class="btn btn-ghost btn-sm" id="btnTLaffect"
+                onclick="showAffectArc=!showAffectArc;renderTimeline()"
+                title="Show emotional moments captured during interview">
+                Affect Arc: Off
+              </button>
+            </div>
+          </div>
+
+          <!-- Counts bar -->
+          <div id="tlCountBar" class="text-xs text-slate-500 mb-3 hidden"></div>
+
+          <!-- How this timeline grows hint -->
+          <div class="tl-build-hint">
+            <div class="text-xs text-slate-400 font-semibold mb-1">How this timeline grows</div>
+            <div class="text-xs text-slate-600 mb-2">Interview milestones are added automatically as sections are marked complete. Use the Memory Triggers tab to surface age-anchored context.</div>
+            <div class="text-xs text-slate-700">Soft milestones to capture: friendship shifts · moved schools · first performance · identity milestone · caregiving period · online life moments. Use <strong style="color:#475569">Save as Memory</strong> in the Interview tab to pin these.</div>
+          </div>
+
+          <div id="timelinePane" class="text-slate-500 text-sm">
+            Select a person — the timeline will populate from interview milestones and world events.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           MEMOIR DRAFT
+      ══════════════════════════════════════════════════ -->
+      <div id="pane-memoir" class="tab-pane hidden">
+        <div class="max-w-2xl mx-auto">
+
+          <div class="flex items-center justify-between mb-3">
+            <h1 class="serif text-2xl text-white">Memoir Draft</h1>
+            <div class="flex gap-2">
+              <button class="btn btn-ghost btn-sm" onclick="generateMemoirOutline()">Build Outline</button>
+              <button class="btn btn-primary btn-sm" onclick="generateMemoirDraft()">Write Draft</button>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs text-slate-400" id="memoirCoverage">Interview coverage: 0 of — sections complete</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="memoirProgressFill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-500 mb-4">
+            Each chapter grows from completed interview sections and saved life context.
+          </p>
+
+          <div class="card">
+            <div class="flex items-center justify-between mb-3">
+              <div class="card-label mb-0">Chapter Map</div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500">Shape:</span>
+                <select id="memoirFraming" class="input-ghost" style="width:auto;padding:3px 8px;font-size:11px" onchange="renderMemoirChapters()">
+                  <option value="chronological">Life Story</option>
+                  <option value="thematic">Theme-Based Memoir</option>
+                  <option value="early-life">Early-Life Journal</option>
+                  <option value="family-legacy">Family Legacy Narrative</option>
+                </select>
+              </div>
+            </div>
+            <div id="memoirChapterList"></div>
+          </div>
+
+          <div class="card">
+            <div class="flex items-center justify-between mb-2">
+              <div class="card-label mb-0">Memoir Draft</div>
+              <div class="flex gap-2">
+                <button class="btn btn-ghost btn-sm" onclick="copyMemoirDraft()">Copy</button>
+                <button class="btn btn-ghost btn-sm" onclick="clearMemoirDraft()">Clear</button>
+              </div>
+            </div>
+            <div class="text-xs text-slate-600 mb-2">Built from interview answers and saved timeline context · <span id="memoirSourceName">No person selected</span></div>
+            <textarea id="memoirDraftOutput" class="prose-area"
+              placeholder="Memoir draft will appear here. Each chapter will be drafted from the interview answers for that section."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           OBITUARY DRAFT
+      ══════════════════════════════════════════════════ -->
+      <div id="pane-obituary" class="tab-pane hidden">
+        <div class="max-w-2xl mx-auto">
+
+          <div class="flex items-center justify-between mb-3">
+            <h1 class="serif text-2xl text-white" id="obitHeading">Obituary Draft</h1>
+            <div class="flex gap-2">
+              <button class="btn btn-ghost btn-sm" onclick="buildObituary()">Fill from Profile</button>
+              <button class="btn btn-primary btn-sm" onclick="generateObitChat()">Write with Lori</button>
+            </div>
+          </div>
+
+          <!-- Living-person banner — shown when no date of death -->
+          <div id="obitLivingBanner" class="obit-mode-banner hidden">
+            ℹ This person is living. The output below is a <strong>Life Summary</strong>, not an obituary.
+            Lori will avoid death-framing and write this as a legacy and storytelling document.
+          </div>
+
+          <!-- Identity readiness card — quiet check before drafting -->
+          <div id="obitIdentityCard" class="identity-card">
+            <div class="text-xs text-slate-400 font-semibold mb-2">Before drafting — identity details</div>
+            <div id="obitIdentityItems"></div>
+          </div>
+
+          <p class="text-xs text-slate-500 mb-4">
+            Start from Profile and Family Map, then edit freely to match the family's voice.
+          </p>
+
+          <!-- Key Facts -->
+          <div class="card">
+            <div class="card-label">Key Facts</div>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <input class="input-ghost" id="obit_name" placeholder="Full name">
+              <input class="input-ghost" id="obit_age"  placeholder="Age">
+              <input class="input-ghost" id="obit_dob"  placeholder="Date of birth">
+              <input class="input-ghost" id="obit_dod"  placeholder="Date of death (leave blank if living)">
+              <input class="input-ghost" id="obit_pob"  placeholder="Place of birth">
+              <input class="input-ghost" id="obit_pod"  placeholder="Residence">
+              <input class="input-ghost col-span-2" id="obit_career" placeholder="Work and service">
+            </div>
+          </div>
+
+          <!-- Family & Survivors -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-2">
+              <div class="card-label mb-0">Family &amp; Survivors</div>
+              <button class="btn btn-ghost btn-sm" onclick="previewFamilyMapSurvivors()">Preview from Family Map</button>
+            </div>
+            <textarea class="input-ghost" id="obit_survivors" rows="2"
+              placeholder="Surviving family and loved ones…"></textarea>
+            <div id="obitFamilyPreview" class="text-xs text-slate-500 mt-2 italic hidden"></div>
+          </div>
+
+          <!-- Cultural & Memorial Details — accordion -->
+          <div class="card" style="padding:10px 15px;">
+            <div class="accordion-trigger" onclick="toggleAccordion('accCultural')">
+              <div class="acc-label">🕯 Cultural &amp; Memorial Details</div>
+              <span class="acc-arrow" id="arrCultural">▶</span>
+            </div>
+            <div class="accordion-body" id="accCultural">
+              <div class="pt-3 grid grid-cols-2 gap-3">
+                <input class="input-ghost" id="obit_faith"     placeholder="Religious affiliation / tradition">
+                <input class="input-ghost" id="obit_service"   placeholder="Service details">
+                <input class="input-ghost" id="obit_vigil"     placeholder="Vigil / rosary / novenario">
+                <input class="input-ghost" id="obit_memorial"  placeholder="Memorial tradition or request">
+                <textarea class="input-ghost col-span-2" rows="2" id="obit_bilingual"
+                  placeholder="Bilingual notes — enter text in the family's language"></textarea>
+              </div>
+              <p class="text-xs text-slate-600 mt-2">When filled, these details are included in Lori's written draft.</p>
+            </div>
+          </div>
+
+          <!-- Tone + Draft -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-3">
+              <div class="card-label mb-0">Obituary Text</div>
+              <div class="flex gap-2 items-center flex-wrap">
+                <span id="obitDraftIndicator" class="draft-indicator auto hidden"></span>
+                <div class="flex items-center gap-1">
+                  <span class="text-xs text-slate-500">Tone:</span>
+                  <select id="obitTone" class="input-ghost" style="width:auto;padding:3px 8px;font-size:11px" onchange="generateObituaryText()">
+                    <option value="traditional">Traditional</option>
+                    <option value="warm">Warm</option>
+                    <option value="concise">Concise</option>
+                    <option value="family">Family voice</option>
+                  </select>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="resetObitFromFacts()">Reset</button>
+                <button class="btn btn-ghost btn-sm" onclick="copyObituary()">Copy</button>
+              </div>
+            </div>
+            <textarea id="obituaryOutput" class="prose-area"
+              placeholder="Fill in Key Facts above or click Fill from Profile, then Write with Lori to produce a full obituary."
+              oninput="obitHasEdits=true;setObitDraftType('edited')"></textarea>
+            <p class="text-xs text-slate-500 mt-2">Editing facts may not automatically rewrite a Lori-generated draft.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           v6.1 PRIVATE SEGMENTS REVIEW
+      ══════════════════════════════════════════════════ -->
+      <div id="pane-review" class="tab-pane hidden">
+        <div class="max-w-2xl mx-auto">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <h1 class="serif text-2xl text-white">Private Segments</h1>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Segments flagged during the interview. Private and excluded from memoir by default.
+                You decide what to include.
+              </p>
+            </div>
+          </div>
+          <!-- Review list -->
+          <div id="sensitiveReviewList">
+            <div class="text-sm text-slate-500 text-center py-8 italic">
+              No private segments yet. Sensitive disclosures will appear here after the interview.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main><!-- end main-stage -->
+
+    <!-- ══════════════════ CHAT PANEL ══════════════════ -->
+    <aside class="chat-panel">
+      <!-- Tightened header padding -->
+      <div class="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-white/5">
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="font-bold text-white text-sm">Lori — Interviewer</div>
+            <span id="loriStatus" class="lori-status ready">● Ready</span>
+          </div>
+          <div class="text-xs text-slate-500 mt-0.5" id="chatSessionLabel">No session</div>
+        </div>
+        <div class="flex gap-1 items-center">
+          <button id="btnMic" class="btn-icon text-xl" onclick="toggleRecording()" title="Voice input">🎤</button>
+          <button class="btn-icon" onclick="clearChat()" title="Clear conversation">🗑</button>
+        </div>
+      </div>
+
+      <div id="chatMessages" class="chat-messages"></div>
+
+      <!-- Latest response strip -->
+      <div class="flex-shrink-0 border-t border-white/5 px-3 py-2">
+        <div class="text-xs text-slate-700 uppercase font-bold tracking-wider mb-1">Latest response</div>
+        <div id="lastAssistantPanel"
+          class="text-xs text-slate-500 italic max-h-14 overflow-y-auto leading-relaxed"></div>
+      </div>
+
+      <!-- Input -->
+      <div class="chat-input-bar">
+        <textarea id="chatInput" rows="2" class="input-ghost flex-1 text-sm"
+          placeholder="Ask Lori to help with a memory, interview answer, memoir draft, or obituary."
+          onkeydown="onChatKey(event)"></textarea>
+        <button class="btn btn-primary" onclick="sendUserMessage()">Send</button>
+      </div>
+    </aside>
+
+  </div><!-- end grid -->
+</div><!-- end shell -->
+
+<!-- ══════════════════ OBITUARY SOURCE-LOCK MODAL ══════════════════ -->
+<div id="obitLockModal" class="obit-modal-overlay hidden">
+  <div class="obit-modal-box">
+    <div class="font-bold text-white text-sm mb-2">Replace your current draft?</div>
+    <p class="text-sm text-slate-400 mb-5 leading-relaxed">
+      You've made edits to this obituary. Generating a new draft will replace your current text.
+      This cannot be undone.
+    </p>
+    <div class="flex gap-3 justify-end">
+      <button class="btn btn-ghost" onclick="closeObitModal()">Keep my edits</button>
+      <button class="btn btn-primary" id="obitModalConfirm" onclick="confirmObitModal()">Proceed anyway</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ v6.1 SAFETY OVERLAY ══════════════════ -->
+<div id="safetyOverlay" class="safety-overlay hidden" role="dialog" aria-modal="true">
+  <div class="safety-overlay-box">
+    <!-- Lori icon + message -->
+    <div class="flex items-start gap-3 mb-5">
+      <div class="safety-lori-icon">✦</div>
+      <div class="safety-lori-bubble" id="safetyLoriMessage">
+        Thank you for telling me. What you shared matters. You do not have to keep going right now.
+        We can pause, keep talking, or look at support options.
+      </div>
+    </div>
+
+    <!-- Resource cards — always shown immediately -->
+    <div class="resource-cards" id="safetyResourceCards">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Expanded support panel — revealed by "Show support options" -->
+    <div id="safetyExpandedPanel" class="resource-expanded hidden">
+      <div class="font-semibold text-slate-400 mb-2">Additional support options</div>
+      <p>You can reach out to any of these services at any time — by call, text, or online chat. You do not need to be in crisis to contact them.</p>
+      <p class="mt-1">If you are outside the US, search "crisis line" + your country for local equivalents.</p>
+    </div>
+
+    <!-- 4 action buttons -->
+    <div class="safety-actions">
+      <button class="safety-btn primary" onclick="dismissSafetyOverlay('continue')">Continue talking</button>
+      <button class="safety-btn" onclick="dismissSafetyOverlay('break')">Take a break</button>
+      <button class="safety-btn" onclick="expandSupportOptions()">Show support options</button>
+      <button class="safety-btn" onclick="dismissSafetyOverlay('close')">Save and close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ v6.1 CONFIRM DIALOG (sensitive segment delete) ══════════════════ -->
+<div id="confirmDialog" class="confirm-dialog-overlay hidden">
+  <div class="confirm-dialog-box">
+    <div class="font-bold text-white text-sm mb-2" id="confirmDialogTitle">Remove this segment?</div>
+    <p class="text-sm text-slate-400 mb-5 leading-relaxed" id="confirmDialogBody">
+      This will permanently remove this part of the session. This cannot be undone.
+    </p>
+    <div class="flex gap-3 justify-end">
+      <button class="btn btn-ghost" onclick="closeConfirmDialog()">Cancel</button>
+      <button class="btn btn-primary" id="confirmDialogOk" style="background:#b91c1c;border-color:#b91c1c">Remove</button>
+    </div>
+  </div>
+</div>
+
+<div class="focus-hint" id="focusHint">Press Esc or click ⊡ to exit focus mode</div>
+
+  <script src="js/state.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/tabs.js"></script>
+  <script src="js/safety-ui.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/emotion-ui.js"></script>
+  <script src="js/timeline-ui.js"></script>
+  <script src="js/interview.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

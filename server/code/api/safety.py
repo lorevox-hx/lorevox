@@ -121,9 +121,9 @@ _SIMPLE_TRIGGERS: list[tuple[str, str, float]] = [
     (r"\bcontrolling (husband|wife|partner)\b", "domestic_abuse", 0.75),
 
     # ── Caregiver / elder abuse ──
-    (r"\b(nursing home|care home|assisted living)\b.*\b(hurt|abuse|steal|neglect|lock)\b",
+    (r"\b(nursing home|care home|assisted living)\b.*\b(hurt|abuse|steal|neglect|lock(ed)?|left me)\b",
                                           "caregiver_abuse", 0.82),
-    (r"\b(my caregiver|the aide|the nurse|the staff)\b.*\b(hurt|hit|abuse|steal|took)\b",
+    (r"\b(my caregiver|the aide|the nurse|the staff)\b.*\b(hurt|hit|abuse|steal|took|lock(ed)?)\b",
                                           "caregiver_abuse", 0.82),
     (r"\bthey (took|stole|took away) my money\b", "caregiver_abuse", 0.78),
     (r"\bthey left me (alone|there|locked)\b",     "caregiver_abuse", 0.75),

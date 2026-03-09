@@ -1,0 +1,116 @@
+/* ═══════════════════════════════════════════════════════════════
+   base.css — design tokens, resets, global utilities, theme
+   Lorevox v6.1
+═══════════════════════════════════════════════════════════════ */
+
+/* ── DESIGN TOKENS ───────────────────────────────────────────── */
+:root{
+  /* ── v6 surface stack ── */
+  --bg:#14161b; --panel:#1a1d24; --card:#20242d;
+  --card-2:#262b36; --elev:#2c3240;
+  /* ── v6 type ── */
+  --ink:#eef2f7; --muted:#a9b3c3; --border:#31384a;
+  /* ── v6 accent system ── */
+  --accent:#7c9cff;              /* indigo-blue — primary nav/action */
+  --accent-dim:rgba(124,156,255,.14);
+  --accent-secondary:#c6a7ff;    /* digital lavender — AI/reflective */
+  --accent-warm:#ff9b6b;         /* coral — personal/family */
+  --accent-good:#6ee7a8;         /* green — captured/success */
+  --accent-caution:#f6c453;      /* gold — unsaved/review */
+  --accent-danger:#ff7b7b;       /* red — destructive */
+  /* ── v6 rails ── */
+  --sb-w:280px; --chat-w:360px;
+}
+
+html,body{
+  height:100%;margin:0;overflow:hidden;
+  font-family:Inter,sans-serif;
+  background:radial-gradient(circle at 12% 8%,rgba(124,156,255,.07),transparent 26%),
+             radial-gradient(circle at 88% 92%,rgba(198,167,255,.05),transparent 24%),var(--bg);
+  color:var(--ink);
+}
+.serif{font-family:"Cormorant Garamond",serif;}
+.mono{font-family:"Courier New",monospace;}
+.hidden{display:none!important;}
+
+/* ── BUTTONS ─────────────────────────────────────────────────── */
+.btn{padding:6px 13px;border-radius:6px;font-size:12px;font-weight:600;
+  cursor:pointer;border:none;transition:all .15s;font-family:inherit;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#9db8ff;}
+.btn-ghost{background:rgba(255,255,255,.07);color:var(--ink);
+  border:1px solid rgba(255,255,255,.12);}
+.btn-ghost:hover{background:rgba(255,255,255,.13);}
+.btn-sm{padding:3px 9px;font-size:11px;}
+.btn-icon{background:none;border:none;cursor:pointer;color:var(--muted);
+  padding:4px 7px;border-radius:5px;font-size:15px;transition:color .15s;}
+.btn-icon:hover{color:var(--ink);}
+
+/* ── PILLS ───────────────────────────────────────────────────── */
+.pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;}
+.pill-off{background:rgba(100,100,110,.2);color:#64748b;}
+.pill.on{background:rgba(22,101,52,.35);color:#4ade80;}
+.pill.err{background:rgba(127,29,29,.35);color:#f87171;}
+.gen-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;
+  border:1px solid rgba(124,156,255,.35);color:var(--accent);background:var(--accent-dim);}
+
+/* ── LORI STATUS ─────────────────────────────────────────────── */
+.lori-status{font-size:10px;padding:2px 8px;border-radius:999px;font-weight:700;
+  letter-spacing:.05em;transition:all .3s;}
+.lori-status.ready   {background:rgba(22,101,52,.3);color:#4ade80;}
+.lori-status.thinking{background:rgba(198,167,255,.18);color:#c6a7ff;}
+.lori-status.drafting{background:rgba(59,130,246,.2);color:#93c5fd;}
+.lori-status.listening{background:rgba(168,85,247,.2);color:#c084fc;}
+@keyframes lori-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes lori-breathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.65;transform:scale(.97)}}
+.lori-status.thinking{animation:lori-breathe 2.4s infinite;}
+.lori-status.drafting{animation:lori-breathe 1.6s infinite;}
+.lori-status.listening{animation:lori-pulse 1.0s infinite;}
+
+/* ── CAPTURE CHIP ────────────────────────────────────────────── */
+.capture-chip{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;
+  display:inline-flex;align-items:center;gap:3px;}
+.capture-chip.captured{background:rgba(22,101,52,.25);color:#4ade80;
+  border:1px solid rgba(74,222,128,.2);}
+.capture-chip.edited{background:rgba(246,196,83,.13);color:#f6c453;
+  border:1px solid rgba(246,196,83,.28);}
+.capture-chip.saved{background:rgba(59,130,246,.15);color:#93c5fd;
+  border:1px solid rgba(59,130,246,.25);}
+
+/* ── DRAFT INDICATOR — EDITED ────────────────────────────────── */
+.draft-indicator.edited{background:rgba(255,155,107,.15);color:#ff9b6b;
+  border:1px solid rgba(255,155,107,.32);}
+
+/* ── SCROLLBARS ──────────────────────────────────────────────── */
+*::-webkit-scrollbar{width:4px;height:4px;}
+*::-webkit-scrollbar-track{background:transparent;}
+*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.11);border-radius:2px;}
+
+/* ── VIBRANT / YOUTH THEME ───────────────────────────────────── */
+body.theme-vibrant{
+  --bg:#151822;
+  --panel:#1c2130;
+  --card:#252b3a;
+  --card-2:#2d3447;
+  --elev:#333c52;
+  --border:#3a4460;
+  --accent:#79f2a3;         /* lime-teal — primary action */
+  --accent-dim:rgba(121,242,163,.14);
+  --accent-secondary:#8bb8ff; /* soft blue */
+  --accent-warm:#d1a9ff;      /* lavender-violet */
+  --accent-good:#ffe066;      /* celebration yellow */
+  --accent-caution:#ffb347;
+  --accent-danger:#ff7b7b;
+}
+body.theme-vibrant .main-stage{
+  background:radial-gradient(circle at 50% 0%,rgba(121,242,163,.07),transparent 42%),
+             radial-gradient(circle at 90% 90%,rgba(139,184,255,.05),transparent 34%);}
+body.theme-vibrant .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+body.theme-vibrant .roadmap-item:hover{background:rgba(121,242,163,.08)!important;border-color:rgba(121,242,163,.25)!important;}
+body.theme-vibrant .roadmap-item.active-section{background:rgba(121,242,163,.13);border-color:rgba(121,242,163,.35);}
+body.theme-vibrant .roadmap-item.active-section .rm-label{color:var(--accent);}
+body.theme-vibrant .btn-primary{background:var(--accent);color:#0d1a12;}
+body.theme-vibrant .btn-primary:hover{background:#9fffc0;}
+body.theme-vibrant .progress-fill{background:var(--accent-good);}
+body.theme-vibrant .capture-chip.captured{background:rgba(121,242,163,.2);color:#79f2a3;border-color:rgba(121,242,163,.3);}
+body.theme-vibrant .filter-chip.active{background:var(--accent);color:#0d1a12;border-color:var(--accent);}
