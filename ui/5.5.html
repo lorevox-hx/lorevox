@@ -283,6 +283,41 @@
     *::-webkit-scrollbar{width:4px;height:4px;}
     *::-webkit-scrollbar-track{background:transparent;}
     *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.11);border-radius:2px;}
+
+    /* ── DRAFT INDICATOR — EDITED ────────────────────────── */
+    .draft-indicator.edited{background:rgba(217,119,6,.22);color:#fbbf24;
+      border:1px solid rgba(217,119,6,.35);}
+
+    /* ── CAPTURE CHIP — SAVED TO ARCHIVE ────────────────── */
+    .capture-chip.saved{background:rgba(59,130,246,.15);color:#93c5fd;
+      border:1px solid rgba(59,130,246,.25);}
+
+    /* ── INTERVIEW MODE TOGGLE ───────────────────────────── */
+    .mode-btn{padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;
+      cursor:pointer;border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);color:var(--muted);transition:all .15s;}
+    .mode-btn.active{background:var(--accent);color:#000;border-color:var(--accent);}
+    .mode-btn.youth-on{background:rgba(168,85,247,.2);color:#c084fc;
+      border-color:rgba(168,85,247,.4);}
+
+    /* ── LIVING-PERSON BANNER ───────────────────────────── */
+    .obit-mode-banner{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);
+      border-radius:8px;padding:10px 14px;margin-bottom:14px;
+      font-size:12px;color:#93c5fd;line-height:1.6;}
+
+    /* ── IDENTITY READINESS CARD ─────────────────────────── */
+    .identity-card{background:rgba(217,119,6,.05);border:1px solid rgba(217,119,6,.15);
+      border-radius:8px;padding:10px 14px;margin-bottom:14px;}
+    .identity-card-item{display:flex;align-items:center;gap:6px;font-size:11px;
+      color:var(--muted);padding:2px 0;}
+    .identity-card-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+    .identity-card-dot.ok{background:#4ade80;}
+    .identity-card-dot.miss{background:#334155;}
+
+    /* ── KIN GROUP LABELS ───────────────────────────────── */
+    .kin-group-row{font-size:9px;font-weight:800;color:#374151;
+      text-transform:uppercase;letter-spacing:.15em;padding:4px 2px 1px;
+      border-bottom:1px solid rgba(255,255,255,.04);margin-bottom:3px;}
   </style>
 </head>
 <body>
@@ -396,6 +431,27 @@
                 </select>
               </div>
             </div>
+            <!-- Pronoun + phonetic row -->
+            <div class="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label class="text-xs text-slate-500 block mb-1">Pronouns</label>
+                <select class="input-ghost" id="bio_pronouns" onchange="onPronounsChange()">
+                  <option value="">Not specified</option>
+                  <option value="she/her">she/her</option>
+                  <option value="he/him">he/him</option>
+                  <option value="they/them">they/them</option>
+                  <option value="custom">Custom…</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500 block mb-1">Phonetic pronunciation</label>
+                <input class="input-ghost" id="bio_phonetic" placeholder="e.g. noo-YEN, MIGH-kul">
+              </div>
+            </div>
+            <div id="bio_pronouns_custom_wrap" class="mt-2 hidden">
+              <input class="input-ghost" id="bio_pronouns_custom" placeholder="Enter custom pronouns (e.g. ze/zir)">
+            </div>
+            <p class="text-xs text-slate-600 mt-2">Pronouns shape how Lori writes obituary and memoir drafts. Phonetic spelling helps TTS say names correctly.</p>
             <!-- Badges -->
             <div class="mt-3 flex items-center gap-3 flex-wrap">
               <span id="genBadge"   class="gen-badge hidden"></span>
@@ -410,15 +466,27 @@
 
           <!-- Family Map -->
           <div class="card">
-            <div class="flex items-center justify-between mb-2">
-              <div class="card-label mb-0">Family Map</div>
-              <div class="flex gap-2 text-xs flex-wrap">
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Mother')">Add mother</button>
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Father')">Add father</button>
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Sibling')">Add sibling</button>
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Spouse')">Add spouse</button>
-                <button class="btn btn-ghost btn-sm" onclick="addKin('Child')">Add child</button>
-              </div>
+            <div class="card-label mb-1">Family Map</div>
+            <p class="text-xs text-slate-500 mb-3">Map the people who shaped this person's life — family, partners, and chosen connections.</p>
+            <div class="flex gap-2 text-xs flex-wrap mb-2">
+              <span class="filter-group-label">Immediate:</span>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Mother')">Add mother</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Father')">Add father</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Sibling')">Add sibling</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Spouse')">Add spouse</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Child')">Add child</button>
+            </div>
+            <div class="flex gap-2 text-xs flex-wrap mb-2">
+              <span class="filter-group-label">Extended:</span>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Grandparent')">Add grandparent</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Adoptive parent')">Adoptive parent</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Adopted child')">Adopted child</button>
+            </div>
+            <div class="flex gap-2 text-xs flex-wrap mb-3">
+              <span class="filter-group-label">Chosen:</span>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Chosen family')">Chosen family</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Guardian')">Guardian</button>
+              <button class="btn btn-ghost btn-sm" onclick="addKin('Former spouse')">Former spouse</button>
             </div>
             <!-- Column headers -->
             <div class="flex gap-2 px-2 mb-1 text-xs text-slate-600 font-semibold">
@@ -461,7 +529,7 @@
       <div id="pane-interview" class="tab-pane hidden">
         <div class="max-w-2xl mx-auto">
 
-          <div class="flex items-start justify-between mb-4">
+          <div class="flex items-start justify-between mb-3">
             <div>
               <h1 class="serif text-2xl text-white">Interview Session</h1>
               <div id="ivSectionLabel" class="text-xs text-amber-500/80 mt-0.5">No section active — select one from the roadmap</div>
@@ -471,6 +539,15 @@
               <button class="btn btn-ghost"   onclick="ivAskInChat()">Ask Again</button>
               <button class="btn btn-ghost"   onclick="ivSkip()">Skip for Now</button>
             </div>
+          </div>
+          <!-- Mode + note bar -->
+          <div class="flex items-center gap-3 mb-4 flex-wrap">
+            <div class="flex gap-1">
+              <button class="mode-btn active" id="modeChronBtn" onclick="setInterviewMode('chronological')">Chronological</button>
+              <button class="mode-btn" id="modeThemeBtn" onclick="setInterviewMode('thematic')">Thematic</button>
+            </div>
+            <span class="text-xs text-slate-600">You can answer sections in any order.</span>
+            <button class="mode-btn" id="youthModeBtn" onclick="toggleYouthSections()">Youth Mode: Off</button>
           </div>
 
           <!-- Current Prompt — dominant, large -->
@@ -488,7 +565,8 @@
                 placeholder="The answer can be captured from Lori or typed here directly. Edit freely before saving."
                 oninput="onIvAnswerEdit()"></textarea>
               <div class="flex gap-2 mt-3">
-                <button class="btn btn-primary flex-1" onclick="ivSaveAndNext()">Save Answer &amp; Continue</button>
+                <button class="btn btn-primary flex-1" onclick="ivSaveAndNext()">Save &amp; Continue</button>
+                <button class="btn btn-ghost" onclick="ivSaveAsMemory()" title="Pin this to the Timeline as a memory without marking the section complete">Save as Memory</button>
               </div>
             </div>
 
@@ -549,6 +627,18 @@
           <!-- Personalized context strip -->
           <div id="evtContextStrip" class="context-strip mb-4 hidden"></div>
 
+          <!-- Secondary cultural lens -->
+          <div class="flex items-center flex-wrap gap-2 mb-2">
+            <span class="filter-group-label">Cultural lens:</span>
+            <select id="evtSecondaryCountry" class="input-ghost" style="width:auto;padding:3px 8px;font-size:11px" onchange="renderEventsGrid()">
+              <option value="">None (primary country only)</option>
+              <option value="mexico">Mexico / Latin America</option>
+              <option value="uk">United Kingdom / Europe</option>
+              <option value="canada">Canada</option>
+              <option value="australia">Australia</option>
+              <option value="global">Global</option>
+            </select>
+          </div>
           <!-- Grouped filter chips -->
           <div class="flex items-center flex-wrap gap-2 mb-2">
             <span class="filter-group-label">History:</span>
@@ -559,15 +649,32 @@
             <span class="filter-chip" data-f="health"            onclick="setEvtFilter('health',this)">🏥 Health</span>
             <span class="filter-chip" data-f="economics"         onclick="setEvtFilter('economics',this)">📈 Economics</span>
           </div>
-          <div class="flex items-center flex-wrap gap-2 mb-4">
+          <div class="flex items-center flex-wrap gap-2 mb-2">
             <span class="filter-group-label">Everyday Life:</span>
             <span class="filter-chip" data-f="culture"           onclick="setEvtFilter('culture',this)">🎵 Culture</span>
             <span class="filter-chip" data-f="cars"              onclick="setEvtFilter('cars',this)">🚗 Cars</span>
             <span class="filter-chip" data-f="music"             onclick="setEvtFilter('music',this)">🎸 Music</span>
           </div>
+          <div class="flex items-center flex-wrap gap-2 mb-4">
+            <span class="filter-group-label">Life &amp; Tradition:</span>
+            <span class="filter-chip" data-f="family_life"       onclick="setEvtFilter('family_life',this)">👨‍👩‍👧 Family Life</span>
+            <span class="filter-chip" data-f="food"              onclick="setEvtFilter('food',this)">🍽 Food &amp; Traditions</span>
+            <span class="filter-chip" data-f="faith"             onclick="setEvtFilter('faith',this)">🕊 Faith &amp; Rituals</span>
+            <span class="filter-chip" data-f="local"             onclick="setEvtFilter('local',this)">📍 Local Events</span>
+          </div>
 
           <!-- Age-filter explainer — always visible, updates with DOB -->
           <div id="evtAgeHint" class="text-xs text-slate-600 mb-3 italic"></div>
+          <!-- Sparse trigger note — shown for younger users -->
+          <div id="evtSparseNote" class="text-xs text-amber-600/70 mb-3 italic hidden"></div>
+
+          <!-- Manual cultural memory prompt -->
+          <div class="flex gap-2 mb-4">
+            <input class="input-ghost flex-1" id="evtCustomPrompt"
+              placeholder="Add your own trigger — a festival, family tradition, or local memory…"
+              style="font-size:12px" onkeydown="if(event.key==='Enter') fireCustomPrompt()">
+            <button class="btn btn-ghost btn-sm" onclick="fireCustomPrompt()">Ask Lori</button>
+          </div>
 
           <div id="eventsGrid"></div>
         </div>
@@ -596,7 +703,8 @@
           <!-- How this timeline grows hint -->
           <div class="tl-build-hint">
             <div class="text-xs text-slate-400 font-semibold mb-1">How this timeline grows</div>
-            <div class="text-xs text-slate-600">Interview milestones are added automatically as sections are marked complete. Use the World Events tab to surface age-anchored context.</div>
+            <div class="text-xs text-slate-600 mb-2">Interview milestones are added automatically as sections are marked complete. Use the Memory Triggers tab to surface age-anchored context.</div>
+            <div class="text-xs text-slate-700">Soft milestones to capture: friendship shifts · moved schools · first performance · identity milestone · caregiving period · online life moments. Use <strong style="color:#475569">Save as Memory</strong> in the Interview tab to pin these.</div>
           </div>
 
           <div id="timelinePane" class="text-slate-500 text-sm">
@@ -622,7 +730,7 @@
           <!-- Progress bar -->
           <div class="mb-4">
             <div class="flex items-center justify-between mb-1">
-              <span class="text-xs text-slate-400" id="memoirCoverage">Interview coverage: 0 of 25 sections complete</span>
+              <span class="text-xs text-slate-400" id="memoirCoverage">Interview coverage: 0 of — sections complete</span>
             </div>
             <div class="progress-track">
               <div class="progress-fill" id="memoirProgressFill" style="width:0%"></div>
@@ -634,7 +742,18 @@
           </p>
 
           <div class="card">
-            <div class="card-label">Chapter Map</div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="card-label mb-0">Chapter Map</div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500">Shape:</span>
+                <select id="memoirFraming" class="input-ghost" style="width:auto;padding:3px 8px;font-size:11px" onchange="renderMemoirChapters()">
+                  <option value="chronological">Life Story</option>
+                  <option value="thematic">Theme-Based Memoir</option>
+                  <option value="early-life">Early-Life Journal</option>
+                  <option value="family-legacy">Family Legacy Narrative</option>
+                </select>
+              </div>
+            </div>
             <div id="memoirChapterList"></div>
           </div>
 
@@ -660,12 +779,25 @@
         <div class="max-w-2xl mx-auto">
 
           <div class="flex items-center justify-between mb-3">
-            <h1 class="serif text-2xl text-white">Obituary Draft</h1>
+            <h1 class="serif text-2xl text-white" id="obitHeading">Obituary Draft</h1>
             <div class="flex gap-2">
               <button class="btn btn-ghost btn-sm" onclick="buildObituary()">Fill from Profile</button>
               <button class="btn btn-primary btn-sm" onclick="generateObitChat()">Write with Lori</button>
             </div>
           </div>
+
+          <!-- Living-person banner — shown when no date of death -->
+          <div id="obitLivingBanner" class="obit-mode-banner hidden">
+            ℹ This person is living. The output below is a <strong>Life Summary</strong>, not an obituary.
+            Lori will avoid death-framing and write this as a legacy and storytelling document.
+          </div>
+
+          <!-- Identity readiness card — quiet check before drafting -->
+          <div id="obitIdentityCard" class="identity-card">
+            <div class="text-xs text-slate-400 font-semibold mb-2">Before drafting — identity details</div>
+            <div id="obitIdentityItems"></div>
+          </div>
+
           <p class="text-xs text-slate-500 mb-4">
             Start from Profile and Family Map, then edit freely to match the family's voice.
           </p>
@@ -686,9 +818,32 @@
 
           <!-- Family & Survivors -->
           <div class="card">
-            <div class="card-label">Family &amp; Survivors</div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="card-label mb-0">Family &amp; Survivors</div>
+              <button class="btn btn-ghost btn-sm" onclick="previewFamilyMapSurvivors()">Preview from Family Map</button>
+            </div>
             <textarea class="input-ghost" id="obit_survivors" rows="2"
               placeholder="Surviving family and loved ones…"></textarea>
+            <div id="obitFamilyPreview" class="text-xs text-slate-500 mt-2 italic hidden"></div>
+          </div>
+
+          <!-- Cultural & Memorial Details — accordion -->
+          <div class="card" style="padding:10px 15px;">
+            <div class="accordion-trigger" onclick="toggleAccordion('accCultural')">
+              <div class="acc-label">🕯 Cultural &amp; Memorial Details</div>
+              <span class="acc-arrow" id="arrCultural">▶</span>
+            </div>
+            <div class="accordion-body" id="accCultural">
+              <div class="pt-3 grid grid-cols-2 gap-3">
+                <input class="input-ghost" id="obit_faith"     placeholder="Religious affiliation / tradition">
+                <input class="input-ghost" id="obit_service"   placeholder="Service details">
+                <input class="input-ghost" id="obit_vigil"     placeholder="Vigil / rosary / novenario">
+                <input class="input-ghost" id="obit_memorial"  placeholder="Memorial tradition or request">
+                <textarea class="input-ghost col-span-2" rows="2" id="obit_bilingual"
+                  placeholder="Bilingual notes — enter text in the family's language"></textarea>
+              </div>
+              <p class="text-xs text-slate-600 mt-2">When filled, these details are included in Lori's written draft.</p>
+            </div>
           </div>
 
           <!-- Tone + Draft -->
@@ -712,7 +867,7 @@
             </div>
             <textarea id="obituaryOutput" class="prose-area"
               placeholder="Fill in Key Facts above or click Fill from Profile, then Write with Lori to produce a full obituary."
-              oninput="obitHasEdits=true"></textarea>
+              oninput="obitHasEdits=true;setObitDraftType('edited')"></textarea>
             <p class="text-xs text-amber-600/70 mt-2">Editing facts may not automatically rewrite a Lori-generated draft.</p>
           </div>
 
@@ -828,6 +983,19 @@ const INTERVIEW_ROADMAP = [
   {id:"proud",       label:"Proud Moments",            emoji:"🏆", tags:["achievement"]},
   {id:"lessons",     label:"Life Lessons",             emoji:"📖", tags:["wisdom","legacy"]},
   {id:"legacy",      label:"Legacy",                   emoji:"✨", tags:["legacy","memoir"]},
+  // Extended life-event sections (always shown)
+  {id:"identity_belonging", label:"Identity & Belonging",  emoji:"🌈", tags:["identity","community"]},
+  {id:"grief_rebuilding",   label:"Grief & Rebuilding",    emoji:"🌿", tags:["resilience","health","family"]},
+  {id:"caregiving",         label:"Caregiving",            emoji:"🤲", tags:["family","health","community"]},
+  {id:"migration",          label:"Migration & Resettlement", emoji:"🌏", tags:["heritage","community","life"]},
+  {id:"blended_family",     label:"Blended Family Life",   emoji:"🏠", tags:["family","identity"]},
+  // Youth / digital-native sections (toggled by youthMode)
+  {id:"friends_social", label:"Friends & Social Life",     emoji:"👯", tags:["teen","identity","community"],  youth:true},
+  {id:"school_life",    label:"School Life",               emoji:"🏫", tags:["education","friends"],           youth:true},
+  {id:"online_life",    label:"Online & Digital Life",     emoji:"📱", tags:["technology","culture","identity"],youth:true},
+  {id:"music_identity", label:"Music & Identity",          emoji:"🎵", tags:["music","teen","identity"],       youth:true},
+  {id:"big_changes",    label:"Big Changes",               emoji:"🔄", tags:["resilience","identity","life"],  youth:true},
+  {id:"hopes_future",   label:"Hopes & Future",            emoji:"🌅", tags:["legacy","identity"],             youth:true},
 ];
 
 /* ── World Events ── */
@@ -895,7 +1063,28 @@ const EVERYDAY_EVENTS = [
   {year:2016,event:"Self-driving car tests begin publicly",                      tags:["technology","cars","us"]},
 ];
 
-const ALL_EVENTS = [...WORLD_EVENTS, ...EVERYDAY_EVENTS].sort((a,b)=>a.year-b.year);
+// Family, food, faith, and local life events
+const LIFE_EVENTS = [
+  {year:1950,event:"Extended family Sunday dinners were the center of many households",   tags:["family_life","us","global"]},
+  {year:1955,event:"Church and community faith life shaped weekly routines",               tags:["faith","us","global"]},
+  {year:1960,event:"Neighborhood corner stores and local markets were social hubs",        tags:["local","global"]},
+  {year:1965,event:"Family road trips became a summer tradition across America",           tags:["family_life","cars","us"]},
+  {year:1970,event:"Home cooking and family recipes passed through generations",           tags:["food","family_life","global"]},
+  {year:1975,event:"Church social halls hosted community dinners, dances, and bingo",      tags:["faith","community","local","us"]},
+  {year:1980,event:"Local parish, mosque, synagogue, or temple as community anchor",       tags:["faith","community","global"]},
+  {year:1985,event:"Quinceañeras, bar/bat mitzvahs, confirmations marked coming of age",  tags:["faith","family_life","global","mexico"]},
+  {year:1990,event:"Family holiday traditions — food, music, and reunion rituals",         tags:["food","family_life","global"]},
+  {year:1992,event:"Día de los Muertos becomes more broadly celebrated in US communities", tags:["faith","food","local","mexico","us"]},
+  {year:1995,event:"Local farmers markets and community fairs gained new popularity",      tags:["food","local","us"]},
+  {year:2000,event:"Immigrant families navigated blending home traditions with new culture",tags:["family_life","food","global","local"]},
+  {year:2005,event:"Family recipe books and food blogs begin preserving culinary heritage", tags:["food","family_life","global"]},
+  {year:2010,event:"Multi-generational households increased as families adapted",          tags:["family_life","global","us"]},
+  {year:2015,event:"LGBTQ+ families and chosen family structures gain wider recognition",  tags:["family_life","local","us","global"]},
+  {year:2018,event:"Community mutual aid networks grew in cities and neighborhoods",       tags:["local","community","us"]},
+  {year:2020,event:"Pandemic changed how families celebrated, grieved, and gathered",      tags:["family_life","faith","food","global"]},
+];
+
+const ALL_EVENTS = [...WORLD_EVENTS, ...EVERYDAY_EVENTS, ...LIFE_EVENTS].sort((a,b)=>a.year-b.year);
 
 /* ═══════════════════════════════════════════════════════════════
    STATE
@@ -913,6 +1102,8 @@ let activeFilter   = "all";
 let showWorldOnTL  = true;
 let isFocusMode    = false;
 let devMode        = false;
+let interviewMode  = "chronological"; // 'chronological' | 'thematic'
+let youthMode      = false;
 let ws = null, wsReady = false, usingFallback = false;
 let isRecording = false, recognition = null;
 let ttsQueue = [], ttsBusy = false;
@@ -1017,6 +1208,7 @@ function showTab(id){
     // Prevents tab-switching from silently overwriting hand-edited memorial text.
     const draft=document.getElementById("obituaryOutput")?.value||"";
     if(!obitHasEdits||!draft.trim()) _buildObituaryImpl();
+    else updateObitIdentityCard(state.profile?.basics||{});
   }
 }
 
@@ -1085,6 +1277,7 @@ async function loadPerson(pid){
   renderTimeline();
   updateContextTriggers();
   updateArchiveReadiness();
+  updateObitIdentityCard(state.profile?.basics||{});
   // Update memoir source name
   const msn=document.getElementById("memoirSourceName");
   if(msn){ const n=state.profile?.basics?.preferred||state.profile?.basics?.fullname||"No person selected"; msn.textContent=n; }
@@ -1093,7 +1286,8 @@ function normalizeProfile(p){
   const b=p.basics||p.basic||p.identity||{};
   return {
     basics:{fullname:b.fullname||"",preferred:b.preferred||"",dob:b.dob||"",
-            pob:b.pob||"",culture:b.culture||"",country:b.country||"us"},
+            pob:b.pob||"",culture:b.culture||"",country:b.country||"us",
+            pronouns:b.pronouns||"",phonetic:b.phonetic||""},
     kinship:Array.isArray(p.kinship||p.family)?p.kinship||p.family:[],
     pets:Array.isArray(p.pets)?p.pets:[],
   };
@@ -1135,6 +1329,7 @@ function updateArchiveReadiness(){
   const checks=[
     {label:"Date of birth added",  ok:!!b.dob},
     {label:"Birthplace added",     ok:!!b.pob},
+    {label:"Pronouns set",         ok:!!b.pronouns},
     {label:"Family started",       ok:(state.profile?.kinship||[]).length>0},
     {label:"Pets added",           ok:(state.profile?.pets||[]).length>0},
     {label:"Profile saved",        ok:profileSaved},
@@ -1145,15 +1340,26 @@ function updateArchiveReadiness(){
       <span>${c.label}</span>
       ${c.ok?'<span style="color:#4ade80;font-size:10px;margin-left:auto">✓</span>':''}
     </div>`).join("");
+  // Also refresh obit identity card if visible
+  if(!document.getElementById("pane-obituary")?.classList.contains("hidden"))
+    updateObitIdentityCard(b);
 }
 
 function hydrateProfileForm(){
   const b=state.profile.basics||{};
   setv("bio_fullname",b.fullname); setv("bio_preferred",b.preferred);
   setv("bio_dob",b.dob);          setv("bio_pob",b.pob);
-  setv("bio_culture",b.culture||"");
+  setv("bio_culture",b.culture||""); setv("bio_phonetic",b.phonetic||"");
   const sel=document.getElementById("bio_country");
   if(sel && b.country) sel.value=b.country;
+  // Pronouns
+  const proSel=document.getElementById("bio_pronouns");
+  if(proSel && b.pronouns){
+    const known=["","she/her","he/him","they/them"];
+    if(known.includes(b.pronouns)){ proSel.value=b.pronouns; }
+    else{ proSel.value="custom"; setv("bio_pronouns_custom",b.pronouns);
+      const w=document.getElementById("bio_pronouns_custom_wrap"); if(w) w.classList.remove("hidden"); }
+  }
   // Kinship
   const kt=document.getElementById("tblKinship"); kt.innerHTML="";
   (state.profile.kinship||[]).forEach(k=>addKinRow(k.relation||"Sibling",k));
@@ -1167,11 +1373,19 @@ function hydrateProfileForm(){
   }
 }
 function scrapeBasics(){
+  const proSel=document.getElementById("bio_pronouns");
+  const pronouns=(proSel?.value==="custom"?getv("bio_pronouns_custom"):proSel?.value)||"";
   return {
     fullname:getv("bio_fullname"),preferred:getv("bio_preferred"),
     dob:getv("bio_dob"),pob:getv("bio_pob"),
-    culture:getv("bio_culture"),country:document.getElementById("bio_country").value
+    culture:getv("bio_culture"),country:document.getElementById("bio_country").value,
+    pronouns,phonetic:getv("bio_phonetic")
   };
+}
+function onPronounsChange(){
+  const v=document.getElementById("bio_pronouns")?.value;
+  const wrap=document.getElementById("bio_pronouns_custom_wrap");
+  if(wrap) wrap.classList.toggle("hidden",v!=="custom");
 }
 function scrapeProfileForm(){
   state.profile.basics=scrapeBasics();
@@ -1190,6 +1404,7 @@ function scrapeProfileForm(){
       from:row.querySelector('[data-p="from"]').value.trim(),
       to:row.querySelector('[data-p="to"]').value.trim(),
       notes:row.querySelector('[data-p="notes"]').value.trim(),
+      memory:row.querySelector('[data-p="memory"]')?.value.trim()||"",
     });
   }); state.profile.pets=pets;
 }
@@ -1261,7 +1476,7 @@ function addKinRow(kind,data){
   d.innerHTML=`
     <input class="input-ghost" style="min-width:110px;flex:1" data-k="name" placeholder="Name" value="${escAttr(data.name||"")}">
     <select class="input-ghost" style="min-width:100px" data-k="relation">
-      ${["Mother","Father","Sibling","Spouse","Partner","Child","Step-parent","Step-child","Grandparent","Grandchild","Other"]
+      ${["Mother","Father","Sibling","Spouse","Partner","Child","Step-parent","Step-child","Adoptive parent","Adopted child","Grandparent","Grandchild","Former spouse","Guardian","Chosen family","Other"]
         .map(x=>`<option ${(data.relation||kind)===x?"selected":""}>${x}</option>`).join("")}
     </select>
     <input class="input-ghost" style="flex:1;min-width:90px" data-k="pob" placeholder="Birthplace" value="${escAttr(data.pob||"")}">
@@ -1285,6 +1500,7 @@ function addPetRow(data){
     <input class="input-ghost" style="width:70px"             data-p="from"   placeholder="Year got"    value="${escAttr(data.from||"")}">
     <input class="input-ghost" style="width:70px"             data-p="to"     placeholder="Year lost"   value="${escAttr(data.to||"")}">
     <div style="flex:2;min-width:130px"><div class="text-xs text-slate-600 mb-0.5">Best remembered for</div><input class="input-ghost" style="width:100%" data-p="notes" placeholder="A story, habit, or detail that captures who they were." value="${escAttr(data.notes||"")}"></div>
+    <div style="flex:2;min-width:130px"><div class="text-xs text-slate-600 mb-0.5">Favorite memory</div><input class="input-ghost" style="width:100%" data-p="memory" placeholder="A moment, place, or routine you shared." value="${escAttr(data.memory||"")}"></div>
     <button class="text-red-400 hover:text-red-300 text-sm flex-shrink-0" onclick="this.closest('.petrow').remove();updateArchiveReadiness()">✕</button>`;
   t.appendChild(d);
   updateArchiveReadiness();
@@ -1293,32 +1509,69 @@ function addPetRow(data){
 /* ═══════════════════════════════════════════════════════════════
    ROADMAP
 ═══════════════════════════════════════════════════════════════ */
+/* ── Interview mode toggles ── */
+function setInterviewMode(mode){
+  interviewMode=mode;
+  document.getElementById("modeChronBtn")?.classList.toggle("active",mode==="chronological");
+  document.getElementById("modeThemeBtn")?.classList.toggle("active",mode==="thematic");
+  renderRoadmap();
+}
+function toggleYouthSections(){
+  youthMode=!youthMode;
+  const btn=document.getElementById("youthModeBtn");
+  if(btn){ btn.textContent=youthMode?"Youth Mode: On":"Youth Mode: Off";
+    btn.classList.toggle("youth-on",youthMode); }
+  renderRoadmap(); renderMemoirChapters();
+}
+const THEMATIC_GROUPS=[
+  {label:"Early Life",       ids:["identity","origins","early_home","childhood","pets","school","teen","identity_belonging"]},
+  {label:"Work & Learning",  ids:["first_job","education","career","technology","cars"]},
+  {label:"Family & Relationships", ids:["marriage","children","homes","blended_family","caregiving"]},
+  {label:"World & Community",ids:["world_events","military","community","travel","migration"]},
+  {label:"Inner Life",       ids:["faith","hobbies","challenges","proud","lessons","legacy","grief_rebuilding"]},
+  {label:"Youth & Digital",  ids:["friends_social","school_life","online_life","music_identity","big_changes","hopes_future"]},
+];
+
 function renderRoadmap(){
   const w=document.getElementById("roadmapList"); w.innerHTML="";
-  INTERVIEW_ROADMAP.forEach((s,i)=>{
-    const d=document.createElement("div");
-    d.className="roadmap-item"+(i===sectionIndex?" active-section":"")+(sectionDone[i]?" done":"");
-    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!sectionDone[i];
-    cb.style.flexShrink="0";
-    cb.onclick=e=>{
-      e.stopPropagation(); sectionDone[i]=cb.checked;
-      if(sectionDone[i]&&i===sectionIndex&&i<INTERVIEW_ROADMAP.length-1) sectionIndex++;
-      persistSectionDone(); renderRoadmap(); renderMemoirChapters(); updateSidebar();
-    };
-    const lbl=document.createElement("span");
-    lbl.className="rm-label truncate"; lbl.textContent=`${s.emoji} ${s.label}`;
-    d.appendChild(cb); d.appendChild(lbl);
-    d.onclick=e=>{
-      if(e.target===cb) return;
-      sectionIndex=i; sectionVisited[i]=true;
-      renderRoadmap(); updateContextTriggers();
-      showTab("interview");
-      document.getElementById("ivSectionLabel").textContent=`${s.emoji} ${s.label}`;
-    };
-    w.appendChild(d);
-  });
+  // Filter: skip youth sections unless youthMode is on
+  const visibleSections=INTERVIEW_ROADMAP.map((s,i)=>({s,i})).filter(({s})=>!s.youth||youthMode);
+
+  if(interviewMode==="thematic"){
+    THEMATIC_GROUPS.forEach(grp=>{
+      const grpSections=visibleSections.filter(({s})=>grp.ids.includes(s.id));
+      if(!grpSections.length) return;
+      const hdr=document.createElement("div"); hdr.className="kin-group-row"; hdr.textContent=grp.label;
+      w.appendChild(hdr);
+      grpSections.forEach(({s,i})=>appendRoadmapItem(w,s,i));
+    });
+  } else {
+    visibleSections.forEach(({s,i})=>appendRoadmapItem(w,s,i));
+  }
   const s=INTERVIEW_ROADMAP[sectionIndex];
   if(s) document.getElementById("ivSectionLabel").textContent=`${s.emoji} ${s.label}`;
+}
+function appendRoadmapItem(w,s,i){
+  const d=document.createElement("div");
+  d.className="roadmap-item"+(i===sectionIndex?" active-section":"")+(sectionDone[i]?" done":"");
+  const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!sectionDone[i];
+  cb.style.flexShrink="0";
+  cb.onclick=e=>{
+    e.stopPropagation(); sectionDone[i]=cb.checked;
+    if(sectionDone[i]&&i===sectionIndex&&i<INTERVIEW_ROADMAP.length-1) sectionIndex++;
+    persistSectionDone(); renderRoadmap(); renderMemoirChapters(); updateSidebar();
+  };
+  const lbl=document.createElement("span");
+  lbl.className="rm-label truncate"; lbl.textContent=`${s.emoji} ${s.label}`;
+  d.appendChild(cb); d.appendChild(lbl);
+  d.onclick=e=>{
+    if(e.target===cb) return;
+    sectionIndex=i; sectionVisited[i]=true;
+    renderRoadmap(); updateContextTriggers();
+    showTab("interview");
+    document.getElementById("ivSectionLabel").textContent=`${s.emoji} ${s.label}`;
+  };
+  w.appendChild(d);
 }
 function prevSection(){ sectionIndex=Math.max(0,sectionIndex-1); renderRoadmap(); updateContextTriggers(); }
 function nextSection(){ sectionIndex=Math.min(INTERVIEW_ROADMAP.length-1,sectionIndex+1); renderRoadmap(); updateContextTriggers(); }
@@ -1334,15 +1587,26 @@ function setEvtFilter(f,el){
   document.querySelectorAll(".filter-chip").forEach(c=>c.classList.toggle("active",c.dataset.f===f));
   renderEventsGrid();
 }
+function fireCustomPrompt(){
+  const txt=(getv("evtCustomPrompt")||"").trim(); if(!txt) return;
+  setv("chatInput",`Tell me about: ${txt}. Does this bring up any memories or feelings?`);
+  document.getElementById("chatInput").focus();
+  showTab("interview");
+  sysBubble(`💡 Custom prompt loaded — press Send to ask Lori.`);
+}
 function renderEventsGrid(){
   const birthYear=getBirthYear();
   const country=getCountry();
+  const secondary=document.getElementById("evtSecondaryCountry")?.value||"";
   const container=document.getElementById("eventsGrid"); if(!container) return;
   const strip=document.getElementById("evtContextStrip");
 
   const countryMatch=(e)=>{
     if(country==="global") return e.tags.includes("global");
-    return e.tags.includes(country)||e.tags.includes("global");
+    const primaryMatch=e.tags.includes(country)||e.tags.includes("global");
+    if(!secondary) return primaryMatch;
+    const secMatch=secondary==="global"?e.tags.includes("global"):e.tags.includes(secondary)||e.tags.includes("global");
+    return primaryMatch||secMatch;
   };
 
   const events=ALL_EVENTS.filter(e=>{
@@ -1351,6 +1615,16 @@ function renderEventsGrid(){
     if(birthYear){ const age=e.year-birthYear; return age>=5&&age<=100; }
     return true;
   });
+
+  // Sparse trigger explainer for younger users
+  const sparseNote=document.getElementById("evtSparseNote");
+  if(sparseNote && birthYear){
+    const age=new Date().getFullYear()-birthYear;
+    if(age<30 && events.length<12){
+      sparseNote.textContent=`Fewer triggers appear for younger ages — this list reflects memories from childhood through today. As more life events unfold, this list will grow.`;
+      sparseNote.classList.remove("hidden");
+    } else { sparseNote.classList.add("hidden"); }
+  }
 
   // Update personalized context strip
   if(strip){
@@ -1368,6 +1642,7 @@ function renderEventsGrid(){
         ${gen?`<span class="context-strip-item"><span>${esc(gen.name)}</span></span>`:""}
         ${birthYear?`<span class="context-strip-item">Ages <span>5–${Math.min(100,new Date().getFullYear()-birthYear)}</span></span>`:""}
         <span class="context-strip-item">Country <span>${esc(cLabel)}</span></span>
+        ${secondary?`<span class="context-strip-item">+ Lens <span>${esc(secondary)}</span></span>`:""}
         <span class="context-strip-item">Filter <span>${esc(filterLabel)}</span></span>
         <span class="context-strip-item"><span>${events.length}</span> events shown</span>`;
     } else {
@@ -1488,7 +1763,11 @@ async function renderTimeline(){
   }
 
   if(!personalRows.length&&!worldRows.length){
-    pane.innerHTML=`<div class="text-slate-500 text-sm py-4">No timeline events yet. Complete interview sections or save memories from the World Events tab.</div>`;
+    const age=birthYear?new Date().getFullYear()-birthYear:null;
+    const youngMsg=age&&age<30?
+      `Start by saving school memories, family moments, friendship shifts, or identity milestones using <strong style="color:#475569">Save as Memory</strong> in the Interview tab.`:
+      `Complete interview sections or use <strong style="color:#475569">Save as Memory</strong> in the Interview tab to pin moments here.`;
+    pane.innerHTML=`<div class="text-slate-500 text-sm py-4">${birthYear?"No timeline events yet. "+youngMsg:"Select a person — the timeline will populate from interview milestones and world events."}</div>`;
     return;
   }
 
@@ -1528,24 +1807,49 @@ function renderTlRow(r){
 /* ═══════════════════════════════════════════════════════════════
    MEMOIR DRAFT
 ═══════════════════════════════════════════════════════════════ */
+const MEMOIR_THEMATIC_ORDER=[
+  "identity","origins","early_home","childhood","pets","school","teen","identity_belonging",
+  "first_job","education","career","technology","cars",
+  "marriage","children","homes","blended_family","caregiving",
+  "world_events","military","community","travel","migration",
+  "faith","hobbies","challenges","grief_rebuilding","proud","lessons","legacy",
+  "friends_social","school_life","online_life","music_identity","big_changes","hopes_future"
+];
+const MEMOIR_EARLY_LIFE=["identity","origins","early_home","childhood","pets","school","teen","friends_social","school_life","music_identity","big_changes","hopes_future"];
+const MEMOIR_FAMILY_LEGACY=["origins","early_home","family","marriage","children","blended_family","caregiving","homes","community","faith","lessons","legacy"];
+
 function renderMemoirChapters(){
   const w=document.getElementById("memoirChapterList"); if(!w) return;
+  const framing=document.getElementById("memoirFraming")?.value||"chronological";
+  // Determine which sections to show
+  let showSections;
+  if(framing==="early-life"){
+    showSections=INTERVIEW_ROADMAP.map((s,i)=>({s,i})).filter(({s})=>MEMOIR_EARLY_LIFE.includes(s.id));
+  } else if(framing==="family-legacy"){
+    showSections=INTERVIEW_ROADMAP.map((s,i)=>({s,i})).filter(({s})=>MEMOIR_FAMILY_LEGACY.includes(s.id)||["origins","marriage","children","faith","legacy"].includes(s.id));
+  } else if(framing==="thematic"){
+    const order=MEMOIR_THEMATIC_ORDER;
+    showSections=INTERVIEW_ROADMAP.map((s,i)=>({s,i})).filter(({s})=>!s.youth||youthMode)
+      .sort((a,b)=>{ const ai=order.indexOf(a.s.id); const bi=order.indexOf(b.s.id); return (ai<0?999:ai)-(bi<0?999:bi); });
+  } else {
+    showSections=INTERVIEW_ROADMAP.map((s,i)=>({s,i})).filter(({s})=>!s.youth||youthMode);
+  }
   const doneCount=sectionDone.filter(Boolean).length;
+  const totalVis=showSections.length;
   const pct=Math.round(doneCount/INTERVIEW_ROADMAP.length*100);
-  // Update progress
   const cov=document.getElementById("memoirCoverage");
   const fill=document.getElementById("memoirProgressFill");
   if(cov) cov.textContent=`Interview coverage: ${doneCount} of ${INTERVIEW_ROADMAP.length} sections complete`;
   if(fill) fill.style.width=pct+"%";
-  // Chapter rows
-  w.innerHTML=INTERVIEW_ROADMAP.map((s,i)=>{
+  w.innerHTML=showSections.map(({s,i},n)=>{
     let cls,lbl;
-    if(sectionDone[i]){cls="ready";lbl="Ready";}
+    if(sectionDone[i]){cls="ready";lbl="Ready for draft";}
     else if(sectionVisited[i]){cls="in-progress";lbl="In progress";}
     else{cls="empty";lbl="Not started";}
+    const thinNote=!sectionDone[i]?`<div class="text-xs text-slate-700 mt-0.5" style="font-size:9px">Limited source material — complete this section for a fuller draft.</div>`:"";
     return `<div class="chapter-row" onclick="jumpToSection(${i})" title="Go to this interview section">
-      <span class="chapter-num">${i+1}</span>
-      <span class="chapter-label">${s.emoji} ${s.label}</span>
+      <span class="chapter-num">${n+1}</span>
+      <div class="flex-1"><span class="chapter-label">${s.emoji} ${s.label}</span>${thinNote}</div>
       <span class="chapter-status ${cls}">${lbl}</span>
     </div>`;
   }).join("");
@@ -1564,7 +1868,17 @@ function generateMemoirDraft(){
   const name=state.profile?.basics?.preferred||state.profile?.basics?.fullname||"this person";
   const done=INTERVIEW_ROADMAP.filter((_,i)=>sectionDone[i]).map(s=>s.label);
   if(!done.length){ sysBubble("Complete at least one interview section first."); return; }
-  const prompt=`Please write a memoir draft for ${name}. Completed interview sections: ${done.join(", ")}. Write flowing narrative prose, chapter by chapter, in the style of a thoughtful family memoir. Ground every detail in the collected interview answers. Do not invent facts.`;
+  const framing=document.getElementById("memoirFraming")?.value||"chronological";
+  const framingInstructions={
+    "chronological":"Write flowing narrative prose, chapter by chapter in chronological order, in the style of a thoughtful family memoir.",
+    "thematic":"Organize the memoir by theme rather than chronology — group memories around identity, family, work, and legacy. Each chapter explores a theme across different life periods.",
+    "early-life":"Write this as an early-life journal — warm, personal, and focused on childhood through young adulthood. Use a voice that feels like a personal diary or coming-of-age story.",
+    "family-legacy":"Write this as a family legacy narrative — address it to future generations. Focus on values, family patterns, heritage, and what this person would want their descendants to know.",
+  };
+  const style=framingInstructions[framing]||framingInstructions["chronological"];
+  const pronouns=state.profile?.basics?.pronouns||"";
+  const pronNote=pronouns?` Use ${pronouns} pronouns.`:"";
+  const prompt=`Please write a memoir draft for ${name}.${pronNote} Completed interview sections: ${done.join(", ")}. ${style} Ground every detail in the collected interview answers. Do not invent facts.`;
   setv("chatInput",prompt); document.getElementById("chatInput").focus();
   sysBubble("Memoir prompt loaded — press Send to have Lori write the draft.");
 }
@@ -1615,17 +1929,54 @@ function _buildObituaryImpl(){
   if(b.pob)      setv("obit_pob",b.pob);
   if(b.dob){ const y=parseInt(b.dob.split("-")[0]);
     if(!isNaN(y)) setv("obit_age",`${new Date().getFullYear()-y} (living)`); }
+  // Detect living/deceased
+  const dod=getv("obit_dod");
+  const isLiving=!dod;
+  const banner=document.getElementById("obitLivingBanner");
+  if(banner) banner.classList.toggle("hidden",!isLiving);
+  const heading=document.getElementById("obitHeading");
+  if(heading) heading.textContent=isLiving?"Life Summary / Archive":"Obituary Draft";
+  // Survivors from family map
   const living=(arr,rel)=>kin.filter(k=>k.relation===rel&&!k.deceased).map(k=>k.name);
+  const SURVIVOR_TYPES=["Spouse","Partner","Child","Step-child","Adopted child","Sibling","Grandchild"];
   const spouse=living(kin,"Spouse").concat(living(kin,"Partner"));
-  const children=living(kin,"Child");
+  const children=living(kin,"Child").concat(living(kin,"Step-child")).concat(living(kin,"Adopted child"));
   const siblings=living(kin,"Sibling");
   let surv="";
   if(spouse.length)   surv+=spouse.join(" and ");
   if(children.length) surv+=(surv?"; their children ":"children ")+children.join(", ");
   if(siblings.length) surv+=(surv?"; and siblings ":"siblings ")+siblings.join(", ");
   if(surv) setv("obit_survivors",`${b.preferred||b.fullname||"The deceased"} is survived by ${surv}.`);
+  updateObitIdentityCard(b);
   setObitDraftType("auto");
   generateObituaryText();
+}
+function previewFamilyMapSurvivors(){
+  const kin=state.profile?.kinship||[];
+  const prev=document.getElementById("obitFamilyPreview");
+  if(!prev) return;
+  const lines=kin.map(k=>{
+    const dec=k.deceased?"(deceased)":"(living)";
+    return `${k.name||"—"} · ${k.relation} ${dec}`;
+  });
+  if(!lines.length){ prev.textContent="No family members added to the Family Map yet."; }
+  else { prev.textContent="Family Map: "+lines.join(" · "); }
+  prev.classList.remove("hidden");
+}
+function updateObitIdentityCard(b){
+  const el=document.getElementById("obitIdentityItems"); if(!el) return;
+  const checks=[
+    {label:"Name set",      ok:!!(b.fullname||b.preferred)},
+    {label:"Pronouns set",  ok:!!b.pronouns},
+    {label:"Date of birth", ok:!!b.dob},
+    {label:"Family map",    ok:(state.profile?.kinship||[]).length>0},
+    {label:"Culture/roots", ok:!!b.culture},
+  ];
+  el.innerHTML=`<div class="flex flex-wrap gap-3">`+checks.map(c=>
+    `<div class="identity-card-item">
+       <div class="identity-card-dot ${c.ok?"ok":"miss"}"></div>
+       <span style="color:${c.ok?"#94a3b8":"#475569"}">${c.label}</span>
+     </div>`).join("")+`</div>`;
 }
 function generateObituaryText(){
   const name=getv("obit_name")||"[Name]";
@@ -1671,12 +2022,22 @@ function generateObituaryText(){
   document.getElementById("obituaryOutput").value=txt;
 }
 function _generateObitChatImpl(){
-  const name=state.profile?.basics?.fullname||"this person";
+  const b=state.profile?.basics||{};
+  const name=b.fullname||"this person";
   const tone=document.getElementById("obitTone")?.value||"traditional";
-  const prompt=`Please write a ${tone} obituary for ${name}. Use the profile data, family map, career history, and interview highlights. Write in a ${tone} style — include birth, career, family, and a closing tribute.`;
+  const dod=getv("obit_dod");
+  const isLiving=!dod;
+  const pronounNote=b.pronouns?` Use ${b.pronouns} pronouns.`:"";
+  const livingNote=isLiving?" This person is living — write a Life Summary rather than an obituary. Avoid death-framing.":"";
+  const faith=getv("obit_faith"); const service=getv("obit_service");
+  const vigil=getv("obit_vigil"); const memorial=getv("obit_memorial");
+  const bilingual=getv("obit_bilingual");
+  const culturalParts=[faith&&`Faith: ${faith}`,service&&`Service: ${service}`,
+    vigil&&`Vigil/rosary: ${vigil}`,memorial&&`Memorial: ${memorial}`,bilingual&&`Bilingual note: ${bilingual}`].filter(Boolean);
+  const culturalNote=culturalParts.length?` Cultural/memorial details: ${culturalParts.join("; ")}.`:"";
+  const prompt=`Please write a ${tone} ${isLiving?"life summary":"obituary"} for ${name}.${pronounNote}${livingNote}${culturalNote} Use the profile data, family map, career history, and interview highlights. Write in a ${tone} style — include birth, career, family, and a closing tribute.`;
   setv("chatInput",prompt); document.getElementById("chatInput").focus();
   sysBubble("Obituary prompt loaded — press Send to have Lori write it.");
-  // Mark as Lori draft when response comes back
   obitDraftType="lori_pending";
 }
 function setObitDraftType(t){
@@ -1684,8 +2045,9 @@ function setObitDraftType(t){
   const el=document.getElementById("obitDraftIndicator"); if(!el) return;
   if(!t){ el.classList.add("hidden"); return; }
   el.classList.remove("hidden");
-  el.className=`draft-indicator ${t==="lori"?"lori":"auto"}`;
-  el.textContent=t==="lori"?"✨ Written with Lori":"Filled from Profile";
+  if(t==="lori")        { el.className="draft-indicator lori";   el.textContent="✨ Written with Lori"; }
+  else if(t==="edited") { el.className="draft-indicator edited";  el.textContent="✎ Edited by hand"; }
+  else                  { el.className="draft-indicator auto";    el.textContent="Filled from Profile"; }
 }
 function resetObitFromFacts(){ obitHasEdits=false; _buildObituaryImpl(); }
 function copyObituary(){ nav_copy(document.getElementById("obituaryOutput").value); sysBubble("↳ Obituary copied."); }
@@ -1754,8 +2116,23 @@ async function ivAskInChat(){
 async function ivSkip(){ await processInterviewAnswer("",true); sysBubble("⤼ Skipped for now."); }
 async function ivSaveAndNext(){
   const ans=getv("ivAnswer").trim(); if(!ans){ sysBubble("Type an answer first."); return; }
-  setv("ivAnswer",""); captureState=null; renderCaptureChip();
-  await processInterviewAnswer(ans);
+  const result=await processInterviewAnswer(ans);
+  if(result!==null){ captureState="saved"; renderCaptureChip();
+    setTimeout(()=>{ setv("ivAnswer",""); captureState=null; renderCaptureChip(); },600); }
+}
+async function ivSaveAsMemory(){
+  const ans=getv("ivAnswer").trim(); if(!ans){ sysBubble("Type something to save as a memory."); return; }
+  if(!state.person_id){ sysBubble("Select a person first."); return; }
+  const s=INTERVIEW_ROADMAP[sectionIndex];
+  const title=s?`${s.label} — memory`:"Memory";
+  try{
+    await fetch(API.TL_ADD,{method:"POST",headers:ctype(),body:JSON.stringify({
+      person_id:state.person_id,title,notes:ans,ts:new Date().toISOString().split("T")[0],
+      event_type:"personal",source:"interview"})});
+    captureState="saved"; renderCaptureChip();
+    sysBubble("📁 Saved as memory to Timeline.");
+    renderTimeline();
+  }catch{ sysBubble("⚠ Could not reach timeline service — memory not saved."); }
 }
 function onIvAnswerEdit(){
   // If user edits after capture, switch chip to "Edited by hand"
@@ -1768,6 +2145,8 @@ function renderCaptureChip(){
   el.classList.remove("hidden");
   if(captureState==="captured"){
     el.className="capture-chip captured"; el.textContent="✓ Captured from Lori";
+  } else if(captureState==="saved"){
+    el.className="capture-chip saved"; el.textContent="📁 Saved to archive";
   } else {
     el.className="capture-chip edited"; el.textContent="✎ Edited by hand";
   }
