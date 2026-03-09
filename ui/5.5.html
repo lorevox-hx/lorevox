@@ -1012,7 +1012,12 @@ function showTab(id){
   if(id==='events')   renderEventsGrid();
   if(id==='timeline') renderTimeline();
   if(id==='memoir')   renderMemoirChapters();
-  if(id==='obituary') _buildObituaryImpl(); // auto-fill only; no guard on tab switch
+  if(id==='obituary'){
+    // Auto-fill only if user hasn't made manual edits OR if the draft is empty.
+    // Prevents tab-switching from silently overwriting hand-edited memorial text.
+    const draft=document.getElementById("obituaryOutput")?.value||"";
+    if(!obitHasEdits||!draft.trim()) _buildObituaryImpl();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
