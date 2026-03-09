@@ -212,6 +212,10 @@ async function processInterviewAnswer(text, skipped=false){
 async function ivAskInChat(){
   if(!state.interview.prompt){ sysBubble("Start an interview section first."); return; }
 
+  // v6.2: bilingual — prefix instruction when a non-English language is set
+  const _lang=state.profile?.basics?.language||"";
+  const _langPrefix=_lang?`[SYSTEM: Please ask the following question in ${_lang}.] `:"";
+
   let instruction;
 
   if(softenedMode){
@@ -219,10 +223,10 @@ async function ivAskInChat(){
     const turnsLeft = softenedUntilTurn - turnCount;
     if(turnsLeft <= 1){
       // Second+ softened question — add a gentle check-in
-      instruction = `[SYSTEM: The person shared something difficult earlier in this session. Please ask the following question very gently and briefly. After the question, add a warm check-in: "How are you doing? We can keep going or take a break anytime." Do not pressure or probe. Question: "${state.interview.prompt}"]`;
+      instruction = `${_langPrefix}[SYSTEM: The person shared something difficult earlier in this session. Please ask the following question very gently and briefly. After the question, add a warm check-in: "How are you doing? We can keep going or take a break anytime." Do not pressure or probe. Question: "${state.interview.prompt}"]`;
     } else {
       // First softened question after disclosure
-      instruction = `[SYSTEM: The person recently shared something difficult. Please ask the following question very gently and briefly — keep it short, no follow-up pressure, no probing. Question: "${state.interview.prompt}"]`;
+      instruction = `${_langPrefix}[SYSTEM: The person recently shared something difficult. Please ask the following question very gently and briefly — keep it short, no follow-up pressure, no probing. Question: "${state.interview.prompt}"]`;
     }
   } else {
     // v6.1 Track B: check for a recent affect signal and nudge Lori's tone
@@ -239,7 +243,7 @@ async function ivAskInChat(){
         affectCtx = " The person seems engaged — you can open this up warmly and invite them to share more.";
       }
     }
-    instruction = `[SYSTEM: Please ask this question now.${affectCtx} Question: "${state.interview.prompt}"]`;
+    instruction = `${_langPrefix}[SYSTEM: Please ask this question now.${affectCtx} Question: "${state.interview.prompt}"]`;
   }
 
   await sendSystemPrompt(instruction);

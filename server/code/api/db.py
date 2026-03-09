@@ -374,6 +374,12 @@ def init_db() -> None:
         """
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_segment_flags_session ON segment_flags(session_id);")
+    # v6.2: UNIQUE constraint on (session_id, question_id) prevents duplicate flags on answer retry.
+    # SQLite requires CREATE UNIQUE INDEX rather than ALTER TABLE ADD CONSTRAINT.
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_seg_flags_session_question "
+        "ON segment_flags(session_id, question_id) WHERE question_id IS NOT NULL;"
+    )
 
     # -----------------------------
     # Affect events  (Track B — Emotion Signal)
@@ -1494,24 +1500,30 @@ def save_segment_flag(
     excluded_from_memoir: bool = True,
     private: bool = True,
 ) -> str:
-    """Create or update a segment flag record. Returns the flag id."""
+    """Create a segment flag record. Returns the flag id.
+    Uses INSERT OR IGNORE so retrying the same answer never creates duplicates.
+    """
     con = _connect()
     now = _now_iso()
     flag_id = _uuid()
     con.execute(
         """
-        INSERT INTO segment_flags
+        INSERT OR IGNORE INTO segment_flags
           (id, session_id, question_id, section_id,
            sensitive, sensitive_category, excluded_from_memoir, private, deleted, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
-        ON CONFLICT(id) DO NOTHING;
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?);
         """,
         (flag_id, session_id, question_id, section_id,
          int(sensitive), sensitive_category, int(excluded_from_memoir), int(private), now),
     )
+    # If a flag for this (session, question) pair already existed, fetch the existing id
+    existing = con.execute(
+        "SELECT id FROM segment_flags WHERE session_id=? AND question_id=?;",
+        (session_id, question_id),
+    ).fetchone()
     con.commit()
     con.close()
-    return flag_id
+    return (existing["id"] if existing else flag_id)
 
 
 def get_segment_flags(session_id: str) -> List[Dict]:
@@ -1544,6 +1556,38 @@ def include_segment_in_memoir(flag_id: str) -> bool:
     con.execute(
         "UPDATE segment_flags SET excluded_from_memoir=0, private=0 WHERE id=?;",
         (flag_id,),
+    )
+    changed = con.total_changes
+    con.commit()
+    con.close()
+    return changed > 0
+
+
+# v6.2 — lookup-by-(session_id, question_id) for frontend which uses those identifiers
+def update_segment_flag_by_question(
+    session_id: str, question_id: str, include_in_memoir: bool
+) -> bool:
+    """Toggle memoir inclusion for the flag matching (session_id, question_id)."""
+    con = _connect()
+    excluded = 0 if include_in_memoir else 1
+    private_val = 0 if include_in_memoir else 1
+    con.execute(
+        "UPDATE segment_flags SET excluded_from_memoir=?, private=? "
+        "WHERE session_id=? AND question_id=? AND deleted=0;",
+        (excluded, private_val, session_id, question_id),
+    )
+    changed = con.total_changes
+    con.commit()
+    con.close()
+    return changed > 0
+
+
+def delete_segment_flag_by_question(session_id: str, question_id: str) -> bool:
+    """Soft-delete the flag matching (session_id, question_id)."""
+    con = _connect()
+    con.execute(
+        "UPDATE segment_flags SET deleted=1 WHERE session_id=? AND question_id=?;",
+        (session_id, question_id),
     )
     changed = con.total_changes
     con.commit()

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    state.js — single source of truth for all application state
-   Lorevox v6.1
+   Lorevox v6.2
    Load order: FIRST (before all other modules)
 ═══════════════════════════════════════════════════════════════ */
 

@@ -151,7 +151,8 @@ function normalizeProfile(p){
   return {
     basics:{fullname:b.fullname||"",preferred:b.preferred||"",dob:b.dob||"",
             pob:b.pob||"",culture:b.culture||"",country:b.country||"us",
-            pronouns:b.pronouns||"",phonetic:b.phonetic||""},
+            pronouns:b.pronouns||"",phonetic:b.phonetic||"",
+            language:b.language||""},  // v6.2 bilingual
     kinship:Array.isArray(p.kinship||p.family)?p.kinship||p.family:[],
     pets:Array.isArray(p.pets)?p.pets:[],
   };
@@ -227,6 +228,8 @@ function hydrateProfileForm(){
   setv("bio_culture",b.culture||""); setv("bio_phonetic",b.phonetic||"");
   const sel=document.getElementById("bio_country");
   if(sel && b.country) sel.value=b.country;
+  const langSel=document.getElementById("bio_language");  // v6.2
+  if(langSel && b.language) langSel.value=b.language;
   const proSel=document.getElementById("bio_pronouns");
   if(proSel && b.pronouns){
     const known=["","she/her","he/him","they/them"];
@@ -247,11 +250,13 @@ function hydrateProfileForm(){
 function scrapeBasics(){
   const proSel=document.getElementById("bio_pronouns");
   const pronouns=(proSel?.value==="custom"?getv("bio_pronouns_custom"):proSel?.value)||"";
+  const langSel=document.getElementById("bio_language");
   return {
     fullname:getv("bio_fullname"),preferred:getv("bio_preferred"),
     dob:getv("bio_dob"),pob:getv("bio_pob"),
     culture:getv("bio_culture"),country:document.getElementById("bio_country").value,
-    pronouns,phonetic:getv("bio_phonetic")
+    pronouns,phonetic:getv("bio_phonetic"),
+    language:langSel?langSel.value:""  // v6.2 bilingual
   };
 }
 function onPronounsChange(){
@@ -804,7 +809,10 @@ async function sendSystemPrompt(instruction){
 async function streamSse(text,overrideBubble=null){
   setLoriState("thinking");
   const bubble=overrideBubble||appendBubble("ai","…");
-  const sys=`You are Lori, a warm oral historian and memoir biographer working for Lorevox. PROFILE_JSON: ${JSON.stringify({person_id:state.person_id,profile:state.profile})}`;
+  // v6.2: inject language instruction when profile specifies a non-English preference
+  const _lang=state.profile?.basics?.language||"";
+  const _langNote=_lang?` Please communicate in ${_lang} throughout this session.`:"";
+  const sys=`You are Lori, a warm oral historian and memoir biographer working for Lorevox.${_langNote} PROFILE_JSON: ${JSON.stringify({person_id:state.person_id,profile:state.profile})}`;
   const body={messages:[{role:"system",content:sys},{role:"user",content:text}],
     temp:0.7,max_new:512,conv_id:state.chat.conv_id||"default"};
   let full="";

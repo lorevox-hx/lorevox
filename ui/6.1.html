@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Lorevox v6.1 — Life Archive Studio</title>
+  <title>Lorevox v6.2 — Life Archive Studio</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,7 +28,7 @@
     <button class="btn-icon" id="btnToggleSb"    onclick="toggleSidebar()"  title="Toggle people &amp; roadmap">☰</button>
     <span class="serif text-indigo-400 font-semibold text-lg tracking-wide">Lorevox</span>
     <span class="text-slate-600 text-xs hidden sm:block">Life Archive Studio</span>
-    <span class="text-slate-700 text-xs hidden sm:block">v6.1</span>
+    <span class="text-slate-700 text-xs hidden sm:block">v6.2</span>
     <div class="flex-1"></div>
     <button class="btn-icon" id="btnFocus" onclick="toggleFocus()" title="Focus mode — hide panels">⊡</button>
     <button class="btn-icon" id="btnDevMode" onclick="toggleDevMode()" title="Developer mode">⚙</button>
@@ -132,6 +132,31 @@
                   <option value="global">Global / Other</option>
                 </select>
               </div>
+            </div>
+            <!-- Language row -->
+            <div class="mt-3">
+              <label class="text-xs text-slate-500 block mb-1">Interview language preference</label>
+              <select class="input-ghost" id="bio_language">
+                <option value="">English (default)</option>
+                <option value="Spanish">Spanish</option>
+                <option value="Russian">Russian</option>
+                <option value="Mandarin">Mandarin Chinese</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="Italian">Italian</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option>
+                <option value="Arabic">Arabic</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Polish">Polish</option>
+                <option value="Bulgarian">Bulgarian</option>
+                <option value="Ukrainian">Ukrainian</option>
+                <option value="Romanian">Romanian</option>
+                <option value="Vietnamese">Vietnamese</option>
+                <option value="Tagalog">Tagalog</option>
+              </select>
+              <p class="text-xs text-slate-600 mt-1">Lori will ask questions and respond in this language.</p>
             </div>
             <!-- Pronoun + phonetic row -->
             <div class="grid grid-cols-2 gap-3 mt-3">

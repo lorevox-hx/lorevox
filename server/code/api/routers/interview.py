@@ -348,3 +348,41 @@ def api_summaries(session_id: str):
         raise HTTPException(status_code=404, detail="Unknown session_id")
     from ..db import list_section_summaries
     return {"summaries": list_section_summaries(session_id)}
+
+
+# ── v6.2 Segment flag management ─────────────────────────────────────────────
+
+@router.get("/segment-flags")
+def api_segment_flags(session_id: str):
+    """Return all non-deleted segment flags for a session."""
+    sess = db.get_interview_session(session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    return {"flags": db.get_segment_flags(session_id)}
+
+
+class SegFlagUpdateRequest(BaseModel):
+    session_id: str
+    question_id: str
+    include_in_memoir: bool
+
+
+class SegFlagDeleteRequest(BaseModel):
+    session_id: str
+    question_id: str
+
+
+@router.post("/segment-flag/update")
+def api_segment_flag_update(req: SegFlagUpdateRequest):
+    """Toggle memoir inclusion for a segment identified by session + question."""
+    updated = db.update_segment_flag_by_question(
+        req.session_id, req.question_id, req.include_in_memoir
+    )
+    return {"updated": updated}
+
+
+@router.post("/segment-flag/delete")
+def api_segment_flag_delete(req: SegFlagDeleteRequest):
+    """Soft-delete a segment flag identified by session + question."""
+    deleted = db.delete_segment_flag_by_question(req.session_id, req.question_id)
+    return {"deleted": deleted}

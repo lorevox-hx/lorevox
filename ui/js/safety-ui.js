@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    safety-ui.js — safety overlay, resource cards, sensitive segments,
                   confirm dialog
-   Lorevox v6.1 Track A
+   Lorevox v6.2 Track A
    Load order: FIFTH
 ═══════════════════════════════════════════════════════════════ */
 
@@ -9,6 +9,10 @@
 // Stores the resource cards currently shown in the overlay so they
 // can be surfaced in chat when the person takes a break or closes.
 let _currentSafetyResources = [];
+
+// v6.2 Segment sort / filter state
+let _segFilter = "all";   // "all" | "included" | "excluded"
+let _segSort   = "section"; // "section" | "category"
 
 /* ── RESOURCE CARD DATA ──────────────────────────────────────── */
 const RESOURCE_CARDS_ALL = [
@@ -64,6 +68,16 @@ function _buildResourceCardHtml(cards){
   }).join("");
 }
 
+/* ── MINOR DETECTION ─────────────────────────────────────────── */
+// Returns true if the active person's birth year puts them under 18.
+// getBirthYear() is defined in app.js (load order: ELEVENTH).
+function _isMinor(){
+  if(typeof getBirthYear !== "function") return false;
+  const birthYear=getBirthYear();
+  if(!birthYear) return false;
+  return (new Date().getFullYear() - birthYear) < 18;
+}
+
 /* ── SAFETY OVERLAY ──────────────────────────────────────────── */
 function showSafetyOverlay(category, backendResources){
   const overlay=document.getElementById("safetyOverlay");
@@ -79,6 +93,19 @@ function showSafetyOverlay(category, backendResources){
   _currentSafetyResources=cards;
 
   cardsCont.innerHTML=_buildResourceCardHtml(cards);
+
+  // v6.2: age-specific message for minors (Emily Santos use case)
+  const msgEl=document.getElementById("safetyLoriMessage");
+  if(msgEl && _isMinor()){
+    msgEl.textContent=
+      "Thank you for sharing that. You do not have to keep going right now. "
+      +"It's okay to talk to a trusted adult — a parent, school counselor, or another "
+      +"person you trust — about what you're feeling. We can pause here whenever you need.";
+  } else if(msgEl){
+    msgEl.textContent=
+      "Thank you for telling me. What you shared matters. You do not have to keep going right now. "
+      +"We can pause, keep talking, or look at support options.";
+  }
 }
 
 function _appendResourcesToBubble(intro){
@@ -158,6 +185,10 @@ function flagSensitiveSegment(sectionIdx, category, excerpt, sessionId, question
   }
 }
 
+/* ── SEGMENT SORT / FILTER HELPERS ──────────────────────────── */
+function setSegFilter(f){ _segFilter=f; renderSensitiveReviewPanel(); }
+function setSegSort(s){   _segSort=s;   renderSensitiveReviewPanel(); }
+
 function renderSensitiveReviewPanel(){
   const list=document.getElementById("sensitiveReviewList"); if(!list) return;
   if(!sensitiveSegments.length){
@@ -166,7 +197,39 @@ function renderSensitiveReviewPanel(){
     </div>`;
     return;
   }
-  list.innerHTML=sensitiveSegments.map((seg,i)=>{
+
+  // Build indexed array, apply filter
+  let items=sensitiveSegments.map((seg,i)=>({seg,i}));
+  if(_segFilter==="included") items=items.filter(({seg})=>seg.includedInMemoir);
+  else if(_segFilter==="excluded") items=items.filter(({seg})=>!seg.includedInMemoir);
+
+  // Apply sort
+  if(_segSort==="category"){
+    items.sort((a,b)=>(a.seg.category||"").localeCompare(b.seg.category||""));
+  } else {
+    items.sort((a,b)=>a.seg.sectionIdx-b.seg.sectionIdx);
+  }
+
+  // Sort/filter toolbar
+  const filterBtns=["all","included","excluded"].map(f=>
+    `<button class="seg-filter-btn${_segFilter===f?" active":""}" onclick="setSegFilter('${f}')">`
+    +{all:"All",included:"In memoir",excluded:"Excluded"}[f]+`</button>`
+  ).join("");
+  const sortBtns=["section","category"].map(s=>
+    `<button class="seg-filter-btn${_segSort===s?" active":""}" onclick="setSegSort('${s}')">`
+    +{section:"By section",category:"By type"}[s]+`</button>`
+  ).join("");
+
+  const toolbar=`<div class="seg-toolbar">
+    <div class="seg-toolbar-group">${filterBtns}</div>
+    <div class="seg-toolbar-group">${sortBtns}</div>
+  </div>`;
+
+  const noMatch=items.length===0
+    ?`<div class="text-sm text-slate-500 text-center py-4 italic">No segments match this filter.</div>`
+    :"";
+
+  const rows=items.map(({seg,i})=>{
     const section=INTERVIEW_ROADMAP[seg.sectionIdx];
     const sLabel=section?`${section.emoji} ${section.label}`:`Section ${seg.sectionIdx}`;
     const categoryLabel=seg.category.replace(/_/g," ");
@@ -192,6 +255,8 @@ function renderSensitiveReviewPanel(){
       </div>
     </div>`;
   }).join("");
+
+  list.innerHTML=toolbar+noMatch+rows;
 }
 
 function includeSensitiveSegment(i){
