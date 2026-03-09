@@ -1,7 +1,7 @@
 # Strategic Product Design Analysis
 ## Evolving AI-Assisted Biography and Archive Platforms
 
-> This document serves as the canonical design rationale for Lorevox's UX decisions from v5.2 onward. It explains the *why* behind choices that might otherwise appear cosmetic to future contributors. All changes marked as implemented were shipped in v5.3 (commit aa08c8b).
+> This document serves as the canonical design rationale for Lorevox's UX decisions from v5.2 onward. It explains the *why* behind choices that might otherwise appear cosmetic to future contributors. v5.3 (aa08c8b), v5.4 (86c67ec), and v5.5 (aa87d7e) are all shipped. All items in the Implementation Status Summary below are now complete.
 
 ---
 
@@ -82,7 +82,7 @@ This dynamic badging assures the user that their editorial authority is absolute
 
 ### Interview Button Iconography
 
-> **Status:** 🔲 Pending — v5.4 candidate
+> **Status:** ✅ Implemented in v5.4
 
 The buttons to control the session — ▶ Begin Section, ↻ Ask Again, and ⤼ Skip for Now — currently rely on symbols that project a media-player or control-panel aesthetic. In deeply emotional workflows involving the excavation of personal history, mechanical symbols can inadvertently trivialize the interaction. Removing the icons and relying purely on well-set typographical buttons (Begin Section, Ask Again, Skip for Now) strips away the tooling aesthetic, emphasizing the gravity, dignity, and human-centric nature of the task.
 
@@ -107,7 +107,7 @@ The interaction design of these triggers must also be explicitly communicated to
 
 ### Permanent Age-Filter Explainer
 
-> **Status:** 🔲 Pending — v5.4 candidate
+> **Status:** ✅ Implemented in v5.5
 
 Context strips that dynamically filter events based on the subject's calculated age require explicit explanation to prevent user confusion. A user might wonder why events from 1945 are missing if the subject was born in 1950. Adding a clarifying, permanently visible line — "Showing events from childhood through later life" — removes the cognitive burden of deducing the algorithmic filtering logic, making the tool feel intelligently supportive.
 
@@ -141,7 +141,7 @@ Finally, the UI mechanisms used to control the timeline view must reflect state 
 
 ## 6. Protecting Voice, Tone, and Cultural Nuance in Obituary Drafting
 
-> **Status:** Partially implemented in v5.3 — source-locking modal **pending** (v5.4 priority)
+> **Status:** ✅ Fully implemented — source-locking modal shipped in v5.5
 
 The drafting of an obituary is unequivocally the most emotionally volatile and culturally sensitive interaction within any biographical application. It requires a delicate, highly respectful balance of factual accuracy, narrative grace, and profound cultural sensitivity. The application must treat the Obituary tab as a protected, hallowed space where the preservation of the family's authentic voice and cultural heritage is paramount.
 
@@ -149,7 +149,7 @@ The action language dictating the automated generation of the obituary must be c
 
 ### Data Source Locking and Non-Destructive Editing
 
-> **Status:** 🔲 Pending — v5.4 priority
+> **Status:** ✅ Implemented in v5.5
 
 Because obituaries blend hard, deterministic data (dates of birth/death, lists of surviving relatives) with highly subjective narrative reflections, the system interface must clearly distinguish between a "Filled from Profile" draft and a "Written with Lori" draft. This distinction is not merely aesthetic; it necessitates robust data-syncing safeguards and explicit user permission models.
 
@@ -195,15 +195,15 @@ Because an AI, regardless of its training data, cannot perfectly intuit the high
 | Top bar | Developer info hidden by default | ✅ v5.3 |
 | Profile | "Personal Details" label | ✅ v5.3 |
 | Profile | Archive readiness verbs ("added", "started") | ✅ v5.3 |
-| Profile | Quick-add buttons lowercased | ✅ v5.3 |
+| Profile | Quick-add buttons with + prefix | ✅ v5.5 |
 | Profile | "Best remembered for" pet label | ✅ v5.3 |
 | Interview | "Captured answer" label | ✅ v5.3 |
 | Interview | Two-state capture chip (Captured / Edited) | ✅ v5.3 |
 | Interview | "Helpful Memory Prompts" accordion | ✅ v5.3 |
-| Interview | Remove ▶ ↻ ⤼ icons from buttons | 🔲 v5.4 |
+| Interview | Remove ▶ ↻ ⤼ icons from buttons | ✅ v5.4 |
 | Memory Triggers | "History" / "Everyday Life" filter groups | ✅ v5.3 |
 | Memory Triggers | "Have Lori ask about that moment" subtitle | ✅ v5.3 |
-| Memory Triggers | Permanent age-filter explainer line | 🔲 v5.4 |
+| Memory Triggers | Permanent age-filter explainer line | ✅ v5.5 |
 | Timeline | "World Context: On / Off" toggle | ✅ v5.3 |
 | Timeline | "How this timeline grows" hint card | ✅ v5.3 |
 | Timeline | Subtitle added | ✅ v5.3 |
@@ -213,7 +213,7 @@ Because an AI, regardless of its training data, cannot perfectly intuit the high
 | Obituary | "Fill from Profile" / "Write with Lori" | ✅ v5.3 |
 | Obituary | "Filled from Profile" / "Written with Lori" indicators | ✅ v5.3 |
 | Obituary | Warning text about Lori-generated draft | ✅ v5.3 |
-| Obituary | Source-locking modal on human-edited text | 🔲 v5.4 priority |
+| Obituary | Source-locking modal on human-edited text | ✅ v5.5 |
 | Chat | "Latest draft note" label | ✅ v5.3 |
 | Chat | Updated placeholder | ✅ v5.3 |
 
