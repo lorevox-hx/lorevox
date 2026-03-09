@@ -1261,7 +1261,7 @@ function addKinRow(kind,data){
   d.innerHTML=`
     <input class="input-ghost" style="min-width:110px;flex:1" data-k="name" placeholder="Name" value="${escAttr(data.name||"")}">
     <select class="input-ghost" style="min-width:100px" data-k="relation">
-      ${["Mother","Father","Sibling","Spouse","Partner","Child","Grandparent","Grandchild","Other"]
+      ${["Mother","Father","Sibling","Spouse","Partner","Child","Step-parent","Step-child","Grandparent","Grandchild","Other"]
         .map(x=>`<option ${(data.relation||kind)===x?"selected":""}>${x}</option>`).join("")}
     </select>
     <input class="input-ghost" style="flex:1;min-width:90px" data-k="pob" placeholder="Birthplace" value="${escAttr(data.pob||"")}">
@@ -1623,7 +1623,7 @@ function _buildObituaryImpl(){
   if(spouse.length)   surv+=spouse.join(" and ");
   if(children.length) surv+=(surv?"; their children ":"children ")+children.join(", ");
   if(siblings.length) surv+=(surv?"; and siblings ":"siblings ")+siblings.join(", ");
-  if(surv) setv("obit_survivors",`${b.preferred||b.fullname||"They"} is survived by ${surv}.`);
+  if(surv) setv("obit_survivors",`${b.preferred||b.fullname||"The deceased"} is survived by ${surv}.`);
   setObitDraftType("auto");
   generateObituaryText();
 }
@@ -1660,7 +1660,8 @@ function generateObituaryText(){
     txt+=`We'll keep telling the stories.`;
   } else {
     // traditional
-    txt=name; if(age) txt+=`, ${age},`; if(pod) txt+=` of ${pod},`;
+    txt=name; if(age) txt+=`, ${age},`;
+    if(pod) txt+=dod?` of ${pod},`:` of ${pod}`;
     txt+=dod?` passed away ${fmt(dod)}.`:" — Life Story Archive."; txt+="\n\n";
     if(pob||dob) txt+=`Born${dob?" "+fmt(dob):""}${pob?" in "+pob:""}, ${name.split(" ")[0]} lived a life of purpose and meaning.\n\n`;
     if(career) txt+=`${career}\n\n`;
