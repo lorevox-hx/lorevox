@@ -57,8 +57,30 @@ function persistSectionDone(){
   if(state.person_id) localStorage.setItem(LS_DONE(state.person_id), JSON.stringify(sectionDone));
 }
 
+/* ── EMOTION ENGINE SECTION SYNC ─────────────────────────────── */
+// Keep LoreVoxEmotion in sync with the current interview section so that
+// every affect event is tagged with the correct section_id.
+function _syncEmotionSection(){
+  if(typeof LoreVoxEmotion !== "undefined" && LoreVoxEmotion.isActive()){
+    LoreVoxEmotion.setSection(INTERVIEW_ROADMAP[sectionIndex]?.id || null);
+  }
+}
+
+/* ── AFFECT NUDGE HELPER ─────────────────────────────────────── */
+// Returns a recent (≤60s), confident affect state for ivAskInChat nudges.
+// Returns null if no useful signal is available.
+function _latestAffect(){
+  if(!sessionAffectLog.length) return null;
+  const last=sessionAffectLog[sessionAffectLog.length-1];
+  if(Date.now()-last.ts > 60000) return null;   // stale
+  if(last.confidence < 0.65) return null;        // below threshold
+  if(last.affect_state === "steady") return null; // no nudge needed for steady
+  return last;
+}
+
 /* ── MEMORY TRIGGERS ─────────────────────────────────────────── */
 function updateContextTriggers(){
+  _syncEmotionSection(); // keep emotion engine in sync with current section
   const el=document.getElementById("contextTriggers"); if(!el) return;
   const birthYear=getBirthYear();
   const country=getCountry();
@@ -176,7 +198,38 @@ async function processInterviewAnswer(text, skipped=false){
 /* ── INTERVIEW CONTROLS ──────────────────────────────────────── */
 async function ivAskInChat(){
   if(!state.interview.prompt){ sysBubble("Start an interview section first."); return; }
-  await sendSystemPrompt(`[SYSTEM: Please ask this question now: "${state.interview.prompt}"]`);
+
+  let instruction;
+
+  if(softenedMode){
+    // Post-disclosure softened mode takes priority over affect nudges
+    const turnsLeft = softenedUntilTurn - turnCount;
+    if(turnsLeft <= 1){
+      // Second+ softened question — add a gentle check-in
+      instruction = `[SYSTEM: The person shared something difficult earlier in this session. Please ask the following question very gently and briefly. After the question, add a warm check-in: "How are you doing? We can keep going or take a break anytime." Do not pressure or probe. Question: "${state.interview.prompt}"]`;
+    } else {
+      // First softened question after disclosure
+      instruction = `[SYSTEM: The person recently shared something difficult. Please ask the following question very gently and briefly — keep it short, no follow-up pressure, no probing. Question: "${state.interview.prompt}"]`;
+    }
+  } else {
+    // v6.1 Track B: check for a recent affect signal and nudge Lori's tone
+    const affect = _latestAffect();
+    let affectCtx = "";
+    if(affect){
+      if(affect.affect_state === "moved"){
+        affectCtx = " The person appears moved — take a gentle, unhurried tone and give them space.";
+      } else if(affect.affect_state === "reflective"){
+        affectCtx = " The person seems reflective — keep the question short and leave room for them to think.";
+      } else if(affect.affect_state === "distressed" || affect.affect_state === "overwhelmed"){
+        affectCtx = " The person seems unsettled — check in first: \"We can slow down if you'd like.\" then ask gently.";
+      } else if(affect.affect_state === "engaged"){
+        affectCtx = " The person seems engaged — you can open this up warmly and invite them to share more.";
+      }
+    }
+    instruction = `[SYSTEM: Please ask this question now.${affectCtx} Question: "${state.interview.prompt}"]`;
+  }
+
+  await sendSystemPrompt(instruction);
 }
 
 async function ivSkip(){ await processInterviewAnswer("",true); sysBubble("⤼ Skipped for now."); }

@@ -43,11 +43,16 @@ async function startEmotionEngine(){
     return;
   }
   try{
+    // emotion.js expects: { sessionId, apiBase, onAffectState }
+    // apiBase lets emotion.js post sustained events directly to the backend.
+    // onAffectState fires on every affect-state change (for local log + UI).
     await LoreVoxEmotion.init({
       sessionId: state.interview.session_id,
-      sectionId: INTERVIEW_ROADMAP[sectionIndex]?.id || null,
-      onAffectEvent: onBrowserAffectEvent,
+      apiBase:   ORIGIN,
+      onAffectState: onBrowserAffectEvent,
     });
+    // Set the current section so events are tagged correctly from the start
+    LoreVoxEmotion.setSection(INTERVIEW_ROADMAP[sectionIndex]?.id || null);
     await LoreVoxEmotion.start();
     cameraActive=true;
     updateEmotionAwareBtn();
@@ -62,30 +67,21 @@ function stopEmotionEngine(){
   updateEmotionAwareBtn();
 }
 
-// Called by emotion.js when an affect event fires
+// Called by emotion.js when affect state changes.
+// event = { affectState, confidence, durationMs }  ← camelCase from emotion.js
+// Responsibilities here: update local session log + refresh arc.
+// Backend posting is handled by emotion.js (postAffectEvent via apiBase) for
+// sustained events, so we do NOT duplicate the POST here.
 function onBrowserAffectEvent(event){
-  // event = { affect_state, confidence, duration_ms }
+  const section_id = INTERVIEW_ROADMAP[sectionIndex]?.id || null;
   sessionAffectLog.push({
-    ts: Date.now(),
-    section_id: INTERVIEW_ROADMAP[sectionIndex]?.id || null,
-    affect_state: event.affect_state,
-    confidence: event.confidence,
+    ts:           Date.now(),
+    section_id,
+    affect_state: event.affectState,   // emotion.js uses camelCase
+    confidence:   event.confidence,
   });
-  // Post to backend (fire-and-forget)
-  if(state.interview.session_id){
-    fetch(API.IV_AFFECT_EVENT, {
-      method:"POST", headers:ctype(),
-      body:JSON.stringify({
-        session_id: state.interview.session_id,
-        timestamp: Date.now()/1000,
-        section_id: INTERVIEW_ROADMAP[sectionIndex]?.id || null,
-        affect_state: event.affect_state,
-        confidence: event.confidence,
-        duration_ms: event.duration_ms || 2000,
-        source: "camera",
-      }),
-    }).catch(()=>{});
-  }
+  // Redraw affect arc in timeline if it's visible
+  if(showAffectArc) renderTimeline();
 }
 
 /* ── AFFECT ARC RENDERER (TIMELINE) ─────────────────────────── */
