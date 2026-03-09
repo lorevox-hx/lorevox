@@ -127,6 +127,11 @@ async function loadPerson(pid){
   if(saved){ try{ sectionDone=JSON.parse(saved); }catch{} }
   else sectionDone=new Array(INTERVIEW_ROADMAP.length).fill(false);
 
+  // Load persisted sensitive segment decisions for this person.
+  // This ensures the Private Segments tab is populated immediately on person
+  // select, not only after a new interview session starts.
+  _loadSegments();
+
   hydrateProfileForm();
   updateProfileStatus();
   await refreshPeople();

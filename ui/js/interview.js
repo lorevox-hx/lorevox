@@ -156,10 +156,13 @@ async function _ivStartActual(){
 /* ── INTERVIEW ANSWER PROCESSING ─────────────────────────────── */
 async function processInterviewAnswer(text, skipped=false){
   if(!state.interview.session_id||!state.interview.question_id) return null;
+  // Capture the answered question's ID BEFORE the response updates state.interview
+  // (j.next_question will overwrite state.interview.question_id below)
+  const answeredQuestionId = state.interview.question_id;
   try{
     const r=await fetch(API.IV_ANSWER,{method:"POST",headers:ctype(),body:JSON.stringify({
       session_id:state.interview.session_id,
-      question_id:state.interview.question_id,
+      question_id:answeredQuestionId,
       answer:text, skipped
     })});
     const j=await r.json();
@@ -187,7 +190,7 @@ async function processInterviewAnswer(text, skipped=false){
         j.safety_category,
         text,
         state.interview.session_id,
-        state.interview.question_id
+        answeredQuestionId       // use the ID of the answered question, not the next
       );
       showSafetyOverlay(j.safety_category, resources);
     }
