@@ -20,6 +20,7 @@ from ..interview_engine import (
     get_session_transcript,
 )
 from ..llm_interview import draft_final_memoir, draft_section_summary, propose_followup_questions
+from ..safety import scan_answer, build_segment_flags, get_resources_for_category, set_softened, is_softened
 
 router = APIRouter(prefix="/api/interview", tags=["interview"])
 
@@ -89,6 +90,13 @@ class AnswerInterviewResponse(BaseModel):
 
     # Progress indicator
     progress: Optional[ProgressOut] = None
+
+    # v6.1 Track A — Safety
+    safety_triggered: bool = False
+    safety_category: Optional[str] = None
+    safety_confidence: float = 0.0
+    safety_resources: list = []
+    interview_softened: bool = False
 
 
 def _qout(row: Optional[dict]) -> Optional[QuestionOut]:
@@ -166,6 +174,46 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
         answer=req.answer,
         skipped=req.skipped,
     )
+
+    # ── v6.1 Track A: Safety scan ────────────────────────────────────────────
+    safety_triggered = False
+    safety_category: Optional[str] = None
+    safety_confidence: float = 0.0
+    safety_resources: list = []
+
+    if not req.skipped and req.answer.strip():
+        safety_result = scan_answer(req.answer)
+        if safety_result and safety_result.triggered:
+            safety_triggered = True
+            safety_category = safety_result.category
+            safety_confidence = safety_result.confidence
+            safety_resources = get_resources_for_category(safety_result.category)
+
+            # Persist segment flag (private + excluded from memoir by default)
+            flags = build_segment_flags(safety_result)
+            db.save_segment_flag(
+                session_id=req.session_id,
+                question_id=req.question_id,
+                section_id=current_q.get("section_id") if current_q else None,
+                sensitive=flags.sensitive,
+                sensitive_category=flags.sensitive_category or "",
+                excluded_from_memoir=flags.excluded_from_memoir,
+                private=flags.private,
+            )
+
+            # Set softened interview mode
+            current_turn = db.increment_session_turn(req.session_id)
+            set_softened(req.session_id, current_turn)
+            db.set_session_softened(req.session_id, current_turn)
+
+    # Increment turn count (even if safety did not trigger)
+    if not safety_triggered:
+        db.increment_session_turn(req.session_id)
+
+    # Check softened state for response
+    softened_state = db.get_session_softened_state(req.session_id)
+    interview_softened = softened_state.get("interview_softened", False)
+    # ── End safety scan ──────────────────────────────────────────────────────
 
     # Memory Archive — append question prompt + user answer
     _q_prompt = (current_q.get("prompt") or "") if current_q else ""
@@ -274,6 +322,12 @@ def answer_interview(req: AnswerInterviewRequest) -> AnswerInterviewResponse:
         followups_inserted=followups_inserted,
         final_memoir=final_memoir,
         progress=progress_out,
+        # v6.1 Track A — Safety
+        safety_triggered=safety_triggered,
+        safety_category=safety_category,
+        safety_confidence=safety_confidence,
+        safety_resources=safety_resources,
+        interview_softened=interview_softened,
     )
 
 

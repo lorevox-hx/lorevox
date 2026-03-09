@@ -7,6 +7,8 @@ Lorevox is a **human legacy studio** for capturing, organizing, and shaping live
 
 The system exists to help a person preserve a life with dignity, clarity, and emotional truth.
 
+**Lorevox is not an emergency response or reporting system.**
+
 ## Product Standard
 
 Every UI decision, workflow, and generation feature must satisfy these five standards:

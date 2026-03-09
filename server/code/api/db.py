@@ -352,6 +352,66 @@ def init_db() -> None:
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_section_summaries_session ON section_summaries(session_id, section_id);")
 
+    # -----------------------------
+    # Segment flags  (Track A — Safety)
+    # Sensitive flags on individual answer/segment records
+    # -----------------------------
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS segment_flags (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          question_id TEXT,
+          section_id TEXT,
+          sensitive INTEGER NOT NULL DEFAULT 0,
+          sensitive_category TEXT DEFAULT '',
+          excluded_from_memoir INTEGER NOT NULL DEFAULT 1,
+          private INTEGER NOT NULL DEFAULT 1,
+          deleted INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(session_id) REFERENCES interview_sessions(id) ON DELETE CASCADE
+        );
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_segment_flags_session ON segment_flags(session_id);")
+
+    # -----------------------------
+    # Affect events  (Track B — Emotion Signal)
+    # Derived affect state events from browser MediaPipe pipeline
+    # Never stores raw landmarks or raw emotion labels
+    # -----------------------------
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS affect_events (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          section_id TEXT DEFAULT '',
+          affect_state TEXT NOT NULL,
+          confidence REAL NOT NULL DEFAULT 0.0,
+          duration_ms INTEGER NOT NULL DEFAULT 0,
+          source TEXT NOT NULL DEFAULT 'camera',
+          ts TEXT NOT NULL,
+          FOREIGN KEY(session_id) REFERENCES interview_sessions(id) ON DELETE CASCADE
+        );
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_affect_events_session_ts ON affect_events(session_id, ts);")
+
+    # -----------------------------
+    # Migrate interview_sessions: add softened mode columns if missing
+    # -----------------------------
+    existing_isess_cols = {
+        row[1] for row in cur.execute("PRAGMA table_info(interview_sessions);").fetchall()
+    }
+    softened_cols = {
+        "interview_softened": "ALTER TABLE interview_sessions ADD COLUMN interview_softened INTEGER DEFAULT 0;",
+        "softened_until_turn": "ALTER TABLE interview_sessions ADD COLUMN softened_until_turn INTEGER DEFAULT 0;",
+        "turn_count": "ALTER TABLE interview_sessions ADD COLUMN turn_count INTEGER DEFAULT 0;",
+    }
+    for col_name, alter_sql in softened_cols.items():
+        if col_name not in existing_isess_cols:
+            cur.execute(alter_sql)
+
     con.commit()
     con.close()
 
@@ -1420,3 +1480,192 @@ def list_calendar_events(
             d["display_date"] = d["start_date"]
         out.append(d)
     return out
+
+# =============================================================================
+# v6.1 Track A — Segment Flags (Safety)
+# =============================================================================
+
+def save_segment_flag(
+    session_id: str,
+    question_id: Optional[str],
+    section_id: Optional[str],
+    sensitive: bool,
+    sensitive_category: str,
+    excluded_from_memoir: bool = True,
+    private: bool = True,
+) -> str:
+    """Create or update a segment flag record. Returns the flag id."""
+    con = _connect()
+    now = _now_iso()
+    flag_id = _uuid()
+    con.execute(
+        """
+        INSERT INTO segment_flags
+          (id, session_id, question_id, section_id,
+           sensitive, sensitive_category, excluded_from_memoir, private, deleted, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+        ON CONFLICT(id) DO NOTHING;
+        """,
+        (flag_id, session_id, question_id, section_id,
+         int(sensitive), sensitive_category, int(excluded_from_memoir), int(private), now),
+    )
+    con.commit()
+    con.close()
+    return flag_id
+
+
+def get_segment_flags(session_id: str) -> List[Dict]:
+    """Return all segment flags for a session."""
+    con = _connect()
+    rows = con.execute(
+        "SELECT * FROM segment_flags WHERE session_id=? AND deleted=0 ORDER BY created_at;",
+        (session_id,),
+    ).fetchall()
+    con.close()
+    return [dict(r) for r in rows]
+
+
+def delete_segment_flag(flag_id: str) -> bool:
+    """Soft-delete a segment flag (user elected to remove sensitive segment)."""
+    con = _connect()
+    con.execute(
+        "UPDATE segment_flags SET deleted=1 WHERE id=?;",
+        (flag_id,),
+    )
+    changed = con.total_changes
+    con.commit()
+    con.close()
+    return changed > 0
+
+
+def include_segment_in_memoir(flag_id: str) -> bool:
+    """User explicitly opts a sensitive segment into memoir drafts."""
+    con = _connect()
+    con.execute(
+        "UPDATE segment_flags SET excluded_from_memoir=0, private=0 WHERE id=?;",
+        (flag_id,),
+    )
+    changed = con.total_changes
+    con.commit()
+    con.close()
+    return changed > 0
+
+
+# =============================================================================
+# v6.1 Track A — Softened Interview Mode
+# =============================================================================
+
+def set_session_softened(session_id: str, current_turn: int, softened_turns: int = 3) -> None:
+    """Mark session as softened for the next N turns."""
+    con = _connect()
+    con.execute(
+        """
+        UPDATE interview_sessions
+        SET interview_softened=1,
+            softened_until_turn=?
+        WHERE id=?;
+        """,
+        (current_turn + softened_turns, session_id),
+    )
+    con.commit()
+    con.close()
+
+
+def increment_session_turn(session_id: str) -> int:
+    """Increment turn counter, returns new count."""
+    con = _connect()
+    con.execute(
+        "UPDATE interview_sessions SET turn_count=COALESCE(turn_count,0)+1 WHERE id=?;",
+        (session_id,),
+    )
+    con.commit()
+    row = con.execute(
+        "SELECT COALESCE(turn_count,0) as tc FROM interview_sessions WHERE id=?;",
+        (session_id,),
+    ).fetchone()
+    con.close()
+    return int(row["tc"]) if row else 0
+
+
+def get_session_softened_state(session_id: str) -> Dict:
+    """Return softened mode info for a session."""
+    con = _connect()
+    row = con.execute(
+        """
+        SELECT COALESCE(interview_softened,0) as interview_softened,
+               COALESCE(softened_until_turn,0) as softened_until_turn,
+               COALESCE(turn_count,0) as turn_count
+        FROM interview_sessions WHERE id=?;
+        """,
+        (session_id,),
+    ).fetchone()
+    con.close()
+    if not row:
+        return {"interview_softened": False, "softened_until_turn": 0, "turn_count": 0}
+    d = dict(row)
+    # Auto-clear if we've passed the expiry turn
+    is_softened = bool(d["interview_softened"]) and d["turn_count"] <= d["softened_until_turn"]
+    return {
+        "interview_softened": is_softened,
+        "softened_until_turn": d["softened_until_turn"],
+        "turn_count": d["turn_count"],
+    }
+
+
+def clear_session_softened(session_id: str) -> None:
+    """Explicitly clear softened mode."""
+    con = _connect()
+    con.execute(
+        "UPDATE interview_sessions SET interview_softened=0, softened_until_turn=0 WHERE id=?;",
+        (session_id,),
+    )
+    con.commit()
+    con.close()
+
+
+# =============================================================================
+# v6.1 Track B — Affect Events
+# =============================================================================
+
+def save_affect_event(
+    session_id: str,
+    timestamp: float,
+    section_id: Optional[str],
+    affect_state: str,
+    confidence: float,
+    duration_ms: int,
+    source: str = "camera",
+) -> str:
+    """Persist a derived affect event. Returns the event id."""
+    con = _connect()
+    now = _now_iso()
+    eid = _uuid()
+    con.execute(
+        """
+        INSERT INTO affect_events
+          (id, session_id, section_id, affect_state, confidence, duration_ms, source, ts)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+        """,
+        (eid, session_id, section_id or "", affect_state,
+         round(confidence, 4), duration_ms, source, now),
+    )
+    con.commit()
+    con.close()
+    return eid
+
+
+def list_affect_events(session_id: str, limit: int = 50) -> List[Dict]:
+    """Return stored affect events for a session, newest first."""
+    con = _connect()
+    rows = con.execute(
+        """
+        SELECT id, session_id, section_id, affect_state, confidence, duration_ms, source, ts
+        FROM affect_events
+        WHERE session_id=?
+        ORDER BY ts DESC
+        LIMIT ?;
+        """,
+        (session_id, limit),
+    ).fetchall()
+    con.close()
+    return [dict(r) for r in rows]

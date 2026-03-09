@@ -51,6 +51,7 @@ from .routers import (  # type: ignore
     calendar,
     facts,
     stt,
+    affect,          # v6.1 Track B — Emotion Signal Layer
 )
 
 # Core Entity & State Routers
@@ -65,6 +66,7 @@ app.include_router(ping.router)
 app.include_router(calendar.router)
 app.include_router(facts.router)
 app.include_router(stt.router)
+app.include_router(affect.router)  # v6.1 Track B
 
 # Real LLM Routers (REST and WS)
 app.include_router(llm_api.router)
