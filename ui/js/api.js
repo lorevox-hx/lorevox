@@ -8,6 +8,7 @@ const ORIGIN   = window.LOREVOX_API || "http://localhost:8000";
 const TTS_ORIG = window.LOREVOX_TTS || "http://localhost:8001";
 const LS_ACTIVE = "lv_active_person_v55";
 const LS_DONE   = (pid) => `lv_done_${pid}`;
+const LS_SEGS   = (pid) => `lv_segs_${pid}`;
 
 const API = {
   PING:       ORIGIN + "/api/ping",
@@ -26,7 +27,9 @@ const API = {
   TIMELINE:   (id) => `${ORIGIN}/api/timeline/list?person_id=${encodeURIComponent(id)}`,
   TL_ADD:     ORIGIN + "/api/timeline/add",
   // v6.1 Track A
-  IV_SEG_FLAGS: (sid) => `${ORIGIN}/api/interview/segment-flags?session_id=${encodeURIComponent(sid)}`,
+  IV_SEG_FLAGS:  (sid) => `${ORIGIN}/api/interview/segment-flags?session_id=${encodeURIComponent(sid)}`,
+  IV_SEG_UPDATE: ORIGIN + "/api/interview/segment-flag/update",
+  IV_SEG_DELETE: ORIGIN + "/api/interview/segment-flag/delete",
   // v6.1 Track B
   IV_AFFECT_EVENT: ORIGIN + "/api/interview/affect-event",
   IV_AFFECT_CTX:   (sid) => `${ORIGIN}/api/interview/affect-context?session_id=${encodeURIComponent(sid)}`,

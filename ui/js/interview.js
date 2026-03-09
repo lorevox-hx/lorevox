@@ -137,6 +137,9 @@ async function _ivStartActual(){
       prompt:j.question?.prompt||null
     };
     renderInterview();
+    // Reload any persisted segment decisions for this person
+    _loadSegments();
+    renderSensitiveReviewPanel();
     if(j.question?.prompt){
       sendSystemPrompt(`[SYSTEM: You are now in an interview. Please ask this first question warmly: "${j.question.prompt}"]`);
     }
@@ -178,7 +181,14 @@ async function processInterviewAnswer(text, skipped=false){
     turnCount++;
     if(j.safety_triggered && j.safety_category){
       const resources = j.safety_resources || [];
-      flagSensitiveSegment(sectionIndex, j.safety_category, text);
+      // Pass session + question IDs so include/remove actions can reach the backend
+      flagSensitiveSegment(
+        sectionIndex,
+        j.safety_category,
+        text,
+        state.interview.session_id,
+        state.interview.question_id
+      );
       showSafetyOverlay(j.safety_category, resources);
     }
     if(j.interview_softened){

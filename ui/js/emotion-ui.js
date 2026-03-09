@@ -25,7 +25,12 @@ const AFFECT_STATE_COLORS = {
 function toggleEmotionAware(){
   emotionAware=!emotionAware;
   updateEmotionAwareBtn();
-  if(!emotionAware && cameraActive) stopEmotionEngine();
+  if(emotionAware && state.interview.session_id && !cameraActive){
+    // Symmetric start: turning on mid-session starts the engine immediately
+    startEmotionEngine();
+  } else if(!emotionAware && cameraActive){
+    stopEmotionEngine();
+  }
 }
 
 function updateEmotionAwareBtn(){
