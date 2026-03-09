@@ -1331,8 +1331,8 @@ function pill(id,ok){
 function setLoriState(s){
   const el=document.getElementById("loriStatus"); if(!el) return;
   el.className=`lori-status ${s}`;
-  const labels={ready:"● Ready",thinking:"● Thinking",drafting:"● Drafting",listening:"● Listening"};
-  el.textContent=labels[s]||"● "+s;
+  const labels={ready:"<div class='status-dot'></div> Ready",thinking:"<div class='status-dot'></div> Thinking",drafting:"<div class='status-dot'></div> Drafting",listening:"<div class='status-dot'></div> Listening"};
+  el.innerHTML=labels[s]||`<div class='status-dot'></div> ${esc(s)}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1756,7 +1756,7 @@ function appendRoadmapItem(w,s,i){
     persistSectionDone(); renderRoadmap(); renderMemoirChapters(); updateSidebar();
   };
   const lbl=document.createElement("span");
-  lbl.className="rm-label truncate"; lbl.textContent=`${s.emoji} ${s.label}`;
+  lbl.className="rm-label truncate"; lbl.innerHTML=`<span class="rm-emoji">${s.emoji}</span> ${esc(s.label)}`;
   d.appendChild(cb); d.appendChild(lbl);
   d.onclick=e=>{
     if(e.target===cb) return;
@@ -2048,14 +2048,15 @@ function renderMemoirChapters(){
     </div>`;
   }).join("");
 }
-function jumpToSection(i){ sectionIndex=i; renderRoadmap(); showTab("interview"); }
+function jumpToSection(i){ sectionIndex=i; sectionVisited[i]=true; renderRoadmap(); updateContextTriggers(); showTab("interview"); }
 function generateMemoirOutline(){
   const name=state.profile?.basics?.fullname||"the subject";
   const dob=state.profile?.basics?.dob||"";
-  const done=INTERVIEW_ROADMAP.filter((_,i)=>sectionDone[i]).map(s=>s.label);
+  const visibleRoadmap=INTERVIEW_ROADMAP.filter(s=>!s.youth||youthMode);
+  const done=visibleRoadmap.filter(s=>sectionDone[INTERVIEW_ROADMAP.indexOf(s)]).map(s=>s.label);
   let txt=`MEMOIR OUTLINE\n${name}${dob?" · Born "+dob:""}\n\n`;
-  INTERVIEW_ROADMAP.forEach((s,i)=>{ txt+=`  ${i+1}. ${s.label} ${sectionDone[i]?"✓":""}\n`; });
-  txt+=`\nCompleted: ${done.length}/${INTERVIEW_ROADMAP.length}`;
+  visibleRoadmap.forEach((s,n)=>{ const i=INTERVIEW_ROADMAP.indexOf(s); txt+=`  ${n+1}. ${s.label} ${sectionDone[i]?"✓":""}\n`; });
+  txt+=`\nCompleted: ${done.length}/${visibleRoadmap.length}`;
   document.getElementById("memoirDraftOutput").value=txt;
 }
 function generateMemoirDraft(){
