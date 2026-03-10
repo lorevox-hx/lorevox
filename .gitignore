@@ -115,4 +115,8 @@ out/
 node_modules/
 dist/
 build/
-public_html/
+
+# =========================
+# ACCIDENTAL JUNK FILES
+# =========================
+=*
