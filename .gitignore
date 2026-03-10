@@ -1,36 +1,118 @@
+# =========================
+# PYTHON
+# =========================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# =========================
+# VIRTUAL ENVS
+# =========================
 .venv/
 .venv-*/
 venv/
-.env
-.env.local
-*.sqlite3
-data/
-logs/
-cache_audio/
-voices/
-memory/
-projects/
-interview/
-media/
-models/
-wheels/
-backups/
-.DS_Store
-Thumbs.db
+env/
+
+# =========================
+# EDITORS / OS
+# =========================
 .vscode/
 .idea/
-dist/
-build/
-*.log
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Editor backup files
+# =========================
+# LOCAL ENV / SECRETS
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# EDITOR BACKUP FILES
+# =========================
 *.bak
 *.bak_*
 
-# Local scratch notes
+# =========================
+# LOCAL SCRATCH NOTES
+# =========================
 push commands.txt
 commands.txt
+
+# =========================
+# LOGS / TEMP
+# =========================
+*.log
+logs/
+tmp/
+temp/
+
+# =========================
+# DATABASES
+# =========================
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# =========================
+# MODEL FILES / CACHES
+# =========================
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.gguf
+*.onnx
+*.tflite
+
+.huggingface/
+hf_home/
+transformers_cache/
+wheels/
+
+# =========================
+# AUDIO / VIDEO / MEDIA
+# =========================
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.mp4
+*.mov
+*.webm
+
+# =========================
+# LOCAL APP DATA
+# Keep runtime data out of the repo.
+# =========================
+data/
+db/
+memory/
+projects/
+interview/
+uploads/
+cache/
+cache_audio/
+voices/
+media/
+models/
+backups/
+exports/
+out/
+
+# =========================
+# FRONTEND / BUILD
+# =========================
+node_modules/
+dist/
+build/
+public_html/

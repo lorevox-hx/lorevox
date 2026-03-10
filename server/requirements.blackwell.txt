@@ -1,5 +1,5 @@
 # =========================================================
-# Corkybot v10 — Blackwell LLM Requirements (RTX 5080 sm_120)
+# Lorevox — Blackwell LLM Requirements (RTX 5080 / sm_100)
 # CUDA Toolkit 12.8 | Torch installed separately (cu128)
 # =========================================================
 
