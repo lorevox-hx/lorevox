@@ -8,11 +8,12 @@
       "title": "Personal Information",
       "questions": [
         {"id": "full_name", "prompt": "What is your full legal name?", "kind": "text", "required": true, "profile_path": "full_name"},
+        {"id": "date_of_birth", "prompt": "What is your date of birth? (YYYY-MM-DD)", "kind": "text", "required": true, "profile_path": "date_of_birth"},
         {"id": "preferred_name", "prompt": "What name do you prefer to be called?", "kind": "text", "required": false, "profile_path": "preferred_name"},
         {"id": "birth_order", "prompt": "What is your birth order (e.g., 1st, 2nd, 3rd)?", "kind": "text", "required": false, "profile_path": "birth_order"},
-        {"id": "date_of_birth", "prompt": "What is your date of birth? (YYYY-MM-DD)", "kind": "text", "required": true, "profile_path": "date_of_birth"},
         {"id": "time_of_birth", "prompt": "Do you know your time of birth? (HH:MM, optional)", "kind": "text", "required": false, "profile_path": "time_of_birth"},
-        {"id": "place_of_birth", "prompt": "Where were you born? (City, State/Province, Country)", "kind": "text", "required": false, "profile_path": "place_of_birth"}
+        {"id": "place_of_birth", "prompt": "Where were you born? (City, State/Province, Country)", "kind": "text", "required": false, "profile_path": "place_of_birth"},
+        {"id": "raised_in", "prompt": "Did you grow up there, or did your family move somewhere else when you were young?", "kind": "text", "required": false, "profile_path": "raised_in"}
       ]
     },
 

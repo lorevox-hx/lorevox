@@ -126,6 +126,11 @@ async function ivStart(){
 }
 
 async function _ivStartActual(){
+  // v6.3: DOB gate — nudge if date of birth is not yet in the profile
+  if(!state.profile?.basics?.dob){
+    sysBubble("💡 Tip: Add a date of birth on the Profile tab to unlock age-anchored memory triggers before we begin.");
+  }
+
   try{
     const r=await fetch(API.IV_START,{method:"POST",headers:ctype(),
       body:JSON.stringify({person_id:state.person_id, plan_id:"default"})});
