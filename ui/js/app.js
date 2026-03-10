@@ -913,7 +913,7 @@ async function drainTts(){
   while(ttsQueue.length){
     const chunk=ttsQueue.shift();
     try{
-      const r=await fetch(TTS_ORIG+"/api/tts",{method:"POST",headers:ctype(),
+      const r=await fetch(TTS_ORIG+"/api/tts/speak_stream",{method:"POST",headers:ctype(),
         body:JSON.stringify({text:chunk.slice(0,400),voice:"p335"})});
       if(!r.ok) continue;
       const url=URL.createObjectURL(await r.blob());

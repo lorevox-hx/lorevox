@@ -115,8 +115,3 @@ out/
 node_modules/
 dist/
 build/
-
-# =========================
-# ACCIDENTAL JUNK FILES
-# =========================
-=*
