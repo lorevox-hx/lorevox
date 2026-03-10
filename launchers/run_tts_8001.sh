@@ -40,4 +40,4 @@ echo "[launcher] Starting TTS server on port $TTS_PORT"
 echo "[launcher] DATA_DIR=$DATA_DIR"
 echo "[launcher] TTS_MODEL=$TTS_MODEL  TTS_GPU=$TTS_GPU  SPEAKER=$TTS_SPEAKER_LORI"
 
-python -m uvicorn code.api.main:app --host "$HOST" --port "$TTS_PORT"
+python -m uvicorn code.api.tts_service:app --host "$HOST" --port "$TTS_PORT"

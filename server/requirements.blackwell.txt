@@ -22,7 +22,7 @@ safetensors>=0.4.2
 
 # flash-attn is great, but can fail to build in some environments.
 # If it fails, you can comment it out and your app can still run (slower attention).
-flash-attn>=2.8.0
+# flash-attn>=2.8.0
 
 # Unsloth is optional; can help training/inference, but may pull its own pins.
 unsloth
