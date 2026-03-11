@@ -941,11 +941,22 @@ async function drainTts(){
       const r=await fetch(TTS_ORIG+"/api/tts/speak_stream",{method:"POST",headers:ctype(),
         body:JSON.stringify({text:chunk.slice(0,400),voice:"p335"})});
       if(!r.ok) continue;
-      const url=URL.createObjectURL(await r.blob());
-      const a = _ttsAudio || new Audio();
-      a.src = url;
-      await new Promise(res=>{ a.onended=a.onerror=res; a.play().catch(res); });
-      URL.revokeObjectURL(url);
+      // Server returns NDJSON: {"wav_b64":"<base64 WAV>"}
+      const ndjson = await r.text();
+      for(const line of ndjson.split("\n")){
+        const t=line.trim(); if(!t) continue;
+        let obj; try{ obj=JSON.parse(t); }catch{ continue; }
+        if(!obj.wav_b64) continue;
+        const raw=atob(obj.wav_b64);
+        const bytes=new Uint8Array(raw.length);
+        for(let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i);
+        const blob=new Blob([bytes],{type:"audio/wav"});
+        const url=URL.createObjectURL(blob);
+        const a=_ttsAudio||new Audio();
+        a.src=url;
+        await new Promise(res=>{ a.onended=a.onerror=res; a.play().catch(res); });
+        URL.revokeObjectURL(url);
+      }
     }catch{}
   }
   ttsBusy=false;
