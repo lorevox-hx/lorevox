@@ -1,12 +1,36 @@
 from __future__ import annotations
 
 import os
+import re
 import json
 import sqlite3
 import uuid
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
+
+# ── DOB sanitisation ─────────────────────────────────────────────────────────
+_ISO_DATE_RE = re.compile(r"^\d{4}(-\d{2}(-\d{2})?)?$")
+
+
+def _sanitise_dob(raw: Optional[str]) -> str:
+    """Normalise a date-of-birth string.
+
+    Accepts ISO format (YYYY, YYYY-MM, YYYY-MM-DD) as-is.
+    Fuzzy/uncertain strings (e.g. "1947, I think?") are stored prefixed with
+    ``uncertain:`` so downstream code can distinguish validated from raw input.
+    Empty input returns empty string.
+    """
+    if not raw:
+        return ""
+    raw = raw.strip()
+    if _ISO_DATE_RE.match(raw):
+        return raw
+    # Preserve uncertain input but flag it clearly
+    if not raw.startswith("uncertain:"):
+        return f"uncertain:{raw}"
+    return raw
 
 
 # -----------------------------------------------------------------------------
@@ -602,7 +626,7 @@ def create_person(
         INSERT INTO people(id,display_name,role,date_of_birth,place_of_birth,created_at,updated_at)
         VALUES(?,?,?,?,?,?,?);
         """,
-        (pid, display_name, role or "", date_of_birth or "", place_of_birth or "", now, now),
+        (pid, display_name, role or "", _sanitise_dob(date_of_birth), place_of_birth or "", now, now),
     )
     con.commit()
     con.close()
@@ -634,7 +658,7 @@ def update_person(
             updated_at=?
         WHERE id=?;
         """,
-        (display_name, role, date_of_birth, place_of_birth, now, person_id),
+        (display_name, role, _sanitise_dob(date_of_birth) if date_of_birth is not None else None, place_of_birth, now, person_id),
     )
     con.commit()
     con.close()
@@ -725,12 +749,29 @@ def update_profile_json(person_id: str, profile_json: Dict[str, Any], merge: boo
     return get_profile(person_id) or {"person_id": person_id, "profile_json": merged, "updated_at": now}
 
 
-def ingest_basic_info_document(person_id: str, text: str) -> Dict[str, Any]:
+def ingest_basic_info_document(
+    person_id: str,
+    document: Any,
+    create_relatives: bool = False,
+) -> Dict[str, Any]:
+    """Ingest a basic-info form document into the profile.
+
+    ``document`` may be a dict (from the JSON form) or a legacy plain-text string.
+    ``create_relatives`` is accepted and stored; relative creation is not yet
+    implemented — the flag is preserved so callers do not crash.
+    """
     init_db()
     p = get_profile(person_id) or {"profile_json": {}}
     prof = dict(p.get("profile_json") or {})
     ingest = dict(prof.get("ingest") or {})
-    ingest["basic_info"] = {"text": text or "", "ts": _now_iso()}
+    if isinstance(document, str):
+        ingest["basic_info"] = {"text": document, "ts": _now_iso()}
+    else:
+        ingest["basic_info"] = {
+            "document": document or {},
+            "create_relatives": create_relatives,
+            "ts": _now_iso(),
+        }
     prof["ingest"] = ingest
     return update_profile_json(person_id, prof, merge=False)
 

@@ -39,12 +39,16 @@ These govern every design and implementation decision:
 
 ## What Lorevox Is
 
-- A guided life-story interview system with a structured roadmap of topics
-- A memory timeline for photos, documents, and personal milestones
-- A section-by-section memoir draft assembled from verified interview answers
-- A private, local-first application — data stays on the family's infrastructure
-- An emotionally-aware interview assistant (v6.1) that reads affect signals and adjusts tone
-- A safety-aware system (v6.1) that detects crisis disclosures and surfaces support resources
+- A life-story conversation platform where Lori — the AI — learns about a person by talking to them
+- A floating persistent assistant that stays on screen across all views: Profile, Family Tree, Timeline, Memoir
+- A Chat→DB extraction pipeline that turns conversation into structured biographical data automatically
+- A family tree builder: relatives mentioned in conversation become real records in the database
+- An offline-first application — runs fully air-gapped after one-time model download
+- A privacy-first system — all data stays on local infrastructure, nothing leaves the machine
+- An emotionally-aware assistant (v6.3+) that reads both verbal signals and facial affect to adjust tone
+- A safety-aware system that detects crisis disclosures and surfaces appropriate support resources
+
+> **v7.0 is in active development.** See [docs/MOVE_TO_V7.md](docs/MOVE_TO_V7.md) for the full migration plan.
 
 ## What Lorevox Is Not
 
@@ -310,14 +314,24 @@ lorevox/
 - Affect nudges in Lori's question prompts (tone context appended to system instruction)
 - Section sync: affect events tagged with current roadmap section ID
 
-### In progress / next
+### v6.3 Bug Fixes Applied (2026-03-11) ✅
 
-- Claim extraction from interview transcripts (structured NLP pipeline)
-- Fact verification UI (human review of extracted claims)
-- Timeline-to-memoir assembly from confirmed facts
-- Photo/document upload and tagging
-- Multi-session continuity (resume interview across days)
-- Export — PDF memoir, printable timeline
+- `ingest_basic_info` endpoint — fixed parameter mismatch crash (Bug 1)
+- DOB validation — fuzzy dates stored as `uncertain:` prefix (Bug 2)
+- `cognitive_distress` safety category added — 13 patterns, Alzheimer's helpline resource (Bug 3)
+- PROFILE_JSON parse failure now logged instead of silently dropped (Bug 4)
+- `main.py` auto-loads `.env` from repo root — server always has correct DATA_DIR (Bug 5)
+
+### v7.0 — In Active Development
+
+See **[docs/MOVE_TO_V7.md](docs/MOVE_TO_V7.md)** for the complete plan. Summary:
+
+- Floating Lori panel — persistent across all tabs, always on screen
+- Chat→DB extraction pipeline — Lori extracts structured facts from conversation automatically
+- Family tree interview mode — relatives become real DB records
+- Layered emotion detection: face-api.js (client, real-time) + DeepFace on RTX 5080 (server, deep)
+- Fully offline after first setup — all assets and models vendored locally
+- New layout: left sidebar + tabbed content area (Profile, Family Tree, Timeline, Memoir)
 
 ### Deliberately out of scope
 
@@ -331,10 +345,12 @@ lorevox/
 
 ## Supporting Documents
 
+- **[Move to v7.0](docs/MOVE_TO_V7.md)** — complete migration plan: vision, architecture, new files, build order, open questions
 - **[Architecture](docs/LOREVOX_ARCHITECTURE.md)** — full data model, DB schema, processing pipeline, feature map, milestone targets
 - **[Operating Doctrine](docs/Lorevox_Operating_Doctrine.md)** — 10 product principles with implementation must-do / must-not rules and a 5-question design test
 - **[Design Philosophy](docs/DESIGN_PHILOSOPHY.md)** — UX decision history from v5.2 through v5.5, rationale for every major UI pattern
+- **[Full Audit Report 2026-03-11](docs/FULL_AUDIT_REPORT_2026-03-11.md)** — repo audit, 30-persona test results, smoke test, bug priority matrix
 
 ---
 
-*Lorevox v6.1 — local-first, privacy-first, human-first.*
+*Lorevox v6.3 → v7.0 — local-first, privacy-first, human-first. Lori is the app.*

@@ -3,6 +3,23 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# Load .env from repo root before anything else so DATA_DIR, DB_NAME, UI_DIR etc.
+# are always available regardless of how the server was launched.
+_REPO_ROOT = Path(__file__).resolve().parents[3]  # server/code/api/main.py → repo root 3 levels up
+_env_file = _REPO_ROOT / ".env"
+if _env_file.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(str(_env_file), override=False)  # shell env takes precedence
+    except ImportError:
+        # dotenv not installed — fall back to manual parse of KEY=VALUE lines
+        with open(_env_file) as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _, _v = _line.partition("=")
+                    os.environ.setdefault(_k.strip(), _v.strip())
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

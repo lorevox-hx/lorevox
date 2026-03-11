@@ -14,10 +14,13 @@ Design goals:
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any, Dict, Optional, Tuple
 
 from . import db
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_CORE = (
@@ -51,10 +54,11 @@ def extract_profile_json_from_ui_system(ui_system: Optional[str]) -> Tuple[Optio
         obj = json.loads(raw)
         if isinstance(obj, dict):
             return obj, base
-    except Exception:
-        pass
+        logger.warning("prompt_composer: PROFILE_JSON parsed but is not a dict (type=%s) — ignoring", type(obj).__name__)
+    except Exception as exc:
+        logger.warning("prompt_composer: failed to parse PROFILE_JSON blob: %s — profile context dropped", exc)
 
-    # If parse fails, keep original as base
+    # If parse fails, keep original as base (no profile context injected)
     return None, s
 
 

@@ -135,6 +135,21 @@ _SIMPLE_TRIGGERS: list[tuple[str, str, float]] = [
     (r"\bi don'?t know (what to do|how to go on)\b", "distress_call", 0.70),
     (r"\bi can'?t (go on|do this anymore|take it)\b","distress_call", 0.72),
     (r"\bi('?m| am) in danger\b",         "distress_call", 0.80),
+
+    # ── Cognitive distress / memory / dementia disclosure ──
+    (r"\blosing my mind\b",                            "cognitive_distress", 0.82),
+    (r"\bcan'?t remember anything\b",                  "cognitive_distress", 0.76),
+    (r"\bcan'?t remember (who|where|what|my)\b",       "cognitive_distress", 0.72),
+    (r"\bforget(ting)? everything\b",                  "cognitive_distress", 0.74),
+    (r"\bforget(ting)? (more and more|all the time)\b","cognitive_distress", 0.70),
+    (r"\bmemory (is )?getting worse\b",                "cognitive_distress", 0.72),
+    (r"\bdon'?t recogni[sz]e (my|our|the)\b",         "cognitive_distress", 0.70),
+    (r"\bscared.{0,30}(alzheimer|dementia)\b",         "cognitive_distress", 0.86),
+    (r"\bthink i (have|might have).{0,20}(alzheimer|dementia)\b","cognitive_distress", 0.84),
+    (r"\bconfused all the time\b",                     "cognitive_distress", 0.72),
+    (r"\bdon'?t know (where i am|what day|who i)\b",   "cognitive_distress", 0.76),
+    (r"\bmy mind (is|feels).{0,20}(going|slipping|fading)\b","cognitive_distress", 0.78),
+    (r"\bwhat (year|day) is it\b",                     "cognitive_distress", 0.60),
 ]
 
 # Compile all patterns once at import time
@@ -353,6 +368,12 @@ RESOURCE_CARDS = [
         "type": "phone",
         "description": "Eldercare Locator — free local resources",
     },
+    {
+        "name": "Alzheimer's Association Helpline",
+        "contact": "1-800-272-3900",
+        "type": "phone",
+        "description": "24/7 support for memory concerns, dementia, and caregivers",
+    },
 ]
 
 
@@ -378,6 +399,8 @@ def get_resources_for_category(category: Optional[str]) -> list[dict]:
         relevant = [RESOURCE_CARDS[2], RESOURCE_CARDS[0]]  # DV + 988
     elif category == "distress_call":
         relevant = [RESOURCE_CARDS[0]]                     # 988
+    elif category == "cognitive_distress":
+        relevant = [RESOURCE_CARDS[4], RESOURCE_CARDS[3], RESOURCE_CARDS[0]]  # Alzheimer's + Eldercare + 988
     else:
         relevant = RESOURCE_CARDS
 
