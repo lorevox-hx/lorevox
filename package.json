@@ -1,0 +1,14 @@
+{
+  "name": "lorevox",
+  "version": "6.3.0",
+  "description": "Lorevox Life Archive Studio — E2E test harness",
+  "private": true,
+  "scripts": {
+    "test:audit": "npx playwright test tests/e2e/lorevox-ui-audit.spec.ts",
+    "test:smoke": "npx playwright test tests/e2e/lorevox-smoke-flow.spec.ts",
+    "test": "npx playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0"
+  }
+}
