@@ -966,6 +966,31 @@ async function drainTts(){
    VOICE INPUT
 ═══════════════════════════════════════════════════════════════ */
 function toggleRecording(){ unlockAudio(); isRecording?stopRecording():startRecording(); }
+// Normalise spoken punctuation words produced by Web Speech API.
+// Runs on each final transcript chunk before appending to the input box.
+function _normalisePunctuation(t){
+  return t
+    .replace(/\bperiod\b/gi,            ".")
+    .replace(/\bfull stop\b/gi,         ".")
+    .replace(/\bcomma\b/gi,             ",")
+    .replace(/\bquestion mark\b/gi,     "?")
+    .replace(/\bexclamation (point|mark)\b/gi, "!")
+    .replace(/\bsemicolon\b/gi,         ";")
+    .replace(/\bcolon\b/gi,             ":")
+    .replace(/\bdash\b/gi,              " — ")
+    .replace(/\bhyphen\b/gi,            "-")
+    .replace(/\bellipsis\b/gi,          "...")
+    .replace(/\bdot dot dot\b/gi,       "...")
+    .replace(/\bnew (line|paragraph)\b/gi, "\n")
+    .replace(/\bopen (paren|parenthesis)\b/gi,  "(")
+    .replace(/\bclose (paren|parenthesis)\b/gi, ")")
+    .replace(/\bopen quote\b/gi,        "\u201C")
+    .replace(/\bclose quote\b/gi,       "\u201D")
+    // Tidy up any double-spaces left by replacements
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
 function _ensureRecognition(){
   if(recognition) return recognition;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -973,7 +998,7 @@ function _ensureRecognition(){
   recognition=new SR(); recognition.continuous=true; recognition.interimResults=true;
   recognition.onresult=e=>{
     let fin=""; for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) fin+=e.results[i][0].transcript;
-    if(fin) setv("chatInput",getv("chatInput")+fin);
+    if(fin) setv("chatInput",getv("chatInput")+_normalisePunctuation(fin));
   };
   // If the browser ends the session unexpectedly, flip the button back
   recognition.onend=()=>{ if(isRecording){ recognition.start(); } };
