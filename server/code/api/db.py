@@ -703,7 +703,7 @@ def get_profile(person_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def update_profile_json(person_id: str, profile_json: Dict[str, Any], merge: bool = True) -> Dict[str, Any]:
+def update_profile_json(person_id: str, profile_json: Dict[str, Any], merge: bool = True, reason: str = "") -> Dict[str, Any]:
     init_db()
     ensure_profile(person_id)
     cur_prof = get_profile(person_id) or {"profile_json": {}}

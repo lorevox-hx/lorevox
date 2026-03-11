@@ -279,21 +279,27 @@ git config user.name "Chris"
 ```bash
 cd /mnt/c/Users/chris/lorevox
 source .venv-gpu/bin/activate
-
-# Initialize DB and seed system docs
 export DATA_DIR=/mnt/c/lorevox_data
-python scripts/seed_oral_history.py
+```
 
-# If you have other seed scripts, run them too:
-# python scripts/seed_rag_docs.py
+### 7.1 Seed the Interview Plan
 
-deactivate
+This loads all sections and questions from `interview_plan.json` into the DB as the `default` plan. **Required** — without this, `/api/interview/start` returns `question: null`.
+
+```bash
+python scripts/seed_interview_plan.py
 ```
 
 Expected output:
 ```
-Seeded oral-history docs into RAG.
-RAG stats: {'doc_count': 2, ...}
+✓  Seeded 13 sections and 45 questions into plan 'default'
+   DB: /mnt/c/lorevox_data/db/lorevox.sqlite3
+```
+
+Safe to re-run at any time — uses `INSERT OR REPLACE` so questions are refreshed without duplicates.
+
+```bash
+deactivate
 ```
 
 ---
