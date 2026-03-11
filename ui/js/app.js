@@ -763,6 +763,7 @@ async function loadSession(cid){
 function onChatKey(e){ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendUserMessage(); } }
 
 async function sendUserMessage(){
+  unlockAudio();
   const text=getv("chatInput").trim(); if(!text) return;
   setv("chatInput",""); appendBubble("user",text);
   let systemInstruction="";
@@ -914,6 +915,23 @@ function clearChat(){ document.getElementById("chatMessages").innerHTML=""; }
 /* ═══════════════════════════════════════════════════════════════
    TTS
 ═══════════════════════════════════════════════════════════════ */
+
+// Chrome blocks audio until a real user gesture has occurred.
+// We keep ONE persistent Audio element, unlock it on first gesture,
+// then reuse it for every TTS chunk — the element stays whitelisted.
+let _ttsAudio = null;
+let _audioUnlocked = false;
+
+function unlockAudio(){
+  if(_audioUnlocked) return;
+  _audioUnlocked = true;
+  _ttsAudio = new Audio();
+  // Play silence immediately inside the gesture handler to whitelist the element.
+  const silence = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+  _ttsAudio.src = silence;
+  _ttsAudio.play().catch(()=>{});
+}
+
 function enqueueTts(text){ ttsQueue.push(text); if(!ttsBusy) drainTts(); }
 async function drainTts(){
   ttsBusy=true;
@@ -924,7 +942,10 @@ async function drainTts(){
         body:JSON.stringify({text:chunk.slice(0,400),voice:"p335"})});
       if(!r.ok) continue;
       const url=URL.createObjectURL(await r.blob());
-      await new Promise(res=>{ const a=new Audio(url); a.onended=a.onerror=res; a.play().catch(res); });
+      const a = _ttsAudio || new Audio();
+      a.src = url;
+      await new Promise(res=>{ a.onended=a.onerror=res; a.play().catch(res); });
+      URL.revokeObjectURL(url);
     }catch{}
   }
   ttsBusy=false;
@@ -933,21 +954,29 @@ async function drainTts(){
 /* ═══════════════════════════════════════════════════════════════
    VOICE INPUT
 ═══════════════════════════════════════════════════════════════ */
-function toggleRecording(){ isRecording?stopRecording():startRecording(); }
-function startRecording(){
+function toggleRecording(){ unlockAudio(); isRecording?stopRecording():startRecording(); }
+function _ensureRecognition(){
+  if(recognition) return recognition;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ sysBubble("Voice input not supported in this browser."); return; }
+  if(!SR){ sysBubble("Voice input not supported in this browser."); return null; }
   recognition=new SR(); recognition.continuous=true; recognition.interimResults=true;
   recognition.onresult=e=>{
     let fin=""; for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) fin+=e.results[i][0].transcript;
     if(fin) setv("chatInput",getv("chatInput")+fin);
   };
-  recognition.start(); isRecording=true;
+  // If the browser ends the session unexpectedly, flip the button back
+  recognition.onend=()=>{ if(isRecording){ recognition.start(); } };
+  return recognition;
+}
+function startRecording(){
+  const r=_ensureRecognition(); if(!r) return;
+  r.start(); isRecording=true;
   document.getElementById("btnMic").textContent="🔴";
   setLoriState("listening");
 }
 function stopRecording(){
-  if(recognition) recognition.stop(); isRecording=false;
+  isRecording=false;
+  if(recognition){ try{ recognition.stop(); }catch(e){} }
   document.getElementById("btnMic").textContent="🎤";
   setLoriState("ready");
 }
