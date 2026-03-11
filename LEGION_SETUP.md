@@ -274,33 +274,33 @@ git config user.name "Chris"
 
 ---
 
-## Phase 7 — Seed the Database
+## Phase 7 — Bootstrap the Database
+
+Run the bootstrap script once after cloning. It initialises the DB schema, seeds the interview plan, and verifies everything in a single step. Safe to re-run at any time.
 
 ```bash
 cd /mnt/c/Users/chris/lorevox
-source .venv-gpu/bin/activate
-export DATA_DIR=/mnt/c/lorevox_data
-```
-
-### 7.1 Seed the Interview Plan
-
-This loads all sections and questions from `interview_plan.json` into the DB as the `default` plan. **Required** — without this, `/api/interview/start` returns `question: null`.
-
-```bash
-python scripts/seed_interview_plan.py
+bash scripts/bootstrap.sh
 ```
 
 Expected output:
 ```
+[bootstrap] Loaded .env
+[bootstrap] DATA_DIR=/mnt/c/lorevox_data
+[bootstrap] Data dirs ready
+[bootstrap] venv-gpu activated
+[bootstrap] Initialising DB schema...
+[bootstrap] DB schema OK
+[bootstrap] Seeding interview plan...
 ✓  Seeded 13 sections and 45 questions into plan 'default'
    DB: /mnt/c/lorevox_data/db/lorevox.sqlite3
+[bootstrap] Verifying...
+[bootstrap] Verified — 45 questions in plan 'default'
+
+Bootstrap complete. You can now run the servers.
 ```
 
-Safe to re-run at any time — uses `INSERT OR REPLACE` so questions are refreshed without duplicates.
-
-```bash
-deactivate
-```
+> **Note:** If `/api/interview/start` ever returns a 503 with *"has no seeded questions"*, just re-run `bash scripts/bootstrap.sh`.
 
 ---
 

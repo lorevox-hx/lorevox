@@ -118,6 +118,17 @@ def start_interview(req: StartInterviewRequest) -> StartInterviewResponse:
     if not person:
         raise HTTPException(status_code=404, detail="Unknown person_id")
 
+    # Guard: fail fast if the plan has no seeded questions
+    q_count = db.count_plan_questions(req.plan_id)
+    if q_count == 0:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Interview plan '{req.plan_id}' has no seeded questions. "
+                "Run: python scripts/seed_interview_plan.py"
+            ),
+        )
+
     # FIXED: Replaced create_interview_session with start_session
     sess = db.start_session(req.person_id, req.plan_id)
     if not sess:

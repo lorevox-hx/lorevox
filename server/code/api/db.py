@@ -935,6 +935,18 @@ def get_question(question_id: str) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 
+def count_plan_questions(plan_id: str) -> int:
+    """Return the number of questions seeded for plan_id. Used as a startup guard."""
+    init_db()
+    con = _connect()
+    row = con.execute(
+        "SELECT COUNT(*) AS n FROM interview_questions WHERE plan_id=?;",
+        (plan_id or "default",),
+    ).fetchone()
+    con.close()
+    return int(row["n"]) if row else 0
+
+
 def get_next_question(session_id: str, plan_id: str, current_question_id: Optional[str]) -> Optional[Dict[str, Any]]:
     init_db()
     con = _connect()
