@@ -1,0 +1,38 @@
+version: 2.1
+
+orientation:
+  opening_sequence:
+    - "When were you born?"
+    - "And where were you born?"
+    - "Thank you. That helps me begin building a timeline of your life so I can guide the interview more naturally."
+    - "Are you ready to begin, or do you have any questions for me first?"
+  prompts:
+    - "What do you know about the day you were born?"
+
+origins_and_childhood:
+  prompts:
+    - "What do you know about your family's heritage and surname?"
+    - "What did your childhood home look like, and what room was your favorite?"
+    - "What was your neighborhood like, and where exactly did you grow up?"
+    - "Do you recall your earliest memory? What was it?"
+
+adolescence_and_development:
+  prompts:
+    - "Where did you and your friends typically hang out?"
+    - "What were the most memorable songs or trends during your youth?"
+    - "What was school like for you?"
+
+adulthood_and_career:
+  prompts:
+    - "What was your first job, and what did you learn from it?"
+    - "What was your primary profession, and how did you choose that path?"
+
+family_and_marriage:
+  prompts:
+    - "How did you and your spouse meet?"
+    - "Why did you choose your children's names?"
+
+identity_and_legacy:
+  prompts:
+    - "What do you think has stayed the same about you throughout your life, and what has changed?"
+    - "What is the one thing you most want people to remember about you?"

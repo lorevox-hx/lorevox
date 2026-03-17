@@ -73,12 +73,17 @@ def compose_system_prompt(
     conv_id: str,
     ui_system: Optional[str] = None,
     user_text: Optional[str] = None,
+    runtime71: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Compose the unified system prompt.
 
     conv_id: chat conversation id (used for session payload lookup).
     ui_system: system prompt sent by the UI (optional). If it includes PROFILE_JSON: {...}, we will strip and re-inject it in a structured way.
     user_text: latest user text (optional). Reserved for future dynamic RAG injection.
+    runtime71: v7.1 runtime context dict forwarded by chat_ws.py on every turn.
+               Keys: current_pass, current_era, current_mode, affect_state,
+                     affect_confidence, cognitive_mode, fatigue_score.
+               Absent = backward-compat / SSE path — no change to prompt.
     """
 
     conv_id = (conv_id or "default").strip() or "default"
@@ -151,5 +156,119 @@ def compose_system_prompt(
         parts.append(ctx_block)
     if pinned:
         parts.append(pinned)
+
+    # v7.1 — inject runtime directive block when the UI supplies runtime context
+    if runtime71:
+        current_pass   = runtime71.get("current_pass", "pass1") or "pass1"
+        current_era    = runtime71.get("current_era") or "not yet set"
+        current_mode   = runtime71.get("current_mode", "open") or "open"
+        affect_state   = runtime71.get("affect_state", "neutral") or "neutral"
+        fatigue_score  = int(runtime71.get("fatigue_score", 0) or 0)
+        cognitive_mode = runtime71.get("cognitive_mode") or None
+
+        # Base runtime block (always present)
+        directive_lines = [
+            "LORI_RUNTIME:",
+            f"  pass: {current_pass}",
+            f"  era: {current_era}",
+            f"  mode: {current_mode}",
+            f"  affect_state: {affect_state}",
+            f"  fatigue_score: {fatigue_score}",
+            "",
+        ]
+
+        # Pass-level directive
+        if current_pass == "pass1":
+            directive_lines.append(
+                "DIRECTIVE: You are in Pass 1 — Timeline Seed.\n"
+                "Your ONLY task right now is to warmly ask for two things: "
+                "(1) the narrator's date of birth, and "
+                "(2) the town or city where they were born or spent their earliest years.\n"
+                "DO NOT ask about memories, childhood stories, family, or life events.\n"
+                "DO NOT ask more than one question.\n"
+                "DO NOT move forward until both date of birth and birthplace are confirmed.\n"
+                "Example: 'Wonderful — before we begin, could you share when and where you were born?'"
+            )
+        elif current_pass == "pass2a":
+            era_label = current_era.replace("_", " ").title() if current_era != "not yet set" else "this period"
+            directive_lines.append(
+                f"DIRECTIVE: You are in Pass 2A — Chronological Timeline Walk.\n"
+                f"Current era: {era_label}.\n"
+                "Ask ONE open, place-anchored question about this period. "
+                "Invite the narrator to remember where they lived, who was around them, or what daily life felt like.\n"
+                "DO NOT ask about a specific moment or single scene — keep it broad.\n"
+                "DO NOT use 'do you remember a time when' — ask about place and daily life.\n"
+                "DO NOT ask more than one question.\n"
+                f"Example: 'What do you remember about where you were living during your {era_label}?'"
+            )
+        elif current_pass == "pass2b":
+            era_label = current_era.replace("_", " ").title() if current_era != "not yet set" else "this period"
+            directive_lines.append(
+                f"DIRECTIVE: You are in Pass 2B — Narrative Depth.\n"
+                f"Current era: {era_label}.\n"
+                "Ask ONE question that invites a specific scene or memory — a room, a sound, a face, a smell, a feeling.\n"
+                "Help the narrator move from general summary into a specific moment.\n"
+                "DO NOT ask a broad timeline question.\n"
+                "DO NOT ask more than one question.\n"
+                "Examples: 'Can you walk me through one specific moment from that time?' "
+                "or 'When you picture that period, what do you see?'"
+            )
+
+        # Mode modifier
+        if current_mode == "recognition":
+            directive_lines.append(
+                "MODE — Recognition: The narrator is uncertain or having difficulty recalling.\n"
+                "DO NOT ask an open-ended question that requires free recall.\n"
+                "Instead, offer 2 or 3 specific options the narrator can simply react to.\n"
+                "Examples: 'Was it a house or an apartment?' / 'Was it in a city, or somewhere more rural?' "
+                "/ 'Were your parents nearby at that time?'\n"
+                "Give them something concrete to agree or disagree with — do not ask them to produce a memory from scratch."
+            )
+        elif current_mode == "grounding":
+            directive_lines.append(
+                "MODE — Grounding: The narrator may be distressed or emotionally activated.\n"
+                "FIRST: acknowledge what they just shared with warmth and care. "
+                "Say something like 'That sounds like it was really difficult' or 'I'm glad you felt safe sharing that.'\n"
+                "THEN: if you ask anything at all, ask only the gentlest, least demanding question possible.\n"
+                "It is completely fine to NOT ask a question — presence and acknowledgment are enough.\n"
+                "DO NOT push forward with the interview. DO NOT ask about the next period or a specific memory.\n"
+                "Keep your entire response under 3 sentences."
+            )
+        elif current_mode == "light":
+            directive_lines.append(
+                "MODE — Light: The narrator's energy is low.\n"
+                "Keep your response warm and short — 2 sentences maximum.\n"
+                "Ask only one very small, easy question.\n"
+                "DO NOT ask anything that requires sustained effort or detailed recall."
+            )
+
+        # Cognitive override
+        if cognitive_mode == "recognition":
+            directive_lines.append(
+                "COGNITIVE SUPPORT: This narrator may have memory difficulty.\n"
+                "DO NOT ask open-ended recall questions ('What do you remember about...').\n"
+                "ALWAYS offer at least 2 concrete anchors before asking anything — "
+                "a specific year, a place name, a person's name, or a yes/no choice.\n"
+                "Example: 'Were you living in the same house you grew up in, or had you moved by then?'"
+            )
+
+        # Fatigue signal
+        if fatigue_score >= 70:
+            directive_lines.append(
+                "FATIGUE — HIGH: The narrator is tiring.\n"
+                "Keep your entire response to 2–3 sentences maximum.\n"
+                "DO NOT ask a new interview question.\n"
+                "DO NOT continue with the timeline.\n"
+                "Acknowledge the narrator warmly and offer to pause. "
+                "Example: 'We can stop here for today whenever you are ready — you have shared so much already.'"
+            )
+        elif fatigue_score >= 50:
+            directive_lines.append(
+                "FATIGUE — MODERATE: The narrator may be tiring.\n"
+                "Keep your response brief — one short question only.\n"
+                "Make it easy to answer. Signal that there is no rush."
+            )
+
+        parts.append("\n".join(directive_lines).strip())
 
     return "\n\n".join([p for p in parts if p.strip()]).strip()

@@ -1,0 +1,31 @@
+version: 1.0
+voice_profile: P335
+
+smoothing:
+  window_size: 5
+  cooldown_seconds: 8.0
+  promotion_count: 3
+  distress_promotion_count: 2
+  thresholds:
+    fatigue_hint: 0.65
+    confusion_hint: 0.70
+    distress_hint: 0.80
+    dissociation_hint: 0.75
+
+prompt_directives:
+  fatigue_hint:
+    - "Keep the next response short and easy to process."
+    - "Reduce cognitive load and avoid stacked questions."
+    - "Prepare for a gentle close if fatigue persists."
+  confusion_hint:
+    - "Ask one simpler question."
+    - "Use shorter clauses and clear chunking."
+    - "Clarify gently without sounding corrective."
+  distress_hint:
+    - "Validate without probing."
+    - "Offer pause, redirection, or a safer topic."
+    - "Do not deepen a painful scene unless the narrator clearly chooses to continue."
+  dissociation_hint:
+    - "Use grounding language."
+    - "Return to concrete, safe, present-oriented prompts."
+    - "Prefer gentle tethering over interpretation."

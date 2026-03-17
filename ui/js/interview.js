@@ -1,16 +1,53 @@
 /* ═══════════════════════════════════════════════════════════════
    interview.js — interview session: start, answer processing,
                   roadmap, memory triggers
-   Lorevox v6.1
+   Lorevox v7.1
    Load order: NINTH
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── ROADMAP ─────────────────────────────────────────────────── */
+/* v7.1: when timeline spine exists, show Life Periods instead of
+   the legacy section checklist. Falls back gracefully if no seed. */
 function renderRoadmap(){
-  const w=document.getElementById("roadmapList"); w.innerHTML="";
-  // Filter: skip youth sections unless youthMode is on
-  const visibleSections=INTERVIEW_ROADMAP.map((s,i)=>({s,i})).filter(({s})=>!s.youth||youthMode);
+  const w=document.getElementById("roadmapList"); if(!w) return;
+  w.innerHTML="";
 
+  const periods = getCurrentLifePeriods();
+
+  if(periods.length){
+    // v7.1 path — render life period spine
+    const currentEra = getCurrentEra();
+    periods.forEach(p=>{
+      const isActive = currentEra === p.label;
+      const d=document.createElement("div");
+      d.className="roadmap-item"+(isActive?" active-section":"");
+      const yearRange = p.start_year
+        ? (p.end_year ? `${p.start_year}–${p.end_year}` : `${p.start_year}+`)
+        : "";
+      d.innerHTML=`
+        <span class="rm-label truncate">
+          <span class="rm-emoji">◌</span>
+          ${esc(prettyEra(p.label))}
+          ${yearRange?`<span style="color:#475569;font-size:9px;margin-left:4px">${yearRange}</span>`:""}
+        </span>`;
+      d.onclick=()=>{
+        setEra(p.label);
+        if(interviewMode==="chronological") setPass("pass2a");
+        update71RuntimeUI();
+        renderRoadmap();
+        renderInterview();
+        showTab("interview");
+      };
+      w.appendChild(d);
+    });
+    // default to first era if none selected
+    if(!getCurrentEra() && periods[0]) setEra(periods[0].label);
+    update71RuntimeUI();
+    return;
+  }
+
+  // legacy path — section checklist (no timeline seed yet)
+  const visibleSections=INTERVIEW_ROADMAP.map((s,i)=>({s,i})).filter(({s})=>!s.youth||youthMode);
   if(interviewMode==="thematic"){
     THEMATIC_GROUPS.forEach(grp=>{
       const grpSections=visibleSections.filter(({s})=>grp.ids.includes(s.id));
@@ -24,6 +61,11 @@ function renderRoadmap(){
   }
   const s=INTERVIEW_ROADMAP[sectionIndex];
   if(s) document.getElementById("ivSectionLabel").textContent=`${s.emoji} ${s.label}`;
+}
+
+/* ── v7.1 era label prettifier ───────────────────────────────── */
+function prettyEra(v){
+  return v ? String(v).replaceAll("_"," ").replace(/\b\w/g, m=>m.toUpperCase()) : "";
 }
 
 function appendRoadmapItem(w,s,i){
@@ -78,20 +120,48 @@ function _latestAffect(){
   return last;
 }
 
-/* ── MEMORY TRIGGERS ─────────────────────────────────────────── */
+/* ── MEMORY TRIGGERS / ERA SUPPORT ───────────────────────────── */
+/* v7.1: when a timeline seed exists, show era-anchored support
+   prompts instead of random world-event cards.
+   Falls back to world-event cards for the legacy pre-seed path. */
 function updateContextTriggers(){
-  _syncEmotionSection(); // keep emotion engine in sync with current section
+  _syncEmotionSection();
   const el=document.getElementById("contextTriggers"); if(!el) return;
+
+  // v7.1 path — era support prompts
+  if(getTimelineSeedReady()){
+    const era  = getCurrentEra();
+    const mode = getCurrentMode();
+    const ERA_PROMPTS = {
+      early_childhood:  ["Think about home life — the kitchen, bedroom, yard, or street.", "Who was in the household then?", "Does this memory feel closer to home, neighborhood, or family?"],
+      school_years:     ["Does this connect more to school, home, or neighborhood life?", "What teacher, class, or school routine comes back first?", "Were you still living in the same place then?"],
+      adolescence:      ["Does this feel like school years or the start of independence?", "What music, friendships, or places anchor that period?", "Were you still living at home then?"],
+      early_adulthood:  ["Were you on your own by then, or still closely tied to home?", "Was work, school, marriage, or moving the biggest change?", "What city or place defines that period most?"],
+      midlife:          ["Does this connect more to work, caregiving, or family routines?", "Who depended on you most during that time?", "What did a normal day feel like then?"],
+      later_life:       ["Does this feel tied to home, health, family, or reflection?", "What became more important to you during this chapter?", "What place best holds that period in memory?"],
+    };
+    const prompts = ERA_PROMPTS[era] || ["Lori can use age, place, and family anchors to guide this era gently."];
+    const modeHint = mode === "recognition"
+      ? `<div class="text-xs text-amber-300 mb-2">Recognition support — Lori will use easier anchoring prompts.</div>`
+      : mode === "grounding"
+        ? `<div class="text-xs text-emerald-400 mb-2">Grounding mode — Lori is pacing gently right now.</div>`
+        : "";
+    el.innerHTML = modeHint + `<div class="space-y-2 py-1">` +
+      prompts.map(t=>`<div class="event-card" style="margin:0">${esc(t)}</div>`).join("") + `</div>`;
+    return;
+  }
+
+  // legacy path — world-event cards
   const birthYear=getBirthYear();
   const country=getCountry();
-  if(!birthYear){ el.innerHTML=`<div class="py-1">Set a date of birth on the Profile tab to see age-anchored triggers.</div>`; return; }
+  if(!birthYear){ el.innerHTML=`<div class="py-1">Add date of birth on the Profile tab to see age-anchored prompts.</div>`; return; }
   const sec=INTERVIEW_ROADMAP[sectionIndex]; if(!sec){ el.innerHTML=""; return; }
   const relevant=ALL_EVENTS.filter(e=>{
     const age=e.year-birthYear; if(age<3||age>100) return false;
     if(!e.tags.includes(country)&&!e.tags.includes("global")) return false;
     return e.tags.some(t=>sec.tags.includes(t));
   }).slice(0,3);
-  if(!relevant.length){ el.innerHTML=`<div class="py-1">No specific world events matched for this section — ask freely.</div>`; return; }
+  if(!relevant.length){ el.innerHTML=`<div class="py-1">No specific world events matched — ask freely.</div>`; return; }
   el.innerHTML=`<div class="space-y-2 py-1">`+relevant.map(e=>{
     const age=e.year-birthYear;
     return `<div class="event-card" style="margin:0" onclick='fireEventPrompt(${JSON.stringify(e)},${age})'>
@@ -103,13 +173,83 @@ function updateContextTriggers(){
 }
 
 /* ── INTERVIEW SESSION RENDERING ─────────────────────────────── */
+/* v7.1: when a timeline seed exists, builds prompt from pass + era.
+   Falls back to the session-engine-assigned prompt for legacy flow. */
 function renderInterview(){
   document.getElementById("ivSession").textContent=state.interview.session_id||"—";
   document.getElementById("ivQid").textContent=state.interview.question_id||"—";
-  document.getElementById("ivPrompt").textContent=state.interview.prompt||"Select a section and click Begin Section to start.";
-  const s=INTERVIEW_ROADMAP[sectionIndex];
-  if(s) document.getElementById("ivSectionLabel").textContent=`${s.emoji} ${s.label}`;
+
+  // v7.1 — show pass-aware prompt when seed is ready
+  if(getTimelineSeedReady()){
+    document.getElementById("ivPrompt").textContent = build71InterviewPrompt();
+  } else {
+    document.getElementById("ivPrompt").textContent=state.interview.prompt||"Select a section and click Begin Section to start.";
+    const s=INTERVIEW_ROADMAP[sectionIndex];
+    if(s) document.getElementById("ivSectionLabel").textContent=`${s.emoji} ${s.label}`;
+  }
+
+  update71RuntimeUI();
   updateContextTriggers();
+}
+
+/* ── v7.1 — pass-aware prompt builder ───────────────────────── */
+function build71InterviewPrompt(){
+  const pass = getCurrentPass();
+  const era  = getCurrentEra();
+  const mode = getCurrentMode();
+  const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "this person";
+
+  if(pass==="pass2a") return _timelinePassPrompt(era, mode);
+  if(pass==="pass2b") return _depthPassPrompt(era, mode, name);
+  // pass1
+  return "When were you born? And where were you born?";
+}
+
+function _timelinePassPrompt(era, mode){
+  const base = {
+    early_childhood:  "Let's begin near the beginning. What do you know about the place where you were born, and where you lived when you were very young?",
+    school_years:     "Thinking about your school years, what town, school, or neighborhood feels most connected to that time?",
+    adolescence:      "As you got older, what changed most in your life during those years — school, friends, family, work, or where you lived?",
+    early_adulthood:  "What do you think of as the beginning of your adult life? Where were you living then?",
+    midlife:          "What responsibilities, jobs, or family roles shaped your middle adult years the most?",
+    later_life:       "What major transitions stand out most from your later adult years?",
+  }[era] || "Let's continue building the life timeline.";
+
+  if(mode==="recognition") return base + " You can answer with whichever option feels closest, even if you're not sure.";
+  if(mode==="light")       return base + " We can keep this simple.";
+  if(mode==="grounding")   return "We can go gently. What place from that part of life feels safest or easiest to begin with?";
+  return base;
+}
+
+function _depthPassPrompt(era, mode, name){
+  const base = {
+    early_childhood:  "When you picture your earliest home, what room, smell, or sound comes back first?",
+    school_years:     "What is one vivid memory from your school years that still feels close to you now?",
+    adolescence:      "When you think about your teenage years, what place, person, or feeling stands out most clearly?",
+    early_adulthood:  "What moment made early adult life start to feel real to you?",
+    midlife:          "What scene best captures what those middle years felt like day to day?",
+    later_life:       "Looking back on later life, what moments feel the most meaningful now?",
+  }[era] || `Let's deepen the story around ${name}'s life.`;
+
+  if(mode==="recognition") return base + " If it helps, you can start with a place, a person, or a routine.";
+  if(mode==="light")       return base + " We can keep to one small memory.";
+  if(mode==="grounding")   return "We can stay with this lightly, or move somewhere gentler for now.";
+  return base;
+}
+
+/* ── v7.1 — mode button wiring (Chron=Pass2A, Thematic=Pass2B) ─ */
+function setInterviewMode(mode){
+  interviewMode = mode;
+  const chronBtn=document.getElementById("modeChronBtn");
+  const themeBtn=document.getElementById("modeThemeBtn");
+  if(chronBtn) chronBtn.classList.toggle("active", mode==="chronological");
+  if(themeBtn) themeBtn.classList.toggle("active", mode==="thematic");
+  // v7.1 — wire to pass engine
+  if(mode==="chronological") setPass("pass2a");
+  else                       setPass("pass2b");
+  update71RuntimeUI();
+  renderRoadmap();
+  renderInterview();
 }
 
 /* ── INTERVIEW START ─────────────────────────────────────────── */

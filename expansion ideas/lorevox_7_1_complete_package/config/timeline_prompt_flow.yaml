@@ -1,0 +1,24 @@
+version: 1.0
+
+opening_sequence:
+  - "When were you born?"
+  - "And where were you born?"
+  - "Thank you. That helps me begin building a timeline of your life so I can guide the interview more naturally."
+  - "Are you ready to begin, or do you have any questions for me first?"
+
+timeline_pass:
+  childhood:
+    - "What do you know about the place where you were born?"
+    - "Where did you live when you were very young?"
+    - "Who was in the household when you were a child?"
+  school_years:
+    - "What school years or childhood places stand out most to you?"
+    - "What town or neighborhood feels most connected to those years?"
+  adolescence:
+    - "As you got older, what changed most in your life?"
+  early_adulthood:
+    - "What do you think of as the beginning of your adult life?"
+  midlife:
+    - "What major responsibilities or roles shaped your middle adult years?"
+  later_life:
+    - "What major transitions stand out from your later adult years?"

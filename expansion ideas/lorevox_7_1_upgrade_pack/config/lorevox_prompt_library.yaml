@@ -1,0 +1,12 @@
+
+forbidden:
+  - "Do you remember"
+
+preferred:
+  recognition:
+    - "Was that before or after..."
+    - "Was that during your school years or later?"
+  favorites:
+    - "What was your favorite..."
+  sensory:
+    - "What did it feel like..."

@@ -17,6 +17,7 @@ window.onload = async () => {
   renderRoadmap();
   renderMemoirChapters();
   updateArchiveReadiness();
+  update71RuntimeUI();   // v7.1 — paint runtime badges on first load
   document.addEventListener("keydown", e => { if(e.key==="Escape" && isFocusMode) toggleFocus(); });
   const saved = localStorage.getItem(LS_ACTIVE);
   if (saved) loadPerson(saved).catch(()=>{});
@@ -138,6 +139,16 @@ async function loadPerson(pid){
   onDobChange();
   updateSidebar();
   renderEventsGrid();
+  // v7.1 — restore persisted timeline spine before rendering
+  const _cachedSpine = loadSpineLocal(pid);
+  if (_cachedSpine) {
+    state.timeline.spine    = _cachedSpine;
+    state.timeline.seedReady = true;
+    if (!state.session.currentEra && _cachedSpine.periods?.length) {
+      setEra(_cachedSpine.periods[0].label);
+    }
+    if (state.session.currentPass === "pass1") setPass("pass2a");
+  }
   renderTimeline();
   updateContextTriggers();
   updateArchiveReadiness();
@@ -167,6 +178,10 @@ async function saveProfile(){
     profileSaved=true;
     sysBubble("💾 Profile saved.");
     updateProfileStatus();
+    // v7.1 — initialize timeline spine when DOB + birthplace are present
+    if (getTimelineSeedReady()) {
+      initTimelineSpine();
+    }
     updateArchiveReadiness();
     if(state.chat?.conv_id){
       fetch(API.SESS_PUT,{method:"POST",headers:ctype(),body:JSON.stringify({
@@ -203,13 +218,18 @@ function updateProfileStatus(){
 function updateArchiveReadiness(){
   const el=document.getElementById("readinessChecks"); if(!el) return;
   const b=state.profile?.basics||{};
+  const seedReady = getTimelineSeedReady();
+  const spineReady = !!state.timeline?.spine;
   const checks=[
-    {label:"Date of birth added",  ok:!!b.dob},
-    {label:"Birthplace added",     ok:!!b.pob},
-    {label:"Pronouns set",         ok:!!b.pronouns},
-    {label:"Family started",       ok:(state.profile?.kinship||[]).length>0},
-    {label:"Pets added",           ok:(state.profile?.pets||[]).length>0},
-    {label:"Profile saved",        ok:profileSaved},
+    // v7.1 — timeline seed checks come first
+    {label:"Date of birth added",        ok:!!b.dob},
+    {label:"Birthplace added",            ok:!!b.pob},
+    {label:"Timeline seed ready",         ok:seedReady},
+    {label:"Pass 2A available",           ok:spineReady},
+    // existing checks
+    {label:"Pronouns set",                ok:!!b.pronouns},
+    {label:"Family started",              ok:(state.profile?.kinship||[]).length>0},
+    {label:"Profile saved",               ok:profileSaved},
   ];
   el.innerHTML=checks.map(c=>`
     <div class="readiness-item${c.ok?" ok":""}">
@@ -217,6 +237,12 @@ function updateArchiveReadiness(){
       <span>${c.label}</span>
       ${c.ok?'<span style="color:#4ade80;font-size:10px;margin-left:auto">✓</span>':''}
     </div>`).join("");
+  // v7.1 — update Pass 2A badge if present
+  const pass2aBadge = document.getElementById("pass2aAvailBadge");
+  if (pass2aBadge) {
+    pass2aBadge.className = spineReady ? "seed-badge" : "seed-badge pending";
+    pass2aBadge.textContent = spineReady ? "Pass 2A — ready" : "Pass 2A — not ready";
+  }
   if(!document.getElementById("pane-obituary")?.classList.contains("hidden"))
     updateObitIdentityCard(b);
 }
@@ -788,8 +814,25 @@ async function sendUserMessage(){
   if(ws&&wsReady&&!usingFallback){
     setLoriState("thinking");
     currentAssistantBubble=null;
+    // v7.1 — auto cognitive mode detection before send
+    try {
+      if (window.LORI71 && window.LORI71.CognitiveAuto) {
+        const _caResult = window.LORI71.CognitiveAuto.processUserTurn(text||"");
+        console.log("[Lori 7.1] cognitive auto:", _caResult.mode, "("+_caResult.reason+")");
+      }
+    } catch(e) {}
+    const _rt71={
+      current_pass:  (typeof getCurrentPass==="function"?getCurrentPass():null)||state.session.currentPass||"pass1",
+      current_era:   (typeof getCurrentEra==="function"?getCurrentEra():null)||state.session.currentEra||null,
+      current_mode:  (typeof getCurrentMode==="function"?getCurrentMode():null)||state.session.currentMode||"open",
+      affect_state:  state.runtime.affectState||"neutral",
+      affect_confidence: state.runtime.affectConfidence||0,
+      cognitive_mode: state.runtime.cognitiveMode||null,
+      fatigue_score: state.runtime.fatigueScore||0,
+    };
+    console.log("[Lori 7.1] runtime71 → model:", JSON.stringify(_rt71, null, 2));
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
-      message:payload,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512}}));
+      message:payload,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71}}));
     return;
   }
   await streamSse(payload);
@@ -800,8 +843,18 @@ async function sendSystemPrompt(instruction){
   if(ws&&wsReady&&!usingFallback){
     setLoriState("thinking");
     currentAssistantBubble=bubble;
+    const _rt71sys={
+      current_pass:  (typeof getCurrentPass==="function"?getCurrentPass():null)||state.session.currentPass||"pass1",
+      current_era:   (typeof getCurrentEra==="function"?getCurrentEra():null)||state.session.currentEra||null,
+      current_mode:  (typeof getCurrentMode==="function"?getCurrentMode():null)||state.session.currentMode||"open",
+      affect_state:  state.runtime.affectState||"neutral",
+      affect_confidence: state.runtime.affectConfidence||0,
+      cognitive_mode: state.runtime.cognitiveMode||null,
+      fatigue_score: state.runtime.fatigueScore||0,
+    };
+    console.log("[Lori 7.1] runtime71 (sys) → model:", JSON.stringify(_rt71sys, null, 2));
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
-      message:instruction,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512}}));
+      message:instruction,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71sys}}));
     return;
   }
   await streamSse(instruction,bubble);
@@ -1015,6 +1068,109 @@ function stopRecording(){
   if(recognition){ try{ recognition.stop(); }catch(e){} }
   document.getElementById("btnMic").textContent="🎤";
   setLoriState("ready");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   v7.1 — TIMELINE SPINE INITIALIZER
+   Called from saveProfile() when DOB + birthplace are present.
+   Builds the life-period scaffold from date of birth.
+═══════════════════════════════════════════════════════════════ */
+const TIMELINE_ORDER = [
+  "early_childhood",
+  "school_years",
+  "adolescence",
+  "early_adulthood",
+  "midlife",
+  "later_life",
+];
+
+const ERA_AGE_MAP = {
+  early_childhood:  { start: 0,  end: 5  },
+  school_years:     { start: 6,  end: 12 },
+  adolescence:      { start: 13, end: 18 },
+  early_adulthood:  { start: 19, end: 30 },
+  midlife:          { start: 31, end: 55 },
+  later_life:       { start: 56, end: null },
+};
+
+function initTimelineSpine() {
+  const b = state.profile?.basics || {};
+  if (!b.dob || !b.pob) return;
+  const birthYear = parseInt(String(b.dob).slice(0, 4), 10);
+  if (Number.isNaN(birthYear)) return;
+
+  const periods = TIMELINE_ORDER.map(label => {
+    const ages = ERA_AGE_MAP[label];
+    return {
+      label,
+      start_year: birthYear + ages.start,
+      end_year:   ages.end !== null ? birthYear + ages.end : null,
+      is_approximate: true,
+      places: label === "early_childhood" ? [b.pob] : [],
+      people: [],
+      notes:  label === "early_childhood" ? [`Born in ${b.pob}`] : [],
+    };
+  });
+
+  state.timeline.spine     = { birth_date: b.dob, birth_place: b.pob, periods };
+  state.timeline.seedReady = true;
+  saveSpineLocal();
+
+  // Advance pass engine to Pass 2A and default to first era
+  setPass("pass2a");
+  if (!getCurrentEra()) setEra(periods[0].label);
+  setMode("open");
+
+  // Sync UI
+  update71RuntimeUI();
+  renderRoadmap();
+  renderTimeline();
+  updateArchiveReadiness();
+  sysBubble("◉ Timeline seed initialized — Pass 2A ready.");
+}
+
+/* ── v7.1 — update all runtime badge elements in the UI ──── */
+function update71RuntimeUI() {
+  const PASS_LABELS = {
+    pass1:  "Pass 1",
+    pass2a: "Pass 2A",
+    pass2b: "Pass 2B",
+  };
+  const prettyEra  = (v) => v ? String(v).replaceAll("_"," ").replace(/\b\w/g, m => m.toUpperCase()) : "No era";
+  const prettyMode = (v) => v ? String(v).replace(/\b\w/g, m => m.toUpperCase()) : "Open";
+
+  const pass = getCurrentPass();
+  const era  = getCurrentEra();
+  const mode = getCurrentMode();
+  const passLabel = PASS_LABELS[pass] || pass;
+  const eraLabel  = prettyEra(era);
+  const modeLabel = prettyMode(mode);
+
+  // Top bar runtime pills (lori7.1.html)
+  const setT = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  setT("topPassPill",  passLabel);
+  setT("topEraPill",   eraLabel);
+  setT("topModePill",  modeLabel);
+  // Interview tab header
+  setT("ivPassLabel",  `${passLabel}${pass === "pass2a" ? " — Timeline Spine" : pass === "pass2b" ? " — Narrative Depth" : " — Timeline Seed"}`);
+  setT("ivEraLabel",   eraLabel);
+  setT("ivModeLabel",  modeLabel);
+  setT("ivSectionLabel", `${passLabel} · Era: ${eraLabel} · Mode: ${modeLabel}`);
+  // Lori panel state strip
+  setT("loriPassPill", passLabel);
+  setT("loriEraPill",  eraLabel);
+  setT("loriModePill", modeLabel);
+
+  // Seed badges
+  const spineReady = !!state.timeline?.spine;
+  const seedBadge  = document.getElementById("timelineSeedBadge71");
+  if (seedBadge) {
+    seedBadge.className   = spineReady ? "seed-badge" : "seed-badge pending";
+    seedBadge.textContent = spineReady ? "◉ Timeline seed ready" : "◎ Timeline seed — add DOB + birthplace";
+  }
+  // Summary seed indicator
+  const sumSeed = document.getElementById("summarySeed");
+  if (sumSeed) sumSeed.classList.toggle("hidden", !spineReady);
 }
 
 /* ═══════════════════════════════════════════════════════════════

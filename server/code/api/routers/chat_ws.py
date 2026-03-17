@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import os
 import threading
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
+_LV_DEBUG = os.getenv("LV_DEV_MODE", "0") in ("1", "true", "True")
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from transformers import TextIteratorStreamer, StoppingCriteriaList
@@ -61,7 +66,31 @@ async def ws_chat(ws: WebSocket):
 
         # Build prompt from DB history + user turn (with unified system prompt)
         history = export_turns(conv_id)
-        system_prompt = compose_system_prompt(conv_id, ui_system=None, user_text=user_text)
+        # v7.1: extract runtime context forwarded from UI on every start_turn
+        runtime71: Dict[str, Any] = params.get("runtime71") or {}
+        system_prompt = compose_system_prompt(conv_id, ui_system=None, user_text=user_text, runtime71=runtime71)
+
+        # ── Debug logging ───────────────────────────────────────────────
+        # Always log a compact runtime summary at INFO level.
+        rt_summary = (
+            f"pass={runtime71.get('current_pass','?')} "
+            f"era={runtime71.get('current_era','?')} "
+            f"mode={runtime71.get('current_mode','?')} "
+            f"affect={runtime71.get('affect_state','?')} "
+            f"fatigue={runtime71.get('fatigue_score','?')} "
+            f"cog={runtime71.get('cognitive_mode','?')}"
+        ) if runtime71 else "(no runtime71)"
+        logger.info("[chat_ws] turn: conv=%s | %s", conv_id, rt_summary)
+
+        # When LV_DEV_MODE=1, also log the full system prompt so you can
+        # see exactly what the model receives.
+        if _LV_DEBUG:
+            sep = "─" * 60
+            logger.info(
+                "[chat_ws] SYSTEM PROMPT ↓\n%s\n%s\n%s",
+                sep, system_prompt, sep
+            )
+        # ────────────────────────────────────────────────────────────────
 
         msgs: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
         msgs.extend(
