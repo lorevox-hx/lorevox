@@ -40,13 +40,84 @@ function pill(id,ok){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   LORI STATUS
+   LORI STATUS  (v7.1 — state propagation patch)
 ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Normalize an incoming state label into canonical runtime values.
+ * Everything in `runtime` is what prompt_composer.py will actually see.
+ */
+// Transitional UI-only states — badge updates only, never touch state.runtime
+const _UI_ONLY_STATES = new Set(["thinking","drafting","listening"]);
+
+function normalizeLoriState(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  // Semantic runtime states — these propagate to the backend
+  const map = {
+    ready:       { badge:"Ready",        affectState:"neutral",       affectConfidence:0,    cognitiveMode:"open",        fatigueScore:0  },
+    open:        { badge:"Open",         affectState:"neutral",       affectConfidence:0,    cognitiveMode:"open",        fatigueScore:0  },
+    recognition: { badge:"recognition",  affectState:"confusion_hint",affectConfidence:0.65, cognitiveMode:"recognition", fatigueScore:Math.max(Number(state?.runtime?.fatigueScore||0),20) },
+    grounding:   { badge:"grounding",    affectState:"distress_hint", affectConfidence:0.8,  cognitiveMode:"grounding",   fatigueScore:Math.max(Number(state?.runtime?.fatigueScore||0),40) },
+    light:       { badge:"light",        affectState:"fatigue_hint",  affectConfidence:0.6,  cognitiveMode:"light",       fatigueScore:Math.max(Number(state?.runtime?.fatigueScore||0),60) },
+    high_fatigue:{ badge:"high_fatigue", affectState:"fatigue_hint",  affectConfidence:0.9,  cognitiveMode:"light",       fatigueScore:80 },
+  };
+  return map[raw] || null; // null = badge-only (transitional or unknown)
+}
+
+/**
+ * Build the runtime71 block from live state.
+ * This is the single source of truth for both ws.send() payloads.
+ */
+function buildRuntime71() {
+  return {
+    current_pass:       (typeof getCurrentPass==="function"?getCurrentPass():null)||state.session.currentPass||"pass1",
+    current_era:        (typeof getCurrentEra==="function"?getCurrentEra():null)||state.session.currentEra||null,
+    current_mode:       (typeof getCurrentMode==="function"?getCurrentMode():null)||state.session.currentMode||"open",
+    affect_state:       state.runtime.affectState||"neutral",
+    affect_confidence:  Number(state.runtime.affectConfidence||0),
+    cognitive_mode:     state.runtime.cognitiveMode||null,
+    fatigue_score:      Number(state.runtime.fatigueScore||0),
+  };
+}
+
+/**
+ * Set Lori's operational state.
+ * Propagates to state.runtime (→ prompt_composer) AND updates the UI badge.
+ */
 function setLoriState(s){
+  const norm = normalizeLoriState(s);
+
+  // Only semantic states update state.runtime.
+  // Transitional states (thinking / drafting / listening) are badge-only
+  // and must NEVER overwrite runtime values set by the user or affect engine.
+  if (norm !== null) {
+    if (!state.runtime) state.runtime = {};
+    if (!state.session) state.session = {};
+    state.runtime.affectState      = norm.affectState;
+    state.runtime.affectConfidence = norm.affectConfidence;
+    state.runtime.cognitiveMode    = norm.cognitiveMode;
+    state.runtime.fatigueScore     = norm.fatigueScore;
+    state.session.currentMode      = norm.cognitiveMode;
+  }
+
+  // UI badge
   const el=document.getElementById("loriStatus"); if(!el) return;
   el.className=`lori-status ${s}`;
-  const labels={ready:"<div class='status-dot'></div> Ready",thinking:"<div class='status-dot'></div> Thinking",drafting:"<div class='status-dot'></div> Drafting",listening:"<div class='status-dot'></div> Listening"};
-  el.innerHTML=labels[s]||`<div class='status-dot'></div> ${esc(s)}`;
+  const builtIn={ready:"<div class='status-dot'></div> Ready",thinking:"<div class='status-dot'></div> Thinking",drafting:"<div class='status-dot'></div> Drafting",listening:"<div class='status-dot'></div> Listening"};
+  const badgeLabel = norm ? norm.badge : s.charAt(0).toUpperCase()+s.slice(1);
+  el.innerHTML=builtIn[s]||`<div class='status-dot'></div> ${badgeLabel}`;
+
+  // Refresh any 7.1 UI elements
+  if (typeof update71RuntimeUI==="function") update71RuntimeUI();
+  if (window.LORI71?.updateBadges)           window.LORI71.updateBadges();
+  if (window.LORI71?.updateDebugOverlay)     window.LORI71.updateDebugOverlay();
+
+  console.log("[Lori 7.1] setLoriState →", s, "| runtime =", {
+    affectState:      state.runtime.affectState,
+    affectConfidence: state.runtime.affectConfidence,
+    cognitiveMode:    state.runtime.cognitiveMode,
+    fatigueScore:     state.runtime.fatigueScore,
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -812,6 +883,9 @@ async function sendUserMessage(){
   const payload=systemInstruction?`${text}\n\n${systemInstruction}`:text;
 
   if(ws&&wsReady&&!usingFallback){
+    // v7.1: capture runtime71 BEFORE setLoriState("thinking") so transitional
+    // badge updates never wipe semantic state (fatigue, cognitive mode, etc.)
+    const _rt71 = buildRuntime71();
     setLoriState("thinking");
     currentAssistantBubble=null;
     // v7.1 — auto cognitive mode detection before send
@@ -821,15 +895,6 @@ async function sendUserMessage(){
         console.log("[Lori 7.1] cognitive auto:", _caResult.mode, "("+_caResult.reason+")");
       }
     } catch(e) {}
-    const _rt71={
-      current_pass:  (typeof getCurrentPass==="function"?getCurrentPass():null)||state.session.currentPass||"pass1",
-      current_era:   (typeof getCurrentEra==="function"?getCurrentEra():null)||state.session.currentEra||null,
-      current_mode:  (typeof getCurrentMode==="function"?getCurrentMode():null)||state.session.currentMode||"open",
-      affect_state:  state.runtime.affectState||"neutral",
-      affect_confidence: state.runtime.affectConfidence||0,
-      cognitive_mode: state.runtime.cognitiveMode||null,
-      fatigue_score: state.runtime.fatigueScore||0,
-    };
     console.log("[Lori 7.1] runtime71 → model:", JSON.stringify(_rt71, null, 2));
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
       message:payload,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71}}));
@@ -841,17 +906,9 @@ async function sendUserMessage(){
 async function sendSystemPrompt(instruction){
   const bubble=appendBubble("ai","…");
   if(ws&&wsReady&&!usingFallback){
+    const _rt71sys = buildRuntime71(); // capture before thinking resets badge
     setLoriState("thinking");
     currentAssistantBubble=bubble;
-    const _rt71sys={
-      current_pass:  (typeof getCurrentPass==="function"?getCurrentPass():null)||state.session.currentPass||"pass1",
-      current_era:   (typeof getCurrentEra==="function"?getCurrentEra():null)||state.session.currentEra||null,
-      current_mode:  (typeof getCurrentMode==="function"?getCurrentMode():null)||state.session.currentMode||"open",
-      affect_state:  state.runtime.affectState||"neutral",
-      affect_confidence: state.runtime.affectConfidence||0,
-      cognitive_mode: state.runtime.cognitiveMode||null,
-      fatigue_score: state.runtime.fatigueScore||0,
-    };
     console.log("[Lori 7.1] runtime71 (sys) → model:", JSON.stringify(_rt71sys, null, 2));
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
       message:instruction,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71sys}}));

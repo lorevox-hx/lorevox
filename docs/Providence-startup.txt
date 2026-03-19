@@ -1,0 +1,62 @@
+Correct startup now
+Terminal 1 — LLM/backend
+
+Run this exactly:
+
+cd /mnt/c/Users/chris/lorevox
+source .venv-gpu/bin/activate
+
+export MODEL_PATH=/mnt/c/Llama-3.1-8B/hf/Meta-Llama-3.1-8B-Instruct
+export HF_HOME=/mnt/c/Llama-3.1-8B/hf_home
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+
+export DATA_DIR=/mnt/c/lorevox_data
+export ATTN_IMPL=sdpa
+export LV_DEV_MODE=1
+
+mkdir -p /mnt/c/lorevox_data/{db,interview,logs,cache_audio,memory,projects,tts_cache,uploads,media}
+
+cd /mnt/c/Users/chris/lorevox/server
+export PYTHONPATH=/mnt/c/Users/chris/lorevox/server
+
+Now test the model again:
+
+python - <<'PY'
+from code.api.api import _load_model
+m, t = _load_model()
+print("MODEL OK:", type(m).__name__, type(t).__name__)
+PY
+
+If that works, start the backend:
+
+uvicorn code.api.main:app --host 127.0.0.1 --port 8000
+
+Better option: use the launcher
+
+Since your repo already has the launcher, this is even better:
+
+cd /mnt/c/Users/chris/lorevox
+bash launchers/run_gpu_8000.sh
+
+That should use the .env values properly.
+The important thing is that .env already says:
+
+ATTN_IMPL=sdpa
+
+which is exactly what we want.
+
+Terminal 2 — TTS / P335
+
+In a second terminal:
+
+cd /mnt/c/Users/chris/lorevox
+bash launchers/run_tts_8001.sh
+
+That should bring up TTS with:
+
+TTS_MODEL=tts_models/en/vctk/vits
+
+TTS_SPEAKER_LORI=p335
+
+from your .env.

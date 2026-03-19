@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="css/safety.css">
   <link rel="stylesheet" href="css/permissions.css">
   <link rel="stylesheet" href="css/affect.css">
+  <link rel="stylesheet" href="css/facial-consent.css">
 
   <style>
     /* ── v7.1 runtime status bar ───────────────────────────────── */
@@ -511,9 +512,9 @@
             <div class="perm-row">
               <button class="perm-toggle" id="permCamToggle" onclick="togglePermCam()" title="Toggle camera"></button>
               <div>
-                <div class="perm-label">Camera — helps Lori pace the interview more gently</div>
-                <!-- v7.1: updated camera copy — affect support doctrine -->
-                <div class="perm-sub">Video is processed on this device and is not saved or transmitted. Lori uses gentle signals to adapt her pacing — not to diagnose, just to guide naturally.</div>
+                <div class="perm-label">Camera — facial expression analysis for gentle pacing</div>
+                <!-- v7.1: explicit facial expression consent notice — see facial-consent.js for full gate -->
+                <div class="perm-sub">Uses <strong>facial expression analysis</strong> (MediaPipe, on this device only) to detect emotional signals and adapt Lori's pacing. No video, landmarks, or biometric data is saved or transmitted. You'll be asked to confirm this separately before the camera starts.</div>
               </div>
             </div>
             <div class="perm-privacy-note">Everything is processed on this device. Video is not saved or transmitted.</div>
@@ -1002,6 +1003,7 @@
 <script src="js/safety-ui.js"></script>
 <script src="js/permissions.js"></script>
 <script src="js/emotion.js"></script>
+<script src="js/facial-consent.js"></script><!-- v7.1: must load before emotion-ui.js -->
 <script src="js/emotion-ui.js"></script>
 <script src="js/timeline-ui.js"></script>
 <script src="js/interview.js"></script>

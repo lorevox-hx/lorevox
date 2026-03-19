@@ -47,16 +47,31 @@ async function startEmotionEngine(){
     // emotion.js not loaded — skip silently
     return;
   }
+
+  // v7.1: Require explicit facial expression consent before any camera use.
+  // FacialConsent is defined in facial-consent.js — must be loaded first.
+  if(typeof FacialConsent !== "undefined"){
+    const granted = await FacialConsent.request();
+    if(!granted){
+      emotionAware = false;
+      updateEmotionAwareBtn();
+      console.log("[Lorevox] Camera not started — facial expression consent declined.");
+      return;
+    }
+  } else {
+    // facial-consent.js not loaded — block camera as safety precaution
+    console.warn("[Lorevox] facial-consent.js not loaded — camera blocked.");
+    emotionAware = false;
+    updateEmotionAwareBtn();
+    return;
+  }
+
   try{
-    // emotion.js expects: { sessionId, apiBase, onAffectState }
-    // apiBase lets emotion.js post sustained events directly to the backend.
-    // onAffectState fires on every affect-state change (for local log + UI).
     await LoreVoxEmotion.init({
       sessionId: state.interview.session_id,
       apiBase:   ORIGIN,
       onAffectState: onBrowserAffectEvent,
     });
-    // Set the current section so events are tagged correctly from the start
     LoreVoxEmotion.setSection(INTERVIEW_ROADMAP[sectionIndex]?.id || null);
     await LoreVoxEmotion.start();
     cameraActive=true;
