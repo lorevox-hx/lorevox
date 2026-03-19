@@ -384,4 +384,18 @@ lorevox/
 
 ---
 
+## License
+
+Copyright (c) 2026 Chris (dev@lorevox.com). All rights reserved.
+
+Lorevox is **source-available, not open source.** You may view and study this code and run it locally for personal, non-commercial use. You may not use it commercially, host it for others, or redistribute it in any form without written permission.
+
+The name Lorevox, the Lori interviewer persona, the runtime71 cognitive state system, the multi-pass interview model, all prompt and directive text, and all documentation are explicitly reserved and are not licensed under any terms.
+
+Contributions are by invitation only and require full assignment of rights to the copyright holder.
+
+See [LICENSE](LICENSE) for complete terms. For permissions: dev@lorevox.com
+
+---
+
 *Lorevox v7.1 — local-first, privacy-first, human-first. Every word they speak is the ground truth. Lori is the app.*

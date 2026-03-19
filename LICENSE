@@ -1,21 +1,100 @@
-MIT License
+Lorevox Source-Available License
+Version 1.0 — 2026
 
 Copyright (c) 2026 Chris (dev@lorevox.com)
+All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+PERMITTED
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+You may:
+  - View, read, and study this source code for personal learning
+    and private evaluation
+  - Run an unmodified copy of Lorevox locally for personal,
+    non-commercial use
+  - Fork this repository privately for the purpose of submitting
+    a contribution (see Contributions below)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOT PERMITTED
+
+Without express written permission from the copyright holder,
+you may not:
+
+  - Use Lorevox or any part of it for any commercial purpose,
+    including offering it as a paid service, embedding it in a
+    commercial product, or using it to generate revenue directly
+    or indirectly
+  - Host, deploy, or operate Lorevox or any modified version of
+    it for access by third parties, whether paid or free
+  - Redistribute this software, modified or unmodified, in source
+    or compiled form, through any channel including but not limited
+    to package registries, app stores, or public repositories
+  - Publish a fork of this repository without the express written
+    permission of the copyright holder
+  - Remove or alter this license notice or the copyright notice
+    in any copy of this software
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RESERVED RIGHTS
+
+The following are the exclusive property of the copyright holder
+and are not licensed under any terms:
+
+  - The name "Lorevox" and all associated brand names and marks
+  - The name "Lori", the Lori interviewer persona, voice design,
+    behavioral directives, and interview character
+  - The Archive to History to Memoir three-layer architecture as
+    expressed in this codebase
+  - The runtime71 cognitive state system and its prompt composition
+    pipeline
+  - The multi-pass interview model (Pass 1, Pass 2A, Pass 2B)
+    and the Timeline Spine structure
+  - All prompt text, interview question sets, behavioral directive
+    language, and system prompt templates
+  - The memoir schema and biographical data structures
+  - All documentation, design documents, and written materials
+    in the docs/ directory
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CONTRIBUTIONS
+
+Contributions to this repository are welcome by invitation only.
+By submitting a pull request or patch, you agree that:
+
+  - You have the right to license your contribution
+  - You assign to the copyright holder all rights, title, and
+    interest in your contribution, including all intellectual
+    property rights
+  - The copyright holder may use, modify, and relicense your
+    contribution under any terms, including proprietary terms,
+    without further obligation to you
+
+If you have not been explicitly invited to contribute, please
+open an issue to discuss your proposed change before submitting.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FUTURE TERMS
+
+The copyright holder reserves the right to release future versions
+of Lorevox under different license terms, including open-source
+or commercial licenses. This license applies to the version of
+the software with which it is distributed.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NO WARRANTY
+
+This software is provided "as is", without warranty of any kind,
+express or implied. The copyright holder accepts no liability for
+any damages arising from its use.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For permissions beyond the scope of this license, contact:
+dev@lorevox.com
