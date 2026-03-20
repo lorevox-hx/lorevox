@@ -22,13 +22,9 @@
   -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!--
-    MediaPipe is not loaded here — offline bundling is a v7.3 task.
-    See docs/PVDhandoff.md Section 10 for the bundling plan.
-    When bundled, add:
-      <script src="vendor/mediapipe/face_mesh.js"></script>
-      <script src="vendor/mediapipe/camera_utils.js"></script>
-  -->
+  <!-- Local MediaPipe for offline camera affect sensing -->
+  <script src="vendor/mediapipe/face_mesh/face_mesh.js"></script>
+  <script src="vendor/mediapipe/camera_utils/camera_utils.js"></script>
 
   <!-- Existing component CSS — preserved from v7.1 unchanged -->
   <link rel="stylesheet" href="css/base.css">

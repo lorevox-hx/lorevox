@@ -362,7 +362,7 @@
 
       _faceMesh = new FaceMesh({
         locateFile: (file) =>
-          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+          `vendor/mediapipe/face_mesh/${file}`,
       });
 
       _faceMesh.setOptions({
