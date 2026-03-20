@@ -94,12 +94,25 @@ function stopEmotionEngine(){
 // sustained events, so we do NOT duplicate the POST here.
 function onBrowserAffectEvent(event){
   const section_id = INTERVIEW_ROADMAP[sectionIndex]?.id || null;
+
+  // Keep local session log for arc renderer (unchanged)
   sessionAffectLog.push({
     ts:           Date.now(),
     section_id,
-    affect_state: event.affectState,   // emotion.js uses camelCase
+    affect_state: event.affectState,
     confidence:   event.confidence,
   });
+
+  // v7.4A — authoritative affect bridge
+  // Writes into state.session.visualSignals for buildRuntime71() to consume.
+  // gazeOnScreen is null in 7.4A (optional; populated in a later phase).
+  if (window.AffectBridge74) {
+    window.AffectBridge74.consume(event, {
+      gazeOnScreen:    null,
+      blendConfidence: event.confidence,
+    });
+  }
+
   // Redraw affect arc in timeline if it's visible
   if(showAffectArc) renderTimeline();
 }

@@ -83,7 +83,9 @@ def compose_system_prompt(
     runtime71: v7.1 runtime context dict forwarded by chat_ws.py on every turn.
                Keys: current_pass, current_era, current_mode, affect_state,
                      affect_confidence, cognitive_mode, fatigue_score,
-                     paired (bool), paired_speaker (str|null).
+                     paired (bool), paired_speaker (str|null),
+                     visual_signals (dict|null) — v7.4A real camera affect;
+                       null = camera off or stale (treat as camera-off).
                Absent = backward-compat / SSE path — no change to prompt.
     """
 
@@ -288,6 +290,41 @@ def compose_system_prompt(
                 "Invite both participants naturally, but do not demand alternating turns.\n"
                 "If one narrator corrects the other, acknowledge both versions without adjudicating."
             )
+
+        # v7.4A — real visual affect directives
+        # Only fires when visual_signals is present (camera active + fresh signal)
+        # AND baseline is established. Without a personal baseline, raw scores from
+        # an aging face will produce false positives — so we gate on baseline_established.
+        visual          = runtime71.get("visual_signals") or {}
+        v_affect        = (visual.get("affect_state") or "").strip()
+        v_gaze          = visual.get("gaze_on_screen")           # True | False | None
+        v_baseline      = bool(visual.get("baseline_established", False))
+
+        if v_baseline and v_affect:
+            if v_affect in ("distressed", "overwhelmed") and v_gaze is not False:
+                directive_lines.append(
+                    "VISUAL: Real-time facial affect indicates distress or overwhelm.\n"
+                    "Respond with warmth and reduced pressure.\n"
+                    "Do not stack questions.\n"
+                    "If distress appears strong, offer a pause before continuing."
+                )
+            elif v_affect == "overwhelmed":
+                # overwhelmed also fires the harder stop even if gaze unknown
+                directive_lines.append(
+                    "VISUAL: Narrator appears overwhelmed.\n"
+                    "Pause interview progression. Offer a break, validate what has been shared.\n"
+                    "Do not advance the pass."
+                )
+            elif v_affect in ("reflective", "moved"):
+                directive_lines.append(
+                    "VISUAL: Real-time facial affect indicates reflection or emotional engagement.\n"
+                    "Allow more space. Do not rush. A gentle acknowledgment is appropriate."
+                )
+            elif v_gaze is False:
+                directive_lines.append(
+                    "VISUAL: Narrator gaze appears off-screen.\n"
+                    "Use a gentle re-engagement phrase if appropriate, without pressure."
+                )
 
         # Fatigue signal
         if fatigue_score >= 70:

@@ -129,8 +129,18 @@ window.LORI71.updateDebugOverlay = function updateDebugOverlay(){
   const fatBar = `<div style="height:3px;background:#1e293b;border-radius:2px;margin:5px 0 3px;">
     <div style="height:100%;width:${Math.min(s.fatigue_score,100)}%;background:${fatCol};border-radius:2px;transition:width .4s;"></div></div>`;
 
+  // v7.4B — visual signals snapshot for debug
+  const vs         = (window.state && window.state.session && window.state.session.visualSignals) || {};
+  const vsAge      = vs.timestamp ? Math.round((Date.now() - vs.timestamp) / 1000) : null;
+  const vsFresh    = vsAge !== null && vsAge < 8;
+  const vsBaseline = !!(window.state && window.state.session && window.state.session.affectBaseline && window.state.session.affectBaseline.established);
+  const origin     = (location.origin && location.origin !== "null") ? location.origin : "file://";
+  const isLocalhost = origin.startsWith("http://localhost") || origin.startsWith("http://127.");
+
   body.innerHTML = [
-    `<div style="font-size:9px;letter-spacing:.08em;color:#475569;text-transform:uppercase;margin-bottom:3px;">Session</div>`,
+    `<div style="font-size:9px;letter-spacing:.08em;color:#475569;text-transform:uppercase;margin-bottom:3px;">Environment</div>`,
+    row("origin", origin, isLocalhost ? "#86efac" : "#f87171"),
+    `<div style="font-size:9px;letter-spacing:.08em;color:#475569;text-transform:uppercase;margin:6px 0 3px;">Session</div>`,
     row("current_pass",  s.current_pass,   passColors[s.current_pass] || "#e2e8f0"),
     row("current_era",   s.current_era,    "#fb923c"),
     row("current_mode",  s.current_mode,   modeColors[s.current_mode] || "#e2e8f0"),
@@ -138,6 +148,11 @@ window.LORI71.updateDebugOverlay = function updateDebugOverlay(){
     row("affect_state",       s.affect_state,      "#f9a8d4"),
     row("affect_confidence",  (s.affect_confidence*100).toFixed(0)+"%", "#fbcfe8"),
     row("cognitive_mode",     s.cognitive_mode || "—", modeColors[s.cognitive_mode] || "#86efac"),
+    `<div style="font-size:9px;letter-spacing:.08em;color:#475569;text-transform:uppercase;margin:6px 0 3px;">Visual (7.4A)</div>`,
+    row("visual.affectState", vs.affectState || "—",   vsFresh ? "#f9a8d4" : "#475569"),
+    row("visual.confidence",  vs.confidence ? (vs.confidence*100).toFixed(0)+"%" : "—", "#fbcfe8"),
+    row("visual.age",         vsAge !== null ? vsAge+"s" : "—", vsFresh ? "#86efac" : "#f87171"),
+    row("baseline",           vsBaseline ? "✓ established" : "✗ pending", vsBaseline ? "#86efac" : "#94a3b8"),
     `<div style="font-size:9px;letter-spacing:.08em;color:#475569;text-transform:uppercase;margin:6px 0 3px;">Fatigue</div>`,
     row("fatigue_score", s.fatigue_score, fatCol),
     fatBar,

@@ -215,7 +215,19 @@ bash launchers/run_gpu_8000.sh
 bash launchers/run_tts_8001.sh
 ```
 
-Open `ui/lori7.1.html` directly in a browser (`file://`).
+**Launch the UI server (recommended for 7.4+):**
+
+```bash
+# Terminal 3 — Local UI server (required for camera + WASM reliability)
+python lorevox-serve.py
+```
+
+Then open: **http://localhost:8000/ui/lori7.3.html**
+
+This is the supported launch path for 7.4+. The local server provides cross-origin
+isolation headers (COOP/COEP) required for reliable camera access and the
+multi-threaded WASM path. `file://` may still work on some machines but is
+not the recommended path.
 
 ### Verify
 

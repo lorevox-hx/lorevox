@@ -268,33 +268,14 @@
   // ── API Poster ──────────────────────────────────────────────────────────────
 
   async function postAffectEvent(affectState, confidence, durationMs) {
-    if (!_config) return;
-    const now = Date.now();
-    if (now - _lastPostTime < DEBOUNCE_MS) return;
-    _lastPostTime = now;
-
-    const payload = {
-      session_id: _config.sessionId,
-      timestamp: now / 1000,
-      section_id: _currentSectionId || null,
-      affect_state: affectState,
-      confidence: Math.round(confidence * 1000) / 1000,
-      duration_ms: durationMs,
-      source: 'camera',
-    };
-
-    try {
-      const resp = await fetch(`${_config.apiBase}/api/interview/affect-event`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!resp.ok) {
-        console.warn('[LoreVoxEmotion] affect-event POST failed:', resp.status);
-      }
-    } catch (err) {
-      console.warn('[LoreVoxEmotion] affect-event POST error:', err);
-    }
+    // v7.4B: Deprecated. This side-channel POST is non-authoritative.
+    // Affect now flows through the single authoritative path:
+    //   emotion-ui.js → AffectBridge74 → state.session.visualSignals
+    //   → buildRuntime71() → prompt_composer.py
+    //
+    // Retained as a guarded no-op to prevent accidental re-activation.
+    void affectState; void confidence; void durationMs;
+    return;
   }
 
 
@@ -356,7 +337,7 @@
 
       // Load MediaPipe Face Mesh
       if (typeof FaceMesh === 'undefined') {
-        console.error('[LoreVoxEmotion] MediaPipe FaceMesh not loaded. Include the CDN script first.');
+        console.error('[LoreVoxEmotion] MediaPipe FaceMesh not loaded. Include the local vendor script first (vendor/mediapipe/face_mesh/face_mesh.js).');
         return false;
       }
 

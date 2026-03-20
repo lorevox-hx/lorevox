@@ -25,23 +25,34 @@
   --lv73-accent:        #818cf8;
   --lv73-accent-dim:    rgba(99,102,241,.10);
 
-  --lv73-nav-width:     220px;
-  --lv73-nav-icon-w:    48px;          /* collapsed width */
-  --lv73-dock-width:    360px;
-  --lv73-dock-icon-w:   48px;          /* collapsed width */
-  --lv73-topbar-h:      48px;
+  --lv73-nav-width:     240px;          /* slightly wider for readable labels */
+  --lv73-nav-icon-w:    52px;          /* collapsed width */
+  --lv73-dock-width:    380px;
+  --lv73-dock-icon-w:   52px;          /* collapsed width */
+  --lv73-topbar-h:      56px;          /* taller than 48px for visual calm */
 
   --lv73-base-font:     18px;
   --lv73-font:          system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --lv73-serif:         Georgia, 'Times New Roman', serif;
 
-  --lv73-hit:           44px;          /* minimum accessible touch target */
-  --lv73-radius:        6px;
+  /* aging.md §5.1 — small helper text: never below 14px */
+  --lv73-text-sm:       14px;          /* minimum readable text */
+  --lv73-text-ui:       15px;          /* navigation and UI chrome */
+  --lv73-text-meta:     12px;          /* metadata / timestamps — use sparingly */
+
+  --lv73-hit:           48px;          /* §6.1 — 44–52px minimum */
+  --lv73-radius:        8px;
   --lv73-transition:    0.22s ease;
 }
 
 /* ── Large-text mode (toggled by lv73.toggleLargeText()) ────────── */
-.lv73-large-text { --lv73-base-font: 22px; }
+.lv73-large-text {
+  --lv73-base-font: 22px;
+  --lv73-text-sm:   17px;
+  --lv73-text-ui:   18px;
+  --lv73-text-meta: 14px;
+  --lv73-hit:       52px;
+}
 
 /* ── Base resets (apply only when lv73-shell is present) ────────── */
 body.lv73-body {
@@ -113,7 +124,7 @@ body.lv73-body {
 
 .lv73-wordmark {
   font-family: var(--lv73-serif);
-  font-size: 15px;
+  font-size: 16px;
   color: #a5b4fc;
   font-weight: 600;
   letter-spacing: .04em;
@@ -121,7 +132,7 @@ body.lv73-body {
 }
 
 .lv73-version {
-  font-size: 10px;
+  font-size: var(--lv73-text-meta);    /* 12px — metadata, acceptable */
   color: var(--lv73-text-muted);
   white-space: nowrap;
   flex: 1;
@@ -166,14 +177,14 @@ body.lv73-body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 8px;
+  padding: 0 10px;
   height: var(--lv73-hit);
   border-radius: var(--lv73-radius);
   border: none;
   background: transparent;
   color: var(--lv73-text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--lv73-text-ui);     /* 15px — readable navigation labels */
   font-family: var(--lv73-font);
   text-align: left;
   white-space: nowrap;
@@ -204,11 +215,11 @@ body.lv73-body {
 
 /* Context badge (pass/era summary beside active tab) */
 .lv73-tab-ctx {
-  font-size: 9px;
+  font-size: var(--lv73-text-meta);   /* 12px min — still metadata, use sparingly */
   color: var(--lv73-text-muted);
   background: var(--lv73-surface-2);
   border-radius: 3px;
-  padding: 1px 5px;
+  padding: 2px 6px;
   margin-left: auto;
   flex-shrink: 0;
   white-space: nowrap;
@@ -222,12 +233,27 @@ body.lv73-body {
 }
 
 .lv73-nav-section-title {
-  font-size: 10px;
+  font-size: var(--lv73-text-meta);   /* 12px — section label, smallest we allow */
   font-weight: 600;
   color: var(--lv73-text-muted);
   text-transform: uppercase;
-  letter-spacing: .06em;
-  padding: 6px 4px 4px;
+  letter-spacing: .05em;
+  padding: 8px 6px 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+/* Collapse arrow on section headers that use <details> */
+.lv73-nav-section details > .lv73-nav-section-title::after {
+  content: '▾';
+  margin-left: auto;
+  font-size: 10px;
+  transition: transform .18s;
+}
+.lv73-nav-section details:not([open]) > .lv73-nav-section-title::after {
+  transform: rotate(-90deg);
 }
 
 .lv73-nav-section-body { /* wraps existing #peopleList, #roadmapList, #sessionsList */ }
@@ -251,7 +277,7 @@ body.lv73-body {
   border-radius: var(--lv73-radius);
 }
 .lv73-active-person-name {
-  font-size: 13px;
+  font-size: var(--lv73-text-ui); /* 15px — aging.md §5.1 */
   font-weight: 600;
   color: #a5b4fc;
   white-space: nowrap;
@@ -271,27 +297,35 @@ body.lv73-body {
 }
 
 /* ── Top context bar ────────────────────────────────────────────── */
+/*
+  Design intent: calm status strip, not a control panel.
+  Workspace title is prominent. Runtime pills are present but quiet.
+  Actions are on the right, uncluttered.
+*/
 .lv73-topbar {
-  height: var(--lv73-topbar-h);
+  height: var(--lv73-topbar-h);        /* 56px — more breathing room */
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 16px;
+  gap: 12px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--lv73-border-dim);
   background: var(--lv73-surface);
 }
 
 .lv73-topbar-title {
-  font-size: 13px;
+  font-size: 16px;                     /* 16px — readable workspace name */
   font-weight: 600;
   color: var(--lv73-text);
   white-space: nowrap;
+  letter-spacing: .01em;
 }
 
-.lv73-topbar-sep {
-  color: #334155;
-  font-size: 10px;
+/* Runtime pills: group them together, no separators */
+.lv73-topbar-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -300,19 +334,20 @@ body.lv73-body {
 .lv73-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
+/* A+ large-text toggle and devmode button */
 .lv73-large-text-btn,
 .lv73-devmode-btn {
   background: transparent;
   border: 1px solid var(--lv73-border);
   color: var(--lv73-text-muted);
   cursor: pointer;
-  border-radius: 5px;
-  padding: 0 10px;
-  height: 32px;
-  font-size: 12px;
+  border-radius: var(--lv73-radius);
+  padding: 0 12px;
+  height: 36px;
+  font-size: var(--lv73-text-sm);      /* 14px — readable button label */
   font-family: var(--lv73-font);
   transition: color .15s, background .15s, border-color .15s;
 }
@@ -321,13 +356,11 @@ body.lv73-body {
   background: var(--lv73-accent-dim);
   color: var(--lv73-accent);
 }
-.lv73-large-text-btn.active {
-  color: var(--lv73-accent);
-  border-color: rgba(99,102,241,.4);
-}
+.lv73-large-text-btn.active,
 .lv73-large-text-btn[aria-pressed="true"] {
   color: var(--lv73-accent);
   border-color: rgba(99,102,241,.4);
+  background: var(--lv73-accent-dim);
 }
 
 /* ── Scrollable content well ────────────────────────────────────── */
@@ -378,12 +411,12 @@ body.lv73-body {
 
 /* ── Dock header ────────────────────────────────────────────────── */
 .lv73-dock-header {
-  height: var(--lv73-topbar-h);
+  height: var(--lv73-topbar-h);        /* matches topbar: 56px */
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px 0 14px;
+  gap: 10px;
+  padding: 0 12px 0 16px;
   border-bottom: 1px solid var(--lv73-border-dim);
 }
 
@@ -393,7 +426,7 @@ body.lv73-body {
 }
 
 .lv73-dock-title {
-  font-size: 13px;
+  font-size: 16px;                     /* 16px — prominent, matches topbar title */
   font-weight: 600;
   color: #fff;
   white-space: nowrap;
@@ -402,28 +435,39 @@ body.lv73-body {
   gap: 8px;
 }
 
+/*
+  Collapse button: large, labelled, impossible to miss.
+  aging.md §6.4 — no precision traps; §7.1 — layout stability.
+*/
 .lv73-dock-collapse-btn {
   background: transparent;
-  border: none;
+  border: 1px solid var(--lv73-border);
   color: var(--lv73-text-muted);
   cursor: pointer;
-  width: var(--lv73-hit);
-  height: var(--lv73-hit);
+  height: 36px;
+  padding: 0 12px;
   min-width: var(--lv73-hit);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   border-radius: var(--lv73-radius);
-  font-size: 13px;
+  font-size: var(--lv73-text-sm);      /* 14px — readable label */
+  font-family: var(--lv73-font);
   flex-shrink: 0;
-  transition: color .15s, background .15s;
+  white-space: nowrap;
+  transition: color .18s, background .18s, border-color .18s;
 }
 .lv73-dock-collapse-btn:hover {
   background: var(--lv73-accent-dim);
   color: var(--lv73-accent);
+  border-color: rgba(99,102,241,.3);
 }
 
-/* Expand tab — vertical text button in collapsed strip */
+/*
+  When collapsed: the full strip becomes an obvious "open Lori" button.
+  Vertical text + icon, clearly labelled, full height.
+*/
 .lv73-dock-expand-tab {
   display: none;
   width: 100%;
@@ -434,27 +478,30 @@ body.lv73-body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0;
+  gap: 10px;
+  padding: 16px 0;
   color: var(--lv73-text-muted);
-  font-size: 11px;
+  font-size: var(--lv73-text-sm);      /* 14px — legible even rotated */
   font-family: var(--lv73-font);
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  transition: color .15s, background .15s;
+  transition: color .18s, background .18s;
 }
 .lv73-dock-expand-tab:hover {
-  background: var(--lv73-accent-dim);
+  background: rgba(99,102,241,.08);
   color: var(--lv73-accent);
+}
+/* Give the collapsed strip a subtle left border as a visual "door" */
+.lv73-lori-dock.collapsed {
+  border-left: 2px solid rgba(99,102,241,.2);
 }
 .lv73-lori-dock.collapsed .lv73-dock-expand-tab {
   display: flex;
 }
 .lv73-lori-dock.collapsed .lv73-dock-header {
-  /* keep header visible collapsed for expand button */
   flex-direction: column;
-  height: auto;
-  padding: 8px 4px;
+  height: 100%;
+  padding: 12px 4px;
 }
 
 /* ── Dock body ──────────────────────────────────────────────────── */
@@ -481,27 +528,27 @@ body.lv73-body {
   scroll-behavior: smooth;
 }
 
-/* Last response strip */
+/* Last response strip — aging.md §11.1: text always visible on screen */
 .lv73-last-response {
   flex-shrink: 0;
   border-top: 1px solid var(--lv73-border-dim);
-  padding: 6px 12px 5px;
+  padding: 8px 14px 6px;
 }
 .lv73-last-response-label {
-  font-size: 10px;
+  font-size: var(--lv73-text-meta);    /* 12px — smallest allowed */
   text-transform: uppercase;
   font-weight: 700;
-  letter-spacing: .06em;
+  letter-spacing: .05em;
   color: var(--lv73-text-muted);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 .lv73-last-response-text {
-  font-size: 11px;
-  color: #64748b;
+  font-size: var(--lv73-text-sm);      /* 14px — readable Lori response summary */
+  color: #94a3b8;
   font-style: italic;
-  max-height: 3.4em;
+  max-height: 4em;
   overflow-y: auto;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* ── Input area ─────────────────────────────────────────────────── */
@@ -514,20 +561,24 @@ body.lv73-body {
   gap: 6px;
 }
 
+/* aging.md §11.2 — Replay is required; must be easy to find */
 .lv73-replay-btn {
   background: transparent;
   border: 1px solid var(--lv73-border);
   color: var(--lv73-text-muted);
-  font-size: 11px;
+  font-size: var(--lv73-text-sm);      /* 14px */
   font-family: var(--lv73-font);
-  border-radius: 4px;
-  padding: 4px 10px;
+  border-radius: var(--lv73-radius);
+  padding: 0 14px;
   cursor: pointer;
-  height: 28px;
+  height: 36px;
   align-self: flex-start;
-  transition: color .15s;
+  transition: color .15s, background .15s;
 }
-.lv73-replay-btn:hover { color: var(--lv73-accent); }
+.lv73-replay-btn:hover {
+  color: var(--lv73-accent);
+  background: var(--lv73-accent-dim);
+}
 
 .lv73-input-row {
   display: flex;
@@ -566,37 +617,42 @@ body.lv73-body {
 .lv73-text-input {
   flex: 1;
   background: rgba(30,41,59,.6);
-  border: 1px solid rgba(99,102,241,.18);
+  border: 1px solid rgba(99,102,241,.22);
   color: var(--lv73-text);
   border-radius: var(--lv73-radius);
-  padding: 8px 10px;
-  font-size: 13px;
+  padding: 10px 12px;
+  font-size: var(--lv73-text-ui);      /* 15px — comfortable typing size */
   font-family: var(--lv73-font);
   resize: none;
-  line-height: 1.4;
+  line-height: 1.5;
   min-height: var(--lv73-hit);
 }
 .lv73-text-input:focus {
   outline: none;
-  border-color: rgba(99,102,241,.45);
+  border-color: rgba(99,102,241,.5);
 }
-.lv73-text-input::placeholder { color: #475569; }
+.lv73-text-input::placeholder {
+  color: #475569;
+  font-size: var(--lv73-text-sm);      /* 14px placeholder */
+}
 
+/* aging.md §6.1 — Send must be large and obvious */
 .lv73-send-btn {
   background: #4f46e5;
   border: none;
   color: #fff;
   border-radius: var(--lv73-radius);
-  padding: 0 16px;
+  padding: 0 20px;
   height: var(--lv73-hit);
-  font-size: 13px;
+  font-size: var(--lv73-text-ui);      /* 15px */
   font-weight: 600;
+  letter-spacing: .02em;
   cursor: pointer;
   font-family: var(--lv73-font);
   flex-shrink: 0;
   transition: background .15s;
 }
-.lv73-send-btn:hover { background: #4338ca; }
+.lv73-send-btn:hover  { background: #4338ca; }
 .lv73-send-btn:active { background: #3730a3; }
 
 /* ── Accessibility: universal focus ring ────────────────────────── */
@@ -688,3 +744,105 @@ body:not(.lv73-dev-mode) .dev-only { display: none !important; }
   transition: background .15s;
 }
 .lv73-lori-float-btn:hover { background: #4338ca; }
+
+/* ── Scrollbar visibility — aging.md §6.3 ──────────────────────── */
+/* Always-visible, high-contrast scrollbars. Never thin or disappearing. */
+.lv73-nav-body::-webkit-scrollbar,
+.lv73-main::-webkit-scrollbar,
+#chatMessages::-webkit-scrollbar,
+.tab-pane::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.lv73-nav-body::-webkit-scrollbar-track,
+.lv73-main::-webkit-scrollbar-track,
+#chatMessages::-webkit-scrollbar-track,
+.tab-pane::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.04);
+  border-radius: 4px;
+}
+.lv73-nav-body::-webkit-scrollbar-thumb,
+.lv73-main::-webkit-scrollbar-thumb,
+#chatMessages::-webkit-scrollbar-thumb,
+.tab-pane::-webkit-scrollbar-thumb {
+  background: rgba(99,102,241,.35);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.lv73-nav-body::-webkit-scrollbar-thumb:hover,
+.lv73-main::-webkit-scrollbar-thumb:hover,
+#chatMessages::-webkit-scrollbar-thumb:hover,
+.tab-pane::-webkit-scrollbar-thumb:hover {
+  background: rgba(99,102,241,.60);
+  background-clip: content-box;
+}
+
+/* ── Camera preview float (v7.4C) ──────────────────────────────── */
+#lv74-cam-preview {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  width: 180px;
+  background: #0f1117;
+  border: 1px solid rgba(99,102,241,.45);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.55);
+  overflow: hidden;
+  cursor: move;
+  user-select: none;
+}
+#lv74-cam-preview.lv74-preview-hidden { display: none; }
+#lv74-cam-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(99,102,241,.18);
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .04em;
+}
+#lv74-cam-preview-bar span { pointer-events: none; }
+#lv74-cam-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.45);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color .15s;
+}
+#lv74-cam-close:hover { color: #fff; }
+#lv74-cam-video {
+  display: block;
+  width: 180px;
+  height: 135px;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror — natural self-view */
+  background: #000;
+}
+#lv74-cam-reopen {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  display: none;
+  align-items: center;
+  gap: 5px;
+  background: #0f1117;
+  border: 1px solid rgba(99,102,241,.45);
+  border-radius: 20px;
+  padding: 4px 10px 4px 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  transition: border-color .15s, color .15s;
+}
+#lv74-cam-reopen:hover { border-color: rgba(99,102,241,.8); color: #fff; }
+#lv74-cam-reopen.lv74-reopen-visible { display: flex; }

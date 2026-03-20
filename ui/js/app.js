@@ -71,17 +71,44 @@ function normalizeLoriState(input) {
  * This is the single source of truth for both ws.send() payloads.
  */
 function buildRuntime71() {
+  const current_pass = (typeof getCurrentPass==="function"?getCurrentPass():null)||state.session?.currentPass||"pass1";
+  const current_era  = (typeof getCurrentEra==="function"?getCurrentEra():null)||state.session?.currentEra||null;
+  const current_mode = (typeof getCurrentMode==="function"?getCurrentMode():null)||state.session?.currentMode||"open";
+
+  // v7.4A — prefer real visual signal when fresh; fall back to synthetic affect.
+  // Behavioral invariant: stale (>8s) or absent signal → visual_signals = null.
+  // prompt_composer.py must treat null identically to camera-off.
+  const vs                  = (state.session && state.session.visualSignals) || null;
+  const baselineEstablished = !!(state.session && state.session.affectBaseline && state.session.affectBaseline.established);
+
+  const hasFreshLiveAffect = !!(
+    vs && vs.affectState && vs.timestamp && (Date.now() - vs.timestamp < 8000)
+  );
+
+  const affect_state      = hasFreshLiveAffect ? vs.affectState           : (state.runtime?.affectState||"neutral");
+  const affect_confidence = hasFreshLiveAffect ? Number(vs.confidence||0) : Number(state.runtime?.affectConfidence||0);
+
+  const visual_signals = hasFreshLiveAffect ? {
+    affect_state:         vs.affectState,
+    affect_confidence:    Number(vs.confidence||0),
+    gaze_on_screen:       (vs.gazeOnScreen !== undefined) ? vs.gazeOnScreen : null,
+    baseline_established: baselineEstablished,
+    signal_age_ms:        Date.now() - vs.timestamp,
+  } : null;
+
   return {
-    current_pass:       (typeof getCurrentPass==="function"?getCurrentPass():null)||state.session.currentPass||"pass1",
-    current_era:        (typeof getCurrentEra==="function"?getCurrentEra():null)||state.session.currentEra||null,
-    current_mode:       (typeof getCurrentMode==="function"?getCurrentMode():null)||state.session.currentMode||"open",
-    affect_state:       state.runtime.affectState||"neutral",
-    affect_confidence:  Number(state.runtime.affectConfidence||0),
-    cognitive_mode:     state.runtime.cognitiveMode||null,
-    fatigue_score:      Number(state.runtime.fatigueScore||0),
+    current_pass,
+    current_era,
+    current_mode,
+    affect_state,
+    affect_confidence,
+    cognitive_mode:  state.runtime?.cognitiveMode||null,
+    fatigue_score:   Number(state.runtime?.fatigueScore||0),
     /* v7.2 — paired interview metadata */
-    paired:             !!(state.interview?.paired),
-    paired_speaker:     state.interview?.pairedSpeaker||null,
+    paired:          !!(state.interview?.paired),
+    paired_speaker:  state.interview?.pairedSpeaker||null,
+    /* v7.4A — real visual signal block; null = camera off or stale */
+    visual_signals,
   };
 }
 
@@ -1251,3 +1278,97 @@ function appendOutput(label,text){
   if(b&&!b.classList.contains("open")) toggleAccordion("accDraft");
 }
 function copyDraftOutput(){ nav_copy(getv("outputPane")); sysBubble("↳ Notes copied."); }
+
+/* ═══════════════════════════════════════════════════════════════
+   v7.4B — Onboarding helpers
+   Call startOnboarding74() once at session start (or on first person load)
+   to run the scripted warm-up before entering normal interview flow.
+   These functions are defined here but not wired to auto-startup yet;
+   add the call site when the 7.3 shell flow is ready to change.
+═══════════════════════════════════════════════════════════════ */
+
+function startOnboarding74() {
+  if (typeof state === "undefined") return;
+  if (!state.session) state.session = {};
+
+  if (!state.session.onboarding) {
+    state.session.onboarding = {
+      complete: false,
+      cameraForPacing: false,
+      profilePhotoEnabled: false,
+      questionsAsked: false,
+      profilePhotoCaptured: false,
+      ttsPace: "normal",
+    };
+  }
+
+  state.session.currentMode = "open";
+
+  appendLoriOnboardingMessage("Hello. I'm Lori. I'm here to help you tell your story, at your pace. We can talk, type, pause, skip something, or come back later. Nothing has to be perfect.");
+  appendLoriOnboardingMessage("You can speak to me and I can listen and turn your words into text. I can also speak my replies aloud, and everything I say will stay visible on screen. If typing feels easier, that works too.");
+  appendLoriOnboardingMessage("As we go, I'll help build your profile, timeline, and a draft of your story with you. You can review and edit those at any time.");
+  appendLoriOnboardingMessage("If you'd like, I can also use your camera in two optional ways. First, I can take a profile photo. Second, I can use a short warm-up moment to adjust to your lighting and expressions so I pace the conversation more gently.");
+  appendLoriOnboardingMessage("The camera is optional. If you turn it on, it stays on this device. I don't save video, and I don't need the camera to continue.");
+  appendLoriOnboardingMessage("Before we begin, do you have any questions about how I work, or would you like me to explain anything again?");
+
+  state.session.onboarding.questionsAsked = true;
+}
+
+function appendLoriOnboardingMessage(text) {
+  const host = document.getElementById("chatMessages");
+  if (!host) return;
+
+  const msg = document.createElement("div");
+  msg.className = "msg lori";
+  msg.textContent = text;
+  host.appendChild(msg);
+  host.scrollTop = host.scrollHeight;
+
+  const last = document.getElementById("lastAssistantPanel");
+  if (last) last.textContent = text;
+}
+
+async function beginCameraConsent74(opts = {}) {
+  if (typeof state === "undefined" || !state.session?.onboarding) return false;
+
+  state.session.onboarding.cameraForPacing = !!opts.cameraForPacing;
+  state.session.onboarding.profilePhotoEnabled = !!opts.profilePhotoEnabled;
+
+  if (!state.session.onboarding.cameraForPacing) {
+    return false;
+  }
+
+  // Let existing emotion-ui / FacialConsent path remain authoritative
+  emotionAware = true;
+  updateEmotionAwareBtn();
+
+  await startEmotionEngine();
+
+  if (window.AffectBridge74 && cameraActive) {
+    window.AffectBridge74.beginBaselineWindow();
+  }
+
+  // Show draggable camera preview so the user can see what the camera sees
+  if (cameraActive && window.lv74 && window.lv74.showCameraPreview) {
+    window.lv74.showCameraPreview();
+  }
+
+  appendLoriOnboardingMessage("Thank you. Let's take a short moment to get comfortable. You don't need to do anything special — just look toward the screen naturally if that feels comfortable.");
+  appendLoriOnboardingMessage("Is this a good time to begin?");
+  appendLoriOnboardingMessage("How would you like me to address you?");
+  appendLoriOnboardingMessage("Would you like me to speak more slowly, or is this pace comfortable?");
+
+  return !!cameraActive;
+}
+
+function finalizeOnboarding74() {
+  if (typeof state === "undefined" || !state.session?.onboarding) return;
+
+  if (window.AffectBridge74) {
+    window.AffectBridge74.finalizeBaseline();
+  }
+
+  state.session.onboarding.complete = true;
+
+  appendLoriOnboardingMessage("Whenever you're ready, we can begin at the beginning. I'll start by helping place your story in time.");
+}

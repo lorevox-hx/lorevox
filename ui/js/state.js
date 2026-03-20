@@ -40,6 +40,37 @@ let state = {
     currentMode: "open",
     /* v7.2 — Sustained confusion tracking (persisted within session) */
     confusionTurnCount: 0,  // increments on confused turns, decrements on clear turns
+
+    /* v7.4A — Real visual affect bridge target.
+       Written by AffectBridge74.consume(); read by buildRuntime71().
+       gazeOnScreen is optional in 7.4A — null is valid throughout this phase. */
+    visualSignals: {
+      affectState:     null,   // string: steady|engaged|reflective|moved|distressed|overwhelmed
+      confidence:      0,      // float 0–1
+      gazeOnScreen:    null,   // bool|null — optional; present for forward compat
+      blendConfidence: 0,      // float 0–1
+      timestamp:       null,   // ms epoch; used for 8s stale check in buildRuntime71()
+    },
+
+    /* v7.4B — Baseline calibration (populated during onboarding warm-up).
+       Coarse session-normal affect summary only; no full facial normalization in 7.4B. */
+    affectBaseline: {
+      active:      false,  // currently collecting baseline samples
+      established: false,  // directives only fire when true
+      startedAt:   null,   // ms epoch
+      samples:     [],     // cleared after finalization
+      summary:     null,   // { neutralAffect, sampleCount, capturedAt }
+    },
+
+    /* v7.4B — Onboarding state */
+    onboarding: {
+      complete:            false,
+      cameraForPacing:     false,   // consent to pacing camera (independent of photo)
+      profilePhotoEnabled: false,   // consent to profile photo (independent of pacing)
+      questionsAsked:      false,   // user had opportunity to ask questions
+      profilePhotoCaptured:false,
+      ttsPace:             "normal",// normal | slow
+    },
   },
 
   /* ── v7.1 Runtime affect / cognitive signals ─────────────────

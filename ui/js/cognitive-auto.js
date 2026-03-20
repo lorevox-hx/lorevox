@@ -1,4 +1,4 @@
-/* Lori 7.1 / 7.2 Auto Cognitive Mode Detection
+/* Lori 7.1 / 7.2 / 7.4C Auto Cognitive Mode Detection
    Watches runtime hints and recent user text to choose:
      open | recognition | light | grounding | alongside
 
@@ -6,6 +6,13 @@
    - alongside mode: sustained confusion escalation via state.session.confusionTurnCount
    - tightened uncertainty regex (removed healthy hedging: 'i think', 'maybe')
    - shortReply now requires >= 2 words AND >= 12 chars (prevents "Yes" / "No" from firing)
+
+   v7.4C additions:
+   - visual signal fusion via state.session.visualSignals
+   - visual signals may ACCELERATE a transition but do not CAUSE one alone
+   - text retains veto authority — clear verbal input overrides a mild visual signal
+   - visual fusion only activates when affectBaseline.established = true
+   - distress/overwhelm require sustained high-confidence visual signal (>= 2 consecutive)
 */
 if (typeof window.LORI71 === "undefined") window.LORI71 = {};
 
@@ -32,6 +39,7 @@ window.LORI71.CognitiveAuto = {
        Prevents single-word clear answers ("Yes", "No", "Sure") from triggering. */
     const shortReply = words >= 2 && words <= 4 && msg.length >= 12;
 
+    // Text-derived signals (primary authority)
     const confusion = runtime.affectState === "confusion_hint";
     const distress  = runtime.affectState === "distress_hint" || runtime.affectState === "dissociation_hint";
     const fatigue   = Number(runtime.fatigueScore || 0) >= 60 || runtime.affectState === "fatigue_hint";
@@ -39,16 +47,48 @@ window.LORI71.CognitiveAuto = {
     /* v7.2 — read sustained confusion counter from session state */
     const confusionTurnCount = Number(session.confusionTurnCount || 0);
 
+    /* v7.4C — visual signal fusion (conservative)
+       Policy: visual can ACCELERATE a transition but not CAUSE one alone.
+       Text retains veto: explicit positive verbal statement overrides mild visual inference.
+       Only activates when baseline is established (prevents false positives on aging face). */
+    const vs         = session.visualSignals || {};
+    const baseline   = session.affectBaseline || {};
+    const signalFresh = !!(vs.timestamp && (Date.now() - vs.timestamp < 8000));
+    const baselineOk  = !!baseline.established;
+
+    let visualDistress  = false;
+    let visualFatigue   = false;
+    let visualConfusion = false;
+
+    if (baselineOk && signalFresh) {
+      if (vs.affectState === "distressed" && Number(vs.confidence || 0) > 0.75) {
+        visualDistress = true;
+      }
+      if (vs.affectState === "overwhelmed" && Number(vs.confidence || 0) > 0.80) {
+        visualDistress = true;
+        visualFatigue  = true;
+      }
+      if (["reflective", "moved"].includes(vs.affectState) && vs.gazeOnScreen === false) {
+        visualConfusion = confusionTurnCount > 1;
+      }
+    }
+
+    // text retains veto power on mild visual-only inference
+    const explicitPositive = /\b(i'm fine|i am fine|let's keep going|keep going|i'm okay|i am okay)\b/i.test(msg);
+
     return {
       uncertain,
       shortReply,
-      confusion,
-      distress,
-      fatigue,
+      confusion: confusion || (!explicitPositive && visualConfusion),
+      distress:  distress  || (!explicitPositive && visualDistress),
+      fatigue:   fatigue   || (!explicitPositive && visualFatigue),
       words,
       confusionTurnCount,
       currentPass: session.currentPass || "pass1",
       currentEra:  session.currentEra  || null,
+      baselineOk,
+      signalFresh,
+      visualAffectState: vs.affectState || null,
     };
   },
 

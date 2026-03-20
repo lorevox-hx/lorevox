@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Lorevox v7.3 — Lori Companion Workspace</title>
+
+  <!-- Keep current external dependencies for now.
+       v7.3 shell is a layout/accessibility change, not a behavior rewrite. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Current MediaPipe stack preserved exactly for now -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+  <!-- Existing CSS kept -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/interview.css">
+  <link rel="stylesheet" href="css/safety.css">
+  <link rel="stylesheet" href="css/permissions.css">
+  <link rel="stylesheet" href="css/affect.css">
+  <link rel="stylesheet" href="css/facial-consent.css">
+
+  <style>
+    :root{
+      --lv-bg: #0b1120;
+      --lv-surface: #111827;
+      --lv-surface-2: #0f172a;
+      --lv-surface-3: #172036;
+      --lv-border: rgba(148,163,184,.18);
+      --lv-border-strong: rgba(99,102,241,.28);
+      --lv-text: #e5e7eb;
+      --lv-text-soft: #94a3b8;
+      --lv-accent: #6366f1;
+      --lv-accent-2: #818cf8;
+      --lv-good: #34d399;
+      --lv-warn: #fb923c;
+      --lv-danger: #f87171;
+      --lv-shadow: 0 18px 60px rgba(0,0,0,.28);
+
+      --lv-radius-xl: 24px;
+      --lv-radius-lg: 18px;
+      --lv-radius-md: 14px;
+      --lv-hit: 46px;
+      --lv-font-size: 18px;
+
+      --lv-sidebar-w: 280px;
+      --lv-lori-w: 380px;
+      --lv-lori-mini-w: 84px;
+      --lv-topbar-h: 64px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(99,102,241,.10), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(52,211,153,.08), transparent 22%),
+        linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+      color: var(--lv-text);
+      font-family: "Inter", system-ui, sans-serif;
+      font-size: var(--lv-font-size);
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    body.lv73-large-text{
+      --lv-font-size: 20px;
+      --lv-hit: 52px;
+    }
+
+    .lv73-shell{
+      display: grid;
+      grid-template-rows: var(--lv-topbar-h) 1fr;
+      min-height: 100vh;
+    }
+
+    /* top bar */
+    .lv73-topbar{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: var(--lv-topbar-h);
+      padding: 0 16px;
+      border-bottom: 1px solid var(--lv-border);
+      background: rgba(11,17,32,.86);
+      backdrop-filter: blur(10px);
+      position: relative;
+      z-index: 20;
+    }
+
+    .lv73-brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 0;
+    }
+
+    .lv73-brandmark{
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--lv-accent), #8b5cf6);
+      display:grid;
+      place-items:center;
+      color:white;
+      font-weight:700;
+      box-shadow: 0 8px 24px rgba(99,102,241,.28);
+      flex-shrink:0;
+    }
+
+    .lv73-brandtext{
+      display:flex;
+      flex-direction:column;
+      line-height:1.1;
+      min-width:0;
+    }
+
+    .lv73-title{
+      font-family: "Cormorant Garamond", serif;
+      font-size: 1.45rem;
+      color: #c7d2fe;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+
+    .lv73-subtitle{
+      font-size: .78rem;
+      color: var(--lv-text-soft);
+      white-space: nowrap;
+    }
+
+    .lv73-spacer{ flex:1; }
+
+    .lv73-top-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .lv73-btn,
+    .lv73-btn-icon,
+    .lv73-tab-btn,
+    .lv73-select,
+    .lv73-input,
+    .lv73-textarea{
+      font: inherit;
+    }
+
+    .lv73-btn-icon{
+      width: var(--lv-hit);
+      min-width: var(--lv-hit);
+      height: var(--lv-hit);
+      border-radius: 14px;
+      border: 1px solid var(--lv-border);
+      background: rgba(15,23,42,.9);
+      color: var(--lv-text);
+      cursor: pointer;
+    }
+
+    .lv73-btn{
+      min-height: var(--lv-hit);
+      border-radius: 14px;
+      border: 1px solid var(--lv-border);
+      background: rgba(15,23,42,.95);
+      color: var(--lv-text);
+      padding: 0 14px;
+      cursor:pointer;
+    }
+
+    .lv73-btn.primary{
+      background: linear-gradient(135deg, var(--lv-accent), #8b5cf6);
+      border-color: rgba(129,140,248,.45);
+      color: white;
+    }
+
+    .lv73-btn.secondary{
+      background: rgba(99,102,241,.10);
+      border-color: rgba(99,102,241,.22);
+      color: #c7d2fe;
+    }
+
+    .runtime-status-bar{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size: 11px;
+      color: #64748b;
+      padding: 0 10px;
+      border: 1px solid var(--lv-border);
+      border-radius: 999px;
+      background: rgba(15,23,42,.7);
+    }
+    .runtime-pill{
+      background: rgba(99,102,241,.10);
+      border: 1px solid rgba(99,102,241,.18);
+      color: #818cf8;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      transition: all .2s;
+    }
+    .runtime-pill.pass-2a { background: rgba(99,102,241,.12); border-color: rgba(99,102,241,.25); color: #a5b4fc; }
+    .runtime-pill.pass-2b { background: rgba(139,92,246,.12); border-color: rgba(139,92,246,.25); color: #c4b5fd; }
+    .runtime-pill.era     { background: rgba(251,146,60,.08);  border-color: rgba(251,146,60,.18);  color: #fb923c; }
+    .runtime-pill.mode    { background: rgba(52,211,153,.08);  border-color: rgba(52,211,153,.18);  color: #34d399; }
+    .runtime-sep          { color: #334155; font-size: 10px; }
+
+    /* app grid */
+    .lv73-app{
+      display:grid;
+      grid-template-columns: var(--lv-sidebar-w) minmax(0,1fr) var(--lv-lori-w);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* left sidebar */
+    .lv73-sidebar{
+      border-right: 1px solid var(--lv-border);
+      background: rgba(11,17,32,.72);
+      padding: 16px 14px 18px;
+      overflow: auto;
+      min-width: 0;
+    }
+
+    .lv73-card{
+      background: rgba(15,23,42,.88);
+      border: 1px solid var(--lv-border);
+      border-radius: var(--lv-radius-lg);
+      box-shadow: var(--lv-shadow);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .lv73-card-title{
+      font-size: .82rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 700;
+      color: #94a3b8;
+      margin-bottom: 10px;
+    }
+
+    .lv73-row{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+    }
+
+    .lv73-row.wrap{ flex-wrap: wrap; }
+
+    .lv73-col{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .lv73-label{
+      font-size: .86rem;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    .lv73-select,
+    .lv73-input{
+      width: 100%;
+      min-height: var(--lv-hit);
+      border-radius: 14px;
+      border: 1px solid var(--lv-border);
+      background: rgba(2,6,23,.68);
+      color: var(--lv-text);
+      padding: 0 12px;
+    }
+
+    .lv73-tablist{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .lv73-tab-btn{
+      min-height: var(--lv-hit);
+      border-radius: 14px;
+      border: 1px solid var(--lv-border);
+      background: rgba(2,6,23,.66);
+      color: var(--lv-text);
+      text-align:left;
+      padding: 12px 14px;
+      cursor:pointer;
+      transition: all .18s ease;
+    }
+
+    .lv73-tab-btn:hover{
+      border-color: rgba(99,102,241,.26);
+      transform: translateY(-1px);
+    }
+
+    .lv73-tab-btn.active{
+      background: rgba(99,102,241,.12);
+      border-color: rgba(99,102,241,.30);
+      color: #e0e7ff;
+      font-weight: 700;
+      box-shadow: inset 0 0 0 1px rgba(99,102,241,.08);
+    }
+
+    .lv73-statusstack{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .lv73-statusline{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      font-size:.92rem;
+    }
+
+    .lv73-statusline .k{
+      color:#94a3b8;
+    }
+
+    .lv73-mini-pill{
+      display:inline-flex;
+      align-items:center;
+      min-height:32px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--lv-border);
+      background: rgba(2,6,23,.7);
+      color: #e2e8f0;
+      font-size: .85rem;
+    }
+
+    /* main workspace */
+    .lv73-main{
+      min-width:0;
+      overflow:auto;
+      padding: 18px;
+      background:
+        linear-gradient(180deg, rgba(15,23,42,.65) 0%, rgba(15,23,42,.2) 100%);
+    }
+
+    .lv73-main-shell{
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      min-width:0;
+      min-height:100%;
+    }
+
+    .lv73-workspace-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+      padding: 2px 4px 0;
+    }
+
+    .lv73-workspace-title{
+      margin:0;
+      font-size:1.7rem;
+      line-height:1.15;
+      color:#f8fafc;
+      font-family: "Cormorant Garamond", serif;
+      font-weight:700;
+    }
+
+    .lv73-workspace-subtitle{
+      margin-top:4px;
+      color: var(--lv-text-soft);
+      font-size:.95rem;
+      max-width: 64ch;
+    }
+
+    .lv73-workspace-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .lv73-stage{
+      min-height: calc(100vh - 120px);
+      background: rgba(17,24,39,.88);
+      border: 1px solid var(--lv-border);
+      border-radius: 26px;
+      box-shadow: var(--lv-shadow);
+      padding: 18px;
+      overflow:auto;
+    }
+
+    /* Lori dock */
+    .lv73-lori{
+      border-left: 1px solid var(--lv-border);
+      background: rgba(11,17,32,.74);
+      padding: 14px;
+      position: relative;
+      overflow:hidden;
+    }
+
+    .lv73-lori-shell{
+      height: calc(100vh - var(--lv-topbar-h) - 28px);
+      background: rgba(15,23,42,.94);
+      border: 1px solid var(--lv-border-strong);
+      border-radius: 26px;
+      box-shadow: var(--lv-shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .lv73-lori-header{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding: 14px;
+      border-bottom: 1px solid var(--lv-border);
+      background: rgba(2,6,23,.28);
+    }
+
+    .lv73-lori-identity{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+      flex:1;
+    }
+
+    .lv73-avatar{
+      position:relative;
+      width:58px;
+      height:58px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background: linear-gradient(135deg, rgba(99,102,241,.16), rgba(139,92,246,.18));
+      color:#fff;
+      font-weight:700;
+      font-size:1.1rem;
+      box-shadow: inset 0 0 0 1px rgba(129,140,248,.16);
+      flex-shrink:0;
+    }
+
+    .lv73-avatar-ring{
+      position:absolute;
+      inset:-4px;
+      border-radius:50%;
+      border:4px solid #64748b;
+      pointer-events:none;
+    }
+
+    .lv73-avatar-face{
+      position:relative;
+      z-index:1;
+    }
+
+    .lv73-lori-name{
+      font-size:1.05rem;
+      font-weight:700;
+      color:#f8fafc;
+    }
+
+    .lv73-lori-context{
+      color: var(--lv-text-soft);
+      font-size:.88rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .lv73-lori-body{
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      flex:1;
+    }
+
+    .lv73-lori-section{
+      padding: 14px;
+      border-bottom:1px solid var(--lv-border);
+    }
+
+    .lv73-section-title{
+      font-size:.78rem;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:#94a3b8;
+      font-weight:700;
+      margin-bottom:8px;
+    }
+
+    .lv73-lastbubble{
+      background: rgba(30,41,59,.84);
+      border: 1px solid rgba(99,102,241,.14);
+      border-radius: 16px;
+      padding: 12px;
+      color: #e2e8f0;
+      font-size:.95rem;
+    }
+
+    .lv73-chatlog{
+      flex:1;
+      min-height:0;
+      overflow:auto;
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .lv73-msg{
+      max-width: 92%;
+      border-radius: 18px;
+      padding: 11px 13px;
+      border: 1px solid var(--lv-border);
+      line-height:1.45;
+      font-size:.96rem;
+      white-space:pre-wrap;
+    }
+
+    .lv73-msg.user{
+      align-self:flex-end;
+      background: rgba(99,102,241,.12);
+      border-color: rgba(99,102,241,.22);
+    }
+
+    .lv73-msg.assistant,
+    .lv73-msg.system{
+      align-self:flex-start;
+      background: rgba(30,41,59,.85);
+    }
+
+    .lv73-compose{
+      border-top:1px solid var(--lv-border);
+      padding:14px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      background: rgba(2,6,23,.22);
+    }
+
+    .lv73-textarea{
+      width:100%;
+      min-height:110px;
+      max-height: 210px;
+      resize:vertical;
+      border-radius: 16px;
+      border:1px solid var(--lv-border);
+      background: rgba(2,6,23,.75);
+      color: var(--lv-text);
+      padding: 12px 14px;
+    }
+
+    .lv73-compose-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .lv73-grow{ flex:1; }
+
+    /* collapsed Lori */
+    .lv73-lori-mini{
+      display:none;
+      position:absolute;
+      right:12px;
+      left:12px;
+      bottom:12px;
+      min-height:60px;
+      border-radius:18px;
+      border:1px solid var(--lv-border);
+      background: rgba(15,23,42,.96);
+      color:var(--lv-text);
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      box-shadow: var(--lv-shadow);
+      cursor:pointer;
+    }
+
+    .lv73-mini-avatar{
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background: linear-gradient(135deg, var(--lv-accent), #8b5cf6);
+      color:#fff;
+      font-weight:700;
+    }
+
+    .lv73-mini-text{
+      font-weight:600;
+      color:#e2e8f0;
+    }
+
+    .lv73-app.lori-collapsed{
+      grid-template-columns: var(--lv-sidebar-w) minmax(0,1fr) var(--lv-lori-mini-w);
+    }
+
+    .lv73-app.lori-collapsed .lv73-lori-shell{
+      background: transparent;
+      border:none;
+      box-shadow:none;
+    }
+
+    .lv73-app.lori-collapsed .lv73-lori-header,
+    .lv73-app.lori-collapsed .lv73-lori-body{
+      display:none;
+    }
+
+    .lv73-app.lori-collapsed .lv73-lori-mini{
+      display:flex;
+    }
+
+    .lv73-app.lori-collapsed .lv73-lori{
+      padding:8px;
+    }
+
+    /* mount existing panes in stage */
+    .tab-pane.hidden{ display:none !important; }
+
+    /* keep old content readable */
+    .lv73-stage .card{
+      background: rgba(15,23,42,.78);
+      border:1px solid var(--lv-border);
+      border-radius: 18px;
+      box-shadow: none;
+    }
+
+    .lv73-stage textarea,
+    .lv73-stage input,
+    .lv73-stage select{
+      font-size: 1rem;
+    }
+
+    /* focus + a11y */
+    .lv73-btn:focus-visible,
+    .lv73-btn-icon:focus-visible,
+    .lv73-tab-btn:focus-visible,
+    .lv73-select:focus-visible,
+    .lv73-input:focus-visible,
+    .lv73-textarea:focus-visible{
+      outline: 3px solid #60a5fa;
+      outline-offset: 2px;
+    }
+
+    .lv73-sr-only{
+      position:absolute;
+      width:1px;
+      height:1px;
+      padding:0;
+      margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+
+    /* mobile */
+    @media (max-width: 1180px){
+      .lv73-app{
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+      }
+      .lv73-sidebar{
+        border-right:none;
+        border-bottom:1px solid var(--lv-border);
+        max-height: 34vh;
+      }
+      .lv73-tablist{
+        flex-direction:row;
+        flex-wrap:wrap;
+      }
+      .lv73-main{
+        padding-bottom: 92px;
+      }
+      .lv73-lori{
+        position:fixed;
+        left:0;
+        right:0;
+        bottom:0;
+        top:auto;
+        z-index:60;
+        border-left:none;
+        padding:0;
+        background:transparent;
+      }
+      .lv73-lori-shell{
+        height:min(72vh, 700px);
+        border-radius: 26px 26px 0 0;
+      }
+      .lv73-app.lori-collapsed .lv73-lori{
+        height: 74px;
+      }
+      .lv73-app.lori-collapsed .lv73-lori-mini{
+        position:fixed;
+        left:12px;
+        right:12px;
+        bottom:12px;
+      }
+    }
+
+    @media (max-width: 760px){
+      .lv73-topbar{
+        padding: 0 10px;
+        gap:6px;
+      }
+      .runtime-status-bar{
+        display:none;
+      }
+      .lv73-workspace-header{
+        flex-direction:column;
+      }
+      .lv73-workspace-actions{
+        width:100%;
+        justify-content:flex-start;
+      }
+      .lv73-stage{
+        padding: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="lv73-shell">
+
+  <!-- TOP BAR -->
+  <header class="lv73-topbar">
+    <button class="lv73-btn-icon" id="btnToggleSb" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+
+    <div class="lv73-brand">
+      <div class="lv73-brandmark">L</div>
+      <div class="lv73-brandtext">
+        <div class="lv73-title">Lorevox</div>
+        <div class="lv73-subtitle">Lori companion workspace · v7.3 shell</div>
+      </div>
+    </div>
+
+    <!-- Preserve 7.1 runtime pills -->
+    <div class="runtime-status-bar" id="runtimeStatusBar">
+      <span class="runtime-sep">·</span>
+      <span class="runtime-pill" id="topPassPill">Pass 1</span>
+      <span class="runtime-sep">·</span>
+      <span class="runtime-pill era" id="topEraPill">No era</span>
+      <span class="runtime-sep">·</span>
+      <span class="runtime-pill mode" id="topModePill">Open</span>
+    </div>
+
+    <div class="lv73-spacer"></div>
+
+    <div class="lv73-top-actions">
+      <button class="lv73-btn secondary" id="btnLargeText">Large Text</button>
+      <button class="lv73-btn secondary" id="btnReplayLori">Replay Lori</button>
+
+      <!-- Preserve existing top-level controls -->
+      <button class="lv73-btn-icon" id="btnFocus" onclick="toggleFocus()" title="Focus mode">⊡</button>
+      <button class="lv73-btn-icon" id="btnDevMode" onclick="toggleDevMode()" title="Developer mode">⚙</button>
+      <button class="lv73-btn-icon" id="btnToggleChat" onclick="toggleChat()" title="Toggle Lori panel">▶</button>
+
+      <span id="pillChat" class="pill pill-off hidden dev-only">Chat</span>
+      <span id="pillTts"  class="pill pill-off hidden dev-only">TTS</span>
+      <span id="pillWs"   class="pill pill-off hidden dev-only">WS</span>
+    </div>
+  </header>
+
+  <div class="lv73-app" id="lv73App">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="lv73-sidebar">
+      <div class="lv73-card" id="activeSummaryCard">
+        <div class="lv73-card-title">Active Person</div>
+        <div id="activeSummary" class="mb-0">
+          <div class="px-2 py-2 rounded-lg bg-indigo-600/10 border border-indigo-600/20">
+            <div id="summaryName" class="font-bold text-indigo-300 text-sm">No person selected</div>
+            <div id="summaryMeta" class="text-xs text-slate-400 mt-1">Profile and timeline will appear here as Lori learns.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lv73-card">
+        <div class="lv73-card-title">People</div>
+        <div class="lv73-col">
+          <label class="lv73-label" for="personSelect">Select person</label>
+          <div class="lv73-row">
+            <select id="personSelect" class="lv73-select"></select>
+            <button class="lv73-btn primary" onclick="createPersonFromForm()">New</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lv73-card">
+        <div class="lv73-card-title">Workspace</div>
+        <nav class="lv73-tablist" aria-label="Workspace tabs">
+          <!-- Keep existing tab IDs for safety -->
+          <button id="tab-profile"   class="lv73-tab-btn active" onclick="showTab('profile')">👤 Profile</button>
+          <button id="tab-interview" class="lv73-tab-btn"        onclick="showTab('interview')">🎙 Interview</button>
+          <button id="tab-events"    class="lv73-tab-btn"        onclick="showTab('events')">💡 Memory Triggers</button>
+          <button id="tab-timeline"  class="lv73-tab-btn"        onclick="showTab('timeline')">📅 Timeline</button>
+          <button id="tab-memoir"    class="lv73-tab-btn"        onclick="showTab('memoir')">📖 Memoir Draft</button>
+          <button id="tab-obituary"  class="lv73-tab-btn"        onclick="showTab('obituary')">🕊 Obituary Draft</button>
+          <button id="tab-review"    class="lv73-tab-btn"        onclick="showTab('review')">🔒 Private Segments</button>
+        </nav>
+      </div>
+
+      <div class="lv73-card">
+        <div class="lv73-card-title">Live Status</div>
+        <div class="lv73-statusstack">
+          <div class="lv73-statusline">
+            <span class="k">Pass</span>
+            <span class="lv73-mini-pill" id="runtimePassPill">—</span>
+          </div>
+          <div class="lv73-statusline">
+            <span class="k">Era</span>
+            <span class="lv73-mini-pill" id="runtimeEraPill">—</span>
+          </div>
+          <div class="lv73-statusline">
+            <span class="k">Mode</span>
+            <span class="lv73-mini-pill" id="runtimeModePill">—</span>
+          </div>
+          <div class="lv73-statusline">
+            <span class="k">Cognitive</span>
+            <span class="lv73-mini-pill" id="runtimeCognitivePill">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keep session history container -->
+      <div class="lv73-card">
+        <div class="lv73-card-title">Session History</div>
+        <div id="sessionsList" class="space-y-1"></div>
+      </div>
+    </aside>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="lv73-main">
+      <div class="lv73-main-shell">
+
+        <div class="lv73-workspace-header">
+          <div>
+            <h1 class="lv73-workspace-title" id="workspaceTitle">Profile</h1>
+            <div class="lv73-workspace-subtitle" id="workspaceSubtitle">
+              Review and edit what Lori has learned. The tabs remain editable workspaces.
+            </div>
+          </div>
+
+          <div class="lv73-workspace-actions">
+            <button class="lv73-btn secondary" onclick="saveProfile()">Save</button>
+            <button class="lv73-btn secondary" onclick="demoFill()">Demo Fill</button>
+            <button class="lv73-btn primary" onclick="sendSystemPrompt('[SYSTEM: Please greet the user warmly and ask what they would like to work on in this tab.]')">
+              Ask Lori Here
+            </button>
+          </div>
+        </div>
+
+        <section class="lv73-stage" id="workspaceStage">
+
+          <!-- Keep pane IDs exactly -->
+          <!-- PROFILE -->
+          <div id="pane-profile" class="tab-pane">
+            <div class="max-w-2xl mx-auto">
+
+              <div class="flex items-start justify-between mb-4">
+                <div>
+                  <h1 class="serif text-2xl text-white">Person Profile</h1>
+                  <p class="text-xs text-slate-500 mt-0.5">Start with the details that help Lori build a life timeline and guide the interview more naturally.</p>
+                </div>
+                <div class="flex gap-2 flex-shrink-0 mt-1">
+                  <button class="btn btn-ghost" onclick="demoFill()">Demo Fill</button>
+                  <button class="btn btn-ghost" onclick="saveProfile()">Save</button>
+                  <button class="btn btn-primary" onclick="createPersonFromForm()">+ New Person</button>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="card-label mb-0">Personal Details</div>
+                  <span id="profileStatusBadge" class="profile-status none">No person selected</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <input class="input-ghost" id="bio_fullname" placeholder="Full legal name">
+                  <input class="input-ghost" id="bio_preferred" placeholder="Name used in conversation">
+
+                  <div>
+                    <label class="text-xs text-slate-500 block mb-1">Date of Birth</label>
+                    <input class="input-ghost" id="bio_dob" type="date" onchange="onDobChange(); on71DobPobChange()">
+                    <div class="seed-hint">Adding DOB helps Lori place memories by life stage and age.</div>
+                  </div>
+
+                  <div>
+                    <label class="text-xs text-slate-500 block mb-1">Place of Birth</label>
+                    <input class="input-ghost" id="bio_pob" placeholder="Place of birth" onchange="on71DobPobChange()">
+                    <div class="seed-hint">Birthplace helps Lori connect personal memories with world events and place.</div>
+                  </div>
+
+                  <input class="input-ghost" id="bio_culture" placeholder="Family roots / cultural background">
+
+                  <div>
+                    <label class="text-xs text-slate-500 block mb-1">Primary country context</label>
+                    <select class="input-ghost" id="bio_country" onchange="onCountryChange()">
+                      <option value="us">United States</option>
+                      <option value="uk">United Kingdom</option>
+                      <option value="canada">Canada</option>
+                      <option value="mexico">Mexico</option>
+                      <option value="australia">Australia</option>
+                      <option value="global">Global / Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="mt-3">
+                  <label class="text-xs text-slate-500 block mb-1">Interview language preference</label>
+                  <select class="input-ghost" id="bio_language">
+                    <option value="">Default / English</option>
+                    <option value="English">English</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                    <option value="Italian">Italian</option>
+                    <option value="Polish">Polish</option>
+                    <option value="Mandarin">Mandarin</option>
+                    <option value="Cantonese">Cantonese</option>
+                  </select>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- INTERVIEW -->
+          <div id="pane-interview" class="tab-pane hidden">
+            <div class="max-w-5xl mx-auto">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h1 class="serif text-2xl text-white">Interview</h1>
+                  <p class="text-xs text-slate-500 mt-0.5">Lori can guide the conversation naturally while you still review what is happening here.</p>
+                </div>
+                <div class="flex gap-2">
+                  <button class="btn btn-ghost" onclick="ivStart()">Begin Section</button>
+                  <button class="btn btn-primary" onclick="ivAskInChat()">Ask in Lori Panel</button>
+                </div>
+              </div>
+
+              <!-- Existing interview.js expects these -->
+              <div class="card mb-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div><div class="card-label">Session</div><div id="ivSession" class="text-sm text-slate-300">—</div></div>
+                  <div><div class="card-label">Question ID</div><div id="ivQid" class="text-sm text-slate-300">—</div></div>
+                  <div><div class="card-label">Section</div><div id="ivSectionLabel" class="text-sm text-slate-300">—</div></div>
+                  <div><div class="card-label">Cognitive</div><div id="cognitiveBadge" class="text-sm text-slate-300">open</div></div>
+                </div>
+              </div>
+
+              <div class="card mb-4">
+                <div class="card-label">Current Prompt</div>
+                <div id="ivPrompt" class="text-slate-200 leading-relaxed">Select a section and click Begin Section to start.</div>
+              </div>
+
+              <div class="card mb-4">
+                <div class="card-label">Context Triggers</div>
+                <div id="contextTriggers"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-label">Sensitive Segment Review</div>
+                <div id="sensitiveReviewPanel"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MEMORY TRIGGERS -->
+          <div id="pane-events" class="tab-pane hidden">
+            <div class="max-w-4xl mx-auto">
+              <div class="flex items-center justify-between mb-3">
+                <h1 class="serif text-2xl text-white">Memory Triggers</h1>
+                <button class="btn btn-primary" onclick="updateContextTriggers()">Refresh</button>
+              </div>
+              <div class="card">
+                <div class="card-label">World + life timeline triggers</div>
+                <div id="eventsHost"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TIMELINE -->
+          <div id="pane-timeline" class="tab-pane hidden">
+            <div class="max-w-5xl mx-auto">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h1 class="serif text-2xl text-white">Timeline</h1>
+                  <p class="text-xs text-slate-500">Edit and refine the life story structure Lori is helping build.</p>
+                </div>
+                <div class="flex gap-2">
+                  <button class="btn btn-ghost" onclick="initTimelineSpine()">Build Timeline Spine</button>
+                  <button class="btn btn-primary" onclick="renderTimeline()">Refresh</button>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-label">Timeline Events</div>
+                <div id="timelineList"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MEMOIR -->
+          <div id="pane-memoir" class="tab-pane hidden">
+            <div class="max-w-4xl mx-auto">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h1 class="serif text-2xl text-white">Memoir Draft</h1>
+                  <div class="text-xs text-slate-500">Built from interview answers and saved timeline context.</div>
+                </div>
+                <div class="flex gap-2">
+                  <button class="btn btn-ghost" onclick="renderMemoirChapters()">Refresh Chapters</button>
+                  <button class="btn btn-primary" onclick="generateMemoirChat()">Write with Lori</button>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-label">Draft</div>
+                <textarea id="memoirDraftOutput" class="prose-area" placeholder="Memoir draft will appear here. Each chapter will be drafted from the interview answers for that section."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- OBITUARY -->
+          <div id="pane-obituary" class="tab-pane hidden">
+            <div class="max-w-2xl mx-auto">
+              <div class="flex items-center justify-between mb-3">
+                <h1 class="serif text-2xl text-white" id="obitHeading">Obituary Draft</h1>
+                <div class="flex gap-2">
+                  <button class="btn btn-ghost btn-sm" onclick="buildObituary()">Fill from Profile</button>
+                  <button class="btn btn-primary btn-sm" onclick="generateObitChat()">Write with Lori</button>
+                </div>
+              </div>
+
+              <div id="obitLivingBanner" class="obit-mode-banner hidden">
+                ℹ This person is living. The output below is a <strong>Life Summary</strong>, not an obituary.
+              </div>
+
+              <div id="obitIdentityCard" class="identity-card">
+                <div class="text-xs text-slate-400 font-semibold mb-2">Before drafting — identity details</div>
+                <div id="obitIdentityItems"></div>
+              </div>
+
+              <p class="text-xs text-slate-500 mb-4">
+                Start from Profile and Family Map, then edit freely to match the family's voice.
+              </p>
+
+              <div class="card">
+                <div class="card-label">Key Facts</div>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                  <input class="input-ghost" id="obit_name" placeholder="Full name">
+                  <input class="input-ghost" id="obit_age" placeholder="Age">
+                  <input class="input-ghost" id="obit_birth" placeholder="Birth date">
+                  <input class="input-ghost" id="obit_death" placeholder="Death date or leave blank">
+                </div>
+                <textarea id="obitDraftOutput" class="prose-area" placeholder="Obituary or life summary draft will appear here."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- REVIEW -->
+          <div id="pane-review" class="tab-pane hidden">
+            <div class="max-w-4xl mx-auto">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h1 class="serif text-2xl text-white">Private Segments</h1>
+                  <p class="text-xs text-slate-500">Review sensitive material and choose what belongs in the archive.</p>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-label">Review Queue</div>
+                <div id="reviewSegmentsList"></div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+      </div>
+    </main>
+
+    <!-- PERSISTENT LORI DOCK -->
+    <aside class="lv73-lori" id="loriDock" aria-label="Lori companion panel">
+      <div class="lv73-lori-shell">
+        <div class="lv73-lori-header">
+          <button class="lv73-btn-icon" id="loriCollapseBtn" aria-expanded="true" aria-controls="loriDockBody" title="Collapse Lori panel">→</button>
+
+          <div class="lv73-lori-identity">
+            <div class="lv73-avatar" id="loriAvatar">
+              <span class="lv73-avatar-ring" id="loriAffectRing"></span>
+              <span class="lv73-avatar-face">L</span>
+            </div>
+            <div style="min-width:0;">
+              <div class="lv73-lori-name">Lori</div>
+              <div class="lv73-lori-context" id="loriContextLabel">Ready to help in this tab</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lv73-lori-body" id="loriDockBody">
+          <div class="lv73-lori-section">
+            <div class="lv73-section-title">Current context</div>
+            <div class="lv73-statusline"><span class="k">Tab</span><span id="currentTabLabel">Profile</span></div>
+            <div class="lv73-statusline"><span class="k">Mode</span><span id="currentCognitiveLabel">open</span></div>
+          </div>
+
+          <div class="lv73-lori-section">
+            <div class="lv73-section-title">Last Lori message</div>
+            <div class="lv73-lastbubble" id="loriLastMessage">Tell me about the place where you grew up.</div>
+          </div>
+
+          <!-- Visible transcript/chat area -->
+          <div class="lv73-chatlog" id="chatMessages" aria-label="Conversation"></div>
+
+          <!-- Latest response strip preserved from earlier shells -->
+          <div class="lv73-lori-section">
+            <div class="lv73-section-title">Latest response</div>
+            <div id="lastAssistantPanel" class="text-sm text-slate-400 italic max-h-16 overflow-y-auto leading-relaxed"></div>
+          </div>
+
+          <!-- Compose -->
+          <div class="lv73-compose">
+            <label for="chatInput" class="lv73-sr-only">Message Lori</label>
+            <textarea id="chatInput" rows="3" class="lv73-textarea"
+              placeholder="Ask Lori to help with a memory, interview answer, memoir draft, or obituary."
+              onkeydown="onChatKey(event)"></textarea>
+
+            <div class="lv73-compose-actions">
+              <button class="lv73-btn secondary" id="micBtn">Hold to Talk</button>
+              <button class="lv73-btn primary lv73-grow" id="sendBtn" onclick="sendUserMessage()">Send</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="loriMini" class="lv73-lori-mini" aria-label="Open Lori">
+          <span class="lv73-mini-avatar">L</span>
+          <span class="lv73-mini-text">Talk to Lori</span>
+        </button>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- Existing modal / overlay containers preserved -->
+<div id="obitLockModal" class="obit-modal-overlay hidden">
+  <div class="obit-modal-box">
+    <div class="font-bold text-white text-sm mb-2">Replace your current draft?</div>
+    <p class="text-sm text-slate-400 mb-5 leading-relaxed">
+      You've made edits to this obituary. Generating a new draft will replace your current text.
+      This cannot be undone.
+    </p>
+    <div class="flex gap-3 justify-end">
+      <button class="btn btn-ghost" onclick="closeObitModal()">Keep my edits</button>
+      <button class="btn btn-primary" id="obitModalConfirm" onclick="confirmObitModal()">Proceed anyway</button>
+    </div>
+  </div>
+</div>
+
+<div id="safetyOverlay" class="safety-overlay hidden" role="dialog" aria-modal="true">
+  <div class="safety-overlay-box">
+    <div class="flex items-start gap-3 mb-5">
+      <div class="safety-lori-icon">✦</div>
+      <div class="safety-lori-bubble" id="safetyLoriMessage">
+        Thank you for telling me. What you shared matters. You do not have to keep going right now.
+        We can pause, keep talking, or look at support options.
+      </div>
+    </div>
+    <div class="resource-cards" id="safetyResourceCards"></div>
+    <div id="safetyExpandedPanel" class="resource-expanded hidden">
+      <div class="font-semibold text-slate-400 mb-2">Additional support options</div>
+      <p>You can reach out to any of these services at any time — by call, text, or online chat.</p>
+    </div>
+  </div>
+</div>
+
+<!-- explicit consent gate -->
+<div id="facialConsentOverlay" class="facial-consent-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="facialConsentTitle">
+  <div class="facial-consent-box">
+    <h2 id="facialConsentTitle" class="text-lg font-semibold text-white mb-2">Camera consent</h2>
+    <p class="text-sm text-slate-300 leading-relaxed mb-4">
+      Lori can use the camera to sense affect in real time, but only with your permission.
+    </p>
+    <label class="flex items-start gap-2 text-sm text-slate-300 mb-4">
+      <input type="checkbox" id="facialConsentCheckbox" class="mt-1">
+      <span>I understand and consent to camera-based affect sensing for this session.</span>
+    </label>
+    <div class="flex gap-3 justify-end">
+      <button class="btn btn-ghost" onclick="denyFacialConsent()">Not now</button>
+      <button class="btn btn-primary" onclick="confirmFacialConsent()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load order preserved -->
+<script src="js/state.js"></script>
+<script src="js/data.js"></script>
+<script src="js/tabs.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/interview.js"></script>
+<script src="js/emotion.js"></script>
+<script src="js/emotion-ui.js"></script>
+<script src="js/interview-ui.js"></script>
+<script src="js/timeline-ui.js"></script>
+<script src="js/safety-ui.js"></script>
+<script src="js/facial-consent.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+/* ============================================================
+   LOREVOX 7.3 SHELL BRIDGE
+   Layout-only adapter. Does not replace runtime71 behavior.
+============================================================ */
+(function(){
+  const app = document.getElementById("lv73App");
+  const collapseBtn = document.getElementById("loriCollapseBtn");
+  const loriMini = document.getElementById("loriMini");
+  const largeTextBtn = document.getElementById("btnLargeText");
+  const replayBtn = document.getElementById("btnReplayLori");
+  const currentTabLabel = document.getElementById("currentTabLabel");
+  const cognitiveLabel = document.getElementById("currentCognitiveLabel");
+  const workspaceTitle = document.getElementById("workspaceTitle");
+  const workspaceSubtitle = document.getElementById("workspaceSubtitle");
+  const loriContextLabel = document.getElementById("loriContextLabel");
+  const loriLastMessage = document.getElementById("loriLastMessage");
+
+  const tabTitles = {
+    profile:   ["Profile", "Review and edit what Lori has learned. The tabs remain editable workspaces."],
+    interview: ["Interview", "Continue guided conversation while still seeing the capture state here."],
+    events:    ["Memory Triggers", "Use dates, places, and world events to open memory pathways gently."],
+    timeline:  ["Timeline", "Edit life events, ordering, years, and notes."],
+    memoir:    ["Memoir Draft", "Shape the developing narrative while keeping Lori present."],
+    obituary:  ["Obituary Draft", "Write a legacy document or obituary with Lori's help."],
+    review:    ["Private Segments", "Review sensitive material and choose what belongs in the archive."]
+  };
+
+  function setCollapsed(collapsed){
+    app.classList.toggle("lori-collapsed", collapsed);
+    if(collapseBtn) collapseBtn.setAttribute("aria-expanded", String(!collapsed));
+  }
+
+  function setTabState(tab){
+    const all = document.querySelectorAll(".lv73-tab-btn");
+    all.forEach(btn => btn.classList.toggle("active", btn.id === `tab-${tab}`));
+
+    const meta = tabTitles[tab] || [tab, ""];
+    if(workspaceTitle) workspaceTitle.textContent = meta[0];
+    if(workspaceSubtitle) workspaceSubtitle.textContent = meta[1];
+    if(currentTabLabel) currentTabLabel.textContent = meta[0];
+    if(loriContextLabel) loriContextLabel.textContent = `${meta[0]} open`;
+
+    if(window.state){
+      state.ui = state.ui || {};
+      state.ui.currentTab = tab;
+    }
+  }
+
+  collapseBtn?.addEventListener("click", function(){
+    setCollapsed(!app.classList.contains("lori-collapsed"));
+  });
+
+  loriMini?.addEventListener("click", function(){
+    setCollapsed(false);
+  });
+
+  largeTextBtn?.addEventListener("click", function(){
+    document.body.classList.toggle("lv73-large-text");
+  });
+
+  replayBtn?.addEventListener("click", function(){
+    try{
+      if(typeof replayLastAssistant === "function") return replayLastAssistant();
+      if(typeof speakText === "function"){
+        const txt = (document.getElementById("lastAssistantPanel")?.innerText || "").trim();
+        if(txt) speakText(txt);
+      }
+    }catch(e){}
+  });
+
+  // Wrap showTab without replacing app behavior
+  const _origShowTab = window.showTab;
+  if(typeof _origShowTab === "function" && !window.LORI73ShowTabWrapped){
+    window.showTab = function(tab){
+      const result = _origShowTab.apply(this, arguments);
+      try{ setTabState(tab); }catch(e){}
+      return result;
+    };
+    window.LORI73ShowTabWrapped = true;
+  }
+
+  // Watch last assistant strip and mirror to Lori panel
+  const syncLastAssistant = function(){
+    const txt = (document.getElementById("lastAssistantPanel")?.innerText || "").trim();
+    if(txt && loriLastMessage) loriLastMessage.textContent = txt;
+  };
+  setInterval(syncLastAssistant, 800);
+
+  // Mirror runtime pills into sidebar
+  function syncRuntimePills(){
+    const pass = document.getElementById("topPassPill")?.innerText || "—";
+    const era  = document.getElementById("topEraPill")?.innerText || "—";
+    const mode = document.getElementById("topModePill")?.innerText || "—";
+
+    const rp = document.getElementById("runtimePassPill");
+    const re = document.getElementById("runtimeEraPill");
+    const rm = document.getElementById("runtimeModePill");
+    const rc = document.getElementById("runtimeCognitivePill");
+
+    if(rp) rp.textContent = pass;
+    if(re) re.textContent = era;
+    if(rm) rm.textContent = mode;
+
+    let cog = "open";
+    try{
+      cog = window.state?.runtime?.cognitiveMode || window.state?.session?.currentMode || mode || "open";
+    }catch(e){}
+    if(rc) rc.textContent = cog;
+    if(cognitiveLabel) cognitiveLabel.textContent = cog;
+  }
+  setInterval(syncRuntimePills, 600);
+
+  // Optional helper for other scripts
+  window.Lori73Shell = {
+    setTab: setTabState,
+    setCollapsed,
+    setLastMessage(text){
+      if(loriLastMessage && text) loriLastMessage.textContent = text;
+    },
+    setCognitive(text){
+      if(cognitiveLabel && text) cognitiveLabel.textContent = text;
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", function(){
+    setTabState("profile");
+    setCollapsed(false);
+    syncRuntimePills();
+    syncLastAssistant();
+  });
+})();
+</script>
+
+<script>
+/* ============================================================
+   7.1 BOOT SEQUENCE
+   Preserved for hydration compatibility
+============================================================ */
+function esc(s){
+  return String(s||"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  setTimeout(function(){
+    try{
+      if(typeof apply71Hydration === "function") apply71Hydration();
+      if(typeof on71DobPobChange === "function") on71DobPobChange();
+    }catch(e){
+      console.warn("[Lorevox 7.3] Hydration warning:", e);
+    }
+  }, 250);
+});
+</script>
+
+<!-- Preserve 7.1 debug + cognitive layer -->
+<script src="js/debug-overlay.js"></script>
+<script src="js/cognitive-auto.js"></script>
+<script>
+/* v7.1/v7.2 cognitive auto shim — runs processUserTurn before every send */
+(function(){
+  if (typeof window.sendUserMessage === "function" && !window.LORI71SendWrapped) {
+    const _origSend = window.sendUserMessage;
+    window.sendUserMessage = function(){
+      try {
+        const input = document.getElementById("chatInput");
+        const text  = input ? (input.value || "").trim() : "";
+        if (text && window.LORI71 && window.LORI71.CognitiveAuto) {
+          const result = window.LORI71.CognitiveAuto.processUserTurn(text);
+          console.log("[Lori 7.3] cognitive auto:", result.mode, "(" + result.reason + ")");
+        }
+      } catch(e) {}
+      return _origSend.apply(this, arguments);
+    };
+    window.LORI71SendWrapped = true;
+  }
+})();
+</script>
+</body>
+</html>
