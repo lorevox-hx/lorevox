@@ -1,8 +1,8 @@
 # Lorevox — PVD Master Handoff
-**Version:** 7.1 (Post-Patch, Fully Operational)
-**Date:** 2026-03-19
+**Version:** 7.2 (Cognitive Support Layer Integrated)
+**Date:** 2026-03-20
 **Status:** ✅ LIVE · VALIDATED · HANDOFF-READY
-**Supersedes:** `docs/Providence.md`, `docs/handoff.md`, `HANDOFF_MEDIAPIPE_OFFLINE.md`
+**Supersedes:** `docs/Providence.md`, `docs/handoff.md`, `HANDOFF_MEDIAPIPE_OFFLINE.md`, `MOVE_TO_V7.md`
 
 ---
 
@@ -17,6 +17,96 @@ If the original builder is unavailable, this document must allow a new engineer 
 - Continue development without breaking what works
 
 **This is a control file, not a note. It is updated after every significant session.**
+
+---
+
+## 1b. STRATEGIC DIRECTION — WHERE THIS IS GOING
+
+### The v7 Vision (Corrected)
+
+**Lori stays with the user everywhere, and the tabs are the places where the life story can be reviewed, edited, and shaped.**
+
+The original `MOVE_TO_V7.md` sentence — "Lori is the app. Everything else is what she builds" — was a useful break from the v6 mindset but overshot. The codebase never implemented chat-only. `interview.js` still exists. The tabs still work. The runtime pipeline is what actually got built and validated.
+
+The corrected direction is:
+
+**Chat-first, not chat-only.**
+
+### What This Means
+
+The user should always be able to:
+- talk naturally with Lori
+- see what Lori has learned
+- correct mistakes
+- edit facts directly in the tabs
+- move between tabs without losing Lori's presence
+
+The tabs are not being removed. They remain essential workspaces — especially for older adults who benefit from stable layout, clear location, and easy correction.
+
+Lori's role: guide, ask, notice, encourage, help populate the archive.
+Tabs' role: display, organize, confirm, and allow editing of what has been captured.
+
+### Product Shape — v7.3
+
+v7.3 is the next UI shell. It carries forward all of v7.1/v7.2 and adds:
+
+```
+┌──────────────────────────────────────────────┬───────────────┐
+│ Sidebar / Tabs                               │               │
+│ Profile | Interview | Timeline | Memoir      │   Lori        │
+│                                              │   Bubble /    │
+│ CONTENT AREA (editable)                      │   Panel       │
+│                                              │               │
+│ - profile fields (correctable)               │  "Tell me..." │
+│ - timeline entries (editable)                │  [ mic ]      │
+│ - interview content                          │               │
+│ - memoir draft (editable)                    │               │
+└──────────────────────────────────────────────┴───────────────┘
+```
+
+Lori: always visible, collapsible to avatar + mic, context-aware of active tab.
+Tabs: real editable workspaces — Profile, Interview, Timeline, Memoir, and (future) Family Tree.
+
+### Versioning
+
+| Version | What it is |
+|---|---|
+| `lori7.1.html` | Validated artifact — stable runtime shell. Do not modify. |
+| v7.2 | Behavioral layer — cognitive support + alongside + paired interview. Already integrated. |
+| v7.3 | New HTML shell — persistent Lori companion + editable tabs + accessibility. |
+
+### Accessibility Commitments — v7.3
+
+Lorevox is designed for older adults first. This is not optional.
+
+**Visual:** larger base font (18–20px), high contrast, large hit targets (≥44px), clear labels, stable layout.
+**Hearing:** always-visible transcript, replay Lori's last response, adjustable voice speed, clear mic state.
+**Cognitive:** one clear action at a time, predictable tab structure, gentle prompting, easy correction paths, Lori present without requiring the user to navigate.
+
+### Non-Negotiable Architectural Rule
+
+All new v7.3 behavior — accessibility states, shell interactions, paired interview logic, any new Lori mode — must continue to use the existing runtime pipeline:
+
+```
+state.runtime → buildRuntime71() → WebSocket/SSE → prompt_composer.py
+```
+
+No second behavioral pipeline is allowed. This rule has no exceptions.
+
+### What MOVE_TO_V7.md Got Right (Still Valid)
+
+- Chat→DB extraction pipeline — still planned, still correct
+- Family Tree interview mode — still planned, still correct
+- Offline bundling plan for UI vendor assets — still needed (see Section 10)
+- The layout model (sidebar + tabs + Lori panel) — still correct, semantics updated
+
+### What MOVE_TO_V7.md Got Wrong (Superseded)
+
+- "Lori is the app. Everything else is what she builds" — too absolute
+- Tabs as read-only live views — wrong for older adults who need correction capability
+- Delete `interview.js` — not needed; extend it
+- Replace MediaPipe with face-api.js — never happened; MediaPipe is still correct
+- DeepFace server-side — good idea, not yet built, not a v7.3 blocker
 
 ---
 
@@ -61,6 +151,22 @@ ARCHIVE  →  HISTORY  →  MEMOIR
 | 8 | Memory contradiction — uncertainty-tolerant | PASS |
 
 **System is operational, not experimental.**
+
+### ✅ v7.2 Cognitive Support Layer (2026-03-20)
+
+All four files extended via the existing runtime pipeline. No parallel system created.
+
+| Change | File | Detail |
+|---|---|---|
+| `alongside` in `normalizeLoriState()` | `ui/js/app.js` | New cognitive mode entry — sustained fragmentation/confusion |
+| `paired` / `paired_speaker` in `buildRuntime71()` | `ui/js/app.js` | Paired interview metadata flows to backend on every turn |
+| `confusionTurnCount` in `state.session` | `ui/js/state.js` | Session-persistent confusion counter (not a loose global) |
+| `paired` / `pairedSpeaker` in `state.interview` | `ui/js/state.js` | Paired session state |
+| Sustained confusion escalation | `ui/js/cognitive-auto.js` | `confusionTurnCount ≥ 3` → `alongside`; tightened regex; fixed `shortReply` threshold |
+| `alongside` directive block | `server/code/api/prompt_composer.py` | Intentional-stance instructions — no structured questions, reflect meaning |
+| Paired interview directive block | `server/code/api/prompt_composer.py` | Co-construction framing; no contradiction correction |
+
+**Persona validation:** All 5 personas in `tests/persona_cognitive_cohort_v65.json` (Harold Jensen, Maria Alvarez, Thomas Reed, Lila Chen, George & Eleanor Whitman) reach `alongside` mode correctly. Recovery path confirmed gradual. ✅
 
 ### ⚠️ Pending (not blockers)
 - Run 2 model validation (`test_model.py --verbose`) not yet executed with live GPU
@@ -207,10 +313,14 @@ This is the core behaviour engine. If this breaks, the model receives no context
   "current_mode":      "open",
   "affect_state":      "fatigue_hint",
   "affect_confidence": 0.9,
-  "cognitive_mode":    "light",
-  "fatigue_score":     80
+  "cognitive_mode":    "alongside",
+  "fatigue_score":     80,
+  "paired":            false,
+  "paired_speaker":    null
 }
 ```
+
+`cognitive_mode` valid values: `null` | `"open"` | `"recognition"` | `"grounding"` | `"light"` | `"alongside"`
 
 ### Contract
 
@@ -420,6 +530,19 @@ This is the critical change. Without it, `face_mesh.js` loads locally but fetche
 
 ## 11. REQUIRED NEXT STEPS (ORDERED BY IMPACT)
 
+### 0. v7.3 Shell — Persistent Lori Companion + Editable Tabs
+Status: Planned. `lori7.1.html` is the artifact to preserve; `lori7.3.html` is the next shell.
+
+New shell must carry forward all existing JS files unchanged. Changes are additive:
+- Persistent Lori panel (fixed right side, collapsible to avatar + mic)
+- Tab bar: Profile, Interview, Timeline, Memoir (all remain editable workspaces)
+- Lori receives active tab via `runtime71` (add `current_tab` field)
+- Accessibility defaults: 18–20px base font, high contrast, ≥44px hit targets
+- Mobile: Lori docks as bottom drawer
+- Tailwind CDN replaced with compiled local stylesheet (separate from MediaPipe task)
+
+**Gate:** `lori7.3.html` loads with no CDN requests. Lori responds. All existing Tests 1–8 pass in the new shell.
+
 ### 1. MediaPipe Offline Bundle
 See Section 10. ~13 MB vendor, 3 code lines.
 **Gate:** Verify offline with DevTools → Network → Offline.
@@ -539,6 +662,18 @@ The enforcement mechanism is Guardrails G1–G3 in Section 9.
 
 ## 16. SESSION NOTES
 
+### 2026-03-20 — v7.2 Cognitive Support Layer + v7.3 Vision
+
+- Integrated `alongside` as new cognitive mode across all four files: `state.js`, `app.js`, `prompt_composer.py`, `cognitive-auto.js`
+- Added `confusionTurnCount` to `state.session` — session-persistent counter replaces loose global
+- Added paired interview metadata (`paired`, `paired_speaker`) to `state.interview` and `buildRuntime71()`
+- Prompt composer now has explicit `alongside` directive (intentional stance) and paired interview directive (co-construction, no contradiction framing)
+- `cognitive-auto.js`: tightened uncertainty regex (removed `i think` / `maybe`), fixed `shortReply` threshold (requires ≥12 chars), added sustained confusion escalation with graceful recovery path
+- Persona cohort `persona_cognitive_cohort_v65.json` copied to `tests/`; all 5 personas validated against escalation path
+- PVDhandoff.md updated to supersede `MOVE_TO_V7.md` — vision corrected from "chat-only" to "chat-first"
+- v7.3 direction established: persistent Lori companion + editable tabs + accessibility-first shell
+- `lori7.1.html` confirmed as historical artifact; next shell will be `lori7.3.html`
+
 ### 2026-03-19 — Fatigue Patch + Tests 6/7/8
 
 - Identified root cause of Test 6 failure: `setLoriState()` badge-only, `buildRuntime71()` called after transitional state reset
@@ -568,4 +703,4 @@ The enforcement mechanism is Guardrails G1–G3 in Section 9.
 
 ---
 
-*Next update: after Run 2 results, MediaPipe offline bundling, and backend runtime71 logging.*
+*Next update: after v7.3 shell start, Run 2 results, MediaPipe offline bundling, and backend runtime71 logging.*

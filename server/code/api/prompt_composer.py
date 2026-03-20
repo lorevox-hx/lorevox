@@ -82,7 +82,8 @@ def compose_system_prompt(
     user_text: latest user text (optional). Reserved for future dynamic RAG injection.
     runtime71: v7.1 runtime context dict forwarded by chat_ws.py on every turn.
                Keys: current_pass, current_era, current_mode, affect_state,
-                     affect_confidence, cognitive_mode, fatigue_score.
+                     affect_confidence, cognitive_mode, fatigue_score,
+                     paired (bool), paired_speaker (str|null).
                Absent = backward-compat / SSE path — no change to prompt.
     """
 
@@ -164,7 +165,10 @@ def compose_system_prompt(
         current_mode   = runtime71.get("current_mode", "open") or "open"
         affect_state   = runtime71.get("affect_state", "neutral") or "neutral"
         fatigue_score  = int(runtime71.get("fatigue_score", 0) or 0)
-        cognitive_mode = runtime71.get("cognitive_mode") or None
+        cognitive_mode  = runtime71.get("cognitive_mode") or None
+        # v7.2 — paired interview metadata
+        paired          = bool(runtime71.get("paired", False))
+        paired_speaker  = (runtime71.get("paired_speaker") or "").strip() or None
 
         # Base runtime block (always present)
         directive_lines = [
@@ -250,6 +254,39 @@ def compose_system_prompt(
                 "ALWAYS offer at least 2 concrete anchors before asking anything — "
                 "a specific year, a place name, a person's name, or a yes/no choice.\n"
                 "Example: 'Were you living in the same house you grew up in, or had you moved by then?'"
+            )
+        elif cognitive_mode == "alongside":
+            # v7.2 — Alongside mode: sustained confusion / fragmentation
+            # Seidman phenomenological interviewing — intentional stance
+            directive_lines.append(
+                "COGNITIVE SUPPORT — ALONGSIDE MODE:\n"
+                "This narrator is experiencing sustained difficulty with memory or coherence. "
+                "You are no longer running a structured interview. You are keeping them company.\n"
+                "RULES:\n"
+                "• DO NOT ask a structured interview question. Do not advance the timeline.\n"
+                "• DO NOT correct memory errors, contradictions, or chronological inconsistencies — "
+                "emotional truth is always valid even when factual recall is unstable.\n"
+                "• Treat every response — however fragmented, partial, or repeated — as meaningful.\n"
+                "• Reflect what the narrator just expressed. Name the feeling or the image if you can sense it.\n"
+                "• Invite continuation GENTLY, in a single short phrase or open gesture — "
+                "never demand elaboration.\n"
+                "• If they repeat something, receive it again with warmth, as if hearing it for the first time.\n"
+                "Examples of alongside responses:\n"
+                "  'That sounds like it mattered a great deal to you.'\n"
+                "  'Tell me more about that when you are ready — there is no rush at all.'\n"
+                "  'I am right here with you.'"
+            )
+
+        # Paired interview directive (v7.2)
+        if paired:
+            speaker_note = f" The second participant is {paired_speaker}." if paired_speaker else ""
+            directive_lines.append(
+                f"PAIRED INTERVIEW: A second participant (spouse, partner, or caregiver) is present.{speaker_note}\n"
+                "Treat this as a co-constructed narrative — both voices contribute to one shared story.\n"
+                "DO NOT treat differences in recollection as contradictions or errors; "
+                "different perspectives on the same memory are equally valid.\n"
+                "Invite both participants naturally, but do not demand alternating turns.\n"
+                "If one narrator corrects the other, acknowledge both versions without adjudicating."
             )
 
         # Fatigue signal

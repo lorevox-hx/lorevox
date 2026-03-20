@@ -1,0 +1,462 @@
+{
+  "version": "v6.5",
+  "title": "Lorevox Persona Cognitive Cohort",
+  "description": "Five cognitive-support personas for testing dementia-aware and confusion-aware interview behavior in Lorevox.",
+  "personas": [
+    {
+      "id": 26,
+      "name": "Harold Jensen",
+      "age": 84,
+      "dob": "1941-07-18",
+      "born": {
+        "city": "Fargo",
+        "state": "North Dakota",
+        "country": "USA"
+      },
+      "background": {
+        "ethnicity": "White",
+        "occupation": "Retired mechanic and school bus driver",
+        "marital_status": "Widower",
+        "children": 3,
+        "living_situation": "Lives near daughter, some support with appointments and bills"
+      },
+      "cognitive_profile": {
+        "status": "mild_cognitive_impairment",
+        "features": [
+          "repeats meaningful stories",
+          "confuses dates and decades",
+          "better recall for people than calendars",
+          "emotionally coherent even when chronologically inconsistent",
+          "can become uncertain when asked multipart questions"
+        ],
+        "best_time_of_day": "morning",
+        "environment_notes": [
+          "quiet room",
+          "low stimulation",
+          "familiar interviewer helpful",
+          "avoid late-day fatigue"
+        ]
+      },
+      "lorevox_expectations": {
+        "initial_mode": "standard",
+        "possible_transition_path": [
+          "standard",
+          "supported",
+          "alongside",
+          "supported"
+        ],
+        "paired_mode_candidate": true,
+        "likely_partner": "adult daughter"
+      },
+      "timeline_anchors": [
+        {
+          "year": 1941,
+          "event": "Born in Fargo, North Dakota"
+        },
+        {
+          "year": 1947,
+          "event": "Started grade school era"
+        },
+        {
+          "year": 1950,
+          "event": "Early childhood farm and postwar memories"
+        },
+        {
+          "year": 1957,
+          "event": "Teen years, cars and shop work interest"
+        },
+        {
+          "year": 1961,
+          "event": "Young adulthood, early work period"
+        },
+        {
+          "year": 1969,
+          "event": "Moon landing era memory anchor"
+        },
+        {
+          "year": 1970,
+          "event": "May place family and home stories here even when they occurred later"
+        },
+        {
+          "year": 1980,
+          "event": "Common confusion decade with 1970s or 1990s"
+        },
+        {
+          "year": 1990,
+          "event": "Often merged with 1970s in recall"
+        }
+      ],
+      "interview_flags": {
+        "needs_simple_questions": true,
+        "needs_time_place_people_anchors": true,
+        "avoid_multi_part_questions": true,
+        "validate_subjective_experience": true,
+        "do_not_correct_memory": true
+      }
+    },
+    {
+      "id": 27,
+      "name": "Maria Alvarez",
+      "age": 79,
+      "dob": "1946-11-03",
+      "born": {
+        "city": "San Antonio",
+        "state": "Texas",
+        "country": "USA"
+      },
+      "background": {
+        "ethnicity": "Mexican-American",
+        "occupation": "Retired elementary school aide",
+        "marital_status": "Married",
+        "children": 4,
+        "living_situation": "Lives with spouse, close family involvement"
+      },
+      "cognitive_profile": {
+        "status": "early_stage_alzheimers",
+        "features": [
+          "strong emotional recall",
+          "weaker factual and date recall",
+          "responds well to family and food memories",
+          "can lose track during abstract prompts",
+          "benefits from concrete sensory cues"
+        ],
+        "best_time_of_day": "late_morning",
+        "environment_notes": [
+          "kitchen or family room works well",
+          "photos and family names help",
+          "keep interviewer warm and familiar",
+          "avoid rushed pacing"
+        ]
+      },
+      "lorevox_expectations": {
+        "initial_mode": "supported",
+        "possible_transition_path": [
+          "supported",
+          "alongside",
+          "supported"
+        ],
+        "paired_mode_candidate": true,
+        "likely_partner": "spouse"
+      },
+      "timeline_anchors": [
+        {
+          "year": 1946,
+          "event": "Born in San Antonio, Texas"
+        },
+        {
+          "year": 1952,
+          "event": "Grade school era"
+        },
+        {
+          "year": 1960,
+          "event": "Teen years, church and family gatherings"
+        },
+        {
+          "year": 1964,
+          "event": "Young adulthood and work life beginnings"
+        },
+        {
+          "year": 1968,
+          "event": "Marriage and early family era anchor"
+        },
+        {
+          "year": 1975,
+          "event": "Raising children and home-centered memories"
+        },
+        {
+          "year": 1986,
+          "event": "Often recalls celebrations more clearly than dates"
+        },
+        {
+          "year": 2000,
+          "event": "Grandchildren and multigenerational family memories"
+        }
+      ],
+      "interview_flags": {
+        "needs_simple_questions": true,
+        "needs_photo_anchors": true,
+        "needs_people_place_food_anchors": true,
+        "avoid_abstract_multi_step_prompts": true,
+        "validate_subjective_experience": true,
+        "do_not_correct_memory": true
+      }
+    },
+    {
+      "id": 28,
+      "name": "Thomas Reed",
+      "age": 88,
+      "dob": "1937-02-14",
+      "born": {
+        "city": "Peoria",
+        "state": "Illinois",
+        "country": "USA"
+      },
+      "background": {
+        "ethnicity": "White",
+        "occupation": "Retired postal worker and Army veteran",
+        "marital_status": "Widower",
+        "children": 2,
+        "living_situation": "Lives in assisted living, son visits weekly"
+      },
+      "cognitive_profile": {
+        "status": "moderate_memory_impairment",
+        "features": [
+          "frequent 'I don't remember' responses",
+          "responds better to prompts about people than dates",
+          "can shut down when pressured for specifics",
+          "benefits from reassurance and short pauses",
+          "may return to one emotionally important story repeatedly"
+        ],
+        "best_time_of_day": "morning",
+        "environment_notes": [
+          "quiet room",
+          "minimal background noise",
+          "chair facing interviewer",
+          "brief sessions work best"
+        ]
+      },
+      "lorevox_expectations": {
+        "initial_mode": "supported",
+        "possible_transition_path": [
+          "supported",
+          "alongside",
+          "supported"
+        ],
+        "paired_mode_candidate": true,
+        "likely_partner": "adult son"
+      },
+      "timeline_anchors": [
+        {
+          "year": 1937,
+          "event": "Born in Peoria, Illinois"
+        },
+        {
+          "year": 1943,
+          "event": "Early grade school years"
+        },
+        {
+          "year": 1951,
+          "event": "Teen years and first jobs"
+        },
+        {
+          "year": 1955,
+          "event": "Military service era anchor"
+        },
+        {
+          "year": 1960,
+          "event": "Marriage and postal service career period"
+        },
+        {
+          "year": 1972,
+          "event": "Home and work routines"
+        },
+        {
+          "year": 1995,
+          "event": "Retirement transition memories"
+        }
+      ],
+      "interview_flags": {
+        "needs_simple_questions": true,
+        "needs_people_first_anchors": true,
+        "allow_silence_and_reassurance": true,
+        "avoid_quizzing_for_dates": true,
+        "validate_subjective_experience": true,
+        "do_not_correct_memory": true
+      }
+    },
+    {
+      "id": 29,
+      "name": "Lila Chen",
+      "age": 76,
+      "dob": "1949-09-22",
+      "born": {
+        "city": "Hong Kong",
+        "state": "",
+        "country": "Hong Kong"
+      },
+      "background": {
+        "ethnicity": "Chinese",
+        "occupation": "Retired seamstress and shop owner",
+        "marital_status": "Widowed",
+        "children": 3,
+        "living_situation": "Lives with youngest daughter"
+      },
+      "cognitive_profile": {
+        "status": "mild_cognitive_impairment",
+        "features": [
+          "clearer in the morning than evening",
+          "some bilingual recall differences",
+          "can switch languages when emotional",
+          "benefits from place and migration anchors",
+          "becomes confused when rushed"
+        ],
+        "best_time_of_day": "morning",
+        "environment_notes": [
+          "avoid evenings",
+          "allow bilingual expression",
+          "family photos help",
+          "quiet home setting preferred"
+        ]
+      },
+      "lorevox_expectations": {
+        "initial_mode": "standard",
+        "possible_transition_path": [
+          "standard",
+          "supported",
+          "alongside"
+        ],
+        "paired_mode_candidate": true,
+        "likely_partner": "adult daughter"
+      },
+      "timeline_anchors": [
+        {
+          "year": 1949,
+          "event": "Born in Hong Kong"
+        },
+        {
+          "year": 1955,
+          "event": "Early childhood home and neighborhood memories"
+        },
+        {
+          "year": 1967,
+          "event": "Teen years and family transition era"
+        },
+        {
+          "year": 1972,
+          "event": "Migration and early adulthood anchor"
+        },
+        {
+          "year": 1980,
+          "event": "Family and work life in a new country"
+        },
+        {
+          "year": 1997,
+          "event": "Hong Kong handover as a major historical anchor"
+        },
+        {
+          "year": 2005,
+          "event": "Grandchildren and family continuity memories"
+        }
+      ],
+      "interview_flags": {
+        "needs_simple_questions": true,
+        "allow_bilingual_answering": true,
+        "needs_place_and_family_anchors": true,
+        "avoid_late_day_sessions": true,
+        "validate_subjective_experience": true,
+        "do_not_correct_memory": true
+      }
+    },
+    {
+      "id": 30,
+      "name": "George and Eleanor Whitman",
+      "age": {
+        "george": 82,
+        "eleanor": 80
+      },
+      "dob": {
+        "george": "1943-04-09",
+        "eleanor": "1945-12-01"
+      },
+      "born": {
+        "george": {
+          "city": "Toledo",
+          "state": "Ohio",
+          "country": "USA"
+        },
+        "eleanor": {
+          "city": "Dayton",
+          "state": "Ohio",
+          "country": "USA"
+        }
+      },
+      "background": {
+        "ethnicity": "White",
+        "occupation": {
+          "george": "Retired electrician",
+          "eleanor": "Retired librarian"
+        },
+        "marital_status": "Married",
+        "children": 2,
+        "living_situation": "Live together at home with increasing support from daughter"
+      },
+      "cognitive_profile": {
+        "status": "paired_memory_support",
+        "primary_impairment_holder": "George",
+        "features": [
+          "George has early dementia",
+          "Eleanor often scaffolds memory gently",
+          "shared memories are stronger than solo recall",
+          "George can lose chronology but respond to Eleanor's cues",
+          "risk of caregiver over-answering if pacing is not managed"
+        ],
+        "best_time_of_day": "mid_morning",
+        "environment_notes": [
+          "interview together at kitchen table",
+          "address George first, invite Eleanor second",
+          "watch for fatigue",
+          "preserve George's voice and agency"
+        ]
+      },
+      "lorevox_expectations": {
+        "initial_mode": "paired",
+        "possible_transition_path": [
+          "paired",
+          "supported",
+          "alongside",
+          "paired"
+        ],
+        "paired_mode_candidate": true,
+        "likely_partner": "spouse"
+      },
+      "timeline_anchors": [
+        {
+          "year": 1943,
+          "event": "George born in Toledo, Ohio"
+        },
+        {
+          "year": 1945,
+          "event": "Eleanor born in Dayton, Ohio"
+        },
+        {
+          "year": 1963,
+          "event": "Young adulthood and courtship era"
+        },
+        {
+          "year": 1967,
+          "event": "Marriage and first home era"
+        },
+        {
+          "year": 1970,
+          "event": "Early family-building years"
+        },
+        {
+          "year": 1985,
+          "event": "Established work and family routines"
+        },
+        {
+          "year": 2001,
+          "event": "Retirement-planning and adult children era"
+        }
+      ],
+      "interview_flags": {
+        "needs_paired_mode": true,
+        "address_primary_participant_first": true,
+        "invite_spousal_scaffolding_without_taking_over": true,
+        "highlight_shared_meaning": true,
+        "validate_subjective_experience": true,
+        "do_not_correct_memory": true
+      }
+    }
+  ],
+  "required_test_cases": [
+    "DOB required before deep interview",
+    "Birthplace captured before timeline expansion",
+    "Timeline anchors shown in age-aware way",
+    "Confusion detection can trigger supported mode",
+    "Repeated self-doubt or fragmentation can trigger alongside mode",
+    "No shaming, correcting, or quizzing on chronology",
+    "Meaning-first extraction preserved even when dates blur",
+    "Paired mode supports spouse or caregiver scaffolding without taking over"
+  ]
+}

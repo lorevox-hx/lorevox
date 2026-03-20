@@ -9,7 +9,14 @@ let state = {
   person_id: null,
   profile: {basics:{}, kinship:[], pets:[]},
   chat: {conv_id: null},
-  interview: {session_id:null, question_id:null, prompt:null},
+  interview: {
+    session_id:    null,
+    question_id:   null,
+    prompt:        null,
+    /* v7.2 — Paired interview mode */
+    paired:        false,   // true when a second participant (spouse / caregiver) is present
+    pairedSpeaker: null,    // name or label for the second participant
+  },
 
   /* ── v7.1 Timeline Spine ──────────────────────────────────────
      Initialized when DOB + birthplace are saved.
@@ -25,12 +32,14 @@ let state = {
      Drives pass engine and prompt routing.
      currentPass : 'pass1' | 'pass2a' | 'pass2b'
      currentEra  : 'early_childhood' | 'school_years' | … | null
-     currentMode : 'open' | 'recognition' | 'gentle' | 'grounding' | 'light'
+     currentMode : 'open' | 'recognition' | 'grounding' | 'light' | 'alongside'
   ─────────────────────────────────────────────────────────────── */
   session: {
     currentPass: "pass1",
     currentEra:  null,
     currentMode: "open",
+    /* v7.2 — Sustained confusion tracking (persisted within session) */
+    confusionTurnCount: 0,  // increments on confused turns, decrements on clear turns
   },
 
   /* ── v7.1 Runtime affect / cognitive signals ─────────────────
@@ -39,7 +48,7 @@ let state = {
   runtime: {
     affectState:      "neutral",   // latest smoothed affect label
     affectConfidence: 0,
-    cognitiveMode:    null,        // null | 'recognition' | 'light'
+    cognitiveMode:    null,        // null | 'open' | 'recognition' | 'grounding' | 'light' | 'alongside'
     fatigueScore:     0,           // 0–100, estimated by session_vitals
   },
 };

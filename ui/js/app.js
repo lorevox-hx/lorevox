@@ -58,6 +58,8 @@ function normalizeLoriState(input) {
     open:        { badge:"Open",         affectState:"neutral",       affectConfidence:0,    cognitiveMode:"open",        fatigueScore:0  },
     recognition: { badge:"recognition",  affectState:"confusion_hint",affectConfidence:0.65, cognitiveMode:"recognition", fatigueScore:Math.max(Number(state?.runtime?.fatigueScore||0),20) },
     grounding:   { badge:"grounding",    affectState:"distress_hint", affectConfidence:0.8,  cognitiveMode:"grounding",   fatigueScore:Math.max(Number(state?.runtime?.fatigueScore||0),40) },
+    /* v7.2 — alongside: sustained confusion / fragmentation; reflection-only, no structured questions */
+    alongside:   { badge:"alongside",   affectState:"distress_hint", affectConfidence:0.85, cognitiveMode:"alongside",   fatigueScore:Math.max(Number(state?.runtime?.fatigueScore||0),30) },
     light:       { badge:"light",        affectState:"fatigue_hint",  affectConfidence:0.6,  cognitiveMode:"light",       fatigueScore:Math.max(Number(state?.runtime?.fatigueScore||0),60) },
     high_fatigue:{ badge:"high_fatigue", affectState:"fatigue_hint",  affectConfidence:0.9,  cognitiveMode:"light",       fatigueScore:80 },
   };
@@ -77,6 +79,9 @@ function buildRuntime71() {
     affect_confidence:  Number(state.runtime.affectConfidence||0),
     cognitive_mode:     state.runtime.cognitiveMode||null,
     fatigue_score:      Number(state.runtime.fatigueScore||0),
+    /* v7.2 — paired interview metadata */
+    paired:             !!(state.interview?.paired),
+    paired_speaker:     state.interview?.pairedSpeaker||null,
   };
 }
 

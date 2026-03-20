@@ -1,0 +1,690 @@
+/* ═══════════════════════════════════════════════════════════════════
+   lori73.css — Lorevox v7.3 Shell Layout
+   ───────────────────────────────────────────────────────────────────
+   Scope : Shell structure only.
+           Component CSS lives in base.css, interview.css, etc.
+           This file does not replace or conflict with those files.
+
+   Layout: 3-zone flex row
+           [lv73-nav] | [lv73-main] | [lv73-lori-dock]
+
+   No Tailwind. No external dependencies.
+   Works as a direct sibling of base.css, layout.css, etc.
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── CSS Custom Properties ──────────────────────────────────────── */
+:root {
+  --lv73-bg:            #0b0f19;
+  --lv73-surface:       #0f172a;
+  --lv73-surface-2:     #1e293b;
+  --lv73-border:        rgba(99,102,241,.12);
+  --lv73-border-dim:    rgba(255,255,255,.05);
+  --lv73-text:          #e2e8f0;
+  --lv73-text-muted:    #64748b;
+  --lv73-text-soft:     #94a3b8;
+  --lv73-accent:        #818cf8;
+  --lv73-accent-dim:    rgba(99,102,241,.10);
+
+  --lv73-nav-width:     220px;
+  --lv73-nav-icon-w:    48px;          /* collapsed width */
+  --lv73-dock-width:    360px;
+  --lv73-dock-icon-w:   48px;          /* collapsed width */
+  --lv73-topbar-h:      48px;
+
+  --lv73-base-font:     18px;
+  --lv73-font:          system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --lv73-serif:         Georgia, 'Times New Roman', serif;
+
+  --lv73-hit:           44px;          /* minimum accessible touch target */
+  --lv73-radius:        6px;
+  --lv73-transition:    0.22s ease;
+}
+
+/* ── Large-text mode (toggled by lv73.toggleLargeText()) ────────── */
+.lv73-large-text { --lv73-base-font: 22px; }
+
+/* ── Base resets (apply only when lv73-shell is present) ────────── */
+body.lv73-body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--lv73-bg);
+  color: var(--lv73-text);
+  font-family: var(--lv73-font);
+  font-size: var(--lv73-base-font);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SHELL  —  3-zone horizontal flex
+═══════════════════════════════════════════════════════════════════ */
+.lv73-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--lv73-bg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LEFT NAVIGATION
+═══════════════════════════════════════════════════════════════════ */
+.lv73-nav {
+  width: var(--lv73-nav-width);
+  min-width: var(--lv73-nav-icon-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--lv73-surface);
+  border-right: 1px solid var(--lv73-border-dim);
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width var(--lv73-transition);
+  position: relative;
+}
+
+/* Collapsed state: icon-only strip */
+.lv73-nav.collapsed {
+  width: var(--lv73-nav-icon-w);
+}
+
+/* Hide text labels, section content when collapsed */
+.lv73-nav.collapsed .lv73-label,
+.lv73-nav.collapsed .lv73-tab-ctx,
+.lv73-nav.collapsed .lv73-nav-section-title,
+.lv73-nav.collapsed .lv73-nav-section-body,
+.lv73-nav.collapsed .lv73-nav-prev-next,
+.lv73-nav.collapsed .lv73-wordmark,
+.lv73-nav.collapsed .lv73-version {
+  display: none;
+}
+
+/* ── Nav header ─────────────────────────────────────────────────── */
+.lv73-nav-header {
+  height: var(--lv73-topbar-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--lv73-border-dim);
+}
+
+.lv73-wordmark {
+  font-family: var(--lv73-serif);
+  font-size: 15px;
+  color: #a5b4fc;
+  font-weight: 600;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.lv73-version {
+  font-size: 10px;
+  color: var(--lv73-text-muted);
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* ── Nav collapse button ────────────────────────────────────────── */
+.lv73-collapse-nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--lv73-text-muted);
+  cursor: pointer;
+  width: var(--lv73-hit);
+  height: var(--lv73-hit);
+  min-width: var(--lv73-hit);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--lv73-radius);
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: color .15s, background .15s;
+}
+.lv73-collapse-nav-btn:hover {
+  background: var(--lv73-accent-dim);
+  color: var(--lv73-accent);
+}
+
+/* ── Vertical tab list ──────────────────────────────────────────── */
+.lv73-tab-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 4px;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+/*
+  Tab buttons — preserve `tab-btn` class for tabs.js compatibility.
+  tabs.js uses .tab-btn to remove/add .active; #tab-{id} to identify.
+*/
+.lv73-tab.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  height: var(--lv73-hit);
+  border-radius: var(--lv73-radius);
+  border: none;
+  background: transparent;
+  color: var(--lv73-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--lv73-font);
+  text-align: left;
+  white-space: nowrap;
+  width: 100%;
+  transition: background .15s, color .15s;
+  position: relative;
+}
+.lv73-tab.tab-btn:hover {
+  background: var(--lv73-accent-dim);
+  color: var(--lv73-text-soft);
+}
+.lv73-tab.tab-btn.active {
+  background: rgba(99,102,241,.14);
+  color: var(--lv73-accent);
+}
+
+.lv73-tab-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.lv73-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+/* Context badge (pass/era summary beside active tab) */
+.lv73-tab-ctx {
+  font-size: 9px;
+  color: var(--lv73-text-muted);
+  background: var(--lv73-surface-2);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+/* ── Nav section blocks (People, Life Periods, Sessions) ────────── */
+.lv73-nav-section {
+  padding: 4px 8px 8px;
+  border-top: 1px solid var(--lv73-border-dim);
+}
+
+.lv73-nav-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--lv73-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 6px 4px 4px;
+}
+
+.lv73-nav-section-body { /* wraps existing #peopleList, #roadmapList, #sessionsList */ }
+
+.lv73-nav-prev-next {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.lv73-nav-prev-next .btn {
+  flex: 1;
+  min-height: var(--lv73-hit);
+}
+
+/* Active person summary in nav */
+.lv73-active-person-card {
+  margin: 6px 6px 0;
+  padding: 8px 10px;
+  background: rgba(99,102,241,.08);
+  border: 1px solid rgba(99,102,241,.15);
+  border-radius: var(--lv73-radius);
+}
+.lv73-active-person-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a5b4fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN CONTENT AREA
+═══════════════════════════════════════════════════════════════════ */
+.lv73-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Top context bar ────────────────────────────────────────────── */
+.lv73-topbar {
+  height: var(--lv73-topbar-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--lv73-border-dim);
+  background: var(--lv73-surface);
+}
+
+.lv73-topbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lv73-text);
+  white-space: nowrap;
+}
+
+.lv73-topbar-sep {
+  color: #334155;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.lv73-topbar-spacer { flex: 1; }
+
+.lv73-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lv73-large-text-btn,
+.lv73-devmode-btn {
+  background: transparent;
+  border: 1px solid var(--lv73-border);
+  color: var(--lv73-text-muted);
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 0 10px;
+  height: 32px;
+  font-size: 12px;
+  font-family: var(--lv73-font);
+  transition: color .15s, background .15s, border-color .15s;
+}
+.lv73-large-text-btn:hover,
+.lv73-devmode-btn:hover {
+  background: var(--lv73-accent-dim);
+  color: var(--lv73-accent);
+}
+.lv73-large-text-btn.active {
+  color: var(--lv73-accent);
+  border-color: rgba(99,102,241,.4);
+}
+.lv73-large-text-btn[aria-pressed="true"] {
+  color: var(--lv73-accent);
+  border-color: rgba(99,102,241,.4);
+}
+
+/* ── Scrollable content well ────────────────────────────────────── */
+.lv73-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/*
+  Tab panes — tabs.js compatibility:
+    tabs.js hides all .tab-pane, removes .active from .tab-btn
+    then shows #pane-{id} and adds .active to #tab-{id}
+  We use display:none/block here; lori7.1 used hidden class.
+  The tabs.js behavior already works either way since it calls
+  el.classList.add('hidden') / remove('hidden') or style.display.
+*/
+.tab-pane {
+  display: none;
+}
+.tab-pane:not(.hidden):first-of-type,
+.tab-pane.active {
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RIGHT LORI DOCK
+═══════════════════════════════════════════════════════════════════ */
+.lv73-lori-dock {
+  width: var(--lv73-dock-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--lv73-surface);
+  border-left: 1px solid var(--lv73-border-dim);
+  transition: width var(--lv73-transition);
+  overflow: hidden;
+  position: relative;
+}
+
+.lv73-lori-dock.collapsed {
+  width: var(--lv73-dock-icon-w);
+}
+
+.lv73-lori-dock.collapsed .lv73-dock-body {
+  display: none;
+}
+
+/* ── Dock header ────────────────────────────────────────────────── */
+.lv73-dock-header {
+  height: var(--lv73-topbar-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid var(--lv73-border-dim);
+}
+
+.lv73-dock-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.lv73-dock-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lv73-dock-collapse-btn {
+  background: transparent;
+  border: none;
+  color: var(--lv73-text-muted);
+  cursor: pointer;
+  width: var(--lv73-hit);
+  height: var(--lv73-hit);
+  min-width: var(--lv73-hit);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--lv73-radius);
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: color .15s, background .15s;
+}
+.lv73-dock-collapse-btn:hover {
+  background: var(--lv73-accent-dim);
+  color: var(--lv73-accent);
+}
+
+/* Expand tab — vertical text button in collapsed strip */
+.lv73-dock-expand-tab {
+  display: none;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  color: var(--lv73-text-muted);
+  font-size: 11px;
+  font-family: var(--lv73-font);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transition: color .15s, background .15s;
+}
+.lv73-dock-expand-tab:hover {
+  background: var(--lv73-accent-dim);
+  color: var(--lv73-accent);
+}
+.lv73-lori-dock.collapsed .lv73-dock-expand-tab {
+  display: flex;
+}
+.lv73-lori-dock.collapsed .lv73-dock-header {
+  /* keep header visible collapsed for expand button */
+  flex-direction: column;
+  height: auto;
+  padding: 8px 4px;
+}
+
+/* ── Dock body ──────────────────────────────────────────────────── */
+.lv73-dock-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Status strip */
+.lv73-dock-status {
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--lv73-border-dim);
+  flex-shrink: 0;
+}
+
+/* Transcript */
+.lv73-transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  scroll-behavior: smooth;
+}
+
+/* Last response strip */
+.lv73-last-response {
+  flex-shrink: 0;
+  border-top: 1px solid var(--lv73-border-dim);
+  padding: 6px 12px 5px;
+}
+.lv73-last-response-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--lv73-text-muted);
+  margin-bottom: 3px;
+}
+.lv73-last-response-text {
+  font-size: 11px;
+  color: #64748b;
+  font-style: italic;
+  max-height: 3.4em;
+  overflow-y: auto;
+  line-height: 1.4;
+}
+
+/* ── Input area ─────────────────────────────────────────────────── */
+.lv73-input-area {
+  flex-shrink: 0;
+  border-top: 1px solid var(--lv73-border-dim);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lv73-replay-btn {
+  background: transparent;
+  border: 1px solid var(--lv73-border);
+  color: var(--lv73-text-muted);
+  font-size: 11px;
+  font-family: var(--lv73-font);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  height: 28px;
+  align-self: flex-start;
+  transition: color .15s;
+}
+.lv73-replay-btn:hover { color: var(--lv73-accent); }
+
+.lv73-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.lv73-mic-btn {
+  background: transparent;
+  border: 1px solid var(--lv73-border);
+  color: var(--lv73-text-muted);
+  cursor: pointer;
+  border-radius: var(--lv73-radius);
+  width: var(--lv73-hit);
+  height: var(--lv73-hit);
+  min-width: var(--lv73-hit);
+  font-size: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s;
+}
+.lv73-mic-btn:hover { color: var(--lv73-accent); }
+.lv73-mic-btn.recording {
+  color: #f87171;
+  border-color: rgba(248,113,113,.4);
+  animation: lv73-pulse 1.4s infinite;
+}
+
+@keyframes lv73-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.lv73-text-input {
+  flex: 1;
+  background: rgba(30,41,59,.6);
+  border: 1px solid rgba(99,102,241,.18);
+  color: var(--lv73-text);
+  border-radius: var(--lv73-radius);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--lv73-font);
+  resize: none;
+  line-height: 1.4;
+  min-height: var(--lv73-hit);
+}
+.lv73-text-input:focus {
+  outline: none;
+  border-color: rgba(99,102,241,.45);
+}
+.lv73-text-input::placeholder { color: #475569; }
+
+.lv73-send-btn {
+  background: #4f46e5;
+  border: none;
+  color: #fff;
+  border-radius: var(--lv73-radius);
+  padding: 0 16px;
+  height: var(--lv73-hit);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--lv73-font);
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.lv73-send-btn:hover { background: #4338ca; }
+.lv73-send-btn:active { background: #3730a3; }
+
+/* ── Accessibility: universal focus ring ────────────────────────── */
+.lv73-shell :focus-visible {
+  outline: 2px solid var(--lv73-accent);
+  outline-offset: 2px;
+}
+
+/* ── Skip-to-content link (screen readers) ──────────────────────── */
+.lv73-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 1000;
+  background: var(--lv73-surface);
+  color: var(--lv73-accent);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  text-decoration: none;
+}
+.lv73-skip-link:focus {
+  left: 8px;
+}
+
+/* ── Dev-only elements ──────────────────────────────────────────── */
+body:not(.lv73-dev-mode) .dev-only { display: none !important; }
+
+/* ── Responsive: narrow viewport ───────────────────────────────── */
+@media (max-width: 960px) {
+  :root {
+    --lv73-dock-width: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Dock becomes an overlay on narrow screens */
+  .lv73-lori-dock {
+    position: fixed;
+    right: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 200;
+    box-shadow: -6px 0 32px rgba(0,0,0,.6);
+    transform: translateX(0);
+    transition: transform var(--lv73-transition);
+  }
+  .lv73-lori-dock.collapsed {
+    width: var(--lv73-dock-width);     /* restore full width */
+    transform: translateX(100%);       /* slide off-screen */
+  }
+  /* Show floating Lori button when dock is offscreen */
+  .lv73-lori-dock.collapsed ~ .lv73-lori-float-btn {
+    display: flex;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --lv73-nav-width: var(--lv73-nav-icon-w);
+  }
+  .lv73-nav .lv73-label,
+  .lv73-nav .lv73-nav-section-title,
+  .lv73-nav .lv73-nav-section-body {
+    display: none;
+  }
+}
+
+/* ── Lori floating button (mobile) ─────────────────────────────── */
+.lv73-lori-float-btn {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 201;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0 20px;
+  height: 52px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--lv73-font);
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(79,70,229,.5);
+  align-items: center;
+  gap: 8px;
+  transition: background .15s;
+}
+.lv73-lori-float-btn:hover { background: #4338ca; }
