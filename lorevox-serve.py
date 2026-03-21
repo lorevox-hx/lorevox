@@ -25,7 +25,7 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-PORT = 8000
+PORT = 8080
 
 
 class LorevoxHandler(http.server.SimpleHTTPRequestHandler):
@@ -40,6 +40,7 @@ class LorevoxHandler(http.server.SimpleHTTPRequestHandler):
         # Dev: prevent browser caching of JS/CSS so patched files take effect on reload
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         super().end_headers()
 
     def log_message(self, fmt, *args):
@@ -51,7 +52,7 @@ class LorevoxHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(ROOT)
-    print(f"Lorevox UI → http://localhost:{PORT}/ui/lori7.3.html")
+    print(f"Lorevox UI → http://localhost:{PORT}/ui/lori7.4c.html")
     print(f"Serving from: {ROOT}")
     print("Press Ctrl+C to stop.\n")
     with socketserver.TCPServer(("127.0.0.1", PORT), LorevoxHandler) as httpd:

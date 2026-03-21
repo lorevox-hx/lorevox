@@ -342,8 +342,15 @@
       }
 
       _faceMesh = new FaceMesh({
-        locateFile: (file) =>
-          `vendor/mediapipe/face_mesh/${file}`,
+        locateFile: (file) => {
+          // Force non-SIMD WASM binary — SIMD variant crashes at loadGraph on this machine.
+          // Both JS loaders remain present; only the WASM binary is redirected.
+          if (file === 'face_mesh_solution_simd_wasm_bin.wasm') {
+            console.log('[LoreVoxEmotion] Redirecting SIMD WASM → non-SIMD WASM');
+            return `vendor/mediapipe/face_mesh/face_mesh_solution_wasm_bin.wasm`;
+          }
+          return `vendor/mediapipe/face_mesh/${file}`;
+        },
       });
 
       _faceMesh.setOptions({
