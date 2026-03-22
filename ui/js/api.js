@@ -33,4 +33,7 @@ const API = {
   // v6.1 Track B
   IV_AFFECT_EVENT: ORIGIN + "/api/interview/affect-event",
   IV_AFFECT_CTX:   (sid) => `${ORIGIN}/api/interview/affect-context?session_id=${encodeURIComponent(sid)}`,
+  // v7.4D — Phase 7: facts
+  FACTS_ADD:       ORIGIN + "/api/facts/add",
+  FACTS_LIST:      (pid) => `${ORIGIN}/api/facts/list?person_id=${encodeURIComponent(pid)}`,
 };

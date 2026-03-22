@@ -19,8 +19,24 @@ window.onload = async () => {
   updateArchiveReadiness();
   update71RuntimeUI();   // v7.1 — paint runtime badges on first load
   document.addEventListener("keydown", e => { if(e.key==="Escape" && isFocusMode) toggleFocus(); });
+  // v7.4D Phase 6B — back-compat guard: returning sessions loaded from
+  // localStorage may not have identityPhase set. Default to "incomplete"
+  // so getEffectivePass74() gates correctly until basics are confirmed.
+  if (state.session && typeof state.session.identityPhase === "undefined") {
+    state.session.identityPhase = "incomplete";
+  }
+
   const saved = localStorage.getItem(LS_ACTIVE);
-  if (saved) loadPerson(saved).catch(()=>{});
+  if(saved){
+    // Returning user — load their profile and skip onboarding.
+    loadPerson(saved).catch(()=>{});
+  } else {
+    // v7.4D — Phase 6: no person selected yet.
+    // Let Lori lead by starting the identity-first onboarding flow.
+    // A small delay gives the WS connection time to establish so Lori's
+    // first message goes out via the streaming path.
+    setTimeout(startIdentityOnboarding, 800);
+  }
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -109,6 +125,12 @@ function buildRuntime71() {
     paired_speaker:  state.interview?.pairedSpeaker||null,
     /* v7.4A — real visual signal block; null = camera off or stale */
     visual_signals,
+    /* v7.4D — assistant role for prompt routing */
+    assistant_role:  getAssistantRole(),
+    /* v7.4D Phase 6B — identity gating fields for prompt_composer.py */
+    identity_complete: hasIdentityBasics74(),
+    identity_phase:    getIdentityPhase74(),
+    effective_pass:    getEffectivePass74(),
   };
 }
 
@@ -217,6 +239,9 @@ async function loadPerson(pid){
   state.person_id=pid;
   document.getElementById("activePerson").textContent=`person_id: ${pid}`;
   localStorage.setItem(LS_ACTIVE,pid);
+  // v7.4D ISSUE-16: update the always-visible active person indicator in the Lori dock.
+  // The display_name is not available yet (profile loads below); update again after.
+  _updateDockActivePerson();
   try{
     const r=await fetch(API.PROFILE(pid)); if(!r.ok) throw new Error();
     const j=await r.json();
@@ -238,6 +263,7 @@ async function loadPerson(pid){
 
   hydrateProfileForm();
   updateProfileStatus();
+  _updateDockActivePerson(); // v7.4D ISSUE-16: update with real name now that profile is loaded
   await refreshPeople();
   onDobChange();
   updateSidebar();
@@ -299,6 +325,22 @@ async function saveProfile(){
       place_of_birth:b.pob||undefined
     })}).catch(()=>{});
   }catch{ sysBubble("⚠ Save failed — is the server running?"); }
+}
+
+/* ── v7.4D ISSUE-16: Active person dock indicator ── */
+function _updateDockActivePerson(){
+  const el = document.getElementById("dockActivePerson");
+  if(!el) return;
+  const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname;
+  if(state.person_id && name){
+    el.textContent = `📘 ${name}`;
+    el.style.display = "";
+  } else if(state.person_id){
+    el.textContent = "📘 Person loaded";
+    el.style.display = "";
+  } else {
+    el.style.display = "none";
+  }
 }
 
 /* ── Profile status badge ── */
@@ -887,14 +929,306 @@ async function loadSession(cid){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   PHASE 6B — IDENTITY GATING HELPERS
+   These three functions let buildRuntime71() emit an effective_pass
+   that the backend can use to gate Pass 1 directives until identity
+   is fully established.  This stops the "empathy → abrupt DOB ask"
+   pattern seen in Tests 7 & 8.
+═══════════════════════════════════════════════════════════════ */
+
+/** True once name + DOB + birthplace are all non-empty in profile basics. */
+function hasIdentityBasics74() {
+  if (typeof state === "undefined") return false;
+  const b = state.profile?.basics || {};
+  const name = (b.preferred || b.fullname || b.name || "").trim();
+  const dob  = (b.dob || "").trim();
+  const pob  = (b.pob || b.birthplace || "").trim();
+  return !!(name && dob && pob);
+}
+
+/**
+ * Returns the onboarding sub-phase string, or:
+ *   "complete"   — identity fully established
+ *   "incomplete" — identity not yet established (no active sub-phase)
+ */
+function getIdentityPhase74() {
+  if (typeof state === "undefined") return "unknown";
+  const p = state.session?.identityPhase;
+  if (p) return p;
+  return hasIdentityBasics74() ? "complete" : "incomplete";
+}
+
+/**
+ * Returns "identity" while identity is not complete, otherwise returns
+ * the current interview pass (defaulting to "pass1").
+ * Used by buildRuntime71() to emit the effective_pass field.
+ */
+function getEffectivePass74() {
+  if (typeof state === "undefined") return "identity";
+  const phase = getIdentityPhase74();
+  if (phase && phase !== "complete") return "identity";
+  if (!hasIdentityBasics74()) return "identity";
+  return state.session?.currentPass || "pass1";
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IDENTITY-FIRST ONBOARDING  (v7.4D — Phase 6)
+   State machine: null → askName → askDob → askBirthplace
+                  → resolving → complete
+   Lori leads. No forms. The archive builds from what the user says.
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Kick off identity onboarding.
+ * Sets Lori to 'onboarding' role and sends the first greeting via Lori's
+ * voice so the user experiences it as a natural conversation, not a form.
+ */
+function startIdentityOnboarding(){
+  state.session.identityPhase   = "askName";
+  state.session.identityCapture = { name: null, dob: null, birthplace: null };
+  setAssistantRole("onboarding");
+  // Trigger Lori to speak first — she'll introduce herself and ask for a name.
+  sendSystemPrompt(
+    "[SYSTEM: Begin the identity onboarding sequence. " +
+    "Warmly introduce yourself as Lori, a personal memoir companion. " +
+    "Tell the user you'd like to get to know them a little before you begin. " +
+    "Ask them for their preferred first name. One question only — keep it brief and warm.]"
+  );
+}
+
+/**
+ * Extract a plausible date of birth from a free-text answer.
+ * Accepts: "December 24 1962", "12/24/1962", "1962-12-24",
+ *          "born in '62", "December 1962", "just 1962".
+ * Returns an ISO date string "YYYY-MM-DD" or null.
+ */
+function _parseDob(text){
+  const t = text.trim();
+  // Full ISO or US date
+  let m = t.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  if(m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  m = t.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
+  if(m) return `${m[3]}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`;
+  // Month name forms: "December 24, 1962" / "24 December 1962"
+  const MONTHS = {january:"01",february:"02",march:"03",april:"04",may:"05",
+    june:"06",july:"07",august:"08",september:"09",october:"10",november:"11",december:"12"};
+  const lower = t.toLowerCase();
+  for(const [name,num] of Object.entries(MONTHS)){
+    const re1 = new RegExp(name+"\\s+(\\d{1,2})[,\\s]+(\\d{4})");
+    const re2 = new RegExp("(\\d{1,2})\\s+"+name+"[,\\s]+(\\d{4})");
+    const re3 = new RegExp(name+"[,\\s]+(\\d{4})");
+    let mm;
+    if((mm=lower.match(re1))) return `${mm[2]}-${num}-${mm[1].padStart(2,"0")}`;
+    if((mm=lower.match(re2))) return `${mm[2]}-${num}-${mm[1].padStart(2,"0")}`;
+    if((mm=lower.match(re3))) return `${mm[1]}-${num}-01`;  // partial date — day unknown
+  }
+  // Short year forms: "born in '62", "born 1962", just "1962"
+  // Apostrophe-short form first: '62 → 1962, '38 → 1938 (years 00–29 = 2000s, 30–99 = 1900s)
+  m = t.match(/'(\d{2})\b/);
+  if(m){ const y=parseInt(m[1]); return `${y<30?2000+y:1900+y}-01-01`; }
+  m = t.match(/\b(19\d{2}|20[0-2]\d)\b/);
+  if(m) return `${m[1]}-01-01`;
+  return null;
+}
+
+/**
+ * Advance the identity state machine based on the user's reply.
+ * Called at the TOP of sendUserMessage() before anything else.
+ * Returns true when the machine is active and consumed the message.
+ */
+async function _advanceIdentityPhase(text){
+  const phase = state.session?.identityPhase;
+  if(!phase || phase === "complete") return false;
+  if(phase === "resolving") return true; // waiting for API — swallow input
+
+  if(phase === "askName"){
+    // v7.4D BUG-FIX: Do not extract a name from an emotional or non-name response.
+    // Common-word guard: single-word replies that are NOT valid names.
+    const _NOT_A_NAME = new Set([
+      "that","it","i","the","a","an","this","there","here","yes","no","yeah","nope",
+      "okay","ok","well","so","hi","hello","hey","oh","ah","uh","um","my","mine",
+      "what","when","where","why","how","who","which","they","we","you","he","she",
+      "just","not","but","and","or","if","then","was","were","is","am","are",
+      "had","have","has","did","do","does","would","could","should","will","can",
+    ]);
+    // Emotional-content guard: message looks like a statement, not a name
+    const _EMOTIONAL_MARKERS = /\b(hard|difficult|sad|scared|lost|hurt|pain|grief|suffered|struggling|terrible|awful|horrible|tough|heartbroken|afraid|worried|anxious|miss|missed|died|death|trauma|abuse|alone|lonely|crying|tears|broke|broken|never|always|sometimes|really|very|so much)\b/i;
+    const words = text.trim().split(/\s+/);
+    const candidate = words[0].replace(/[^a-zA-Z'\-]/g, "").trim();
+    const isEmotional = _EMOTIONAL_MARKERS.test(text);
+    const isLongSentence = words.length > 4;  // "That was hard" = 3 words; names rarely come as long sentences
+    const isCommonWord = _NOT_A_NAME.has(candidate.toLowerCase());
+
+    if(isEmotional || isLongSentence || isCommonWord || !candidate){
+      // This is not a name answer — let it flow through to the LLM as normal
+      // IDENTITY MODE directive will tell Lori to acknowledge emotion then re-ask for name.
+      return false;
+    }
+
+    const name = candidate;
+    state.session.identityCapture.name = name;
+    state.session.identityPhase = "askDob";
+    // Lori acknowledges and asks for DOB
+    sendSystemPrompt(
+      `[SYSTEM: The user's preferred name is "${name}". ` +
+      `Acknowledge it warmly (use their name once). ` +
+      `Then ask for their date of birth in a conversational way — ` +
+      `explain it helps place their story in time. One question only.]`
+    );
+    return true;
+  }
+
+  if(phase === "askDob"){
+    const dob = _parseDob(text);
+    state.session.identityCapture.dob = dob;  // may be null if unrecognised
+    state.session.identityPhase = "askBirthplace";
+    sendSystemPrompt(
+      `[SYSTEM: The user gave their date of birth as "${text.trim()}". ` +
+      `${dob ? "You have parsed it as "+dob+"." : "The date wasn't entirely clear but that's okay — continue."} ` +
+      `Acknowledge naturally (brief, warm). ` +
+      `Then ask where they were born — town, city, or region, whatever they remember. ` +
+      `One question only.]`
+    );
+    return true;
+  }
+
+  if(phase === "askBirthplace"){
+    const birthplace = text.trim();
+    state.session.identityCapture.birthplace = birthplace;
+    state.session.identityPhase = "resolving";
+    // Create the person record now that we have the three anchors
+    await _resolveOrCreatePerson();
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Create a new person in the backend using the three captured identity anchors,
+ * then load them so the app is in a ready state.
+ * Sets identityPhase to "complete" when done.
+ */
+async function _resolveOrCreatePerson(){
+  const ic   = state.session.identityCapture;
+  const name = ic.name || "Unnamed";
+  const dob  = ic.dob  || null;
+  const pob  = ic.birthplace || null;
+
+  // Patch state.profile so the form reflects what Lori captured
+  if(!state.profile) state.profile = {basics:{}, kinship:[], pets:[]};
+  state.profile.basics.preferred  = name;
+  state.profile.basics.fullname   = name;
+  if(dob) state.profile.basics.dob = dob;
+  if(pob) state.profile.basics.pob = pob;
+  hydrateProfileForm();
+
+  let pid = null;
+  try{
+    const r = await fetch(API.PEOPLE, {
+      method: "POST",
+      headers: ctype(),
+      body: JSON.stringify({
+        display_name: name,
+        role:         "subject",
+        date_of_birth: dob  || null,
+        place_of_birth: pob || null,
+      }),
+    });
+    const j = await r.json();
+    pid = j.id || j.person_id;
+  }catch(e){
+    console.warn("[identity] create person failed:", e);
+  }
+
+  state.session.identityPhase = "complete";
+  setAssistantRole("interviewer");
+
+  if(pid){
+    await loadPerson(pid);
+    // v7.4D BUG-B1: loadPerson fetches the server profile (still empty at this point)
+    // and overwrites state.profile.basics. Re-apply the captured identity anchors
+    // before saveProfile() so the correct values are persisted.
+    if(ic.name)      { state.profile.basics.preferred = ic.name; state.profile.basics.fullname = ic.name; }
+    if(ic.dob)         state.profile.basics.dob = ic.dob;
+    if(ic.birthplace)  state.profile.basics.pob = ic.birthplace;
+    hydrateProfileForm();
+    _updateDockActivePerson();
+    // Save the profile so DOB + birthplace persist
+    await saveProfile();
+    sendSystemPrompt(
+      `[SYSTEM: You have successfully captured ${name}'s identity. ` +
+      `Their profile is now saved. ` +
+      `Transition naturally into the memoir interview — ` +
+      `start by asking an open, inviting question about their earliest memory or childhood. ` +
+      `Don't mention any technical steps or form saving.]`
+    );
+  } else {
+    // Backend unavailable — still set up local state
+    sysBubble(`Welcome, ${name}! (Profile saved locally — connect the server to persist it.)`);
+    sendSystemPrompt(
+      `[SYSTEM: The user's name is ${name}. ` +
+      `Acknowledge you're ready to begin their memoir, then ask your first interview question.]`
+    );
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    CHAT — WS primary, SSE fallback
 ═══════════════════════════════════════════════════════════════ */
 function onChatKey(e){ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendUserMessage(); } }
 
+// v7.4D — Help-intent keywords. Any of these in the user's message switches Lori
+// to helper mode for that response. She answers the product question directly and
+// does not continue the interview until the helper exchange is resolved.
+const _HELP_KEYWORDS = [
+  "how do i","how do you","how can i","how should i",
+  "where do i","where is the","where can i",
+  "what does this","what is this","what does the",
+  "why didn't","why doesn't","why can't","why won't","why isn't",
+  "help me use","help me with","help me understand",
+  "i don't understand","i can't find","i'm confused",
+  "how to save","how to create","how to start","how to use",
+  "what tab","which tab","what button","which button",
+  "how does lori","what is lori",
+];
+
+function _isHelpIntent(text){
+  const t=text.toLowerCase();
+  return _HELP_KEYWORDS.some(k=>t.includes(k));
+}
+
 async function sendUserMessage(){
   unlockAudio();
   const text=getv("chatInput").trim(); if(!text) return;
-  setv("chatInput",""); appendBubble("user",text);
+  // v7.4D — Phase 7: capture for post-reply fact extraction.
+  _lastUserTurn = text;
+  // v7.4D — stop recording immediately on send so we don't capture background
+  // audio or Lori's incoming response. Mic stays off; user re-enables when ready.
+  if(isRecording) stopRecording();
+
+  // v7.4D — Phase 6: identity-first onboarding state machine.
+  // Route through identity extractor. If _advanceIdentityPhase returns true,
+  // the message was handled (phase advanced, system prompt injected) — return.
+  // If it returns false, the message was emotional/non-answer content —
+  // fall through to the normal LLM flow so IDENTITY MODE directive can respond.
+  let _bubbleAlreadyAdded = false;
+  if(state.session?.identityPhase && state.session.identityPhase !== "complete"){
+    setv("chatInput",""); appendBubble("user",text);
+    _bubbleAlreadyAdded = true;
+    const _handled = await _advanceIdentityPhase(text);
+    if(_handled) return;
+    // Not handled — fall through to normal chat path with IDENTITY MODE active.
+  }
+
+  // v7.4D — helper-mode detection. If the user appears to be asking how to use
+  // the app, switch Lori to helper role for this turn. The role resets to
+  // "interviewer" in onAssistantReply() after Lori's response lands.
+  if(_isHelpIntent(text) && getAssistantRole()==="interviewer"){
+    setAssistantRole("helper");
+  }
+
+  if(!_bubbleAlreadyAdded){ setv("chatInput",""); appendBubble("user",text); }
   let systemInstruction="";
 
   if(state.interview.session_id&&state.interview.question_id){
@@ -977,7 +1311,7 @@ IMPORTANT INTERVIEW RULES:
         if(!line.trim()) continue;
         try{
           const d=JSON.parse(line.replace(/^data:\s*/,""));
-          if(d.delta||d.text){ full+=(d.delta||d.text); bubble.textContent=full;
+          if(d.delta||d.text){ full+=(d.delta||d.text); _bubbleBody(bubble).textContent=full;
             document.getElementById("chatMessages").scrollTop=99999; }
         }catch{}
       }
@@ -991,7 +1325,7 @@ IMPORTANT INTERVIEW RULES:
     if(obitDraftType==="lori_pending"){ setObitDraftType("lori"); }
     setLoriState("ready");
   }catch(err){
-    bubble.textContent="Chat service unavailable — start the Lorevox backend to enable AI responses.";
+    _bubbleBody(bubble).textContent="Chat service unavailable — start the Lorevox backend to enable AI responses.";
     setLoriState("ready");
   }
 }
@@ -1001,6 +1335,113 @@ function onAssistantReply(text){
   lastAssistantText=text;
   document.getElementById("lastAssistantPanel").textContent=text;
   enqueueTts(text);
+  // v7.4D — after one helper exchange, return Lori to interviewer role.
+  // This means the next user message will go back to normal interview mode
+  // unless another help intent is detected.
+  // NOTE: do NOT reset 'onboarding' — _advanceIdentityPhase manages that role.
+  if(getAssistantRole()==="helper"){
+    setAssistantRole("interviewer");
+  }
+  // v7.4D — Phase 7: fire-and-forget fact extraction after each real turn.
+  // Only runs when a person is loaded and onboarding is complete.
+  if(state.person_id && (!state.session?.identityPhase || state.session.identityPhase==="complete")){
+    _extractAndPostFacts(_lastUserTurn, text).catch(()=>{});
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE 7 — FACT EXTRACTION  (v7.4D)
+   Pattern-based extraction from user turns. Runs client-side so
+   it never blocks the LLM or the chat. Results are posted to
+   /api/facts/add and are immediately available in the Facts tab.
+   The user never sees this happening — it just works.
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Extract atomic facts from a single exchange (user turn + Lori's reply).
+ * Returns an array of fact objects ready to POST to /api/facts/add.
+ */
+function _extractFacts(userText, loriText){
+  const facts = [];
+  const src   = (userText||"").trim();
+  const t     = src.toLowerCase();
+  const pid   = state.person_id;
+  if(!pid || !src) return facts;
+
+  const sid = state.chat?.conv_id || null;
+
+  const _f = (statement, fact_type, date_text="", date_normalized="", confidence=0.7) => ({
+    person_id: pid, statement, fact_type,
+    date_text, date_normalized, confidence,
+    status: "extracted", inferred: false,
+    session_id: sid, meta: { source: "chat_extraction", user_turn: src.slice(0,200) },
+  });
+
+  // ── Birthplace ───────────────────────────────────────────────
+  let m;
+  m = src.match(/\b(?:born|grew up|I(?:'m| am) from|originally from|I(?:'m| am) originally from)[^.!?]{0,8}(?:in|at|near)\s+([A-Z][^,.!?]{2,60})/i);
+  if(m) facts.push(_f(`Born or raised in ${m[1].trim()}`, "birth", m[1].trim(), "", 0.75));
+
+  // ── Date of birth ─────────────────────────────────────────────
+  m = src.match(/\b(?:born on|born)\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:[,\s]+\d{4})?|\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})/i);
+  if(m){
+    const dob = _parseDob(m[1]) || m[1];
+    facts.push(_f(`Date of birth: ${m[1].trim()}`, "birth", m[1].trim(), dob, 0.85));
+  }
+
+  // ── Marriage ─────────────────────────────────────────────────
+  m = src.match(/\b(?:married|got married to|my (?:husband|wife|spouse) is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+  if(m) facts.push(_f(`Married ${m[1].trim()}`, "marriage", "", "", 0.7));
+
+  // ── Children ─────────────────────────────────────────────────
+  m = src.match(/\b(?:my (?:son|daughter|child|kids?|children|boy|girl))[^.!?]{0,20}(?:name(?:d|s)?|is|are|called)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+  if(m) facts.push(_f(`Child named ${m[1].trim()}`, "family_relationship", "", "", 0.65));
+
+  // ── Employment ────────────────────────────────────────────────
+  m = src.match(/\b(?:worked (?:at|for)|worked as|(?:a |an )?(?:job|career) (?:at|with)|employed (?:at|by)|I was (?:a|an|the))\s+([^.!?,]{3,60})/i);
+  if(m) facts.push(_f(`Worked: ${m[1].trim()}`, "employment_start", "", "", 0.65));
+
+  m = src.match(/\bI(?:'ve)? (?:been |)(?:retired|retiring|left)\s+(?:from\s+)?([^.!?,]{3,60})/i);
+  if(m) facts.push(_f(`Retired or left: ${m[1].trim()}`, "employment_end", "", "", 0.65));
+
+  // ── Education ────────────────────────────────────────────────
+  m = src.match(/\b(?:graduated from|went to|attended|studied at)\s+([A-Z][^.!?,]{3,60})/i);
+  if(m) facts.push(_f(`Education: ${m[1].trim()}`, "education", "", "", 0.65));
+
+  // ── Residence / moves ─────────────────────────────────────────
+  m = src.match(/\b(?:moved to|we moved to|living in|lived in|grew up in)\s+([A-Z][^.!?,]{2,60})/i);
+  if(m) facts.push(_f(`Residence: ${m[1].trim()}`, "residence", "", "", 0.6));
+
+  // ── Death (family member) ────────────────────────────────────
+  m = src.match(/\b(?:my\s+(?:mother|father|mom|dad|sister|brother|wife|husband|spouse|son|daughter|grandpa|grandma|grandfather|grandmother))[^.!?]{0,30}(?:passed away|died|passed|is gone)\b/i);
+  if(m) facts.push(_f(`Family loss: ${m[0].trim()}`, "death", "", "", 0.7));
+
+  // Deduplicate by statement (simple string equality)
+  const seen = new Set();
+  return facts.filter(f=>{ if(seen.has(f.statement)) return false; seen.add(f.statement); return true; });
+}
+
+/**
+ * Fire-and-forget: extract facts from a turn and POST each one to /api/facts/add.
+ * Failures are silently ignored — this should never break the UI.
+ */
+async function _extractAndPostFacts(userText, loriText){
+  if(!state.person_id) return;
+  const facts = _extractFacts(userText, loriText);
+  if(!facts.length) return;
+  for(const f of facts){
+    try{
+      await fetch(API.FACTS_ADD, {
+        method:"POST", headers: ctype(), body: JSON.stringify(f),
+      });
+    }catch{ /* silently ignore network errors */ }
+  }
+  if(facts.length){
+    console.log(`[facts] extracted ${facts.length} fact(s) from turn.`);
+    // v7.4D ISSUE-15: quietly refresh the archive readiness panel so the user
+    // sees the archive growing without any disruptive notification.
+    if(typeof updateArchiveReadiness === "function") updateArchiveReadiness();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1016,17 +1457,21 @@ function connectWebSocket(){
     ws.onmessage=e=>{ try{ handleWsMessage(JSON.parse(e.data)); }catch{} };
   }catch{ usingFallback=true; }
 }
+// v7.4D — helper: get the .bubble-body child of a bubble element.
+// Needed because appendBubble now nests label + body inside the bubble div.
+function _bubbleBody(el){ return el?.querySelector(".bubble-body")||el; }
+
 function handleWsMessage(j){
   if(j.type==="token"||j.type==="delta"){
     if(!currentAssistantBubble){
       currentAssistantBubble=appendBubble("ai","");
       setLoriState("drafting");
     }
-    currentAssistantBubble.textContent+=(j.delta||j.token||"");
+    _bubbleBody(currentAssistantBubble).textContent+=(j.delta||j.token||"");
     document.getElementById("chatMessages").scrollTop=99999;
   }
   if(j.type==="done"){
-    const text=j.final_text||(currentAssistantBubble?.textContent||"");
+    const text=j.final_text||(_bubbleBody(currentAssistantBubble)?.textContent||"");
     onAssistantReply(text);
     if(text){
       setv("ivAnswer",text);
@@ -1047,7 +1492,18 @@ function appendBubble(role,text){
   const w=document.getElementById("chatMessages");
   const d=document.createElement("div");
   d.className=`bubble bubble-${role}`;
-  d.textContent=text;
+  // v7.4D — speaker label: every turn gets a clear "You" or "Lori" header.
+  // sys bubbles (status messages) skip the label.
+  if(role==="user"||role==="ai"){
+    const label=document.createElement("div");
+    label.className="bubble-speaker";
+    label.textContent=(role==="user")?"You":"Lori";
+    d.appendChild(label);
+  }
+  const body=document.createElement("div");
+  body.className="bubble-body";
+  body.textContent=text;
+  d.appendChild(body);
   w.appendChild(d); w.scrollTop=w.scrollHeight;
   return d;
 }
@@ -1064,6 +1520,11 @@ function clearChat(){ document.getElementById("chatMessages").innerHTML=""; }
 let _ttsAudio = null;
 let _audioUnlocked = false;
 
+// v7.4D — STT/TTS feedback-loop guard.
+// True while Lori's TTS is actively playing. Recognition results and
+// auto-restarts are suppressed whenever this flag is set.
+let isLoriSpeaking = false;
+
 function unlockAudio(){
   if(_audioUnlocked) return;
   _audioUnlocked = true;
@@ -1077,6 +1538,10 @@ function unlockAudio(){
 function enqueueTts(text){ ttsQueue.push(text); if(!ttsBusy) drainTts(); }
 async function drainTts(){
   ttsBusy=true;
+  // v7.4D — stop mic and mark Lori as speaking before any audio plays.
+  // This prevents the STT engine from transcribing Lori's own voice.
+  isLoriSpeaking=true;
+  if(isRecording) stopRecording();
   while(ttsQueue.length){
     const chunk=ttsQueue.shift();
     try{
@@ -1101,6 +1566,8 @@ async function drainTts(){
       }
     }catch{}
   }
+  // v7.4D — Lori has finished speaking. Mic stays off — user decides when to speak.
+  isLoriSpeaking=false;
   ttsBusy=false;
 }
 
@@ -1133,17 +1600,33 @@ function _normalisePunctuation(t){
     .trim();
 }
 
+// v7.4D — Voice send commands. Any of these exact phrases (case-insensitive,
+// trimmed) will trigger Send instead of being typed into the input box.
+const _SEND_COMMANDS = new Set(["send","send it","okay send","ok send","go ahead","send message"]);
+
 function _ensureRecognition(){
   if(recognition) return recognition;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){ sysBubble("Voice input not supported in this browser."); return null; }
   recognition=new SR(); recognition.continuous=true; recognition.interimResults=true;
   recognition.onresult=e=>{
+    // v7.4D — if Lori is speaking, discard all recognition results entirely.
+    // This is the primary guard against self-transcription.
+    if(isLoriSpeaking) return;
     let fin=""; for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) fin+=e.results[i][0].transcript;
-    if(fin) setv("chatInput",getv("chatInput")+_normalisePunctuation(fin));
+    if(!fin) return;
+    const trimmed=fin.trim().toLowerCase();
+    // v7.4D — check for voice send command before appending to input.
+    if(_SEND_COMMANDS.has(trimmed)){
+      stopRecording();
+      sendUserMessage();
+      return;
+    }
+    setv("chatInput",getv("chatInput")+_normalisePunctuation(fin));
   };
-  // If the browser ends the session unexpectedly, flip the button back
-  recognition.onend=()=>{ if(isRecording){ recognition.start(); } };
+  // v7.4D — only auto-restart if user explicitly left mic on AND Lori is not speaking.
+  // This prevents the engine from restarting mid-TTS and catching Lori's audio.
+  recognition.onend=()=>{ if(isRecording && !isLoriSpeaking){ recognition.start(); } };
   return recognition;
 }
 function startRecording(){

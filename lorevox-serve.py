@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lorevox local UI server — v7.4B
+Lorevox local UI server — v7.4D
 =================================
 Required for reliable camera + WASM operation.
 
@@ -9,14 +9,21 @@ Cross-origin isolation (COOP/COEP) headers enable:
   - Consistent camera permission grants under localhost origin
   - Reliable MediaPipe WASM loading across machines and browsers
 
+Port layout:
+  8000  — LLM backend  (launchers/run_gpu_8000.sh)
+  8001  — TTS server   (launchers/run_tts_8001.sh)
+  8080  — UI server    (this file)
+
 Run:
     python lorevox-serve.py
 
 Then open:
-    http://localhost:8000/ui/lori7.3.html
+    http://localhost:8080/ui/lori7.4c.html
 
-file:// may still open the UI on some machines, but localhost is the
-supported default for 7.4+ camera + WASM behavior.
+Or use the single launcher to start all three services at once:
+    bash launchers/run_all_dev.sh
+
+file:// will NOT work reliably for camera + WASM. Always use localhost:8080.
 """
 
 import http.server

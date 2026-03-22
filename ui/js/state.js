@@ -40,6 +40,10 @@ let state = {
     currentMode: "open",
     /* v7.2 — Sustained confusion tracking (persisted within session) */
     confusionTurnCount: 0,  // increments on confused turns, decrements on clear turns
+    /* v7.4D Phase 6B — identity gating.
+       "incomplete" until name+DOB+birthplace are all confirmed.
+       State machine: incomplete → askName → askDob → askBirthplace → resolving → complete */
+    identityPhase: "incomplete",
 
     /* v7.4A — Real visual affect bridge target.
        Written by AffectBridge74.consume(); read by buildRuntime71().
@@ -71,6 +75,19 @@ let state = {
       profilePhotoCaptured:false,
       ttsPace:             "normal",// normal | slow
     },
+
+    /* v7.4D — Assistant role: controls which directive block prompt_composer injects.
+       'interviewer' : default oral-history interview mode
+       'onboarding'  : identity collection (name/DOB/birthplace)
+       'helper'      : user asked a product-use question; suppress interview, answer directly
+       'safety'      : safety companion mode                                        */
+    assistantRole: "interviewer",
+
+    /* v7.4D — Identity-first onboarding state machine.
+       identityPhase: null | 'askName' | 'askDob' | 'askBirthplace' | 'resolving' | 'complete'
+       identityCapture: collects the three identity anchors before person is created.  */
+    identityPhase: null,
+    identityCapture: { name: null, dob: null, birthplace: null },
   },
 
   /* ── v7.1 Runtime affect / cognitive signals ─────────────────
@@ -107,6 +124,8 @@ let ttsQueue = [], ttsBusy = false;
 /* ── Chat state ── */
 let lastAssistantText = "";
 let currentAssistantBubble = null;
+// v7.4D — Phase 7: last user turn text, captured for post-reply fact extraction.
+let _lastUserTurn = "";
 
 /* ── Interview capture state ── */
 let captureState  = null;   // null | 'captured' | 'edited' | 'saved'
@@ -168,6 +187,10 @@ function getCurrentLifePeriods() {
 function getCurrentPass()  { return state.session?.currentPass  || "pass1"; }
 function getCurrentEra()   { return state.session?.currentEra   || null;    }
 function getCurrentMode()  { return state.session?.currentMode  || "open";  }
+
+/* v7.4D — Assistant role getters/setters */
+function getAssistantRole() { return state.session?.assistantRole || "interviewer"; }
+function setAssistantRole(r){ if (state.session) state.session.assistantRole = r; }
 
 /* ── v7.1 — Pass / era / mode setters ──────────────────────── */
 function setPass(p)  { if (state.session) state.session.currentPass = p; }

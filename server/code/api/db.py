@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 import json
@@ -8,6 +9,8 @@ import uuid
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ── DOB sanitisation ─────────────────────────────────────────────────────────
@@ -42,6 +45,9 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 
 DB_NAME = os.getenv("DB_NAME", "lorevox.sqlite3").strip() or "lorevox.sqlite3"
 DB_PATH = DB_DIR / DB_NAME
+
+# v7.4D — log DB path at import time so startup output confirms the right file.
+logger.info("Lorevox DB: %s", DB_PATH)
 
 
 def _connect() -> sqlite3.Connection:
@@ -631,6 +637,8 @@ def create_person(
     con.commit()
     con.close()
     ensure_profile(pid)
+    # v7.4D — log person creation for DB verification (Phase 0)
+    logger.info("DB create_person: id=%s name=%r dob=%r pob=%r", pid, display_name, date_of_birth, place_of_birth)
     return get_person(pid) or {"id": pid, "display_name": display_name}
 
 
@@ -746,6 +754,8 @@ def update_profile_json(person_id: str, profile_json: Dict[str, Any], merge: boo
     )
     con.commit()
     con.close()
+    # v7.4D — log profile saves for DB verification (Phase 0)
+    logger.info("DB update_profile_json: person_id=%s reason=%r keys=%s", person_id, reason or "unspecified", list(merged.keys()))
     return get_profile(person_id) or {"person_id": person_id, "profile_json": merged, "updated_at": now}
 
 

@@ -60,17 +60,24 @@
 /* ── CHAT PANEL ──────────────────────────────────────────────── */
 .chat-panel{background:var(--panel);border-left:1px solid var(--border);
   display:flex;flex-direction:column;min-height:0;overflow:hidden;}
-.chat-messages{flex:1;overflow-y:auto;padding:10px;
-  display:flex;flex-direction:column;gap:9px;}
-.bubble{padding:9px 13px;border-radius:10px;font-size:13px;
-  line-height:1.65;max-width:92%;word-break:break-word;}
-.bubble-ai{background:rgba(198,167,255,.08);border:1px solid rgba(198,167,255,.18);
+/* v7.4D — chat bubbles: aging-first sizing + clear speaker separation */
+.bubble{padding:14px 18px;border-radius:12px;font-size:18px;
+  line-height:1.7;max-width:88%;word-break:break-word;margin-bottom:4px;}
+.bubble-speaker{font-size:11px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;opacity:.55;margin-bottom:6px;}
+.bubble-body{font-size:18px;line-height:1.7;}
+.bubble-ai{background:rgba(198,167,255,.10);border:1px solid rgba(198,167,255,.22);
   align-self:flex-start;}
-.bubble-user{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+.bubble-ai .bubble-speaker{color:#c6a7ff;}
+.bubble-user{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);
   align-self:flex-end;}
+.bubble-user .bubble-speaker{color:#94a3b8;}
 .bubble-sys{background:rgba(100,100,110,.12);border:1px solid rgba(255,255,255,.07);
-  align-self:center;text-align:center;font-size:11px;color:var(--muted);
-  max-width:80%;}
+  align-self:center;text-align:center;font-size:13px;color:var(--muted);
+  max-width:80%;padding:8px 14px;}
+/* Tighter gap between messages in the container */
+.chat-messages{flex:1;overflow-y:auto;padding:14px;
+  display:flex;flex-direction:column;gap:14px;}
 .chat-input-bar{flex-shrink:0;padding:9px 11px;
   border-top:1px solid var(--border);display:flex;gap:7px;align-items:flex-end;}
 
