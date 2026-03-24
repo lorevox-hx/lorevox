@@ -350,7 +350,9 @@
     /* Lori thinking indicator */
     #lv75Thinking {
       display: none;
-      align-self: flex-start;
+      width: fit-content;
+      max-width: 82%;
+      margin: 4px 12px 8px;
       padding: 10px 16px;
       background: rgba(30,35,60,.9);
       border: 1px solid rgba(99,102,241,.2);
@@ -358,7 +360,6 @@
       border-bottom-left-radius: 4px;
       color: #6366f1;
       font-size: 13px;
-      max-width: 82%;
     }
     #lv75Thinking.visible { display: flex; align-items: center; gap: 6px; }
     .dot-bounce {
@@ -621,8 +622,25 @@
 </div>
 
 
-<!-- ── app.js ── (all chat, identity, profile-seed, TTS, speech logic) -->
+<!--
+  ── Required scripts — same load order as lori7.4c.html ───────
+  state.js and api.js MUST come before app.js.
+  app.js uses window.onload so state is only ready after that fires.
+-->
+<script src="js/state.js"></script>
+<script src="js/data.js"></script>
+<script src="js/api.js"></script>
+<script src="js/tabs.js"></script>
+<script src="js/safety-ui.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/emotion.js"></script>
+<script src="js/facial-consent.js"></script>
+<script src="js/affect-bridge.js"></script>
+<script src="js/emotion-ui.js"></script>
+<script src="js/timeline-ui.js"></script>
+<script src="js/interview.js"></script>
 <script src="js/app.js"></script>
+<script src="js/cognitive-auto.js"></script>
 
 <script>
 /* ════════════════════════════════════════════════════════════════
@@ -640,7 +658,7 @@ function autoResizeInput(el) {
 // ── Person selector ───────────────────────────────────────────
 async function lv75LoadPeople() {
   try {
-    const r = await fetch("/api/people?limit=100");
+    const r = await fetch(API.PEOPLE + "?limit=100");
     const j = await r.json();
     const sel = document.getElementById("lv75PersonSelect");
     if (!sel) return;
@@ -797,7 +815,7 @@ async function lv75PersistProfile() {
   };
 
   try {
-    await fetch(`/api/profiles/${pid}`, {
+    await fetch(API.PROFILE(pid), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ patch }),
@@ -878,26 +896,36 @@ function lv75ObserveScroll() {
 }
 
 // ── Init ──────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", async () => {
-  // Load people into selector
-  await lv75LoadPeople();
+// app.js uses `window.onload = async () => {...}` — state and API are
+// only available once that async function completes. We chain our init
+// AFTER it by wrapping it: capture app.js's onload, run it, then run ours.
+(function () {
+  // Wait for the DOM to parse so we can capture what app.js assigned.
+  // We defer with setTimeout(0) from a load event so we run last.
+  const _origLoad = window.onload;
+  window.onload = async function (...args) {
+    // Run app.js's init first
+    if (typeof _origLoad === "function") await _origLoad.apply(this, args);
 
-  // Start observers
+    // Now state, API, etc. are all initialised — safe to run 7.5 init
+    await lv75Init();
+  };
+})();
+
+async function lv75Init() {
+  // Start observers (safe to set up before people load)
   lv75ObserveChat();
   lv75ObserveLoriStatus();
   lv75ObserveScroll();
 
-  // If no person loaded yet, start onboarding automatically
-  if (!state.person_id) {
-    // Small delay so app.js finishes its own init
-    setTimeout(() => {
-      if (!state.person_id) startIdentityOnboarding();
-    }, 600);
-  }
+  // Load people into selector
+  await lv75LoadPeople();
 
   // Initial capture bar state
   refreshCaptureBar();
-});
+  // Note: startIdentityOnboarding() is called by app.js's window.onload via
+  // setTimeout(startIdentityOnboarding, 800) — do NOT call it here again.
+}
 </script>
 
 </body>
