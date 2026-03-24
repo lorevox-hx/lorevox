@@ -347,6 +347,20 @@
     #lv75SendBtn:active { transform: scale(.95); }
     #lv75SendBtn:disabled { background: #334155; cursor: default; }
 
+    /* Gentle re-engagement cue */
+    #lv75IdleCue {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(148, 163, 184, 0.45);
+      letter-spacing: 0.06em;
+      padding: 6px 0 2px;
+      opacity: 0;
+      transition: opacity 1.4s ease;
+      pointer-events: none;
+      user-select: none;
+    }
+    #lv75IdleCue.visible { opacity: 1; }
+
     /* Lori thinking indicator */
     #lv75Thinking {
       display: none;
@@ -488,6 +502,9 @@
       <span>Lori is thinking…</span>
     </div>
   </div>
+
+  <!-- Gentle re-engagement visual cue (fades in at 30 s idle) -->
+  <div id="lv75IdleCue">Take your time…</div>
 
   <!-- ── INPUT BAR ────────────────────────────────────────────── -->
   <div id="lv75InputBar">
@@ -679,12 +696,71 @@ async function lv75LoadPeople() {
 
 async function onPersonSelectChange(personId) {
   if (!personId) return;
+
+  // Narrator switch cancels any pending idle check-in
+  lv75ClearIdle();
+
+  // Load profile data into state.profile / state.person_id
   await loadPerson(personId);
-  // If identity is complete for this person, update the capture bar
-  refreshCaptureBar();
+
+  // Always start a fresh conversation when switching narrators
+  document.getElementById("chatMessages").innerHTML = "";
+
+  const basics = state.profile?.basics || {};
+  const hasName = !!(basics.preferred || basics.fullname);
+  const hasDob  = !!basics.dob;
+
+  if (hasName && hasDob) {
+    // ── Returning narrator — identity already established ──────
+    const name = basics.preferred || basics.fullname;
+    const pob  = basics.pob || null;
+
+    state.session = {
+      currentPass:     "pass2a",
+      identityPhase:   "complete",
+      assistantRole:   "interviewer",
+      identityCapture: {
+        name,
+        dob:       basics.dob,
+        birthplace: pob,
+      },
+      profileSeed: {
+        childhood_home: null, siblings: null, parents_work: null,
+        heritage: null, education: null, military: null,
+        career: null, partner: null, children: null, life_stage: null,
+      },
+    };
+    setAssistantRole("interviewer");
+    refreshCaptureBar();
+
+    // Ask Lori to welcome them back and continue the interview
+    sendSystemPrompt(
+      `[SYSTEM: You are resuming a life-archive session with ${name}, ` +
+      `born ${basics.dob}${pob ? " in " + pob : ""}. ` +
+      "Welcome them back warmly by name in one sentence, then immediately ask your next " +
+      "most meaningful interview question — as if you are picking up a conversation mid-thread. " +
+      "Do not re-introduce yourself. Do not repeat the onboarding flow. Do not ask for name or DOB again.]"
+    );
+  } else {
+    // ── New or incomplete narrator — run full onboarding ───────
+    state.session = {
+      currentPass:     "pass1",
+      identityPhase:   "incomplete",
+      assistantRole:   "onboarding",
+      identityCapture: { name: null, dob: null, birthplace: null },
+      profileSeed: {
+        childhood_home: null, siblings: null, parents_work: null,
+        heritage: null, education: null, military: null,
+        career: null, partner: null, children: null, life_stage: null,
+      },
+    };
+    resetCaptureBar();
+    startIdentityOnboarding();
+  }
 }
 
 async function onNewPersonClick() {
+  lv75ClearIdle();
   // Start fresh onboarding — clear state and let Lori ask for name
   state.person_id = null;
   state.session = {
@@ -716,6 +792,9 @@ function cycleMemoryCareMode() {
 }
 
 function applyMemoryCareMode(mode) {
+  // Mode switch cancels any pending idle check-in (posture has changed)
+  lv75ClearIdle();
+
   const btn  = document.getElementById("lv75MemoryBtn");
   const lbl  = document.getElementById("lv75McMode");
   const dlbl = document.getElementById("lv75DrawerMcMode");
@@ -836,8 +915,102 @@ function lv75OnNewMessage() {
 }
 lv75OnNewMessage._t = null;
 
+// ── Gentle re-engagement (idle check-in) ─────────────────────
+// Arms after Lori finishes a turn that ends with a question.
+// Issues at most one soft check-in; cancels on any user activity.
+const IDLE_SOFT_MS      = 30_000;   // visual cue only
+const IDLE_CHECKIN_OPEN = 75_000;   // spoken nudge — open mode
+const IDLE_CHECKIN_MEM  = 55_000;   // slightly sooner in recognition mode
+
+let _idleSoftTimer    = null;
+let _idleCheckInTimer = null;
+let _idleCheckInFired = false;
+let _idlePrevStatus   = null;   // track thinking → ready transitions
+
+function lv75ArmIdle() {
+  lv75ClearIdle();
+  _idleCheckInFired = false;
+
+  // 30 s — show soft visual cue
+  _idleSoftTimer = setTimeout(() => {
+    document.getElementById("lv75IdleCue")?.classList.add("visible");
+  }, IDLE_SOFT_MS);
+
+  // 55–75 s — one spoken check-in (mode-aware)
+  const mode  = MC_MODES[_mcModeIdx];
+  const delay = (mode === "recognition") ? IDLE_CHECKIN_MEM : IDLE_CHECKIN_OPEN;
+  _idleCheckInTimer = setTimeout(() => {
+    if (!_idleCheckInFired) lv75FireCheckIn();
+  }, delay);
+}
+
+function lv75ClearIdle() {
+  clearTimeout(_idleSoftTimer);
+  clearTimeout(_idleCheckInTimer);
+  _idleSoftTimer = _idleCheckInTimer = null;
+  document.getElementById("lv75IdleCue")?.classList.remove("visible");
+}
+
+function lv75FireCheckIn() {
+  _idleCheckInFired = true;
+  lv75ClearIdle();   // no further prompting after this turn
+
+  const mode = MC_MODES[_mcModeIdx];
+  let msg;
+
+  if (mode === "alongside") {
+    msg =
+      "[SYSTEM: The narrator has been quiet for a while. " +
+      "Offer pure warm presence — one brief line such as: " +
+      "'No rush at all — I'm right here with you whenever you're ready.' " +
+      "Do not repeat the question. Do not suggest they must answer. Just be present.]";
+  } else if (mode === "recognition") {
+    msg =
+      "[SYSTEM: The narrator has been quiet for a while and may need a little support. " +
+      "Gently check in: offer to say the question in simpler words, " +
+      "suggest a gentler way into the topic, or offer to try something easier. " +
+      "One short warm sentence. No urgency.]";
+  } else {
+    msg =
+      "[SYSTEM: The narrator has been quiet. " +
+      "Give one gentle, unhurried check-in — for example: " +
+      "'Take your time — I'm here whenever you're ready. " +
+      "Would you like me to rephrase that, try a gentler question, or just sit with it a moment?' " +
+      "Keep it brief and pressure-free. Do not repeat the full question verbatim.]";
+  }
+
+  sendSystemPrompt(msg);
+}
+
+// ── Genuine-question detector ─────────────────────────────────
+// Returns true only when Lori's turn appears to end with a real interview
+// question, not a quoted ?, an explanatory statement, or a short reflective echo.
+//
+// Rules:
+//  1. The full text must end with ? (last non-whitespace char).
+//     This drops: quotation-embedded ?, "Ask then statement." patterns.
+//  2. The final ?-sentence (text after the last . or ! or \n before the ?)
+//     must either start with a recognised question-opener word, OR be
+//     long enough (≥ 30 chars) to be substantive.
+//     This drops: short echoes like "You mentioned Williston?" (< 30 chars,
+//     no question-opener).
+const _QW = /^(what|where|when|who|which|whose|why|how|could|can|would|will|did|do|does|was|were|is|are|have|has|had|tell\s+me|do\s+you|can\s+you|would\s+you|could\s+you)\b/i;
+
+function _lv75IsGenuineQuestion(text) {
+  const t = text.trim();
+  if (!t.endsWith("?")) return false;
+
+  // Extract the final sentence — everything after the last sentence-ending
+  // punctuation (. or !) followed by whitespace, or after a newline.
+  const lastSentence = t.split(/[.!\n]\s+/).pop() || t;
+
+  // Must have a question-opener OR be substantive in length
+  return _QW.test(lastSentence.trimStart()) || lastSentence.length >= 30;
+}
+
 // ── Mirror loriStatus → lv75LoriDot ──────────────────────────
-// app.js sets className on #loriStatus; we mirror it to the dot
+// app.js sets className on #loriStatus; we mirror it to the dot.
+// We also watch for the thinking → ready transition to arm idle timers.
 function lv75MirrorLoriStatus() {
   const src = document.getElementById("loriStatus");
   const dot = document.getElementById("lv75LoriDot");
@@ -846,7 +1019,7 @@ function lv75MirrorLoriStatus() {
   const active  = classes.find(c => src.classList.contains(`lori-status--${c}`) || src.classList.contains(c));
   dot.className = active ? `${active}` : "";
 
-  // Also: show/hide the thinking indicator
+  // Show/hide the thinking indicator
   const thinkEl = document.getElementById("lv75Thinking");
   if (thinkEl) {
     thinkEl.classList.toggle("visible", active === "thinking" || active === "listening");
@@ -855,6 +1028,20 @@ function lv75MirrorLoriStatus() {
   // Send button: disable while Lori is thinking
   const sendBtn = document.getElementById("lv75SendBtn");
   if (sendBtn) sendBtn.disabled = (active === "thinking");
+
+  // Gentle re-engagement: arm idle timer when Lori finishes a genuine question turn
+  if (_idlePrevStatus === "thinking" && active === "ready") {
+    const msgs = document.getElementById("chatMessages");
+    if (msgs) {
+      const aiBubbles = msgs.querySelectorAll(".bubble-ai");
+      const last      = aiBubbles[aiBubbles.length - 1];
+      const bodyText  = last?.querySelector(".bubble-body")?.textContent || "";
+      if (_lv75IsGenuineQuestion(bodyText)) {
+        lv75ArmIdle();
+      }
+    }
+  }
+  _idlePrevStatus = active;
 }
 
 // ── Settings drawer ───────────────────────────────────────────
@@ -917,6 +1104,12 @@ async function lv75Init() {
   lv75ObserveChat();
   lv75ObserveLoriStatus();
   lv75ObserveScroll();
+
+  // Cancel idle timers the moment the narrator starts typing
+  const chatInput = document.getElementById("chatInput");
+  if (chatInput) {
+    chatInput.addEventListener("keydown", lv75ClearIdle, { passive: true });
+  }
 
   // Load people into selector
   await lv75LoadPeople();
