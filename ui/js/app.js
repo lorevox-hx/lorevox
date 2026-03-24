@@ -131,6 +131,9 @@ function buildRuntime71() {
     identity_complete: hasIdentityBasics74(),
     identity_phase:    getIdentityPhase74(),
     effective_pass:    getEffectivePass74(),
+    /* v7.4E — speaker anchor: persists the user's name so Lori never drifts
+       into confusing the speaker with a person mentioned in conversation */
+    speaker_name: state.session?.speakerName || state.session?.identityCapture?.name || null,
   };
 }
 
@@ -193,6 +196,9 @@ function toggleFocus(){
 }
 function toggleDevMode(){
   devMode=!devMode;
+  // Toggle body class (used by lori73.css to control dev-only visibility)
+  document.body.classList.toggle("lv73-dev-mode", devMode);
+  // Also toggle hidden class for JS-controlled show/hide
   document.querySelectorAll(".dev-only").forEach(el=>el.classList.toggle("hidden",!devMode));
   document.getElementById("btnDevMode").style.color=devMode?"#7c9cff":"";
 }
@@ -215,8 +221,8 @@ function renderPeople(items){
     const d=document.createElement("div");
     d.className="sb-item"+(pid===state.person_id?" active":"");
     d.onclick=()=>loadPerson(pid);
-    d.innerHTML=`<div class="font-bold text-white text-[12px] truncate">${esc(name)}</div>
-      <div class="sb-meta mono">${esc(pid.slice(0,16))}</div>`;
+    d.innerHTML=`<div class="font-bold text-white truncate" style="font-size:15px">${esc(name)}</div>
+      <div class="sb-meta mono dev-only">${esc(pid.slice(0,16))}</div>`;
     w.appendChild(d);
   });
   if(!(items||[]).length)
@@ -987,12 +993,18 @@ function startIdentityOnboarding(){
   state.session.identityPhase   = "askName";
   state.session.identityCapture = { name: null, dob: null, birthplace: null };
   setAssistantRole("onboarding");
-  // Trigger Lori to speak first — she'll introduce herself and ask for a name.
+  // v7.4E — Tell Lori to briefly explain WHY she needs the three anchors before asking.
+  // This sets expectations, builds trust, and gets more accurate answers.
   sendSystemPrompt(
     "[SYSTEM: Begin the identity onboarding sequence. " +
-    "Warmly introduce yourself as Lori, a personal memoir companion. " +
-    "Tell the user you'd like to get to know them a little before you begin. " +
-    "Ask them for their preferred first name. One question only — keep it brief and warm.]"
+    "Introduce yourself warmly as Lori, a personal memoir companion. " +
+    "Then briefly explain — in 2-3 short sentences — that you need three things to get started: " +
+    "their name, their date of birth, and where they were born. " +
+    "Explain WHY: these three anchors let you build a personal life timeline so you can guide " +
+    "the interview in the right order and ask the most meaningful questions. " +
+    "Tell them you will ask for each one separately, and it will only take a moment. " +
+    "Then ask for their preferred name. " +
+    "Keep the whole message warm, brief, and conversational — not clinical or form-like.]"
   );
 }
 
@@ -1053,27 +1065,61 @@ async function _advanceIdentityPhase(text){
     ]);
     // Emotional-content guard: message looks like a statement, not a name
     const _EMOTIONAL_MARKERS = /\b(hard|difficult|sad|scared|lost|hurt|pain|grief|suffered|struggling|terrible|awful|horrible|tough|heartbroken|afraid|worried|anxious|miss|missed|died|death|trauma|abuse|alone|lonely|crying|tears|broke|broken|never|always|sometimes|really|very|so much)\b/i;
-    const words = text.trim().split(/\s+/);
-    const candidate = words[0].replace(/[^a-zA-Z'\-]/g, "").trim();
-    const isEmotional = _EMOTIONAL_MARKERS.test(text);
-    const isLongSentence = words.length > 4;  // "That was hard" = 3 words; names rarely come as long sentences
-    const isCommonWord = _NOT_A_NAME.has(candidate.toLowerCase());
 
-    if(isEmotional || isLongSentence || isCommonWord || !candidate){
-      // This is not a name answer — let it flow through to the LLM as normal
-      // IDENTITY MODE directive will tell Lori to acknowledge emotion then re-ask for name.
-      return false;
+    // v7.4E — Structured name extraction: try "my [adj] name is X", "call me X",
+    // "I go by X" patterns BEFORE falling back to first-word extraction.
+    // This handles long sentences like "My special name is Chris or guch by my wife".
+    // We extract only the FIRST name after the pattern — before any "or/and/by/from".
+    const _namePatterns = [
+      /\bmy\s+(?:\w+\s+)*name\s+is\s+([A-Za-z][a-z'-]+)/i,     // "my name is X", "my special name is X"
+      /\bcall\s+me\s+([A-Za-z][a-z'-]+)/i,                       // "call me X"
+      /\bi(?:'m|\s+am)\s+(?:called\s+)?([A-Za-z][a-z'-]+)/i,    // "I'm X", "I am X", "I am called X"
+      /\bi\s+go\s+by\s+([A-Za-z][a-z'-]+)/i,                    // "I go by X"
+      /\byou\s+can\s+call\s+me\s+([A-Za-z][a-z'-]+)/i,          // "you can call me X"
+      /\bprefer(?:red)?\s+(?:name\s+is\s+|to\s+be\s+called\s+)?([A-Za-z][a-z'-]+)/i, // "preferred name is X"
+    ];
+    let patternName = null;
+    if (!_EMOTIONAL_MARKERS.test(text)) {
+      for (const pat of _namePatterns) {
+        const m = text.match(pat);
+        if (m && m[1] && !_NOT_A_NAME.has(m[1].toLowerCase()) && m[1].length >= 2) {
+          patternName = m[1];
+          // Capitalize first letter
+          patternName = patternName.charAt(0).toUpperCase() + patternName.slice(1);
+          break;
+        }
+      }
     }
 
-    const name = candidate;
+    const words = text.trim().split(/\s+/);
+    const isEmotional = _EMOTIONAL_MARKERS.test(text);
+    const isLongSentence = words.length > 4;
+
+    let name = null;
+    if (patternName) {
+      // Structured extraction succeeded — use it even for long sentences
+      name = patternName;
+    } else {
+      // Fallback: first-word extraction (works for short direct answers like "Christopher")
+      const candidate = words[0].replace(/[^a-zA-Z'\-]/g, "").trim();
+      const isCommonWord = _NOT_A_NAME.has(candidate.toLowerCase());
+      if (isEmotional || isLongSentence || isCommonWord || !candidate) {
+        // Not a name answer — let it flow through to the LLM (IDENTITY MODE directive handles it)
+        return false;
+      }
+      name = candidate;
+    }
     state.session.identityCapture.name = name;
+    state.session.speakerName = name;  // v7.4E — persist for runtime71 anchor
     state.session.identityPhase = "askDob";
     // Lori acknowledges and asks for DOB
     sendSystemPrompt(
-      `[SYSTEM: The user's preferred name is "${name}". ` +
-      `Acknowledge it warmly (use their name once). ` +
-      `Then ask for their date of birth in a conversational way — ` +
-      `explain it helps place their story in time. One question only.]`
+      `[SYSTEM: SPEAKER IDENTITY — The person you are interviewing is named "${name}". ` +
+      `You are Lori, the interviewer. These are two different people. ` +
+      `If anyone named "Lori" appears in their story, that is a different person — not you. ` +
+      `Use "${name}" when addressing or referring to the speaker. ` +
+      `Now: acknowledge their name warmly (use it once). ` +
+      `Then ask for their date of birth — explain it helps place their story in time. One question only.]`
     );
     return true;
   }
