@@ -134,6 +134,11 @@ function buildRuntime71() {
     /* v7.4E — speaker anchor: persists the user's name so Lori never drifts
        into confusing the speaker with a person mentioned in conversation */
     speaker_name: state.session?.speakerName || state.session?.identityCapture?.name || null,
+    /* v7.4E — profile basics: DOB and birthplace for Pass 1 profile-seed context */
+    dob: state.profile?.basics?.dob || state.session?.identityCapture?.dob || null,
+    pob: state.profile?.basics?.pob || state.session?.identityCapture?.birthplace || null,
+    /* v7.4E — profile seed tracking: what seed questions have been answered */
+    profile_seed: state.session?.profileSeed || null,
   };
 }
 
@@ -992,6 +997,21 @@ function getEffectivePass74() {
 function startIdentityOnboarding(){
   state.session.identityPhase   = "askName";
   state.session.identityCapture = { name: null, dob: null, birthplace: null };
+  // v7.4E — profile seed tracking: records which of the 10 seed questions have been answered.
+  // Keys map to the 10 profile-seed questions in the Pass 1 directive.
+  // null = not yet asked; true = answered (from any source — explicit or conversational).
+  state.session.profileSeed = {
+    childhood_home: null,
+    siblings:       null,
+    parents_work:   null,
+    heritage:       null,
+    education:      null,
+    military:       null,
+    career:         null,
+    partner:        null,
+    children:       null,
+    life_stage:     null,
+  };
   setAssistantRole("onboarding");
   // v7.4E — Tell Lori to briefly explain WHY she needs the three anchors before asking.
   // This sets expectations, builds trust, and gets more accurate answers.
@@ -1193,6 +1213,10 @@ async function _resolveOrCreatePerson(){
 
   state.session.identityPhase = "complete";
   setAssistantRole("interviewer");
+  // v7.5 hook — lets lori7.5.html update capture UI without modifying this file.
+  if (typeof window._onIdentityComplete === "function") {
+    window._onIdentityComplete({ name, dob, pob: pob || ic.birthplace });
+  }
 
   if(pid){
     await loadPerson(pid);
@@ -1748,7 +1772,7 @@ function initTimelineSpine() {
   renderRoadmap();
   renderTimeline();
   updateArchiveReadiness();
-  sysBubble("◉ Timeline seed initialized — Pass 2A ready.");
+  sysBubble("◉ Timeline spine initialized — Pass 2A (Timeline Walk) ready.");
 }
 
 /* ── v7.1 — update all runtime badge elements in the UI ──── */
@@ -1774,7 +1798,7 @@ function update71RuntimeUI() {
   setT("topEraPill",   eraLabel);
   setT("topModePill",  modeLabel);
   // Interview tab header
-  setT("ivPassLabel",  `${passLabel}${pass === "pass2a" ? " — Timeline Spine" : pass === "pass2b" ? " — Narrative Depth" : " — Timeline Seed"}`);
+  setT("ivPassLabel",  `${passLabel}${pass === "pass2a" ? " — Timeline Spine" : pass === "pass2b" ? " — Narrative Depth" : " — Profile Seed"}`);
   setT("ivEraLabel",   eraLabel);
   setT("ivModeLabel",  modeLabel);
   setT("ivSectionLabel", `${passLabel} · Era: ${eraLabel} · Mode: ${modeLabel}`);
@@ -1788,7 +1812,7 @@ function update71RuntimeUI() {
   const seedBadge  = document.getElementById("timelineSeedBadge71");
   if (seedBadge) {
     seedBadge.className   = spineReady ? "seed-badge" : "seed-badge pending";
-    seedBadge.textContent = spineReady ? "◉ Timeline seed ready" : "◎ Timeline seed — add DOB + birthplace";
+    seedBadge.textContent = spineReady ? "◉ Timeline spine ready — Pass 2A available" : "◎ Profile seed in progress — complete identity anchors";
   }
   // Summary seed indicator
   const sumSeed = document.getElementById("summarySeed");

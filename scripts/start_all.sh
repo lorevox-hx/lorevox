@@ -36,7 +36,8 @@ fi
 printf '\nLorevox startup complete.\n'
 printf 'API: http://127.0.0.1:%s\n' "$API_PORT"
 printf 'TTS: http://127.0.0.1:%s\n' "$TTS_PORT"
-printf 'UI:  http://127.0.0.1:%s/ui/lori7.4c.html\n' "$UI_PORT"
+printf 'UI:  http://127.0.0.1:%s/ui/lori7.5.html\n' "$UI_PORT"
+printf '     http://127.0.0.1:%s/ui/lori7.4c.html  (classic)\n' "$UI_PORT"
 printf 'Logs: %s\n' "$LOG_DIR"
 
-open_ui_in_windows "http://localhost:${UI_PORT}/ui/lori7.4c.html"
+open_ui_in_windows "http://localhost:${UI_PORT}/ui/lori7.5.html"

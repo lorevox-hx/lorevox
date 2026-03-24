@@ -328,15 +328,14 @@ def test_language_accessibility():
         "Opening instruction includes 'warm' and 'conversational'"
     )
 
-    # Check that the SYSTEM instruction itself doesn't use "memoir companion"
-    # in a way that forces Lori to repeat the phrase (it's fine to describe her)
-    # "memoir companion" lives in the startIdentityOnboarding JS function (app.js),
-    # not in compose_system_prompt — verify it's in the source file instead.
+    # Check that the opening instruction does NOT use "memoir companion" verbatim.
+    # v7.4E replaced "memoir companion" with the etymology approach ("the voice of your stories")
+    # which is more accessible to narrators who don't identify as writers.
     import pathlib
     app_js = (pathlib.Path(__file__).parent.parent / "ui" / "js" / "app.js").read_text()
     r.record(
-        "memoir companion" in app_js,
-        "app.js startIdentityOnboarding: 'memoir companion' present in opening instruction"
+        "memoir companion" not in app_js,
+        "app.js opening instruction: 'memoir companion' removed (etymology approach used instead)"
     )
 
     # Flag if "memoir" is the ONLY description — we want an alternative too
@@ -580,14 +579,18 @@ def run_live_persona(persona: dict, verbose: bool, result: EvalResult):
     # Turn 1: Lori's opening message
     lori_open = _sse_call(
         "[SYSTEM: Begin the identity onboarding sequence. "
-        "Introduce yourself warmly as Lori, a personal memoir companion. "
-        "Then briefly explain — in 2-3 short sentences — that you need three things to get started: "
-        "their name, their date of birth, and where they were born. "
-        "Explain WHY: these three anchors let you build a personal life timeline so you can guide "
-        "the interview in the right order and ask the most meaningful questions. "
-        "Tell them you will ask for each one separately, and it will only take a moment. "
+        "Introduce yourself as Lori. "
+        "You may briefly share what your name means — Lorevox: 'Lore' means stories and oral tradition, "
+        "'Vox' is Latin for voice, so Lorevox means the voice of your stories. Lori is your nickname from that. "
+        "Explain that your purpose is to help them build a Life Archive — a lasting record of their life story "
+        "told in their own voice. "
+        "Then explain you need just three things to get started: their name, their date of birth, and where they were born. "
+        "These three anchors let you build a personal life timeline so you can guide the conversation "
+        "in the right order and ask the most meaningful questions. "
+        "Tell them you will ask for each one separately — it will only take a moment. "
         "Then ask for their preferred name. "
-        "Keep the whole message warm, brief, and conversational — not clinical or form-like.]",
+        "Keep the whole message warm, brief, and conversational. Two to four sentences at most. "
+        "Do not lecture. Do not list. Make it feel like the beginning of a real conversation.]",
         system=opening_system,
     )
     if verbose:

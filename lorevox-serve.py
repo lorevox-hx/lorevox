@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lorevox local UI server — v7.4D
+Lorevox local UI server — v7.5
 =================================
 Required for reliable camera + WASM operation.
 
@@ -59,7 +59,8 @@ class LorevoxHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(ROOT)
-    print(f"Lorevox UI → http://localhost:{PORT}/ui/lori7.4c.html")
+    print(f"Lorevox UI  → http://localhost:{PORT}/ui/lori7.5.html  (new)")
+    print(f"Classic UI  → http://localhost:{PORT}/ui/lori7.4c.html")
     print(f"Serving from: {ROOT}")
     print("Press Ctrl+C to stop.\n")
     with socketserver.TCPServer(("127.0.0.1", PORT), LorevoxHandler) as httpd:
