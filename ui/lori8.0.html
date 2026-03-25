@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Lorevox 8.0 — Life Archive</title>
+
+  <!-- MediaPipe vendored locally (needed by app.js for affect sensing) -->
+  <script src="vendor/mediapipe/face_mesh/face_mesh.js"></script>
+  <script src="vendor/mediapipe/camera_utils/camera_utils.js"></script>
+
+  <!-- Floating UI — used by Golden Thread badge anchoring -->
+  <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.6.4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.6.3"></script>
+
+  <link rel="stylesheet" href="css/tailwind.min.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/safety.css">
+  <link rel="stylesheet" href="css/affect.css">
+  <link rel="stylesheet" href="css/lori80.css">
+
+  <!-- 8.0 layout stubs — tailwind.min.css is a minimal pre-compiled build;
+       utility classes used only in 8.0 need explicit definitions here -->
+  <style>
+    /* ── Core shell layout ── */
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #0f0f1a;
+      color: #e2e8f0;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow: hidden;
+    }
+    #lv80Shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      position: relative;
+      overflow: hidden;
+    }
+    #lv80Header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 24px;
+      background: rgba(15,15,26,0.95);
+      border-bottom: 1px solid rgba(99,102,241,0.2);
+      z-index: 40;
+      flex-shrink: 0;
+    }
+    #lv80Header > div:first-child {
+      display: flex; align-items: center; gap: 16px;
+    }
+    #lv80Header > div:last-child {
+      display: flex; align-items: center; gap: 12px;
+    }
+    #lv80PersonSelect {
+      background: rgba(30,41,59,0.5);
+      border: 1px solid rgba(99,102,241,0.3);
+      color: #cbd5e1;
+      font-size: 14px;
+      border-radius: 6px;
+      padding: 4px 8px;
+      outline: none;
+    }
+    #lv80NewBtn {
+      font-size: 12px; color: #94a3b8;
+      border: 1px solid #334155; border-radius: 6px;
+      padding: 4px 8px; background: transparent; cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    #lv80NewBtn:hover { color: #a5b4fc; border-color: rgba(99,102,241,0.5); }
+
+    #lv80ChatWrap {
+      flex: 1;
+      overflow-y: auto;
+      position: relative;
+      scroll-behavior: smooth;
+    }
+    #chatMessages {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 16px 128px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    #lv80Thinking {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 16px 8px;
+    }
+    #lv80Thinking.hidden { display: none; }
+    #lv80IdleCue {
+      position: fixed;
+      bottom: 112px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      transition: opacity 0.7s;
+      opacity: 0;
+      background: rgba(30, 41, 59, 0.92);
+      color: #cbd5e1;
+      padding: 8px 24px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid rgba(100,116,139,0.4);
+      white-space: nowrap;
+    }
+    #lv80CaptureBar {
+      height: 4px;
+      background: #1e293b;
+      width: 100%;
+      display: flex;
+      flex-shrink: 0;
+    }
+    footer {
+      flex-shrink: 0;
+      background: rgba(15,15,26,0.9);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid rgba(99,102,241,0.1);
+      padding: 16px;
+    }
+    footer > div {
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    #btnMic {
+      flex-shrink: 0;
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      display: flex; align-items: center; justify-content: center;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #chatInput {
+      flex: 1;
+      background: rgba(30,41,59,0.5);
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 12px 16px;
+      color: #e2e8f0;
+      outline: none;
+      resize: none;
+      overflow: hidden;
+      max-height: 128px;
+      font-size: 15px;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+    #chatInput:focus { border-color: rgba(99,102,241,0.5); }
+    #lv80LoriDot {
+      flex-shrink: 0;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #475569;
+      transition: background 0.3s;
+    }
+    #lv80SendBtn {
+      flex-shrink: 0;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-weight: 500;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #lv80SendBtn:hover { background: #4f46e5; }
+
+    /* Thinking dots */
+    .dot-bounce { display: inline-flex; gap: 4px; align-items: center; }
+    .dot-bounce span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #818cf8;
+      animation: lv80Bounce 1.4s ease-in-out infinite;
+    }
+    .dot-bounce span:nth-child(2) { animation-delay: 0.2s; }
+    .dot-bounce span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes lv80Bounce {
+      0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    .thinking-wrap {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(30,41,59,0.8);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 18px 18px 18px 4px;
+      padding: 12px 16px;
+      color: #818cf8;
+      font-size: 14px;
+    }
+
+    /* Dot pulse animations */
+    @keyframes lv80Pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .dot-pulse { animation: lv80Pulse 1.2s ease-in-out infinite; }
+
+    /* Brand text */
+    .brand-serif {
+      font-family: 'Georgia', serif;
+      font-size: 18px;
+      color: #a5b4fc;
+      font-weight: 600;
+      letter-spacing: 0.025em;
+    }
+    .brand-ver {
+      font-family: system-ui, sans-serif;
+      font-size: 11px;
+      color: #475569;
+      font-weight: 400;
+      letter-spacing: normal;
+      margin-left: 4px;
+    }
+
+    /* Settings gear button */
+    .settings-btn {
+      background: transparent; border: none; cursor: pointer;
+      color: #94a3b8; padding: 8px;
+      transition: color 0.2s;
+    }
+    .settings-btn:hover { color: #a5b4fc; }
+    .settings-btn svg { width: 20px; height: 20px; }
+  </style>
+</head>
+<body>
+
+<div id="lv80Shell">
+
+  <!-- ── HEADER ─────────────────────────────────────────────── -->
+  <header id="lv80Header">
+
+    <div>
+      <div class="brand-serif">Lorevox <span class="brand-ver">8.0</span></div>
+      <select id="lv80PersonSelect" onchange="lv80SwitchPerson(this.value)">
+        <option value="">Loading…</option>
+      </select>
+      <button id="lv80NewBtn" onclick="lv80NewPerson()" title="Start a new narrator">+ New</button>
+    </div>
+
+    <!-- Memory care segmented control -->
+    <fieldset class="memory-segmented-control" aria-label="Cognitive Support Level">
+      <label class="seg-label">
+        <input type="radio" name="memoryMode" value="off" checked onchange="lv80SetMemoryMode('off')">
+        <span class="seg-pill">Standard</span>
+      </label>
+      <label class="seg-label">
+        <input type="radio" name="memoryMode" value="recognition" onchange="lv80SetMemoryMode('recognition')">
+        <span class="seg-pill">Recognition</span>
+      </label>
+      <label class="seg-label">
+        <input type="radio" name="memoryMode" value="companionship" onchange="lv80SetMemoryMode('companionship')">
+        <span class="seg-pill">Companionship</span>
+      </label>
+    </fieldset>
+
+    <div>
+      <button id="lv80PeekBtn" popovertarget="memoirScrollPopover" title="Read your story so far">
+        📖 Peek at Memoir
+      </button>
+      <button class="settings-btn" onclick="toggleSettings()" title="Settings">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── CHAT AREA ───────────────────────────────────────────── -->
+  <main id="lv80ChatWrap">
+    <!-- app.js renders all chat bubbles into #chatMessages -->
+    <div id="chatMessages"></div>
+
+    <!-- Thinking indicator — shown while Lori is generating -->
+    <div id="lv80Thinking" class="hidden">
+      <div class="thinking-wrap">
+        <span class="dot-bounce"><span></span><span></span><span></span></span>
+        <span>Lori is thinking…</span>
+      </div>
+    </div>
+
+    <!-- Idle re-engagement cue — floats above input bar -->
+    <div id="lv80IdleCue">Take your time…</div>
+  </main>
+
+  <!-- ── CAPTURE PROGRESS BAR ───────────────────────────────── -->
+  <div id="lv80CaptureBar" class="h-1 bg-slate-800 w-full flex shrink-0"></div>
+
+  <!-- ── FOOTER / INPUT BAR ─────────────────────────────────── -->
+  <footer>
+    <div>
+      <button id="btnMic" title="Click to toggle microphone" onclick="toggleMic()">
+        <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+        </svg>
+      </button>
+
+      <textarea
+        id="chatInput"
+        rows="1"
+        placeholder="Type or speak…"
+        onkeydown="onChatKey(event)"
+        oninput="this.style.height='auto'; this.style.height=(this.scrollHeight)+'px';"
+      ></textarea>
+
+      <!-- Status dot — replaces text badge; pulses while thinking -->
+      <div id="lv80LoriDot" title="Lori Status"></div>
+
+      <button id="lv80SendBtn" onclick="sendUserMessage()">Send</button>
+    </div>
+  </footer>
+
+  <!-- ── APP.JS COMPATIBILITY SHIMS ──────────────────────────────
+       app.js accesses these elements directly without null guards.
+       They live hidden here so app.js never crashes; 8.0 drives its
+       own UI (person select dropdown, capture bar, status dot, etc.)
+  ──────────────────────────────────────────────────────────────-->
+  <div id="lv80AppShims" style="display:none" aria-hidden="true">
+    <span id="chatSessionLabel"></span>
+    <div id="peopleList"></div>
+    <span id="activePerson"></span>
+    <div id="activeSummary">
+      <span id="summaryName"></span>
+      <span id="summaryGen"></span>
+      <span id="summaryProg"></span>
+    </div>
+    <table id="tblKinship"></table>
+    <table id="tblPets"></table>
+    <!-- Chat/reply elements referenced without null guards -->
+    <span id="lastAssistantPanel"></span>
+    <!-- Additional sidebar elements referenced during profile hydration -->
+    <select id="bio_country"><option value="us">US</option></select>
+    <select id="bio_language"></select>
+    <select id="bio_pronouns"><option value=""></option><option value="she/her">she/her</option><option value="he/him">he/him</option><option value="they/them">they/them</option><option value="custom">custom</option></select>
+    <span id="bio_pronouns_custom_wrap"><input id="bio_pronouns_custom" type="text"/></span>
+    <input id="bio_fullname" type="text"/>
+    <input id="bio_preferred" type="text"/>
+    <input id="bio_dob" type="text"/>
+    <input id="bio_pob" type="text"/>
+    <input id="bio_culture" type="text"/>
+    <input id="bio_phonetic" type="text"/>
+  </div>
+
+  <!-- ── MEMOIR SCROLL (slide-out popover) ─────────────────── -->
+  <div id="memoirScrollPopover" popover="auto" class="parchment-scroll">
+    <div class="scroll-header">
+      <h3>Your Story</h3>
+      <button id="memoirEditBtn" class="scroll-action-btn">✏️ Edit Draft</button>
+    </div>
+    <div id="memoirScrollContent" class="scroll-body">
+      <p style="color:#94a3b8; font-style:italic; font-size:15px;">
+        As Lori learns your story, important threads will begin appearing here.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── MEMOIR EDIT MODAL (focus-trapped) ─────────────────── -->
+  <dialog id="memoirEditModal" class="parchment-scroll">
+    <div class="scroll-header">
+      <h3>Edit Memoir</h3>
+      <button id="memoirSaveBtn" class="scroll-action-btn">Save &amp; Close</button>
+    </div>
+    <textarea id="memoirEditTextarea" class="scroll-body edit-mode"></textarea>
+  </dialog>
+
+</div><!-- /lv80Shell -->
+
+<!-- ── SCRIPTS ────────────────────────────────────────────────
+     Load order: state → data → api → cognitive-auto → app.js
+     app.js uses window.onload. lv80 init wraps that onload and
+     runs AFTER it completes — identical pattern to lori7.5.html.
+──────────────────────────────────────────────────────────────-->
+<script src="js/state.js"></script>
+<script src="js/data.js"></script>
+<script src="js/api.js"></script>
+<script src="js/tabs.js"></script>
+<script src="js/safety-ui.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/emotion.js"></script>
+<script src="js/facial-consent.js"></script>
+<script src="js/affect-bridge.js"></script>
+<script src="js/emotion-ui.js"></script>
+<script src="js/timeline-ui.js"></script>
+<script src="js/interview.js"></script>
+<script src="js/app.js"></script>
+<script src="js/cognitive-auto.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   LOREVOX 8.0 SHELL SCRIPT
+   Everything here runs AFTER app.js's window.onload completes.
+
+   Structure:
+     1.  MC mode / segmented control
+     2.  Status dot
+     3.  Person selector
+     4.  Capture bar
+     5.  Idle re-engagement layer  (ported from 7.5)
+     6.  Safety scanner + WS injection  (ported from 7.5)
+     7.  Golden Thread / Memoir Scroll  (new in 8.0)
+     8.  Observers + scroll
+     9.  Init + onload wrap
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. MEMORY CARE SEGMENTED CONTROL ───────────────────────── */
+
+// Maps the segmented control values to the MC_MODES index used by app.js.
+// app.js MC_MODES = ["open", "recognition", "alongside"]
+const _LV80_MC_MAP = { off: 0, recognition: 1, companionship: 2 };
+
+function lv80SetMemoryMode(mode) {
+  // Clear idle — posture has changed
+  lv80ClearIdle();
+  _lv80SafetyClearIdle();
+
+  // Keep app.js MC index in sync (used by idle check-in wording etc.)
+  if (typeof _mcModeIdx !== "undefined") {
+    _mcModeIdx = _LV80_MC_MAP[mode] ?? 0;
+  }
+
+  // Propagate to session state
+  if (typeof state !== "undefined" && state?.session) {
+    const modeNames = ["open", "recognition", "alongside"];
+    state.session.currentMode = modeNames[_LV80_MC_MAP[mode] ?? 0];
+  }
+
+  console.log("[Lori 8.0] Memory mode →", mode);
+}
+
+/* ── 2. STATUS DOT ───────────────────────────────────────────── */
+
+function lv80SetDot(status) {
+  const dot = document.getElementById("lv80LoriDot");
+  if (!dot) return;
+
+  // Use inline styles — tailwind.min.css is a minimal build
+  // that doesn't include dynamic utility classes.
+  dot.style.animation = "";
+  switch (status) {
+    case "thinking":
+      dot.style.background = "#818cf8";  // indigo-400
+      dot.style.animation  = "lv80Pulse 1.2s ease-in-out infinite";
+      dot.title = "Lori is thinking…";
+      break;
+    case "drafting":
+      dot.style.background = "#a5b4fc";  // indigo-300
+      dot.style.animation  = "lv80Pulse 1.2s ease-in-out infinite";
+      dot.title = "Lori is writing…";
+      break;
+    case "speaking":
+      dot.style.background = "#60a5fa";  // blue-400
+      dot.style.animation  = "lv80Pulse 1.2s ease-in-out infinite";
+      dot.title = "Lori is speaking…";
+      break;
+    case "ready":
+      dot.style.background = "#34d399";  // emerald-400
+      dot.title = "Lori is ready";
+      break;
+    default:
+      dot.style.background = "#475569";  // slate-600
+      dot.title = "Lori Status";
+  }
+}
+
+// Thinking indicator bubble visibility
+function lv80ShowThinking(visible) {
+  const el = document.getElementById("lv80Thinking");
+  if (!el) return;
+  el.style.display = visible ? "block" : "none";
+}
+
+/* ── 3. PERSON SELECTOR ──────────────────────────────────────── */
+
+async function lv80LoadPeople() {
+  try {
+    const r = await fetch(API.PEOPLE + "?limit=200");
+    const data = await r.json();
+    const people = data?.items || data?.people || data || [];
+    const sel = document.getElementById("lv80PersonSelect");
+    if (!sel || !Array.isArray(people)) return;
+
+    sel.innerHTML = "";
+    if (people.length === 0) {
+      sel.innerHTML = '<option value="">No narrators yet</option>';
+      return;
+    }
+
+    people.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.person_id || p.id || "";
+      opt.textContent = p.display_name || p.name || p.preferred || p.fullname || "Unknown";
+      sel.appendChild(opt);
+    });
+
+    // Restore previously selected person if available
+    const lastId = state?.person_id;
+    if (lastId && sel.querySelector(`option[value="${lastId}"]`)) {
+      sel.value = lastId;
+    } else if (sel.options.length > 0) {
+      sel.value = sel.options[0].value;
+    }
+
+    console.log("[Lori 8.0] Loaded", people.length, "people.");
+  } catch (e) {
+    console.warn("[lv80] Failed to load people:", e);
+  }
+}
+
+async function lv80SwitchPerson(personId) {
+  if (!personId) return;
+
+  // Clear idle timers and safety mode on narrator switch
+  lv80ClearIdle();
+  _lv80SafetyModeActive = false;
+
+  closeMemoirUi();
+
+  await loadPerson(personId);
+  document.getElementById("chatMessages").innerHTML = "";
+
+  const basics = state.profile?.basics || {};
+  const hasName = !!(basics.preferred || basics.fullname);
+  const hasDob  = !!basics.dob;
+
+  if (hasName && hasDob) {
+    const name = basics.preferred || basics.fullname;
+    const pob  = basics.pob || null;
+
+    state.session = {
+      currentPass: "pass2a",
+      identityPhase: "complete",
+      assistantRole: "interviewer",
+      identityCapture: { name, dob: basics.dob, birthplace: pob },
+      profileSeed: {
+        childhood_home: null, siblings: null, parents_work: null,
+        heritage: null, education: null, military: null,
+        career: null, partner: null, children: null, life_stage: null,
+      },
+    };
+    setAssistantRole("interviewer");
+    lv80RefreshCaptureBar();
+
+    sendSystemPrompt(
+      `[SYSTEM: You are resuming a life-archive session with ${name}, ` +
+      `born ${basics.dob}${pob ? " in " + pob : ""}. ` +
+      "Welcome them back warmly by name in one sentence, then immediately ask your " +
+      "next most meaningful interview question. Do not re-introduce yourself. " +
+      "Do not repeat the onboarding flow. Do not ask for name or DOB again.]"
+    );
+  } else {
+    state.session = {
+      currentPass: "pass1", identityPhase: "incomplete", assistantRole: "onboarding",
+      identityCapture: { name: null, dob: null, birthplace: null },
+      profileSeed: {
+        childhood_home: null, siblings: null, parents_work: null,
+        heritage: null, education: null, military: null,
+        career: null, partner: null, children: null, life_stage: null,
+      },
+    };
+    lv80ResetCaptureBar();
+    startIdentityOnboarding();
+  }
+}
+
+function lv80NewPerson() {
+  lv80ClearIdle();
+  _lv80SafetyModeActive = false;
+  closeMemoirUi();
+
+  // Deselect person in selector
+  const sel = document.getElementById("lv80PersonSelect");
+  if (sel) sel.value = "";
+
+  state.person_id = null;
+  document.getElementById("chatMessages").innerHTML = "";
+  lv80ResetCaptureBar();
+  startIdentityOnboarding();
+}
+
+/* ── 4. CAPTURE BAR ──────────────────────────────────────────── */
+
+function lv80RefreshCaptureBar() {
+  if (typeof refreshCaptureBar === "function") refreshCaptureBar();
+}
+
+function lv80ResetCaptureBar() {
+  if (typeof resetCaptureBar === "function") resetCaptureBar();
+}
+
+/* ── 5. IDLE RE-ENGAGEMENT LAYER ─────────────────────────────── */
+// Ported from lori7.5.html with lv80 prefixes.
+// 30 s visual cue → 75 s one spoken check-in → done.
+
+const LV80_IDLE_SOFT_MS      = 30_000;
+const LV80_IDLE_CHECKIN_OPEN = 75_000;
+const LV80_IDLE_CHECKIN_MEM  = 55_000;
+
+let _lv80IdleSoftTimer    = null;
+let _lv80IdleCheckInTimer = null;
+let _lv80IdleCheckInFired = false;
+let _lv80IdleWasThinking  = false;
+
+function lv80ArmIdle() {
+  lv80ClearIdle();
+  _lv80IdleCheckInFired = false;
+
+  _lv80IdleSoftTimer = setTimeout(() => {
+    document.getElementById("lv80IdleCue")?.classList.add("visible");
+  }, LV80_IDLE_SOFT_MS);
+
+  const modeIdx = (typeof _mcModeIdx !== "undefined") ? _mcModeIdx : 0;
+  const checkInMs = modeIdx === 0 ? LV80_IDLE_CHECKIN_OPEN : LV80_IDLE_CHECKIN_MEM;
+
+  _lv80IdleCheckInTimer = setTimeout(lv80FireCheckIn, checkInMs);
+}
+
+function lv80ClearIdle() {
+  clearTimeout(_lv80IdleSoftTimer);
+  clearTimeout(_lv80IdleCheckInTimer);
+  _lv80IdleSoftTimer = null;
+  _lv80IdleCheckInTimer = null;
+  document.getElementById("lv80IdleCue")?.classList.remove("visible");
+}
+
+function lv80FireCheckIn() {
+  _lv80IdleCheckInFired = true;
+  lv80ClearIdle();
+
+  const modeIdx = (typeof _mcModeIdx !== "undefined") ? _mcModeIdx : 0;
+  const modes   = ["open", "recognition", "alongside"];
+  const mode    = modes[modeIdx] || "open";
+
+  const prompts = {
+    open:        "[SYSTEM: The narrator has been quiet for a while. Offer a gentle, warm invitation to continue — one short sentence only. Do not repeat your last question verbatim.]",
+    recognition: "[SYSTEM: The narrator has been quiet. Offer a simple, orienting prompt in recognition mode — one short gentle sentence. Use their name if you know it.]",
+    alongside:   "[SYSTEM: The narrator has been quiet. In companionship mode, offer quiet presence — one very soft sentence, no pressure to answer.]",
+  };
+
+  sendSystemPrompt(prompts[mode] || prompts.open);
+}
+
+// Question detector — only arm idle after a genuine question from Lori
+const _LV80_QW = /^(what|where|when|who|which|whose|why|how|could|can|would|will|did|do|does|was|were|is|are|have|has|had|tell\s+me|do\s+you|can\s+you|would\s+you|could\s+you)\b/i;
+
+function _lv80IsGenuineQuestion(text) {
+  const t = text.trim();
+  if (!t.endsWith("?")) return false;
+  const lastSentence = t.split(/[.!\n]\s+/).pop() || t;
+  return _LV80_QW.test(lastSentence.trimStart()) || lastSentence.length >= 30;
+}
+
+/* ── 6. SAFETY SCANNER + WS INJECTION ───────────────────────── */
+// Ported from lori7.5.html. Scans user input before it hits the WS.
+// When _lv80SafetyModeActive is true, appends [SAFETY MODE: ACTIVE]
+// to each WS payload so the LLM maintains emergency context across turns.
+
+let _lv80SafetyModeActive = false;
+
+const _LV80_SAFETY_PATTERNS = [
+  /\b(want to (die|end (my|it all|my life)|kill myself))\b/i,
+  /\b(thinking (about|of) (suicide|killing myself|ending (it|my life)))\b/i,
+  /\b(kill(ing)? myself)\b/i,
+  /\bsuicide\b/i,
+  /\bself.?harm\b/i,
+  /\b(don'?t want to (live|be here|go on))\b/i,
+  /\b(no reason to live|life isn'?t worth|not worth living)\b/i,
+  /\b(end (it|it all|my life|my suffering))\b/i,
+  /\b(take (a bunch of|all (the|my)|too many) pills)\b/i,
+  /\b(overdos(e|ing|ed))\b/i,
+  /\b(took too many|swallowed too many|drank (bleach|poison|ammonia|antifreeze))\b/i,
+  /\bpoison(ed|ing)?\b/i,
+  /\bpills? (tonight|right now|already)\b/i,
+  /\b(carbon monoxide|CO detector|co alarm)\b/i,
+  /\b(detector (is )?beeping|alarm (is )?going off)\b.*\b(weak|headache|dizzy|sick|nauseated)\b/i,
+  /\b(smell(ing)? smoke|see(ing)? smoke|there'?s (a )?fire|house (is )?on fire|building (is )?on fire)\b/i,
+  /\b(not (breathing|responding|waking up|conscious))\b/i,
+  /\b(stopped breathing|can'?t wake (them|him|her|up))\b/i,
+  /\b(unresponsive|unconscious|passed out)\b/i,
+  /\b(no pulse|heart (stopped|attack))\b/i,
+];
+
+function _lv80ScanSafety(text) {
+  return _LV80_SAFETY_PATTERNS.some(rx => rx.test(text));
+}
+
+function _lv80OnSafetyDetected() {
+  _lv80SafetyModeActive = true;
+  lv80ClearIdle();
+  _lv80IdleWasThinking = false;
+  console.log("[Lori 8.0] Safety mode ACTIVE — idle suppressed.");
+}
+
+function _lv80SafetyClearIdle() {
+  // Called on mode switch — clears idle without touching safety state
+  lv80ClearIdle();
+}
+
+function _lv80InstallSafetyHook() {
+  const _origSend = window.sendUserMessage;
+  if (typeof _origSend !== "function") {
+    console.warn("[Lori 8.0] sendUserMessage not found — safety hook skipped.");
+    return;
+  }
+
+  window.sendUserMessage = async function lv80SafeSend() {
+    const input = document.getElementById("chatInput");
+    const text  = input ? input.value.trim() : "";
+
+    if (text && _lv80ScanSafety(text)) {
+      _lv80OnSafetyDetected();
+    }
+
+    // Inject [SAFETY MODE: ACTIVE] into WS payload on every turn in safety mode
+    if (_lv80SafetyModeActive && typeof ws !== "undefined" && ws && ws.readyState === 1) {
+      const _origWsSend = ws.send.bind(ws);
+      ws.send = function _lv80SafetyPatched(data) {
+        ws.send = _origWsSend; // one-shot — restore immediately
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === "start_turn" && parsed.message) {
+            parsed.message +=
+              "\n\n[SAFETY MODE: ACTIVE — This conversation involves an acute life-threatening " +
+              "emergency. You are in emergency handoff mode. Do NOT say 'I cannot continue', " +
+              "'I can't continue', 'I cannot provide medical advice', or cite 1-800-273-TALK. " +
+              "Give the resource or 911 directly. Do NOT reset to interview mode.]";
+            console.log("[Lori 8.0] Safety context injected into WS payload.");
+          }
+          _origWsSend(JSON.stringify(parsed));
+        } catch (e) {
+          _origWsSend(data);
+        }
+      };
+    }
+
+    return _origSend.apply(this, arguments);
+  };
+
+  console.log("[Lori 8.0] Safety hook installed on sendUserMessage.");
+}
+
+/* ── 7. GOLDEN THREAD / MEMOIR SCROLL ───────────────────────── */
+// Full implementation from TODO_GOLDEN_THREAD_75 Appendix B.
+
+// Floating UI autoUpdate cleanup handle (one active at a time)
+let _goldenThreadCleanup = null;
+
+async function _extractAndPostFacts(userText, loriText) {
+  if (!state.person_id) return;
+
+  const facts = _extractFacts(userText, loriText);
+  if (!facts || !facts.length) return;
+
+  // Post facts to backend
+  for (const f of facts) {
+    try {
+      await fetch(API.FACTS_ADD, {
+        method: "POST",
+        headers: ctype(),
+        body: JSON.stringify(f),
+      });
+    } catch (err) {
+      console.warn("[facts] post failed", err, f);
+    }
+  }
+
+  console.log(`[facts] extracted ${facts.length} fact(s) from turn.`);
+  if (typeof updateArchiveReadiness === "function") updateArchiveReadiness();
+
+  // Attach Golden Thread badge with a short delay so the bubble is fully rendered
+  setTimeout(() => {
+    if (typeof attachGoldenThreadBadge !== "function") return;
+
+    const chatContainer = document.getElementById("chatMessages");
+    if (!chatContainer) return;
+
+    const factText = facts[0]?.statement || facts[0]?.text || facts[0]?.value || "";
+    if (!factText) return;
+
+    // Prefer the AI bubble whose body text matches loriText exactly
+    const aiBubbles = Array.from(chatContainer.querySelectorAll(".bubble-ai"));
+    let targetBubble = null;
+
+    for (let i = aiBubbles.length - 1; i >= 0; i--) {
+      const bubble = aiBubbles[i];
+      if (bubble.querySelector(".golden-thread-badge")) continue;
+      const bodyText = (bubble.querySelector(".bubble-body")?.textContent || "").trim();
+      if (bodyText && bodyText === String(loriText || "").trim()) {
+        targetBubble = bubble;
+        break;
+      }
+    }
+
+    // Fallback: last unbadged AI bubble
+    if (!targetBubble) {
+      for (let i = aiBubbles.length - 1; i >= 0; i--) {
+        if (!aiBubbles[i].querySelector(".golden-thread-badge")) {
+          targetBubble = aiBubbles[i];
+          break;
+        }
+      }
+    }
+
+    if (!targetBubble) return;
+    attachGoldenThreadBadge(targetBubble, factText);
+  }, 100);
+}
+
+function attachGoldenThreadBadge(bubbleElement, factText) {
+  if (!bubbleElement || !(bubbleElement instanceof Element)) return;
+  if (bubbleElement.querySelector(".golden-thread-badge")) return;
+
+  const badge = document.createElement("button");
+  badge.type = "button";
+  badge.className = "golden-thread-badge";
+  badge.innerHTML = "<span>📝</span> Added to Draft";
+  badge.title = "See how this fits into your story";
+  badge.setAttribute("aria-label", "See how this fact was added to your draft");
+
+  bubbleElement.appendChild(badge);
+
+  badge.addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const popover      = document.getElementById("memoirScrollPopover");
+    const scrollContent = document.getElementById("memoirScrollContent");
+    if (!popover || !scrollContent) return;
+
+    // Deduplicate by data-fact-text attribute
+    const alreadyPresent = Array.from(
+      scrollContent.querySelectorAll("[data-fact-text]")
+    ).some(el => el.getAttribute("data-fact-text") === factText);
+
+    if (!alreadyPresent) {
+      const p    = document.createElement("p");
+      const mark = document.createElement("mark");
+      mark.className = "new-fact";
+      mark.setAttribute("data-fact-text", factText);
+      mark.textContent = factText;
+      p.appendChild(mark);
+      scrollContent.appendChild(p);
+    }
+
+    // Show the native popover
+    if (typeof popover.showPopover === "function") {
+      try {
+        if (!popover.matches(":popover-open")) popover.showPopover();
+      } catch { /* ignore duplicate calls */ }
+    } else {
+      popover.hidden = false;
+    }
+
+    // Floating UI anchoring with autoUpdate for scroll resilience
+    if (window.FloatingUIDOM?.computePosition) {
+      const { computePosition, autoUpdate, flip, shift, offset } = window.FloatingUIDOM;
+
+      if (_goldenThreadCleanup) {
+        _goldenThreadCleanup();
+        _goldenThreadCleanup = null;
+      }
+
+      const updatePosition = () => {
+        computePosition(badge, popover, {
+          placement: "left-start",
+          middleware: [offset(20), flip(), shift({ padding: 10 })],
+        }).then(({ x, y }) => {
+          Object.assign(popover.style, {
+            position: "absolute",
+            left:  `${x}px`,
+            top:   `${y}px`,
+            transform: "none",
+            maxHeight: "80vh",
+          });
+        });
+      };
+
+      _goldenThreadCleanup = autoUpdate(badge, popover, updatePosition);
+    }
+  });
+}
+
+function resetMemoirPopoverToDocked() {
+  const popover = document.getElementById("memoirScrollPopover");
+  if (!popover) return;
+  popover.style.cssText = "";
+}
+
+function openFocusTrappedEdit() {
+  const modal        = document.getElementById("memoirEditModal");
+  const textArea     = document.getElementById("memoirEditTextarea");
+  const popover      = document.getElementById("memoirScrollPopover");
+  const scrollContent = document.getElementById("memoirScrollContent");
+
+  if (popover?.matches(":popover-open")) popover.hidePopover();
+
+  if (_goldenThreadCleanup) {
+    _goldenThreadCleanup();
+    _goldenThreadCleanup = null;
+  }
+
+  if (scrollContent && textArea) {
+    const cleanText = scrollContent.innerHTML
+      .replace(/<mark[^>]*>/g, "")
+      .replace(/<\/mark>/g, "")
+      .replace(/<p[^>]*>/g, "")
+      .replace(/<\/p>/g, "\n\n")
+      .trim();
+    textArea.value = cleanText;
+  }
+
+  if (modal && typeof modal.showModal === "function") modal.showModal();
+}
+
+function saveAndCloseModal() {
+  const modal        = document.getElementById("memoirEditModal");
+  const textArea     = document.getElementById("memoirEditTextarea");
+  const scrollContent = document.getElementById("memoirScrollContent");
+
+  if (!modal || !textArea || !scrollContent) return;
+
+  const paragraphs = textArea.value
+    .split("\n\n")
+    .filter(p => p.trim() !== "");
+
+  scrollContent.innerHTML = paragraphs.map(p => `<p>${p}</p>`).join("");
+  modal.close();
+}
+
+function closeMemoirUi() {
+  const popover = document.getElementById("memoirScrollPopover");
+  const modal   = document.getElementById("memoirEditModal");
+
+  if (popover && typeof popover.hidePopover === "function" && popover.matches(":popover-open")) {
+    popover.hidePopover();
+  }
+
+  if (_goldenThreadCleanup) {
+    _goldenThreadCleanup();
+    _goldenThreadCleanup = null;
+  }
+
+  resetMemoirPopoverToDocked();
+
+  if (modal?.open) modal.close();
+}
+
+/* ── 8. OBSERVERS + SCROLL ───────────────────────────────────── */
+
+function lv80ObserveChat() {
+  const msgs = document.getElementById("chatMessages");
+  if (!msgs) return;
+
+  // Observe for new AI bubbles — extract facts and post Golden Thread badge
+  let _lastProcessedBubble = null;
+  const obs = new MutationObserver((mutList) => {
+    for (const mut of mutList) {
+      for (const node of mut.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        if (!node.classList.contains("bubble-ai")) continue;
+        if (node === _lastProcessedBubble) continue;
+
+        // Wait for the bubble body to be fully populated before extracting
+        setTimeout(() => {
+          if (_lastProcessedBubble === node) return;
+          _lastProcessedBubble = node;
+
+          const loriBody = node.querySelector(".bubble-body");
+          const loriText = loriBody?.textContent?.trim() || "";
+          if (!loriText) return;
+
+          // Find the most recent user bubble preceding this AI bubble
+          const allBubbles = Array.from(msgs.children);
+          const idx = allBubbles.indexOf(node);
+          let userText = "";
+          for (let i = idx - 1; i >= 0; i--) {
+            if (allBubbles[i].classList.contains("bubble-user")) {
+              userText = allBubbles[i].querySelector(".bubble-body")?.textContent?.trim() || "";
+              break;
+            }
+          }
+
+          if (typeof _extractAndPostFacts === "function" && userText) {
+            _extractAndPostFacts(userText, loriText).catch(() => {});
+          }
+        }, 300);
+      }
+    }
+  });
+
+  obs.observe(msgs, { childList: true });
+}
+
+function lv80ObserveScroll() {
+  const wrap = document.getElementById("lv80ChatWrap");
+  const msgs = document.getElementById("chatMessages");
+  if (!wrap || !msgs) return;
+  const obs = new MutationObserver(() => {
+    const isNearBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 120;
+    if (isNearBottom) wrap.scrollTop = wrap.scrollHeight;
+  });
+  obs.observe(msgs, { childList: true, subtree: true });
+}
+
+// Wrap setLoriState (called by app.js) to drive the dot, thinking indicator,
+// and the idle arming logic.
+function lv80WrapSetLoriState() {
+  const _orig = window.setLoriState;
+  if (typeof _orig !== "function") return;
+
+  window.setLoriState = function lv80SetLoriState(active, ...args) {
+    _orig(active, ...args);
+    _lv80MirrorStatus(active);
+  };
+}
+
+function _lv80MirrorStatus(active) {
+  // Update status dot
+  lv80SetDot(active);
+
+  // Show/hide thinking bubble
+  lv80ShowThinking(active === "thinking");
+
+  // Disable/enable send button
+  const sendBtn = document.getElementById("lv80SendBtn");
+  if (sendBtn) sendBtn.disabled = (active === "thinking");
+
+  // Idle arming — "thinking → drafting → ready" pattern
+  // _lv80IdleWasThinking flag persists across intermediate states
+  if (active === "thinking") {
+    _lv80IdleWasThinking = true;
+  } else if (active === "ready" && _lv80IdleWasThinking) {
+    _lv80IdleWasThinking = false;
+    const msgs = document.getElementById("chatMessages");
+    if (msgs) {
+      const aiBubbles = msgs.querySelectorAll(".bubble-ai");
+      const last      = aiBubbles[aiBubbles.length - 1];
+      const bodyText  = last?.querySelector(".bubble-body")?.textContent || "";
+      // Never arm idle during an active safety emergency
+      if (!_lv80SafetyModeActive && _lv80IsGenuineQuestion(bodyText)) {
+        lv80ArmIdle();
+      }
+    }
+  } else if (active !== "drafting" && active !== "speaking") {
+    _lv80IdleWasThinking = false;
+  }
+}
+
+/* ── 9. INIT + ONLOAD WRAP ───────────────────────────────────── */
+// app.js sets window.onload. We capture it, run it first, then run lv80Init.
+
+(function () {
+  const _origLoad = window.onload;
+  window.onload = async function (...args) {
+    if (typeof _origLoad === "function") await _origLoad.apply(this, args);
+    await lv80Init();
+  };
+})();
+
+async function lv80Init() {
+  // 1. Wrap setLoriState before anything tries to use it
+  lv80WrapSetLoriState();
+
+  // 2. Observers
+  lv80ObserveChat();
+  lv80ObserveScroll();
+
+  // 3. Cancel idle on typing
+  const chatInput = document.getElementById("chatInput");
+  if (chatInput) {
+    chatInput.addEventListener("keydown", lv80ClearIdle, { passive: true });
+  }
+
+  // 4. Safety hook
+  _lv80InstallSafetyHook();
+
+  // 5. Memoir UI lifecycle hooks
+  const peekBtn  = document.getElementById("lv80PeekBtn");
+  const editBtn  = document.getElementById("memoirEditBtn");
+  const saveBtn  = document.getElementById("memoirSaveBtn");
+  const popover  = document.getElementById("memoirScrollPopover");
+
+  editBtn?.addEventListener("click", openFocusTrappedEdit);
+  saveBtn?.addEventListener("click", saveAndCloseModal);
+
+  peekBtn?.addEventListener("click", () => {
+    // Global peek uses docked slide-in — reset any Floating UI anchoring
+    if (_goldenThreadCleanup) {
+      _goldenThreadCleanup();
+      _goldenThreadCleanup = null;
+    }
+    resetMemoirPopoverToDocked();
+  });
+
+  // Clean up Floating UI when popover closes natively (click-outside)
+  if (popover) {
+    popover.addEventListener("toggle", (event) => {
+      if (event.newState === "closed") {
+        if (_goldenThreadCleanup) {
+          _goldenThreadCleanup();
+          _goldenThreadCleanup = null;
+        }
+        resetMemoirPopoverToDocked();
+      }
+    });
+  }
+
+  // 6. Load people into selector
+  await lv80LoadPeople();
+
+  // 7. Initial capture bar state
+  lv80RefreshCaptureBar();
+
+  // 8. For returning users — app.js called loadPerson(saved) fire-and-forget
+  //    (not awaited), so state.profile may not be populated yet.
+  //    We poll until it settles, then send the welcome-back prompt.
+  //    For new users (no savedPid), app.js already scheduled
+  //    setTimeout(startIdentityOnboarding, 800) — nothing to do here.
+  const _savedPid = typeof LS_ACTIVE !== "undefined"
+    ? localStorage.getItem(LS_ACTIVE) : null;
+  if (_savedPid) {
+    let _pollCount = 0;
+    const _pollWelcome = setInterval(() => {
+      _pollCount++;
+      const _basics = state.profile?.basics || {};
+      const _name   = _basics.preferred || _basics.fullname;
+      const _dob    = _basics.dob;
+      const _chat   = document.getElementById("chatMessages");
+      // Fire once profile is ready and chat is still empty
+      if (_name && _dob && _chat && _chat.children.length === 0) {
+        clearInterval(_pollWelcome);
+        const _pob = _basics.pob || null;
+        sendSystemPrompt(
+          `[SYSTEM: You are resuming a life-archive session with ${_name}, ` +
+          `born ${_dob}${_pob ? " in " + _pob : ""}. ` +
+          "Welcome them back warmly by first name in one sentence, then immediately " +
+          "ask your next most meaningful interview question. Do not re-introduce " +
+          "yourself. Do not repeat the onboarding flow. Do not ask for name or DOB again.]"
+        );
+      } else if (_pollCount > 20 || (_chat && _chat.children.length > 0)) {
+        // Give up after 4s or if something already started the conversation
+        clearInterval(_pollWelcome);
+      }
+    }, 200);
+  }
+
+  console.log("[Lori 8.0] Shell initialised.");
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,155 @@
+/* ═══════════════════════════════════════════════════════════════
+   lori80.css — Lorevox 8.0 UI Updates
+   Includes: Accessibility fixes, Segmented Control, Mic Animations,
+             and the Memoir Parchment Scroll.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Accessibility & Demographic Alignment ── */
+.bubble.sys, .bubble-sys {
+  font-size: 13px !important; 
+  color: #94a3b8 !important;  
+  font-style: normal !important; 
+}
+#lv80IdleCue {
+  color: #cbd5e1; 
+  background: rgba(30, 41, 59, 0.95); 
+  font-size: 14px;
+}
+::-webkit-scrollbar { width: 6px; transition: width 0.2s; }
+::-webkit-scrollbar:hover { width: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3); 
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.7); }
+
+/* ── 2. Responsive Header (Mobile Fix) ── */
+@media (max-width: 650px) {
+  .memory-segmented-control { 
+    order: 3; 
+    width: 100%; 
+    justify-content: center; 
+    margin-top: 8px;
+  }
+}
+
+/* ── 3. Memory Care Segmented Control ── */
+.memory-segmented-control {
+  display: flex; 
+  background: rgba(15,23,42,0.6);
+  border: 1px solid rgba(99,102,241,0.3); 
+  border-radius: 20px;
+  padding: 3px; 
+  margin: 0; 
+  gap: 2px;
+}
+.seg-label input { display: none; }
+.seg-pill {
+  padding: 4px 12px; 
+  font-size: 12px; 
+  font-weight: 500;
+  color: #94a3b8; 
+  border-radius: 16px; 
+  cursor: pointer;
+  transition: all 0.2s; 
+  display: inline-block;
+}
+.seg-label:hover .seg-pill { 
+  color: #e2e8f0; 
+  background: rgba(99,102,241,0.1); 
+}
+.seg-label input:checked + .seg-pill {
+  background: #6366f1; 
+  color: #ffffff; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* ── 4. STT Mic Gentle Animation (Replaces red pulse) ── */
+.mic-listening-active {
+  background: rgba(99,102,241,0.2) !important; 
+  border-color: #818cf8 !important;
+  color: #c7d2fe !important;
+  animation: gentle-breathe 3s infinite ease-in-out;
+}
+@keyframes gentle-breathe {
+  0%, 100% { box-shadow: 0 0 10px rgba(99,102,241,0.3); }
+  50% { box-shadow: 0 0 20px rgba(99,102,241,0.6); }
+}
+
+/* ── 5. The Parchment Scroll & Golden Thread ── */
+#lv80PeekBtn {
+  background: rgba(30, 35, 60, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  z-index: 50;
+}
+#lv80PeekBtn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.6);
+  color: #ffffff;
+}
+
+.golden-thread-badge {
+  display: flex; align-items: center; gap: 6px;
+  align-self: flex-end; margin-top: 10px; margin-left: auto; 
+  padding: 5px 12px; background: #fcfaf5; 
+  border: 1px solid #cbd5e1; color: #475569;
+  border-radius: 16px; font-size: 11px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.2s ease; font-family: 'Inter', system-ui, sans-serif;
+}
+.golden-thread-badge:hover {
+  border-color: #6366f1; color: #1e293b;
+  transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.parchment-scroll {
+  background: #fcfaf5; color: #1e293b;      
+  font-family: 'Georgia', serif; margin: 0; padding: 0; border: none;
+}
+#memoirScrollPopover {
+  top: 0; bottom: 0; right: 0; left: auto;
+  width: 450px; max-width: 90vw; height: 100dvh;
+  border-left: 1px solid #cbd5e1; box-shadow: -12px 0 40px rgba(0,0,0,0.4);
+  transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+}
+#memoirScrollPopover:popover-open { transform: translateX(0); }
+#memoirScrollPopover::backdrop { background: transparent; }
+
+#memoirEditModal {
+  width: 800px; max-width: 95vw; height: 85vh;
+  border-radius: 12px; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  border: 1px solid #cbd5e1; z-index: 200;
+}
+#memoirEditModal::backdrop {
+  background: rgba(10, 10, 16, 0.85); backdrop-filter: blur(4px); 
+}
+
+.scroll-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 24px; background: #f8f6f0; border-bottom: 1px solid #e2e8f0;
+}
+.scroll-header h3 { margin: 0; font-size: 19px; color: #0f172a; font-weight: 500; letter-spacing: 0.01em; }
+.scroll-body {
+  padding: 32px 24px; font-size: 17px; line-height: 1.65; 
+  height: calc(100% - 70px); overflow-y: auto; box-sizing: border-box;
+}
+textarea.edit-mode {
+  width: 100%; background: transparent; border: none; 
+  resize: none; outline: none; font-family: 'Georgia', serif; color: #1e293b;
+}
+mark.new-fact { background: #fef08a; padding: 2px 4px; border-radius: 4px; color: #1e293b; }
+
+.scroll-action-btn {
+  background: #6366f1; color: white; border: none; padding: 8px 16px;
+  border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+  font-family: 'Inter', sans-serif; transition: background 0.2s;
+}
+.scroll-action-btn:hover { background: #4f46e5; }
