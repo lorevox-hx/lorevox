@@ -697,8 +697,10 @@ async function lv75LoadPeople() {
 async function onPersonSelectChange(personId) {
   if (!personId) return;
 
-  // Narrator switch cancels any pending idle check-in
+  // Narrator switch cancels any pending idle check-in and clears safety mode
+  // (a new narrator starts a fresh session — safety state should not bleed across)
   lv75ClearIdle();
+  _safetyModeActive = false;
 
   // Load profile data into state.profile / state.person_id
   await loadPerson(personId);
@@ -925,7 +927,114 @@ const IDLE_CHECKIN_MEM  = 55_000;   // slightly sooner in recognition mode
 let _idleSoftTimer    = null;
 let _idleCheckInTimer = null;
 let _idleCheckInFired = false;
-let _idlePrevStatus   = null;   // track thinking → ready transitions
+let _idleWasThinking  = false;  // true once "thinking" is seen in the current turn
+
+// ── SAFETY SCANNER ───────────────────────────────────────────────────────────
+// Scans user input BEFORE it reaches the WebSocket. When a crisis phrase is
+// detected, _safetyModeActive is set to true. This:
+//   1. Immediately clears any idle timers (Lori does not nag during emergencies).
+//   2. Blocks _idleWasThinking from re-arming idle after Lori's safety response.
+//   3. Optionally injects a [SAFETY MODE: ACTIVE] continuation marker so the
+//      LLM remembers it is in safety mode across subsequent turns.
+//
+// _safetyModeActive resets to false only on narrator switch or new session — NOT
+// between turns — so sticky safety is maintained across the full danger path.
+// ─────────────────────────────────────────────────────────────────────────────
+let _safetyModeActive = false;
+
+const _SAFETY_PATTERNS = [
+  // Suicidal ideation / self-harm
+  /\b(want to (die|end (my|it all|my life)|kill myself))\b/i,
+  /\b(thinking (about|of) (suicide|killing myself|ending (it|my life)))\b/i,
+  /\b(kill(ing)? myself)\b/i,
+  /\bsuicide\b/i,
+  /\bself.?harm\b/i,
+  /\b(don'?t want to (live|be here|go on))\b/i,
+  /\b(no reason to live|life isn'?t worth|not worth living)\b/i,
+  /\b(end (it|it all|my life|my suffering))\b/i,
+  /\b(take (a bunch of|all (the|my)|too many) pills)\b/i,
+  // Overdose / poisoning
+  /\b(overdos(e|ing|ed))\b/i,
+  /\b(took too many|swallowed too many|drank (bleach|poison|ammonia|antifreeze))\b/i,
+  /\bpoison(ed|ing)?\b/i,
+  /\bpills? (tonight|right now|already)\b/i,
+  // Carbon monoxide
+  /\b(carbon monoxide|CO detector|co alarm)\b/i,
+  /\b(detector (is )?beeping|alarm (is )?going off)\b.*\b(weak|headache|dizzy|sick|nauseated)\b/i,
+  // Fire / smoke
+  /\b(smell(ing)? smoke|see(ing)? smoke|there'?s (a )?fire|house (is )?on fire|building (is )?on fire)\b/i,
+  // Unresponsive / not breathing
+  /\b(not (breathing|responding|waking up|conscious))\b/i,
+  /\b(stopped breathing|can'?t wake (them|him|her|up))\b/i,
+  /\b(unresponsive|unconscious|passed out)\b/i,
+  /\b(no pulse|heart (stopped|attack))\b/i,
+];
+
+function _lv75ScanSafety(text) {
+  return _SAFETY_PATTERNS.some(rx => rx.test(text));
+}
+
+function _lv75OnSafetyDetected() {
+  _safetyModeActive = true;
+  // Kill all idle timers — no re-engagement nudges during an emergency
+  lv75ClearIdle();
+  // Prevent idle from re-arming after Lori's safety response
+  _idleWasThinking = false;
+  console.log("[Lori 7.5] Safety mode ACTIVE — idle suppressed.");
+}
+
+// Wrap sendUserMessage so we can scan before text hits the WebSocket.
+// We wait until after app.js defines the original, then replace it.
+//
+// When _safetyModeActive is true, we also intercept ws.send for that one
+// outgoing message and append a [SAFETY MODE: ACTIVE] context note to the
+// payload. This ensures Lori sees the emergency context on every follow-on
+// turn, even when the user's new message ("Now I feel sleepy") has no
+// explicit crisis keywords. The note is appended to the 'message' field
+// inside the JSON that goes to chat_ws.py — it is never shown in the UI.
+function _lv75InstallSafetyHook() {
+  const _origSend = window.sendUserMessage;
+  if (typeof _origSend !== "function") {
+    console.warn("[Lori 7.5] sendUserMessage not found — safety hook skipped.");
+    return;
+  }
+  window.sendUserMessage = async function lv75SafeSend() {
+    const input = document.getElementById("chatInput");
+    const text  = input ? input.value.trim() : "";
+
+    // Scan current message — activate safety mode if crisis phrase detected
+    if (text && _lv75ScanSafety(text)) {
+      _lv75OnSafetyDetected();
+    }
+
+    // If we are in safety mode (either just triggered or already active),
+    // patch ws.send for this one outgoing message to inject [SAFETY MODE: ACTIVE]
+    // so the LLM maintains emergency context across every turn.
+    if (_safetyModeActive && typeof ws !== "undefined" && ws && ws.readyState === 1) {
+      const _origWsSend = ws.send.bind(ws);
+      ws.send = function _safetyPatched(data) {
+        ws.send = _origWsSend; // restore immediately — one-shot patch
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === "start_turn" && parsed.message) {
+            parsed.message += "\n\n[SAFETY MODE: ACTIVE — This conversation involves "
+              + "an acute life-threatening emergency. You are in emergency handoff mode. "
+              + "Do NOT say 'I cannot continue', 'I can't continue', 'I cannot provide "
+              + "medical advice', or cite 1-800-273-TALK. Give the resource or 911 directly. "
+              + "Do NOT reset to interview mode.]";
+            console.log("[Lori 7.5] Safety context injected into WS payload.");
+          }
+          _origWsSend(JSON.stringify(parsed));
+        } catch (e) {
+          _origWsSend(data); // fallback: send unmodified
+        }
+      };
+    }
+
+    return _origSend.apply(this, arguments);
+  };
+  console.log("[Lori 7.5] Safety hook installed on sendUserMessage.");
+}
 
 function lv75ArmIdle() {
   lv75ClearIdle();
@@ -1029,19 +1138,27 @@ function lv75MirrorLoriStatus() {
   const sendBtn = document.getElementById("lv75SendBtn");
   if (sendBtn) sendBtn.disabled = (active === "thinking");
 
-  // Gentle re-engagement: arm idle timer when Lori finishes a genuine question turn
-  if (_idlePrevStatus === "thinking" && active === "ready") {
+  // Gentle re-engagement: track thinking start, arm when ready
+  // Use _idleWasThinking so "thinking → drafting → ready" works correctly —
+  // the flag persists across intermediate states, unlike a simple prev-state check.
+  if (active === "thinking") {
+    _idleWasThinking = true;
+  } else if (active === "ready" && _idleWasThinking) {
+    _idleWasThinking = false;  // reset for next turn
     const msgs = document.getElementById("chatMessages");
     if (msgs) {
       const aiBubbles = msgs.querySelectorAll(".bubble-ai");
       const last      = aiBubbles[aiBubbles.length - 1];
       const bodyText  = last?.querySelector(".bubble-body")?.textContent || "";
-      if (_lv75IsGenuineQuestion(bodyText)) {
+      // Never arm idle during an active safety emergency
+      if (!_safetyModeActive && _lv75IsGenuineQuestion(bodyText)) {
         lv75ArmIdle();
       }
     }
+  } else if (active !== "drafting" && active !== "speaking") {
+    // Any non-intermediate state other than ready resets the flag
+    _idleWasThinking = false;
   }
-  _idlePrevStatus = active;
 }
 
 // ── Settings drawer ───────────────────────────────────────────
@@ -1110,6 +1227,9 @@ async function lv75Init() {
   if (chatInput) {
     chatInput.addEventListener("keydown", lv75ClearIdle, { passive: true });
   }
+
+  // Install safety hook — wraps app.js sendUserMessage to scan for crisis phrases
+  _lv75InstallSafetyHook();
 
   // Load people into selector
   await lv75LoadPeople();
