@@ -852,9 +852,9 @@ function _memoirEvaluateState() {
     if (subtitle) subtitle.textContent = "Building Blocks Collected";
     intro.hidden             = true;
     content.hidden           = false;
-    editBtn.disabled         = true;
-    editBtn.setAttribute("aria-disabled", "true");
-    editBtn.textContent      = "✏️ Threads — Not Yet a Draft";
+    editBtn.disabled         = false;
+    editBtn.setAttribute("aria-disabled", "false");
+    editBtn.textContent      = "✏️ Refine Details";
   }
 
   if (popover) popover.dataset.memoirState = _memoirState;
