@@ -485,12 +485,14 @@
    Everything here runs AFTER app.js's window.onload completes.
 
    Structure:
+     0.  Turn debug logger
      1.  MC mode / segmented control
      2.  Status dot
      3.  Person selector
      4.  Capture bar
      5.  Idle re-engagement layer  (ported from 7.5)
      6.  Safety scanner + WS injection  (ported from 7.5)
+     6b. Non-memoir concern detection + WS injection  (new in 8.0)
      7.  Golden Thread / Memoir Scroll  (new in 8.0)
      8.  Observers + scroll
      9.  Init + onload wrap
@@ -518,6 +520,18 @@
    call site. The shell's override adds memoir behavior on top.
    ──────────────────────────────────────────────────────────────
 ═══════════════════════════════════════════════════════════════ */
+
+/* ── 0. TURN DEBUG LOGGER ────────────────────────────────────── */
+// Accumulates one structured entry per turn.
+// Access at runtime via: copy(JSON.stringify(window.__lv80TurnDebug, null, 2))
+// Clear between sessions: window.__lv80TurnDebug = []
+
+window.__lv80TurnDebug = window.__lv80TurnDebug || [];
+
+function lv80LogTurnDebug(entry) {
+  window.__lv80TurnDebug.push({ ts: new Date().toISOString(), ...entry });
+  console.log("[lv80-turn-debug]", window.__lv80TurnDebug.at(-1));
+}
 
 /* ── 1. MEMORY CARE SEGMENTED CONTROL ───────────────────────── */
 
@@ -720,9 +734,11 @@ let _lv80IdleCheckInTimer = null;
 let _lv80IdleCheckInFired = false;
 let _lv80IdleWasThinking  = false;
 
-function lv80ArmIdle() {
+function lv80ArmIdle(reason) {
   lv80ClearIdle();
   _lv80IdleCheckInFired = false;
+
+  lv80LogTurnDebug({ event: "idle_arm", idle_arm_reason: reason || "genuine_question" });
 
   _lv80IdleSoftTimer = setTimeout(() => {
     document.getElementById("lv80IdleCue")?.classList.add("visible");
@@ -750,13 +766,26 @@ function lv80FireCheckIn() {
   const modes   = ["open", "recognition", "alongside"];
   const mode    = modes[modeIdx] || "open";
 
-  const prompts = {
+  // Non-memoir mode: use a neutral check-in, not a memoir interview re-engagement
+  const memoirPrompts = {
     open:        "[SYSTEM: The narrator has been quiet for a while. Offer a gentle, warm invitation to continue — one short sentence only. Do not repeat your last question verbatim.]",
     recognition: "[SYSTEM: The narrator has been quiet. Offer a simple, orienting prompt in recognition mode — one short gentle sentence. Use their name if you know it.]",
     alongside:   "[SYSTEM: The narrator has been quiet. In companionship mode, offer quiet presence — one very soft sentence, no pressure to answer.]",
   };
+  const helperPrompt = "[SYSTEM: The narrator has been quiet after raising a personal concern. Offer one very soft, neutral check-in — no pressure, no memoir questions. Just quiet presence.]";
 
-  sendSystemPrompt(prompts[mode] || prompts.open);
+  const promptText = _lv80NonMemoirModeActive
+    ? helperPrompt
+    : (memoirPrompts[mode] || memoirPrompts.open);
+
+  lv80LogTurnDebug({
+    event:              "idle_fire",
+    idle_prompt:        promptText.slice(0, 80) + "…",
+    non_memoir_mode:    _lv80NonMemoirModeActive,
+    memoir_state:       _memoirState,
+  });
+
+  sendSystemPrompt(promptText);
 }
 
 // Question detector — only arm idle after a genuine question from Lori
@@ -826,24 +855,68 @@ function _lv80InstallSafetyHook() {
     const input = document.getElementById("chatInput");
     const text  = input ? input.value.trim() : "";
 
-    if (text && _lv80ScanSafety(text)) {
+    // ── Scan order: safety first, then non-memoir concern ────────
+    const safetyTriggered    = text && _lv80ScanSafety(text);
+    const nonMemoirPattern   = (!safetyTriggered && text) ? _lv80ScanNonMemoir(text) : null;
+
+    if (safetyTriggered) {
       _lv80OnSafetyDetected();
+      _lv80NonMemoirModeActive = false; // safety takes full precedence
+    } else if (nonMemoirPattern) {
+      _lv80OnNonMemoirDetected(nonMemoirPattern);
+    } else if (text && _lv80NonMemoirModeActive && _lv80IsLikelyMemoirAnswer(text)) {
+      // User has returned to memoir content — clear helper mode
+      _lv80NonMemoirModeActive = false;
+      console.log("[Lori 8.0] Non-memoir mode cleared — memoir answer detected.");
     }
 
-    // Inject [SAFETY MODE: ACTIVE] into WS payload on every turn in safety mode
-    if (_lv80SafetyModeActive && typeof ws !== "undefined" && ws && ws.readyState === 1) {
+    // ── Turn debug log ────────────────────────────────────────────
+    lv80LogTurnDebug({
+      event:                  "user_send",
+      user_text:              text,
+      detected_category:      safetyTriggered ? "safety"
+                              : nonMemoirPattern ? "non_memoir_concern"
+                              : _lv80IsLikelyMemoirAnswer(text) ? "interview_answer"
+                              : "other",
+      matched_safety_pattern: safetyTriggered ? "(see safety patterns)" : null,
+      matched_non_memoir:     nonMemoirPattern,
+      safety_mode_active:     _lv80SafetyModeActive,
+      non_memoir_mode_active: _lv80NonMemoirModeActive,
+      memoir_state_before:    _memoirState,
+      assistant_role:         state?.session?.assistantRole ?? null,
+      identity_phase:         state?.session?.identityPhase ?? null,
+      current_pass:           state?.session?.currentPass ?? null,
+      memory_mode_ui:         document.querySelector('input[name="memoryMode"]:checked')?.value ?? null,
+    });
+
+    // ── WS context injection ──────────────────────────────────────
+    if ((safetyTriggered || _lv80SafetyModeActive || _lv80NonMemoirModeActive)
+        && typeof ws !== "undefined" && ws && ws.readyState === 1) {
+
       const _origWsSend = ws.send.bind(ws);
-      ws.send = function _lv80SafetyPatched(data) {
-        ws.send = _origWsSend; // one-shot — restore immediately
+      ws.send = function _lv80ContextPatched(data) {
+        ws.send = _origWsSend; // one-shot
         try {
           const parsed = JSON.parse(data);
           if (parsed.type === "start_turn" && parsed.message) {
-            parsed.message +=
-              "\n\n[SAFETY MODE: ACTIVE — This conversation involves an acute life-threatening " +
-              "emergency. You are in emergency handoff mode. Do NOT say 'I cannot continue', " +
-              "'I can't continue', 'I cannot provide medical advice', or cite 1-800-273-TALK. " +
-              "Give the resource or 911 directly. Do NOT reset to interview mode.]";
-            console.log("[Lori 8.0] Safety context injected into WS payload.");
+            if (_lv80SafetyModeActive) {
+              parsed.message +=
+                "\n\n[SAFETY MODE: ACTIVE — This conversation involves an acute life-threatening " +
+                "emergency. You are in emergency handoff mode. Do NOT say 'I cannot continue', " +
+                "'I can't continue', 'I cannot provide medical advice', or cite 1-800-273-TALK. " +
+                "Give the resource or 911 directly. Do NOT reset to interview mode.]";
+              console.log("[Lori 8.0] Safety context injected into WS payload.");
+            } else if (_lv80NonMemoirModeActive) {
+              parsed.message +=
+                "\n\n[HELPER MODE: The narrator has raised a non-memoir concern. " +
+                "Shift to a calm, warm, grounding tone for this reply only. " +
+                "Do NOT validate implausible claims (e.g., product contamination). " +
+                "Do NOT continue the memoir interview in this reply. " +
+                "Do NOT provide medical advice or diagnosis. " +
+                "Respond in one to two sentences. " +
+                "Gently invite the narrator to continue sharing their story when they feel ready.]";
+              console.log("[Lori 8.0] Helper context injected into WS payload.");
+            }
           }
           _origWsSend(JSON.stringify(parsed));
         } catch (e) {
@@ -856,6 +929,60 @@ function _lv80InstallSafetyHook() {
   };
 
   console.log("[Lori 8.0] Safety hook installed on sendUserMessage.");
+}
+
+/* ── 6b. NON-MEMOIR CONCERN DETECTION ───────────────────────── */
+// Catches turns that are clearly not memoir content:
+//   bodily symptoms, suspicious contamination, paranoid ideation.
+// When active: suppresses memoir extraction, suppresses memoir idle,
+// injects a grounding helper context into the WS payload.
+// Resets automatically on the next turn if that turn looks like memoir content.
+
+let _lv80NonMemoirModeActive = false;
+
+const _LV80_NON_MEMOIR_PATTERNS = [
+  // Bodily / urinary observation during interview
+  /\b(pee|urine|urinat|stool|feces|bowel|bladder)\b.{0,50}\b(color|colour|yellow|brown|red|pink|orange|dark|strange|weird|smell)\b/i,
+  /\btoilet paper\b.{0,80}\b(yellow|brown|color|colour|chemicals?|strange|weird|turn)\b/i,
+  /\b(turn(s|ed)? (yellow|brown|red|dark|strange|weird))\b.{0,40}\b(pee|urine|stool|toilet)\b/i,
+  // Suspicious product/environment contamination (present tense, not historical)
+  /\b(are they|they are|someone is|somebody is)\b.{0,50}\b(putting|spraying|adding|poisoning)\b/i,
+  /\b(putting|they put|someone put)\b.{0,40}\b(something|chemicals?|drugs?|poison)\b.{0,30}\b(in|on)\b.{0,25}\b(my|the)\b.{0,25}\b(food|water|drink|medicine|toilet|paper|house|air)\b/i,
+  /\bchemicals? on my\b/i,
+  // Paranoid ideation — surveillance / targeting
+  /\b(are they|is someone|somebody is|people are)\b.{0,40}\b(watch(ing)?|follow(ing)?|spy(ing)?|listen(ing)?|record(ing)?|tap(ping)?)\b/i,
+  /\bmy (phone|computer|house|food|water|mail) is (tapped|bugged|poisoned|contaminated|watched|monitored)\b/i,
+  // Acute bodily symptom (present — not historical life story)
+  /\b(right now|today|this morning|lately|recently)\b.{0,40}\b(dizzy|nauseous|nauseated|throwing up|vomiting|shaking|trembling|confused|disoriented|blurry)\b/i,
+  /\bi('m| am) (dizzy|nauseous|nauseated|vomiting|throwing up|shaking|trembling|confused|disoriented)\b/i,
+];
+
+// Returns the pattern label that matched, or null.
+function _lv80ScanNonMemoir(text) {
+  for (const rx of _LV80_NON_MEMOIR_PATTERNS) {
+    if (rx.test(text)) return rx.source.slice(0, 60) + "…";
+  }
+  return null;
+}
+
+// Returns true if the turn looks like a memoir/interview answer
+// (used to auto-clear non-memoir mode on the next relevant turn).
+const _LV80_MEMOIR_ANSWER_RX = /\b(born|grew up|moved|lived|married|graduated|worked|went to school|my (mother|father|parents|sister|brother|husband|wife|children|kids)|in (19|20)\d{2}|when i was)\b/i;
+
+function _lv80IsLikelyMemoirAnswer(text) {
+  return _LV80_MEMOIR_ANSWER_RX.test(text);
+}
+
+function _lv80OnNonMemoirDetected(matchedPattern) {
+  _lv80NonMemoirModeActive = true;
+  lv80ClearIdle();
+  _lv80IdleWasThinking = false;
+  lv80LogTurnDebug({
+    event: "non_memoir_detected",
+    matched_pattern: matchedPattern,
+    memoir_state: _memoirState,
+  });
+  console.log("[Lori 8.0] Non-memoir concern detected — memoir idle + extraction suppressed.");
 }
 
 /* ── 7. GOLDEN THREAD / MEMOIR SCROLL ───────────────────────── */
@@ -1015,8 +1142,30 @@ async function _memoirLoadStoredFacts(personId) {
 async function _extractAndPostFacts(userText, loriText) {
   if (!state.person_id) return;
 
+  // Suppress extraction during non-memoir concern turns
+  if (_lv80NonMemoirModeActive) {
+    lv80LogTurnDebug({
+      event:                "facts_extracted",
+      facts_extracted_count: 0,
+      facts_posted_count:   0,
+      suppressed:           true,
+      suppression_reason:   "non_memoir_mode_active",
+      memoir_state:         _memoirState,
+    });
+    return;
+  }
+
   const facts = _extractFacts(userText, loriText);
-  if (!facts || !facts.length) return;
+  if (!facts || !facts.length) {
+    lv80LogTurnDebug({
+      event:                "facts_extracted",
+      facts_extracted_count: 0,
+      facts_posted_count:   0,
+      suppressed:           false,
+      memoir_state:         _memoirState,
+    });
+    return;
+  }
 
   // Post facts to backend
   for (const f of facts) {
@@ -1032,6 +1181,14 @@ async function _extractAndPostFacts(userText, loriText) {
   }
 
   console.log(`[facts] extracted ${facts.length} fact(s) from turn.`);
+  lv80LogTurnDebug({
+    event:                "facts_extracted",
+    facts_extracted_count: facts.length,
+    facts_posted_count:   facts.length,
+    suppressed:           false,
+    memoir_state:         _memoirState,
+    sample_fact:          facts[0]?.statement?.slice(0, 80) ?? null,
+  });
   if (typeof updateArchiveReadiness === "function") updateArchiveReadiness();
   // Refresh memoir panel so newly stored facts are visible without requiring a badge click
   _memoirLoadStoredFacts(state.person_id);
@@ -1316,9 +1473,22 @@ function _lv80MirrorStatus(active) {
       const aiBubbles = msgs.querySelectorAll(".bubble-ai");
       const last      = aiBubbles[aiBubbles.length - 1];
       const bodyText  = last?.querySelector(".bubble-body")?.textContent || "";
-      // Never arm idle during an active safety emergency
-      if (!_lv80SafetyModeActive && _lv80IsGenuineQuestion(bodyText)) {
-        lv80ArmIdle();
+
+      // Log the completed Lori reply
+      lv80LogTurnDebug({
+        event:                  "lori_reply",
+        reply_text:             bodyText.slice(0, 200),
+        memoir_state_after:     _memoirState,
+        safety_mode_active:     _lv80SafetyModeActive,
+        non_memoir_mode_active: _lv80NonMemoirModeActive,
+        idle_will_arm:          !_lv80SafetyModeActive && !_lv80NonMemoirModeActive && _lv80IsGenuineQuestion(bodyText),
+      });
+
+      // Never arm memoir idle during safety or non-memoir concern turns
+      if (!_lv80SafetyModeActive && !_lv80NonMemoirModeActive && _lv80IsGenuineQuestion(bodyText)) {
+        lv80ArmIdle("genuine_question_after_ready");
+      } else if (_lv80NonMemoirModeActive) {
+        lv80LogTurnDebug({ event: "idle_cancel", idle_cancel_reason: "non_memoir_mode_active" });
       }
     }
   } else if (active !== "drafting" && active !== "speaking") {
