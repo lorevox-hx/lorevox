@@ -1159,7 +1159,8 @@ const _LV80_NON_MEMOIR_PATTERNS = [
   // General present-day health complaint (not historical, not acute crisis)
   // Use knees? hip? etc. to catch plurals
   /\b(my|the)\s+(knees?|hips?|back|shoulders?|legs?|arms?|chest|stomach|head|heart)\s+(has been|have been|is|are|been)\s+(hurting|bothering|aching|sore|painful|bad|worse|terrible|awful)\b/i,
-  /\b(pain|ache|hurt|sore|numb|weak|stiff|worse)\b.{0,25}\b(this week|these days|lately|recently|today)\b/i,
+  /\b(pains?|aches?|hurts?|sore|numb|weak|stiff|worse)\b.{0,25}\b(this week|these days|lately|recently|today)\b/i,
+  /\bhaving\s+(chest|back|knee|hip|shoulder|leg|stomach|head|arm)\s+pains?\b/i,
   /\b(getting worse|gotten worse|getting bad|getting worse)\b.{0,25}\b(lately|recently|these days|this week)\b/i,
   // Loneliness / social bid (present tense — not memoir reminiscence)
   /\b(it gets|gets so)\s+(quiet|lonely|empty|long|boring|dull)\b.{0,30}\b(here|at home|in the|evenings?|nights?|days?|house|apartment|room)\b/i,
