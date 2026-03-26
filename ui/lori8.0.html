@@ -363,14 +363,17 @@
   <!-- ── MEMOIR SCROLL (slide-out popover) ─────────────────── -->
   <div id="memoirScrollPopover" popover="auto" class="parchment-scroll">
     <div class="scroll-header">
-      <h3>Your Story</h3>
-      <button id="memoirEditBtn" class="scroll-action-btn">✏️ Edit Draft</button>
+      <h3 id="memoirScrollHeading">Your Story</h3>
+      <button id="memoirEditBtn" class="scroll-action-btn" disabled>✏️ Draft Not Ready Yet</button>
     </div>
-    <div id="memoirScrollContent" class="scroll-body">
+    <!-- Empty state: shown when no facts exist yet -->
+    <div id="memoirIntro" class="scroll-body">
       <p style="color:#94a3b8; font-style:italic; font-size:15px;">
         As Lori learns your story, important threads will begin appearing here.
       </p>
     </div>
+    <!-- Threads / Draft content: shown when facts exist -->
+    <div id="memoirScrollContent" class="scroll-body" style="display:none"></div>
   </div>
 
   <!-- ── MEMOIR EDIT MODAL (focus-trapped) ─────────────────── -->
@@ -533,9 +536,11 @@ async function lv80SwitchPerson(personId) {
   _lv80SafetyModeActive = false;
 
   closeMemoirUi();
+  _memoirClearContent();
 
   await loadPerson(personId);
   document.getElementById("chatMessages").innerHTML = "";
+  _memoirLoadStoredFacts(personId);
 
   const basics = state.profile?.basics || {};
   const hasName = !!(basics.preferred || basics.fullname);
@@ -585,6 +590,7 @@ function lv80NewPerson() {
   lv80ClearIdle();
   _lv80SafetyModeActive = false;
   closeMemoirUi();
+  _memoirClearContent();
 
   // Deselect person in selector
   const sel = document.getElementById("lv80PersonSelect");
@@ -763,6 +769,123 @@ function _lv80InstallSafetyHook() {
 // Floating UI autoUpdate cleanup handle (one active at a time)
 let _goldenThreadCleanup = null;
 
+/* ── 7a. MEMOIR STATE MACHINE ────────────────────────────────── */
+
+let _memoirState = "empty"; // "empty" | "threads" | "draft"
+
+// View-layer quality filter — suppresses obviously broken fragments from
+// the memoir panel display. Does NOT remove them from storage.
+function _memoirQualityFilter(text) {
+  if (!text) return false;
+  const t = text.trim();
+  if (t.length < 20) return false;
+  // Bare ISO dates / timestamps
+  if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}(T.*)?$/.test(t)) return false;
+  // Starts with dangling punctuation (mid-sentence cut-off)
+  if (/^[,;:\-–—]/.test(t)) return false;
+  // Unmatched parentheses → truncated phrase
+  if ((t.match(/\(/g) || []).length !== (t.match(/\)/g) || []).length) return false;
+  // Raw JS sentinel values leaked into extracted text
+  if (/\b(null|undefined|NaN)\b/i.test(t)) return false;
+  // Ends on a dangling preposition / article (abrupt cut-off)
+  if (/\b(a|an|the|of|in|at|on|and|or|but|with|to|for|is|was)\.?$/i.test(t)) return false;
+  return true;
+}
+
+// Draft threshold: at least 2 paragraphs of 120+ characters each.
+// Intentionally a structural heuristic — see product notes.
+function _memoirIsDraft(contentEl) {
+  const substantial = Array.from(contentEl.querySelectorAll("p"))
+    .map(p => p.textContent.trim())
+    .filter(t => t.length >= 120);
+  return substantial.length >= 2;
+}
+
+// Re-evaluate and apply the correct state (empty / threads / draft).
+// Call this whenever the memoir content changes.
+function _memoirEvaluateState() {
+  const intro   = document.getElementById("memoirIntro");
+  const content = document.getElementById("memoirScrollContent");
+  const heading = document.getElementById("memoirScrollHeading");
+  const editBtn = document.getElementById("memoirEditBtn");
+  if (!content || !intro || !heading || !editBtn) return;
+
+  const hasContent = content.children.length > 0;
+
+  if (!hasContent) {
+    _memoirState          = "empty";
+    heading.textContent   = "Your Story";
+    intro.style.display   = "";
+    content.style.display = "none";
+    editBtn.disabled      = true;
+    editBtn.textContent   = "✏️ Draft Not Ready Yet";
+  } else if (_memoirIsDraft(content)) {
+    _memoirState          = "draft";
+    heading.textContent   = "Emerging Memoir Draft";
+    intro.style.display   = "none";
+    content.style.display = "";
+    editBtn.disabled      = false;
+    editBtn.textContent   = "✏️ Edit Draft";
+  } else {
+    _memoirState          = "threads";
+    heading.textContent   = "Story Threads";
+    intro.style.display   = "none";
+    content.style.display = "";
+    editBtn.disabled      = true;
+    editBtn.textContent   = "✏️ Threads — Not Yet a Draft";
+  }
+}
+
+// Clear memoir content and reset to empty state (narrator switch / new person).
+function _memoirClearContent() {
+  const content = document.getElementById("memoirScrollContent");
+  if (content) content.innerHTML = "";
+  _memoirEvaluateState();
+}
+
+// Fetch stored facts for a person, apply quality filter, populate memoir panel.
+// Called after loadPerson() and on narrator switch.
+async function _memoirLoadStoredFacts(personId) {
+  if (!personId) return;
+  const content = document.getElementById("memoirScrollContent");
+  if (!content) return;
+
+  try {
+    const r = await fetch(API.FACTS_LIST(personId));
+    if (!r.ok) { _memoirEvaluateState(); return; }
+    const data  = await r.json();
+    const facts = data?.items || data?.facts || data || [];
+    if (!Array.isArray(facts) || facts.length === 0) {
+      _memoirEvaluateState();
+      return;
+    }
+
+    content.innerHTML = "";
+    const seen = new Set();
+
+    for (const f of facts) {
+      const text = f.statement || f.text || f.value || "";
+      if (!text || seen.has(text)) continue;
+      if (!_memoirQualityFilter(text)) continue;
+      seen.add(text);
+
+      const p    = document.createElement("p");
+      const mark = document.createElement("mark");
+      mark.className = "new-fact";
+      mark.setAttribute("data-fact-text", text);
+      mark.textContent = text;
+      p.appendChild(mark);
+      content.appendChild(p);
+    }
+
+    _memoirEvaluateState();
+    console.log(`[memoir] Loaded ${seen.size} quality-filtered fact(s) from DB.`);
+  } catch (e) {
+    console.warn("[memoir] Failed to load stored facts:", e);
+    _memoirEvaluateState();
+  }
+}
+
 async function _extractAndPostFacts(userText, loriText) {
   if (!state.person_id) return;
 
@@ -784,6 +907,8 @@ async function _extractAndPostFacts(userText, loriText) {
 
   console.log(`[facts] extracted ${facts.length} fact(s) from turn.`);
   if (typeof updateArchiveReadiness === "function") updateArchiveReadiness();
+  // Refresh memoir panel so newly stored facts are visible without requiring a badge click
+  _memoirLoadStoredFacts(state.person_id);
 
   // Attach Golden Thread badge with a short delay so the bubble is fully rendered
   setTimeout(() => {
@@ -831,9 +956,9 @@ function attachGoldenThreadBadge(bubbleElement, factText) {
   const badge = document.createElement("button");
   badge.type = "button";
   badge.className = "golden-thread-badge";
-  badge.innerHTML = "<span>📝</span> Added to Draft";
+  badge.innerHTML = "<span>📝</span> Added to Story";
   badge.title = "See how this fits into your story";
-  badge.setAttribute("aria-label", "See how this fact was added to your draft");
+  badge.setAttribute("aria-label", "See how this fact was added to your story");
 
   bubbleElement.appendChild(badge);
 
@@ -850,7 +975,7 @@ function attachGoldenThreadBadge(bubbleElement, factText) {
       scrollContent.querySelectorAll("[data-fact-text]")
     ).some(el => el.getAttribute("data-fact-text") === factText);
 
-    if (!alreadyPresent) {
+    if (!alreadyPresent && _memoirQualityFilter(factText)) {
       const p    = document.createElement("p");
       const mark = document.createElement("mark");
       mark.className = "new-fact";
@@ -858,6 +983,7 @@ function attachGoldenThreadBadge(bubbleElement, factText) {
       mark.textContent = factText;
       p.appendChild(mark);
       scrollContent.appendChild(p);
+      _memoirEvaluateState();
     }
 
     // Show the native popover
@@ -905,6 +1031,10 @@ function resetMemoirPopoverToDocked() {
 }
 
 function openFocusTrappedEdit() {
+  // Defensive guard: refuse to open if button is disabled or state is empty
+  const editBtn = document.getElementById("memoirEditBtn");
+  if (!editBtn || editBtn.disabled || _memoirState === "empty") return;
+
   const modal        = document.getElementById("memoirEditModal");
   const textArea     = document.getElementById("memoirEditTextarea");
   const popover      = document.getElementById("memoirScrollPopover");
@@ -943,6 +1073,7 @@ function saveAndCloseModal() {
 
   scrollContent.innerHTML = paragraphs.map(p => `<p>${p}</p>`).join("");
   modal.close();
+  _memoirEvaluateState();
 }
 
 function closeMemoirUi() {
@@ -998,9 +1129,10 @@ function lv80ObserveChat() {
             }
           }
 
-          if (typeof _extractAndPostFacts === "function" && userText) {
-            _extractAndPostFacts(userText, loriText).catch(() => {});
-          }
+          // Extraction authority is app.js handleReply() — do NOT call
+          // _extractAndPostFacts here. The shell's definition overrides app.js's,
+          // so calling it from the observer would double-fire every turn.
+          // Badge placement still happens via attachGoldenThreadBadge() below.
         }, 300);
       }
     }
@@ -1125,6 +1257,12 @@ async function lv80Init() {
 
   // 6. Load people into selector
   await lv80LoadPeople();
+
+  // 6a. Initialise memoir state and load stored facts for the selected narrator
+  _memoirEvaluateState();
+  const _initPid = state?.person_id
+    || (typeof LS_ACTIVE !== "undefined" ? localStorage.getItem(LS_ACTIVE) : null);
+  if (_initPid) _memoirLoadStoredFacts(_initPid);
 
   // 7. Initial capture bar state
   lv80RefreshCaptureBar();
