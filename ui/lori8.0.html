@@ -768,9 +768,15 @@ async function lv80LoadPeople() {
 async function lv80SwitchPerson(personId) {
   if (!personId) return;
 
-  // Clear idle timers and safety mode on narrator switch
+  // Clear idle timers and all automatic overrides on narrator switch
   lv80ClearIdle();
-  _lv80SafetyModeActive = false;
+  const _prevPosture = _lv80GetInteractionMode();
+  if (_lv80SafetyModeActive || _lv80NonMemoirModeActive) {
+    _lv80SafetyModeActive    = false;
+    _lv80NonMemoirModeActive = false;
+    lv80LogModeTransition(_prevPosture, _lv80InteractionMode, "narrator_switch");
+  }
+  lv80UpdatePostureBadge();
 
   closeMemoirUi();
   _memoirClearContent();
@@ -825,7 +831,13 @@ async function lv80SwitchPerson(personId) {
 
 function lv80NewPerson() {
   lv80ClearIdle();
-  _lv80SafetyModeActive = false;
+  const _prevPostureNew = _lv80GetInteractionMode();
+  if (_lv80SafetyModeActive || _lv80NonMemoirModeActive) {
+    _lv80SafetyModeActive    = false;
+    _lv80NonMemoirModeActive = false;
+    lv80LogModeTransition(_prevPostureNew, _lv80InteractionMode, "new_narrator");
+  }
+  lv80UpdatePostureBadge();
   closeMemoirUi();
   _memoirClearContent();
 
@@ -1382,8 +1394,12 @@ async function _extractAndPostFacts(userText, loriText) {
       event:                "facts_extracted",
       facts_extracted_count: (rawFacts || []).length,
       facts_posted_count:   0,
+      // suppressed=true only when rawFacts existed but the filter removed them.
+      // suppressed=false when nothing was extracted at all (filter had nothing to act on).
       suppressed:           mode === "memory_exercise" && (rawFacts || []).length > 0,
-      suppression_reason:   mode === "memory_exercise" ? "low_confidence_filtered" : "none_extracted",
+      suppression_reason:   (mode === "memory_exercise" && (rawFacts || []).length > 0)
+                              ? "low_confidence_filtered"
+                              : "none_extracted",
       memoir_state:         _memoirState,
     });
     return;
