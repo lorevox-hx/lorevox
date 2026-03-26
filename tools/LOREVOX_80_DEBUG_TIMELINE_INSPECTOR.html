@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lorevox 8.0 Debug Timeline Inspector</title>
+  <style>
+    :root{
+      --bg:#0f1220; --panel:#171b2e; --muted:#8fa0b8; --text:#e7edf7; --line:#2b3458;
+      --life:#6366f1; --memory:#14b8a6; --companion:#f59e0b; --safety:#f43f5e;
+      --ok:#34d399; --warn:#fbbf24; --bad:#fb7185; --chip:#202845;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{display:grid;grid-template-columns:360px 1fr;min-height:100vh}
+    .sidebar{border-right:1px solid var(--line);padding:18px;background:#0d1020;position:sticky;top:0;height:100vh;overflow:auto}
+    .main{padding:20px 24px}
+    h1{font-size:20px;margin:0 0 14px}
+    h2{font-size:15px;margin:18px 0 8px;color:#c8d4e8}
+    textarea{width:100%;min-height:240px;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:12px;border-radius:10px;font-family:ui-monospace, SFMono-Regular, monospace;font-size:12px}
+    .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    button{background:#1f2746;color:var(--text);border:1px solid #34406b;padding:10px 12px;border-radius:10px;cursor:pointer}
+    button:hover{filter:brightness(1.08)}
+    .small{font-size:12px;color:var(--muted)}
+    input[type="text"]{width:100%;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text)}
+    .checklist{display:grid;gap:8px}
+    label{font-size:13px;color:#d5def0}
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+    .card{background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:12px}
+    .statnum{font-size:22px;font-weight:700}
+    .timeline{position:relative;padding-left:26px}
+    .timeline:before{content:"";position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--line)}
+    .event{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 12px}
+    .event:before{content:"";position:absolute;left:-22px;top:18px;width:10px;height:10px;border-radius:50%;background:#64748b;border:2px solid var(--bg)}
+    .event.life_story:before{background:var(--life)}
+    .event.memory_exercise:before{background:var(--memory)}
+    .event.companion:before,.event.non_memoir:before{background:var(--companion)}
+    .event.safety:before{background:var(--safety)}
+    .topline{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .eventname{font-weight:700}
+    .timestamp{font-size:12px;color:var(--muted);white-space:nowrap}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .chip{font-size:11px;padding:4px 8px;border-radius:999px;background:var(--chip);border:1px solid #364067;color:#dce6f7}
+    .chip.life_story{border-color:#5c64d6;color:#cfd2ff}
+    .chip.memory_exercise{border-color:#1aa894;color:#bdf8ef}
+    .chip.companion,.chip.non_memoir{border-color:#d28c12;color:#ffe3a8}
+    .chip.safety{border-color:#d93e63;color:#ffd0d8}
+    .chip.good{border-color:var(--ok); color:#b7f6df}
+    .chip.warn{border-color:var(--warn); color:#ffe9ad}
+    .chip.bad{border-color:var(--bad); color:#ffd1d9}
+    .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px}
+    .kv{font-size:12px;color:var(--muted)}
+    .kv b{display:block;color:#dce6f7;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+    .reply,.raw{margin-top:10px;padding:10px 12px;background:#101629;border:1px solid #253056;border-radius:10px;font-size:13px;line-height:1.5}
+    .raw{font-family:ui-monospace, monospace; white-space:pre-wrap; display:none}
+    .showraw .raw{display:block}
+    .footer{margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+    .muted{color:var(--muted)}
+    .legend{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{padding:4px 8px;border-radius:999px;font-size:11px;border:1px solid var(--line);background:var(--chip)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="sidebar">
+    <h1>Lorevox 8.0 Timeline Inspector</h1>
+    <div class="small">Paste <code>window.__lv80TurnDebug</code> JSON or drop in an exported JSON file.</div>
+
+    <h2>Debug JSON</h2>
+    <textarea id="jsonInput" placeholder='Paste JSON array here...'></textarea>
+    <div class="btnrow">
+      <button id="renderBtn">Render Timeline</button>
+      <button id="sampleBtn">Load Sample</button>
+      <button id="downloadBtn">Download HTML Snapshot</button>
+    </div>
+
+    <h2>Filters</h2>
+    <input id="searchBox" type="text" placeholder="Search reply text, event, reason..." />
+    <div class="checklist" id="eventFilters"></div>
+
+    <h2>Display</h2>
+    <div class="checklist">
+      <label><input type="checkbox" id="transitionsOnly"> Show only transitions, user turns, Lori replies, and extraction</label>
+      <label><input type="checkbox" id="showRaw"> Show raw event JSON</label>
+    </div>
+
+    <h2>Legend</h2>
+    <div class="legend">
+      <span class="pill">life_story</span>
+      <span class="pill">memory_exercise</span>
+      <span class="pill">companion</span>
+      <span class="pill">safety</span>
+      <span class="pill">override_reason</span>
+      <span class="pill">suppressed</span>
+      <span class="pill">idle</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="stats">
+      <div class="card"><div class="small">Total events</div><div class="statnum" id="statEvents">0</div></div>
+      <div class="card"><div class="small">Mode transitions</div><div class="statnum" id="statTransitions">0</div></div>
+      <div class="card"><div class="small">Suppressed extractions</div><div class="statnum" id="statSuppressed">0</div></div>
+      <div class="card"><div class="small">Idle cancellations</div><div class="statnum" id="statIdleCancelled">0</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="small">Session summary</div>
+      <div id="sessionSummary" style="margin-top:6px;line-height:1.6">Paste data and click Render Timeline.</div>
+    </div>
+
+    <div class="timeline" id="timeline"></div>
+  </main>
+</div>
+
+<script>
+const sampleData = [
+  {ts:"2026-03-26T10:00:00Z",event:"mode_switch",interaction_mode:"life_story",memoir_state:"threads"},
+  {ts:"2026-03-26T10:00:05Z",event:"user_send",user_text:"when i pee the toilet paper turns yellow are they putting chemicals on my toilet paper?",detected_category:"non_memoir_concern",interaction_mode:"life_story",effective_posture:"companion",override_reason:"non_memoir_pattern",memoir_state_before:"threads"},
+  {ts:"2026-03-26T10:00:05Z",event:"mode_transition",from:"life_story",to:"companion",reason:"non_memoir_pattern"},
+  {ts:"2026-03-26T10:00:06Z",event:"facts_extracted",facts_extracted_count:0,facts_posted_count:0,suppressed:true,suppression_reason:"non_memoir",memoir_state:"threads"},
+  {ts:"2026-03-26T10:00:09Z",event:"lori_reply",reply_text:"That sounds concerning. I can’t tell from that alone, but it may help to notice whether the color is coming from your urine rather than the paper itself. If you want, you can tell me more about what you noticed.",effective_posture:"companion",idle_will_arm:false,memoir_state_after:"threads"},
+  {ts:"2026-03-26T10:00:09Z",event:"idle_cancel",idle_cancel_reason:"non_memoir_override"},
+  {ts:"2026-03-26T10:00:20Z",event:"user_send",user_text:"anyway, we moved to Minot when I was eight.",detected_category:"interview_answer",interaction_mode:"life_story",effective_posture:"life_story",override_reason:null,memoir_state_before:"threads"},
+  {ts:"2026-03-26T10:00:20Z",event:"mode_transition",from:"companion",to:"life_story",reason:"memoir_answer_detected"},
+  {ts:"2026-03-26T10:00:21Z",event:"facts_extracted",facts_extracted_count:1,facts_posted_count:1,suppressed:false,memoir_state:"threads",sample_fact:"We moved to Minot when I was eight."},
+  {ts:"2026-03-26T10:00:25Z",event:"lori_reply",reply_text:"What do you remember most about moving to Minot at that age?",effective_posture:"life_story",idle_will_arm:true,memoir_state_after:"threads"}
+];
+
+let data = [];
+const timeline = document.getElementById('timeline');
+const eventFilters = document.getElementById('eventFilters');
+
+function modeClass(item){
+  const p = item.effective_posture || item.interaction_mode || item.to || item.from || '';
+  if (['life_story','memory_exercise','companion','safety','non_memoir'].includes(p)) return p;
+  if (item.override_reason === 'non_memoir_pattern') return 'companion';
+  return '';
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function chip(text, cls=''){
+  return `<span class="chip ${cls}">${escapeHtml(text)}</span>`;
+}
+function summarise(){
+  const transitions = data.filter(d => d.event === 'mode_transition').length;
+  const suppressed = data.filter(d => d.event === 'facts_extracted' && d.suppressed).length;
+  const idleCancelled = data.filter(d => d.event === 'idle_cancel').length;
+  document.getElementById('statEvents').textContent = data.length;
+  document.getElementById('statTransitions').textContent = transitions;
+  document.getElementById('statSuppressed').textContent = suppressed;
+  document.getElementById('statIdleCancelled').textContent = idleCancelled;
+
+  const postures = [...new Set(data.map(d => d.effective_posture || d.interaction_mode).filter(Boolean))];
+  const reasons = [...new Set(data.map(d => d.override_reason || d.reason).filter(Boolean))];
+  document.getElementById('sessionSummary').innerHTML =
+    `<b>Observed postures:</b> ${postures.length ? postures.map(p=>`<code>${escapeHtml(p)}</code>`).join(', ') : 'none'}<br>` +
+    `<b>Override / transition reasons:</b> ${reasons.length ? reasons.map(r=>`<code>${escapeHtml(r)}</code>`).join(', ') : 'none'}<br>` +
+    `<b>User turns:</b> ${data.filter(d=>d.event==='user_send').length} · ` +
+    `<b>Lori replies:</b> ${data.filter(d=>d.event==='lori_reply').length} · ` +
+    `<b>Extraction events:</b> ${data.filter(d=>d.event==='facts_extracted').length}`;
+}
+function buildFilters(){
+  const events = [...new Set(data.map(d=>d.event).filter(Boolean))].sort();
+  eventFilters.innerHTML = events.map(ev =>
+    `<label><input type="checkbox" data-event="${escapeHtml(ev)}" checked> ${escapeHtml(ev)}</label>`
+  ).join('');
+}
+function filteredData(){
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const allowed = new Set([...eventFilters.querySelectorAll('input:checked')].map(i => i.dataset.event));
+  const transitionsOnly = document.getElementById('transitionsOnly').checked;
+  return data.filter(item => {
+    if (!allowed.has(item.event)) return false;
+    if (transitionsOnly && !['mode_transition','user_send','lori_reply','facts_extracted'].includes(item.event)) return false;
+    if (!q) return true;
+    const blob = JSON.stringify(item).toLowerCase();
+    return blob.includes(q);
+  });
+}
+function render(){
+  const showRaw = document.getElementById('showRaw').checked;
+  const rows = filteredData();
+  timeline.classList.toggle('showraw', showRaw);
+  timeline.innerHTML = rows.map((item, idx) => {
+    const cls = modeClass(item);
+    const chips = [];
+    if (item.interaction_mode) chips.push(chip(`selected: ${item.interaction_mode}`, item.interaction_mode));
+    if (item.effective_posture) chips.push(chip(`effective: ${item.effective_posture}`, cls));
+    if (item.override_reason) chips.push(chip(`override: ${item.override_reason}`, 'warn'));
+    if (item.reason) chips.push(chip(`reason: ${item.reason}`, 'warn'));
+    if (item.suppressed === true) chips.push(chip('suppressed', 'bad'));
+    if (item.suppression_reason) chips.push(chip(item.suppression_reason, item.suppressed ? 'bad' : 'warn'));
+    if (item.idle_will_arm === true) chips.push(chip('idle arms', 'warn'));
+    if (item.idle_will_arm === false) chips.push(chip('idle blocked', 'good'));
+    if (item.detected_category) chips.push(chip(item.detected_category));
+    if (item.memoir_state_before) chips.push(chip(`memoir before: ${item.memoir_state_before}`));
+    if (item.memoir_state_after) chips.push(chip(`memoir after: ${item.memoir_state_after}`));
+    if (item.facts_extracted_count !== undefined) chips.push(chip(`facts: ${item.facts_extracted_count}`));
+    if (item.facts_posted_count !== undefined) chips.push(chip(`posted: ${item.facts_posted_count}`));
+    if (item.safety_mode_active === true) chips.push(chip('safety active', 'bad'));
+    if (item.non_memoir_mode_active === true) chips.push(chip('non-memoir override', 'warn'));
+
+    const reply = item.reply_text || item.user_text || item.sample_fact || item.idle_prompt || '';
+    let title = item.event;
+    if (item.event === 'mode_transition') title = `${item.from || '?'} → ${item.to || '?'}`;
+    return `
+      <div class="event ${cls}">
+        <div class="topline">
+          <div class="eventname">${escapeHtml(title)}</div>
+          <div class="timestamp">${escapeHtml(item.ts || '')}</div>
+        </div>
+        <div class="chips">${chips.join('')}</div>
+        <div class="meta">
+          ${item.assistant_role ? `<div class="kv"><b>assistant role</b>${escapeHtml(item.assistant_role)}</div>` : ''}
+          ${item.current_pass ? `<div class="kv"><b>current pass</b>${escapeHtml(item.current_pass)}</div>` : ''}
+          ${item.identity_phase ? `<div class="kv"><b>identity phase</b>${escapeHtml(item.identity_phase)}</div>` : ''}
+          ${item.idle_cancel_reason ? `<div class="kv"><b>idle cancel</b>${escapeHtml(item.idle_cancel_reason)}</div>` : ''}
+        </div>
+        ${reply ? `<div class="reply">${escapeHtml(reply)}</div>` : ''}
+        <div class="footer">
+          <span class="muted">#${idx + 1}</span>
+        </div>
+        <div class="raw">${escapeHtml(JSON.stringify(item, null, 2))}</div>
+      </div>
+    `;
+  }).join('');
+}
+function parseAndRender(raw){
+  try{
+    data = JSON.parse(raw);
+    if(!Array.isArray(data)) throw new Error('JSON must be an array of log events');
+    summarise();
+    buildFilters();
+    render();
+  }catch(err){
+    alert('Could not parse JSON: ' + err.message);
+  }
+}
+document.getElementById('renderBtn').addEventListener('click', () => parseAndRender(document.getElementById('jsonInput').value));
+document.getElementById('sampleBtn').addEventListener('click', () => {
+  document.getElementById('jsonInput').value = JSON.stringify(sampleData, null, 2);
+  parseAndRender(document.getElementById('jsonInput').value);
+});
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lorevox_80_timeline_inspector_snapshot.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById('searchBox').addEventListener('input', render);
+document.getElementById('transitionsOnly').addEventListener('change', render);
+document.getElementById('showRaw').addEventListener('change', render);
+eventFilters.addEventListener('change', render);
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('jsonInput').value = reader.result;
+    parseAndRender(reader.result);
+  };
+  reader.readAsText(file);
+});
+document.getElementById('jsonInput').value = JSON.stringify(sampleData, null, 2);
+parseAndRender(document.getElementById('jsonInput').value);
+</script>
+</body>
+</html>
