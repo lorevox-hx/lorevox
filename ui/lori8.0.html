@@ -1189,7 +1189,7 @@ function _lv80ScanNonMemoir(text) {
 
 // Returns true if the turn looks like a memoir/interview answer
 // (used to auto-clear non-memoir mode on the next relevant turn).
-const _LV80_MEMOIR_ANSWER_RX = /\b(born|grew up|moved|lived|married|graduated|worked|went to school|my (mother|father|parents|sister|brother|husband|wife|children|kids)|in (19|20)\d{2}|when i was)\b/i;
+const _LV80_MEMOIR_ANSWER_RX = /\b(born|grew up|moved|lived|married|graduated|worked|went to school|my (mother|father|parents|sister|brother|husband|wife|children|kids)|had (a |an )?(sister|brother|mother|father|husband|wife|son|daughter|child|friend|dog|cat|home|house|job|farm)|in (19|20)\d{2}|when i was|used to|back then|grew up|back in|as a child|as a kid)\b/i;
 
 function _lv80IsLikelyMemoirAnswer(text) {
   return _LV80_MEMOIR_ANSWER_RX.test(text);
