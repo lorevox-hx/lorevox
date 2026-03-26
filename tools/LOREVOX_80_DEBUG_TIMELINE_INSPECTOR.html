@@ -105,6 +105,8 @@
       <div class="card"><div class="small">Override transitions</div><div class="statnum" id="statOverrides">0</div></div>
       <div class="card"><div class="small">Manual mode switches</div><div class="statnum" id="statManual">0</div></div>
       <div class="card"><div class="small">Narrator resets</div><div class="statnum" id="statNarrator">0</div></div>
+      <div class="card" title="override transitions ÷ total mode transitions — how often the system corrected posture automatically"><div class="small">System intervention rate</div><div class="statnum" id="statInterventionRate">—</div></div>
+      <div class="card" title="manual switches ÷ (manual + override) — how much the user drove posture vs the system"><div class="small">User control ratio</div><div class="statnum" id="statUserControlRatio">—</div></div>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -159,6 +161,13 @@ function summarise(){
     d.event === 'mode_transition' &&
     (d.reason === 'narrator_switch' || d.reason === 'new_narrator')
   ).length;
+  const interventionRate = transitions > 0
+    ? Math.round((overrides / transitions) * 100) + '%'
+    : '—';
+  const userControlRatio = (manual + overrides) > 0
+    ? Math.round((manual / (manual + overrides)) * 100) + '%'
+    : '—';
+
   document.getElementById('statEvents').textContent = data.length;
   document.getElementById('statTransitions').textContent = transitions;
   document.getElementById('statSuppressed').textContent = suppressed;
@@ -166,6 +175,8 @@ function summarise(){
   document.getElementById('statOverrides').textContent = overrides;
   document.getElementById('statManual').textContent = manual;
   document.getElementById('statNarrator').textContent = narrator;
+  document.getElementById('statInterventionRate').textContent = interventionRate;
+  document.getElementById('statUserControlRatio').textContent = userControlRatio;
 
   const postures = [...new Set(data.map(d => d.effective_posture || d.interaction_mode).filter(Boolean))];
   const reasons = [...new Set(data.map(d => d.override_reason || d.reason).filter(Boolean))];
@@ -174,7 +185,9 @@ function summarise(){
     `<b>Override / transition reasons:</b> ${reasons.length ? reasons.map(r=>`<code>${escapeHtml(r)}</code>`).join(', ') : 'none'}<br>` +
     `<b>User turns:</b> ${data.filter(d=>d.event==='user_send').length} · ` +
     `<b>Lori replies:</b> ${data.filter(d=>d.event==='lori_reply').length} · ` +
-    `<b>Extraction events:</b> ${data.filter(d=>d.event==='facts_extracted').length}`;
+    `<b>Extraction events:</b> ${data.filter(d=>d.event==='facts_extracted').length}<br>` +
+    `<b>System intervention rate:</b> ${interventionRate} · ` +
+    `<b>User control ratio:</b> ${userControlRatio}`;
 }
 function buildFilters(){
   const events = [...new Set(data.map(d=>d.event).filter(Boolean))].sort();
