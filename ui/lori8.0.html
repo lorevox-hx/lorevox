@@ -1146,11 +1146,28 @@ const _LV80_NON_MEMOIR_PATTERNS = [
   /\b(putting|they put|someone put)\b.{0,40}\b(something|chemicals?|drugs?|poison)\b.{0,30}\b(in|on)\b.{0,25}\b(my|the)\b.{0,25}\b(food|water|drink|medicine|toilet|paper|house|air)\b/i,
   /\bchemicals? on my\b/i,
   // Paranoid ideation — surveillance / targeting
-  /\b(are they|is someone|somebody is|people are)\b.{0,40}\b(watch(ing)?|follow(ing)?|spy(ing)?|listen(ing)?|record(ing)?|tap(ping)?)\b/i,
+  // Covers both "is someone X-ing" and "someone is X-ing" word order; adds they/government subjects
+  /\b(are they|is someone|someone is|somebody is|people are|they are|he is|she is)\b.{0,40}\b(watch(ing)?|follow(ing)?|spy(ing)?|listen(ing)?|record(ing)?|tap(ping)?)\b/i,
+  /\b(the government|they|someone|somebody)\b.{0,30}\b(is watching|are watching|watching me|watching us)\b/i,
+  /\b(someone|they|people)\s+(has been|have been|keeps?|been)\s+(coming in(to)?|breaking in|going through|getting in|moving things?|watching|following)\b/i,
+  /\bcan (hear|see) (them|someone|people)\b/i,
   /\bmy (phone|computer|house|food|water|mail) is (tapped|bugged|poisoned|contaminated|watched|monitored)\b/i,
+  /\b(don't trust|can't trust|don't feel safe)\b.{0,40}\b(neighbors?|neighbours?|landlord|building|street|area)\b/i,
   // Acute bodily symptom (present — not historical life story)
   /\b(right now|today|this morning|lately|recently)\b.{0,40}\b(dizzy|nauseous|nauseated|throwing up|vomiting|shaking|trembling|confused|disoriented|blurry)\b/i,
   /\bi('m| am) (dizzy|nauseous|nauseated|vomiting|throwing up|shaking|trembling|confused|disoriented)\b/i,
+  // General present-day health complaint (not historical, not acute crisis)
+  // Use knees? hip? etc. to catch plurals
+  /\b(my|the)\s+(knees?|hips?|back|shoulders?|legs?|arms?|chest|stomach|head|heart)\s+(has been|have been|is|are|been)\s+(hurting|bothering|aching|sore|painful|bad|worse|terrible|awful)\b/i,
+  /\b(pain|ache|hurt|sore|numb|weak|stiff|worse)\b.{0,25}\b(this week|these days|lately|recently|today)\b/i,
+  /\b(getting worse|gotten worse|getting bad|getting worse)\b.{0,25}\b(lately|recently|these days|this week)\b/i,
+  // Loneliness / social bid (present tense — not memoir reminiscence)
+  /\b(it gets|gets so)\s+(quiet|lonely|empty|long|boring|dull)\b.{0,30}\b(here|at home|in the|evenings?|nights?|days?|house|apartment|room)\b/i,
+  /\b(just like|just want|would like|nice to have)\s+(someone|company|a friend|somebody)\s+(to talk|to chat|to sit|around)\b/i,
+  /\b(miss|been missing)\s+(having someone|the company|a friend|people|visitors?)\b/i,
+  /\bso (lonely|alone|isolated|quiet|empty)\b.{0,30}\b(here|at home|since|without)\b/i,
+  // Practical present-day concern addressed to helper/Lori
+  /\b(did you|can you|have you|could you)\s+(call|contact|talk to|reach|remind)\s+(the|a|my)\s+(doctor|nurse|hospital|pharmacy|pharmacist|lawyer)\b/i,
 ];
 
 // Past-tense / historical-context guard — if the text reads as a memory or story
