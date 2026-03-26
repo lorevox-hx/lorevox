@@ -1697,15 +1697,16 @@ function _lv80MirrorStatus(active) {
       const bodyText  = last?.querySelector(".bubble-body")?.textContent || "";
 
       const effectivePosture = _lv80GetInteractionMode();
+      const overrideReason   = _lv80GetOverrideReason(); // "safety_pattern" | "non_memoir_pattern" | null
       const isQuestion       = _lv80IsGenuineQuestion(bodyText);
 
-      // Arming rules by posture:
-      //   life_story / memory_exercise / companion — arm if Lori asked a question
-      //     (each uses its own idle prompt style in lv80FireCheckIn)
-      //   non_memoir — NEVER arm: temporary auto-routed turn,
-      //     check-in after a paranoid/bodily concern feels wrong
-      //   safety — NEVER arm: emergency context must not idle-fire
-      const shouldArm = (effectivePosture !== "safety" && effectivePosture !== "non_memoir") && isQuestion;
+      // Arming rules:
+      //   safety override     — never arm
+      //   non_memoir override — never arm (temporary; check-in after bodily/paranoid concern is wrong)
+      //   deliberate companion / memory_exercise / life_story — arm if Lori asked a genuine question
+      const shouldArm = (effectivePosture !== "safety")
+                     && (overrideReason !== "non_memoir_pattern")
+                     && isQuestion;
 
       // Log the completed Lori reply
       lv80LogTurnDebug({
@@ -1713,6 +1714,7 @@ function _lv80MirrorStatus(active) {
         reply_text:         bodyText.slice(0, 200),
         memoir_state_after: _memoirState,
         effective_posture:  effectivePosture,
+        override_reason:    overrideReason,
         idle_will_arm:      shouldArm,
       });
 
@@ -1720,8 +1722,8 @@ function _lv80MirrorStatus(active) {
         lv80ArmIdle(`${effectivePosture}_genuine_question`);
       } else if (effectivePosture === "safety") {
         lv80LogTurnDebug({ event: "idle_cancel", idle_cancel_reason: "safety_mode_active" });
-      } else if (effectivePosture === "non_memoir") {
-        lv80LogTurnDebug({ event: "idle_cancel", idle_cancel_reason: "non_memoir_posture" });
+      } else if (overrideReason === "non_memoir_pattern") {
+        lv80LogTurnDebug({ event: "idle_cancel", idle_cancel_reason: "non_memoir_override" });
       } else if (!isQuestion) {
         lv80LogTurnDebug({ event: "idle_cancel", idle_cancel_reason: "no_genuine_question" });
       } else {
