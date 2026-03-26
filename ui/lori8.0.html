@@ -1665,10 +1665,13 @@ function _lv80MirrorStatus(active) {
       const effectivePosture = _lv80GetInteractionMode();
       const isQuestion       = _lv80IsGenuineQuestion(bodyText);
 
-      // Companion mode: only arm if Lori asked a genuine question
-      // (soft social check-in, not memoir follow-up — handled in FireCheckIn)
-      // Safety: never arm. Non-memoir: soft neutral check-in only.
-      const shouldArm = (effectivePosture !== "safety") && isQuestion;
+      // Arming rules by posture:
+      //   life_story / memory_exercise / companion — arm if Lori asked a question
+      //     (each uses its own idle prompt style in lv80FireCheckIn)
+      //   non_memoir — NEVER arm: temporary auto-routed turn,
+      //     check-in after a paranoid/bodily concern feels wrong
+      //   safety — NEVER arm: emergency context must not idle-fire
+      const shouldArm = (effectivePosture !== "safety" && effectivePosture !== "non_memoir") && isQuestion;
 
       // Log the completed Lori reply
       lv80LogTurnDebug({
