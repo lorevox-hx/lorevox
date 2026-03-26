@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lorevox.local/schemas/lorevox_35_persona_mode_scoring.schema.json",
+  "title": "Lorevox 35 Persona Mode Scoring",
+  "description": "Schema for structured scoring of Lori 8.0 persona test runs, including per-turn and per-session metrics.",
+  "type": "object",
+  "required": [
+    "run_id",
+    "run_date",
+    "persona",
+    "turns",
+    "session_metrics",
+    "session_pass"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "tester": {
+      "type": "string"
+    },
+    "persona": {
+      "type": "object",
+      "required": [
+        "persona_id",
+        "persona_name",
+        "persona_type"
+      ],
+      "properties": {
+        "persona_id": {
+          "type": "string"
+        },
+        "persona_name": {
+          "type": "string"
+        },
+        "persona_type": {
+          "type": "string",
+          "enum": [
+            "single_narrator",
+            "assisted_narrator",
+            "couple",
+            "socially_isolated_narrator",
+            "other"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "turns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "scenario_part",
+          "turn_index",
+          "selected_mode",
+          "expected_mode",
+          "effective_posture",
+          "facts_extracted_count",
+          "facts_posted_count",
+          "suppressed",
+          "turn_pass"
+        ],
+        "properties": {
+          "scenario_part": {
+            "type": "string",
+            "enum": [
+              "part_1_clean_memoir_turn",
+              "part_2_ambiguous_uncertain_memory",
+              "part_3_companion_off_domain_turn",
+              "part_4_recovery_back_to_memoir",
+              "safety_interrupt",
+              "custom"
+            ]
+          },
+          "turn_index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "selected_mode": {
+            "type": "string",
+            "enum": [
+              "life_story",
+              "memory_exercise",
+              "companion"
+            ]
+          },
+          "expected_mode": {
+            "type": "string",
+            "enum": [
+              "life_story",
+              "memory_exercise",
+              "companion",
+              "safety"
+            ]
+          },
+          "detected_category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interaction_mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effective_posture": {
+            "type": "string",
+            "enum": [
+              "life_story",
+              "memory_exercise",
+              "companion",
+              "safety"
+            ]
+          },
+          "override_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "facts_extracted_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "facts_posted_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "suppressed": {
+            "type": "boolean"
+          },
+          "suppression_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idle_will_arm": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "idle_cancel_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "memoir_state_before": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              null,
+              "empty",
+              "threads",
+              "draft"
+            ]
+          },
+          "memoir_state_after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              null,
+              "empty",
+              "threads",
+              "draft"
+            ]
+          },
+          "primary_narrator_maintained": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "correct_person_addressed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "speaker_attribution_clean": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "spouse_input_handled_cleanly": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "memoir_contamination": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "companion_mode_appropriate": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "meaningful_without_extraction": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "safety_override_correct": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "turn_pass": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "session_metrics": {
+      "type": "object",
+      "required": [
+        "override_transitions",
+        "manual_mode_switches",
+        "narrator_resets",
+        "system_intervention_rate",
+        "user_control_ratio"
+      ],
+      "properties": {
+        "override_transitions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "manual_mode_switches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "narrator_resets": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "system_intervention_rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "user_control_ratio": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "override_transitions_denominator": {
+          "type": "object",
+          "required": [
+            "numerator",
+            "denominator"
+          ],
+          "properties": {
+            "numerator": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "denominator": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "user_control_ratio_denominator": {
+          "type": "object",
+          "required": [
+            "numerator",
+            "denominator"
+          ],
+          "properties": {
+            "numerator": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "denominator": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "session_summary_notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "session_pass": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
