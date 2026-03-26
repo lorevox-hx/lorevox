@@ -1181,12 +1181,18 @@ const _LV80_PAST_TENSE_GUARD_RX = /\b(was|were|had been|thought|remembered|used 
 
 // Returns the pattern label that matched, or null.
 function _lv80ScanNonMemoir(text) {
-  // If the text is clearly historical / past-tense, it is probably a memoir story.
-  // Skip detection to avoid false positives on valid biographical content.
-  if (_LV80_PAST_TENSE_GUARD_RX.test(text)) return null;
-
   for (const rx of _LV80_NON_MEMOIR_PATTERNS) {
-    if (rx.test(text)) return rx.source.slice(0, 60) + "…";
+    if (!rx.test(text)) continue;
+
+    // Past-tense guard: apply only to the sentence containing the match,
+    // not the full input. This prevents "Been missing the company. Used to
+    // have friends stop by" from being suppressed — the concern is in the
+    // first sentence; the historical phrase is in a separate clause.
+    const sentences = text.split(/(?<=[.!?])\s+|(?<=\s)—\s+/);
+    const matchSentence = sentences.find(s => rx.test(s)) || text;
+    if (_LV80_PAST_TENSE_GUARD_RX.test(matchSentence)) continue;
+
+    return rx.source.slice(0, 60) + "…";
   }
   return null;
 }
