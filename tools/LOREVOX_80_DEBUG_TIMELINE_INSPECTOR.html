@@ -27,7 +27,11 @@
     label{font-size:13px;color:#d5def0}
     .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
     .card{background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:12px}
+    .card.rate-good{border-left:3px solid var(--ok)}
+    .card.rate-warn{border-left:3px solid var(--warn)}
+    .card.rate-bad{border-left:3px solid var(--bad)}
     .statnum{font-size:22px;font-weight:700}
+    .statdenom{font-size:11px;color:var(--muted);margin-top:2px}
     .timeline{position:relative;padding-left:26px}
     .timeline:before{content:"";position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--line)}
     .event{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 12px}
@@ -105,8 +109,8 @@
       <div class="card"><div class="small">Override transitions</div><div class="statnum" id="statOverrides">0</div></div>
       <div class="card"><div class="small">Manual mode switches</div><div class="statnum" id="statManual">0</div></div>
       <div class="card"><div class="small">Narrator resets</div><div class="statnum" id="statNarrator">0</div></div>
-      <div class="card" title="override transitions ÷ total mode transitions — how often the system corrected posture automatically"><div class="small">System intervention rate</div><div class="statnum" id="statInterventionRate">—</div></div>
-      <div class="card" title="manual switches ÷ (manual + override) — how much the user drove posture vs the system"><div class="small">User control ratio</div><div class="statnum" id="statUserControlRatio">—</div></div>
+      <div class="card" id="cardInterventionRate" title="override transitions ÷ total mode transitions — how often the system corrected posture automatically"><div class="small">System intervention rate</div><div class="statnum" id="statInterventionRate">—</div><div class="statdenom" id="denomInterventionRate"></div></div>
+      <div class="card" id="cardUserControlRatio" title="manual switches ÷ (manual + override) — how much the user drove posture vs the system"><div class="small">User control ratio</div><div class="statnum" id="statUserControlRatio">—</div><div class="statdenom" id="denomUserControlRatio"></div></div>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -161,12 +165,28 @@ function summarise(){
     d.event === 'mode_transition' &&
     (d.reason === 'narrator_switch' || d.reason === 'new_narrator')
   ).length;
-  const interventionRate = transitions > 0
-    ? Math.round((overrides / transitions) * 100) + '%'
-    : '—';
-  const userControlRatio = (manual + overrides) > 0
-    ? Math.round((manual / (manual + overrides)) * 100) + '%'
-    : '—';
+  // Intervention rate: overrides / transitions
+  const interventionPct = transitions > 0 ? overrides / transitions : null;
+  const interventionRate = interventionPct !== null
+    ? Math.round(interventionPct * 100) + '%' : '—';
+  const interventionClass = interventionPct === null ? ''
+    : interventionPct <= 0.25 ? 'rate-good'
+    : interventionPct <= 0.60 ? 'rate-warn'
+    : 'rate-bad';
+  const interventionDenom = transitions > 0
+    ? `${overrides} / ${transitions} transitions` : '';
+
+  // User control ratio: manual / (manual + overrides)
+  const controlDenom = manual + overrides;
+  const userControlPct = controlDenom > 0 ? manual / controlDenom : null;
+  const userControlRatio = userControlPct !== null
+    ? Math.round(userControlPct * 100) + '%' : '—';
+  const userControlClass = userControlPct === null ? ''
+    : userControlPct >= 0.60 ? 'rate-good'
+    : userControlPct >= 0.25 ? ''
+    : 'rate-warn';
+  const userControlDenomLabel = controlDenom > 0
+    ? `${manual} / ${controlDenom} posture changes` : '';
 
   document.getElementById('statEvents').textContent = data.length;
   document.getElementById('statTransitions').textContent = transitions;
@@ -177,6 +197,13 @@ function summarise(){
   document.getElementById('statNarrator').textContent = narrator;
   document.getElementById('statInterventionRate').textContent = interventionRate;
   document.getElementById('statUserControlRatio').textContent = userControlRatio;
+  document.getElementById('denomInterventionRate').textContent = interventionDenom;
+  document.getElementById('denomUserControlRatio').textContent = userControlDenomLabel;
+
+  const iCard = document.getElementById('cardInterventionRate');
+  iCard.className = 'card' + (interventionClass ? ' ' + interventionClass : '');
+  const uCard = document.getElementById('cardUserControlRatio');
+  uCard.className = 'card' + (userControlClass ? ' ' + userControlClass : '');
 
   const postures = [...new Set(data.map(d => d.effective_posture || d.interaction_mode).filter(Boolean))];
   const reasons = [...new Set(data.map(d => d.override_reason || d.reason).filter(Boolean))];
