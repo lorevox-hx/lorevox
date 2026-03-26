@@ -299,19 +299,22 @@
       <button id="lv80NewBtn" onclick="lv80NewPerson()" title="Start a new narrator">+ New</button>
     </div>
 
-    <!-- Memory care segmented control -->
-    <fieldset class="memory-segmented-control" aria-label="Cognitive Support Level">
+    <!-- Lori posture segmented control
+         life_story     = biography interview, full extraction, memoir active
+         memory_exercise= gentle recall prompts, limited extraction, no pressure
+         companion      = social presence, no extraction, no interview agenda -->
+    <fieldset class="memory-segmented-control" aria-label="Lori's Role">
       <label class="seg-label">
-        <input type="radio" name="memoryMode" value="off" checked onchange="lv80SetMemoryMode('off')">
-        <span class="seg-pill">Standard</span>
+        <input type="radio" name="memoryMode" value="life_story" checked onchange="lv80SetMemoryMode('life_story')">
+        <span class="seg-pill">Life Story</span>
       </label>
       <label class="seg-label">
-        <input type="radio" name="memoryMode" value="recognition" onchange="lv80SetMemoryMode('recognition')">
-        <span class="seg-pill">Recognition</span>
+        <input type="radio" name="memoryMode" value="memory_exercise" onchange="lv80SetMemoryMode('memory_exercise')">
+        <span class="seg-pill">Memory Exercise</span>
       </label>
       <label class="seg-label">
-        <input type="radio" name="memoryMode" value="companionship" onchange="lv80SetMemoryMode('companionship')">
-        <span class="seg-pill">Companionship</span>
+        <input type="radio" name="memoryMode" value="companion" onchange="lv80SetMemoryMode('companion')">
+        <span class="seg-pill">Companion</span>
       </label>
     </fieldset>
 
@@ -486,7 +489,7 @@
 
    Structure:
      0.  Turn debug logger
-     1.  MC mode / segmented control
+     1.  Lori posture / interaction mode (Life Story | Memory Exercise | Companion)
      2.  Status dot
      3.  Person selector
      4.  Capture bar
@@ -533,18 +536,38 @@ function lv80LogTurnDebug(entry) {
   console.log("[lv80-turn-debug]", window.__lv80TurnDebug.at(-1));
 }
 
-/* ── 1. MEMORY CARE SEGMENTED CONTROL ───────────────────────── */
-
-// Maps the segmented control values to the MC_MODES index used by app.js.
+/* ── 1. LORI POSTURE / INTERACTION MODE ──────────────────────── */
+// Three deliberate postures; Safety overrides all automatically.
+//
+//   life_story      — biography interview, full extraction, memoir active
+//   memory_exercise — gentle recall prompts, limited extraction, no pressure
+//   companion       — social presence, no extraction, no interview agenda
+//
 // app.js MC_MODES = ["open", "recognition", "alongside"]
-const _LV80_MC_MAP = { off: 0, recognition: 1, companionship: 2 };
+// Map preserves back-compat with the app.js MC index while the shell
+// owns the richer interactionMode concept.
+
+const _LV80_MC_MAP = { life_story: 0, memory_exercise: 1, companion: 2 };
+
+// Source of truth for the current deliberate posture.
+// _lv80NonMemoirModeActive is a separate, temporary, auto-detected override.
+let _lv80InteractionMode = "life_story";
+
+function _lv80GetInteractionMode() {
+  // Safety always overrides — if active, treat as "safety" for routing logic
+  if (_lv80SafetyModeActive) return "safety";
+  if (_lv80NonMemoirModeActive) return "non_memoir";
+  return _lv80InteractionMode;
+}
 
 function lv80SetMemoryMode(mode) {
+  _lv80InteractionMode = mode;
+
   // Clear idle — posture has changed
   lv80ClearIdle();
   _lv80SafetyClearIdle();
 
-  // Keep app.js MC index in sync (used by idle check-in wording etc.)
+  // Keep app.js MC index in sync
   if (typeof _mcModeIdx !== "undefined") {
     _mcModeIdx = _LV80_MC_MAP[mode] ?? 0;
   }
@@ -552,10 +575,17 @@ function lv80SetMemoryMode(mode) {
   // Propagate to session state
   if (typeof state !== "undefined" && state?.session) {
     const modeNames = ["open", "recognition", "alongside"];
-    state.session.currentMode = modeNames[_LV80_MC_MAP[mode] ?? 0];
+    state.session.currentMode   = modeNames[_LV80_MC_MAP[mode] ?? 0];
+    state.session.interactionMode = mode;
   }
 
-  console.log("[Lori 8.0] Memory mode →", mode);
+  lv80LogTurnDebug({
+    event:            "mode_switch",
+    interaction_mode: mode,
+    memoir_state:     typeof _memoirState !== "undefined" ? _memoirState : null,
+  });
+
+  console.log("[Lori 8.0] Interaction mode →", mode);
 }
 
 /* ── 2. STATUS DOT ───────────────────────────────────────────── */
@@ -766,17 +796,38 @@ function lv80FireCheckIn() {
   const modes   = ["open", "recognition", "alongside"];
   const mode    = modes[modeIdx] || "open";
 
-  // Non-memoir mode: use a neutral check-in, not a memoir interview re-engagement
-  const memoirPrompts = {
-    open:        "[SYSTEM: The narrator has been quiet for a while. Offer a gentle, warm invitation to continue — one short sentence only. Do not repeat your last question verbatim.]",
-    recognition: "[SYSTEM: The narrator has been quiet. Offer a simple, orienting prompt in recognition mode — one short gentle sentence. Use their name if you know it.]",
-    alongside:   "[SYSTEM: The narrator has been quiet. In companionship mode, offer quiet presence — one very soft sentence, no pressure to answer.]",
-  };
-  const helperPrompt = "[SYSTEM: The narrator has been quiet after raising a personal concern. Offer one very soft, neutral check-in — no pressure, no memoir questions. Just quiet presence.]";
+  const posture = _lv80GetInteractionMode();
 
-  const promptText = _lv80NonMemoirModeActive
-    ? helperPrompt
-    : (memoirPrompts[mode] || memoirPrompts.open);
+  // Idle prompt varies by deliberate posture and any active override
+  const promptsByPosture = {
+    life_story: {
+      open:        "[SYSTEM: The narrator has been quiet for a while. Offer a gentle, warm invitation to continue their life story — one short sentence only. Do not repeat your last question verbatim.]",
+      recognition: "[SYSTEM: The narrator has been quiet. Offer a simple, orienting prompt in recognition mode — one short gentle sentence. Use their name if you know it.]",
+      alongside:   "[SYSTEM: The narrator has been quiet. In companionship mode, offer quiet presence — one very soft sentence, no pressure to answer.]",
+    },
+    memory_exercise: {
+      open:        "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer one gentle, open-ended recall prompt — something sensory or familiar. No pressure, no correction. One sentence only.]",
+      recognition: "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer one very simple orienting question. Use their name if you know it. One sentence only.]",
+      alongside:   "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer soft encouragement — something like 'Take your time, whenever you're ready.' One sentence only.]",
+    },
+    companion: {
+      open:        "[SYSTEM: The narrator has been quiet. In Companion mode, offer one very soft presence check-in — no memoir questions, no interview agenda. Something like 'I'm here if you'd like to keep talking.' One sentence only.]",
+      recognition: "[SYSTEM: The narrator has been quiet. In Companion mode, offer one simple, warm sentence. Use their name if you know it. No agenda.]",
+      alongside:   "[SYSTEM: The narrator has been quiet. In Companion mode, offer only quiet presence — one very gentle sentence, no expectation of response.]",
+    },
+    non_memoir:  "[SYSTEM: The narrator has been quiet after raising a personal concern. Offer one very soft, neutral check-in — no pressure, no memoir questions.]",
+    safety:      null, // never arm idle in safety mode
+  };
+
+  let promptText;
+  if (posture === "non_memoir") {
+    promptText = promptsByPosture.non_memoir;
+  } else if (posture === "safety") {
+    return; // should not fire — safety suppresses idle arming
+  } else {
+    const modeMap = promptsByPosture[posture] || promptsByPosture.life_story;
+    promptText = modeMap[mode] || modeMap.open;
+  }
 
   lv80LogTurnDebug({
     event:              "idle_fire",
@@ -882,6 +933,8 @@ function _lv80InstallSafetyHook() {
       matched_non_memoir:     nonMemoirPattern,
       safety_mode_active:     _lv80SafetyModeActive,
       non_memoir_mode_active: _lv80NonMemoirModeActive,
+      interaction_mode:       _lv80InteractionMode,
+      effective_posture:      _lv80GetInteractionMode(),
       memoir_state_before:    _memoirState,
       assistant_role:         state?.session?.assistantRole ?? null,
       identity_phase:         state?.session?.identityPhase ?? null,
@@ -890,33 +943,54 @@ function _lv80InstallSafetyHook() {
     });
 
     // ── WS context injection ──────────────────────────────────────
-    if ((safetyTriggered || _lv80SafetyModeActive || _lv80NonMemoirModeActive)
-        && typeof ws !== "undefined" && ws && ws.readyState === 1) {
+    // Build the context block for this turn based on effective posture.
+    // Safety and non-memoir are automatic overrides; memory_exercise and
+    // companion are deliberate posture selections.
+    // life_story needs no injection — app.js system prompt already covers it.
+    const _wsPosture = _lv80GetInteractionMode();
 
+    const _WS_CONTEXT = {
+      safety:
+        "\n\n[SAFETY MODE: ACTIVE — This conversation involves an acute life-threatening " +
+        "emergency. You are in emergency handoff mode. Do NOT say 'I cannot continue', " +
+        "'I can't continue', 'I cannot provide medical advice', or cite 1-800-273-TALK. " +
+        "Give the resource or 911 directly. Do NOT reset to interview mode.]",
+
+      non_memoir:
+        "\n\n[HELPER MODE: The narrator has raised a non-memoir concern. " +
+        "Shift to a calm, warm, grounding tone for this reply only. " +
+        "Do NOT validate implausible claims (e.g., product contamination). " +
+        "Do NOT continue the memoir interview in this reply. " +
+        "Do NOT provide medical advice or diagnosis. " +
+        "Respond in one to two sentences. " +
+        "Gently invite the narrator to continue their story when they feel ready.]",
+
+      memory_exercise:
+        "\n\n[INTERACTION MODE: Memory Exercise — Use gentle, encouraging recall prompts. " +
+        "Accept partial, vague, or uncertain answers warmly and without correction. " +
+        "Do not pressure for factual precision. Do not continue a structured biography interview. " +
+        "Focus on evoking memories softly — a place, a person, a feeling. " +
+        "Never make the narrator feel tested or wrong.]",
+
+      companion:
+        "\n\n[INTERACTION MODE: Companion Chat — This is a social conversation, not an interview. " +
+        "Do NOT conduct memoir interviewing or push for biographical facts. " +
+        "Do NOT extract or archive anything said here. " +
+        "Respond naturally and warmly as a conversational companion. " +
+        "Follow wherever the narrator leads. No agenda, no extraction pressure.]",
+    };
+
+    const _wsContextBlock = _WS_CONTEXT[_wsPosture] ?? null;
+
+    if (_wsContextBlock && typeof ws !== "undefined" && ws && ws.readyState === 1) {
       const _origWsSend = ws.send.bind(ws);
       ws.send = function _lv80ContextPatched(data) {
         ws.send = _origWsSend; // one-shot
         try {
           const parsed = JSON.parse(data);
           if (parsed.type === "start_turn" && parsed.message) {
-            if (_lv80SafetyModeActive) {
-              parsed.message +=
-                "\n\n[SAFETY MODE: ACTIVE — This conversation involves an acute life-threatening " +
-                "emergency. You are in emergency handoff mode. Do NOT say 'I cannot continue', " +
-                "'I can't continue', 'I cannot provide medical advice', or cite 1-800-273-TALK. " +
-                "Give the resource or 911 directly. Do NOT reset to interview mode.]";
-              console.log("[Lori 8.0] Safety context injected into WS payload.");
-            } else if (_lv80NonMemoirModeActive) {
-              parsed.message +=
-                "\n\n[HELPER MODE: The narrator has raised a non-memoir concern. " +
-                "Shift to a calm, warm, grounding tone for this reply only. " +
-                "Do NOT validate implausible claims (e.g., product contamination). " +
-                "Do NOT continue the memoir interview in this reply. " +
-                "Do NOT provide medical advice or diagnosis. " +
-                "Respond in one to two sentences. " +
-                "Gently invite the narrator to continue sharing their story when they feel ready.]";
-              console.log("[Lori 8.0] Helper context injected into WS payload.");
-            }
+            parsed.message += _wsContextBlock;
+            console.log(`[Lori 8.0] WS context injected — posture: ${_wsPosture}`);
           }
           _origWsSend(JSON.stringify(parsed));
         } catch (e) {
@@ -1139,29 +1213,54 @@ async function _memoirLoadStoredFacts(personId) {
   }
 }
 
+// High-confidence extraction filter for Memory Exercise mode.
+// Rejects facts that contain hedging language or vague phrasing.
+const _LV80_HEDGE_RX = /\b(maybe|might|probably|possibly|i think|i guess|not sure|i don'?t (know|remember)|something like|kind of|sort of|vague|fuzzy|hazy)\b/i;
+
+function _lv80FilterHighConfidenceFacts(facts) {
+  return (facts || []).filter(f => {
+    const text = (f.statement || f.text || f.value || "").trim();
+    if (!text) return false;
+    if (_LV80_HEDGE_RX.test(text)) return false;
+    if (text.length < 30) return false;
+    return true;
+  });
+}
+
 async function _extractAndPostFacts(userText, loriText) {
   if (!state.person_id) return;
 
-  // Suppress extraction during non-memoir concern turns
-  if (_lv80NonMemoirModeActive) {
+  const mode = _lv80GetInteractionMode();
+
+  // ── Extraction gate by posture ────────────────────────────────
+  // companion + non_memoir + safety → no extraction, no badge
+  // memory_exercise               → extract but only high-confidence facts
+  // life_story                    → full extraction (default)
+
+  if (mode === "companion" || mode === "non_memoir" || mode === "safety") {
     lv80LogTurnDebug({
       event:                "facts_extracted",
       facts_extracted_count: 0,
       facts_posted_count:   0,
       suppressed:           true,
-      suppression_reason:   "non_memoir_mode_active",
+      suppression_reason:   mode,
       memoir_state:         _memoirState,
     });
     return;
   }
 
-  const facts = _extractFacts(userText, loriText);
-  if (!facts || !facts.length) {
+  const rawFacts = _extractFacts(userText, loriText);
+  const facts    = (mode === "memory_exercise")
+    ? _lv80FilterHighConfidenceFacts(rawFacts)
+    : (rawFacts || []);
+
+  if (!facts.length) {
     lv80LogTurnDebug({
       event:                "facts_extracted",
-      facts_extracted_count: 0,
+      facts_extracted_count: (rawFacts || []).length,
       facts_posted_count:   0,
-      suppressed:           false,
+      suppressed:           mode === "memory_exercise" && (rawFacts || []).length > 0,
+      suppression_reason:   mode === "memory_exercise" ? "low_confidence_filtered" : "none_extracted",
       memoir_state:         _memoirState,
     });
     return;
@@ -1474,21 +1573,29 @@ function _lv80MirrorStatus(active) {
       const last      = aiBubbles[aiBubbles.length - 1];
       const bodyText  = last?.querySelector(".bubble-body")?.textContent || "";
 
+      const effectivePosture = _lv80GetInteractionMode();
+      const isQuestion       = _lv80IsGenuineQuestion(bodyText);
+
+      // Companion mode: only arm if Lori asked a genuine question
+      // (soft social check-in, not memoir follow-up — handled in FireCheckIn)
+      // Safety: never arm. Non-memoir: soft neutral check-in only.
+      const shouldArm = (effectivePosture !== "safety") && isQuestion;
+
       // Log the completed Lori reply
       lv80LogTurnDebug({
-        event:                  "lori_reply",
-        reply_text:             bodyText.slice(0, 200),
-        memoir_state_after:     _memoirState,
-        safety_mode_active:     _lv80SafetyModeActive,
-        non_memoir_mode_active: _lv80NonMemoirModeActive,
-        idle_will_arm:          !_lv80SafetyModeActive && !_lv80NonMemoirModeActive && _lv80IsGenuineQuestion(bodyText),
+        event:              "lori_reply",
+        reply_text:         bodyText.slice(0, 200),
+        memoir_state_after: _memoirState,
+        effective_posture:  effectivePosture,
+        idle_will_arm:      shouldArm,
       });
 
-      // Never arm memoir idle during safety or non-memoir concern turns
-      if (!_lv80SafetyModeActive && !_lv80NonMemoirModeActive && _lv80IsGenuineQuestion(bodyText)) {
-        lv80ArmIdle("genuine_question_after_ready");
-      } else if (_lv80NonMemoirModeActive) {
-        lv80LogTurnDebug({ event: "idle_cancel", idle_cancel_reason: "non_memoir_mode_active" });
+      if (shouldArm) {
+        lv80ArmIdle(`${effectivePosture}_genuine_question`);
+      } else if (!isQuestion) {
+        lv80LogTurnDebug({ event: "idle_cancel", idle_cancel_reason: "no_genuine_question" });
+      } else {
+        lv80LogTurnDebug({ event: "idle_cancel", idle_cancel_reason: `posture_${effectivePosture}` });
       }
     }
   } else if (active !== "drafting" && active !== "speaking") {
