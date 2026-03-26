@@ -25,7 +25,7 @@
     input[type="text"]{width:100%;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text)}
     .checklist{display:grid;gap:8px}
     label{font-size:13px;color:#d5def0}
-    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
     .card{background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:12px}
     .statnum{font-size:22px;font-weight:700}
     .timeline{position:relative;padding-left:26px}
@@ -102,6 +102,9 @@
       <div class="card"><div class="small">Mode transitions</div><div class="statnum" id="statTransitions">0</div></div>
       <div class="card"><div class="small">Suppressed extractions</div><div class="statnum" id="statSuppressed">0</div></div>
       <div class="card"><div class="small">Idle cancellations</div><div class="statnum" id="statIdleCancelled">0</div></div>
+      <div class="card"><div class="small">Override transitions</div><div class="statnum" id="statOverrides">0</div></div>
+      <div class="card"><div class="small">Manual mode switches</div><div class="statnum" id="statManual">0</div></div>
+      <div class="card"><div class="small">Narrator resets</div><div class="statnum" id="statNarrator">0</div></div>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -147,10 +150,22 @@ function summarise(){
   const transitions = data.filter(d => d.event === 'mode_transition').length;
   const suppressed = data.filter(d => d.event === 'facts_extracted' && d.suppressed).length;
   const idleCancelled = data.filter(d => d.event === 'idle_cancel').length;
+  const overrides = data.filter(d =>
+    d.event === 'mode_transition' &&
+    (d.reason === 'non_memoir_pattern' || d.reason === 'safety_pattern')
+  ).length;
+  const manual = data.filter(d => d.event === 'mode_switch').length;
+  const narrator = data.filter(d =>
+    d.event === 'mode_transition' &&
+    (d.reason === 'narrator_switch' || d.reason === 'new_narrator')
+  ).length;
   document.getElementById('statEvents').textContent = data.length;
   document.getElementById('statTransitions').textContent = transitions;
   document.getElementById('statSuppressed').textContent = suppressed;
   document.getElementById('statIdleCancelled').textContent = idleCancelled;
+  document.getElementById('statOverrides').textContent = overrides;
+  document.getElementById('statManual').textContent = manual;
+  document.getElementById('statNarrator').textContent = narrator;
 
   const postures = [...new Set(data.map(d => d.effective_posture || d.interaction_mode).filter(Boolean))];
   const reasons = [...new Set(data.map(d => d.override_reason || d.reason).filter(Boolean))];

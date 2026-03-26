@@ -346,6 +346,22 @@ lorevox/
 | Pipeline test (no GPU) | `python test_model.py --no-model` from `server/code/` |
 | Model behaviour test | `python test_model.py --verbose` |
 | Single test group | `python test_model.py --group 6 --verbose` |
+| **8.0 Runtime Inspector** | `http://localhost:8080/tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html` — paste or drag-drop a `window.__lv80TurnDebug` JSON export to render a visual session timeline |
+
+### Lori 8.0 — Runtime Inspector
+
+The Debug Timeline Inspector is a standalone dev tool for visualising `window.__lv80TurnDebug` session exports from Lori 8.0.
+
+**Access:** `http://localhost:8080/tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html`
+
+**Usage:**
+1. Open a Lori 8.0 session and run some turns
+2. In the browser console: `copy(JSON.stringify(window.__lv80TurnDebug))`
+3. Paste into the inspector and click **Render Timeline**
+
+The inspector renders a vertical event timeline colour-coded by posture (indigo = life_story, teal = memory_exercise, amber = companion, rose = safety) with chips showing override reason, extraction suppression, and idle decisions. Summary stat cards cover: total events, mode transitions, suppressed extractions, idle cancellations, override transitions, manual mode switches, and narrator resets.
+
+You can also drag-and-drop a saved `.json` export directly onto the page. Known-good session exports for regression comparison go in `tools/samples/`.
 
 ---
 
@@ -393,6 +409,12 @@ lorevox/
 - **[Operating Doctrine](docs/Lorevox_Operating_Doctrine.md)** — 10 product principles with implementation rules
 - **[Design Philosophy](docs/DESIGN_PHILOSOPHY.md)** — UX rationale and decision history
 - **[Providence](docs/Providence.md)** — project milestone tracker
+
+### Lori 8.0 Validation Artifacts
+
+- **[LOREVOX_80_RUNTIME_ASSESSMENT_UPDATED.md](docs/LOREVOX_80_RUNTIME_ASSESSMENT_UPDATED.md)** — updated post-harness assessment; system classified as "behaviorally validated" after 10/10 matrix pass
+- **[LOREVOX_80_10_TURN_RUNTIME_MATRIX.md](docs/LOREVOX_80_10_TURN_RUNTIME_MATRIX.md)** — full 10-turn test harness spec with expected fields, scorecard, and run order
+- **[LOREVOX_80_RUNTIME_TEST_SHEET.md](docs/LOREVOX_80_RUNTIME_TEST_SHEET.md)** — runtime test sheet used during the harness run
 
 ---
 
