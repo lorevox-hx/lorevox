@@ -237,6 +237,51 @@
     }
     .settings-btn:hover { color: #a5b4fc; }
     .settings-btn svg { width: 20px; height: 20px; }
+
+    /* Threads helper line — sits between subtitle area and fact chips */
+    .scroll-threads-hint {
+      margin: 0 0 12px;
+      padding: 0 4px;
+      font-size: 13px;
+      color: #94a3b8;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    /* Editor hint — sits above textarea when opening from threads */
+    .scroll-editor-hint {
+      margin: 0 0 10px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #94a3b8;
+      background: rgba(99,102,241,0.06);
+      border-left: 2px solid rgba(99,102,241,0.3);
+      border-radius: 4px;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    /* Quiet promotion cue — fixed bottom center, fades in/out */
+    .memoir-promotion-cue {
+      position: fixed;
+      bottom: 112px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30,41,59,0.92);
+      color: #a5b4fc;
+      padding: 8px 20px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-style: italic;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid rgba(99,102,241,0.3);
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s;
+      z-index: 50;
+    }
+    .memoir-promotion-cue.visible { opacity: 1; }
   </style>
 </head>
 <body>
@@ -386,6 +431,10 @@
         As those details are gathered, they'll begin appearing here and gradually take shape as your story.
       </p>
     </div>
+    <!-- Threads helper — visible only in threads state -->
+    <p id="memoirThreadsHint" class="scroll-threads-hint" hidden>
+      These are the building blocks of your memoir. Review and shape them into fuller prose when you're ready.
+    </p>
     <!-- Threads / Draft content: shown when facts exist -->
     <div id="memoirScrollContent" class="scroll-body" hidden></div>
   </div>
@@ -396,8 +445,17 @@
       <h3>Edit Memoir</h3>
       <button id="memoirSaveBtn" class="scroll-action-btn">Save &amp; Close</button>
     </div>
+    <!-- Shown only when opening from threads state -->
+    <p id="memoirEditorHint" class="scroll-editor-hint" hidden>
+      Turn these story threads into fuller sentences or short paragraphs. You don't need to make it perfect.
+    </p>
     <textarea id="memoirEditTextarea" class="scroll-body edit-mode"></textarea>
   </dialog>
+
+  <!-- Quiet promotion cue — shown briefly when threads → draft -->
+  <div id="memoirPromotionCue" class="memoir-promotion-cue" hidden aria-live="polite">
+    Your story is beginning to take shape.
+  </div>
 
 </div><!-- /lv80Shell -->
 
@@ -436,6 +494,29 @@
      7.  Golden Thread / Memoir Scroll  (new in 8.0)
      8.  Observers + scroll
      9.  Init + onload wrap
+
+   ── AUTHORITY BOUNDARIES ──────────────────────────────────────
+   This shell owns:
+     • memoir UI state (_memoirState, _memoirEvaluateState, etc.)
+     • memoir panel lifecycle (load, clear, display filter)
+     • anchored popover + Floating UI cleanup
+     • header controls (person selector, MC mode, new narrator)
+     • idle re-engagement UI
+     • safety UI hook (scan + WS injection)
+     • status dot + thinking indicator
+
+   app.js owns:
+     • chat turn lifecycle (sendUserMessage, handleReply)
+     • SOLE extraction authority (_extractAndPostFacts — shell
+       defines an override that adds memoir reload; app.js calls it)
+     • profile / session truth (state.profile, state.session)
+     • core WebSocket transport
+     • archive readiness panel (updateArchiveReadiness)
+
+   CONTRACT: The shell MUST NOT call _extractAndPostFacts() from
+   any observer or event handler. app.js handleReply() is the only
+   call site. The shell's override adds memoir behavior on top.
+   ──────────────────────────────────────────────────────────────
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── 1. MEMORY CARE SEGMENTED CONTROL ───────────────────────── */
@@ -818,14 +899,16 @@ function _memoirIsDraft(contentEl) {
 // Re-evaluate and apply the correct state (empty / threads / draft).
 // Call this whenever the memoir content changes.
 function _memoirEvaluateState() {
-  const popover  = document.getElementById("memoirScrollPopover");
-  const intro    = document.getElementById("memoirScrollIntro");
-  const content  = document.getElementById("memoirScrollContent");
-  const heading  = document.getElementById("memoirScrollHeading");
-  const subtitle = document.getElementById("memoirPanelSubtitle");
-  const editBtn  = document.getElementById("memoirEditBtn");
+  const popover      = document.getElementById("memoirScrollPopover");
+  const intro        = document.getElementById("memoirScrollIntro");
+  const content      = document.getElementById("memoirScrollContent");
+  const heading      = document.getElementById("memoirScrollHeading");
+  const subtitle     = document.getElementById("memoirPanelSubtitle");
+  const threadsHint  = document.getElementById("memoirThreadsHint");
+  const editBtn      = document.getElementById("memoirEditBtn");
   if (!content || !intro || !heading || !editBtn) return;
 
+  const prevState  = _memoirState;
   const hasContent = content.children.length > 0;
 
   if (!hasContent) {
@@ -834,6 +917,7 @@ function _memoirEvaluateState() {
     if (subtitle) subtitle.textContent = "Getting Started";
     intro.hidden             = false;
     content.hidden           = true;
+    if (threadsHint) threadsHint.hidden = true;
     editBtn.disabled         = true;
     editBtn.setAttribute("aria-disabled", "true");
     editBtn.textContent      = "✏️ Draft Not Ready Yet";
@@ -843,6 +927,7 @@ function _memoirEvaluateState() {
     if (subtitle) subtitle.textContent = "Your Words, Taking Shape";
     intro.hidden             = true;
     content.hidden           = false;
+    if (threadsHint) threadsHint.hidden = true;
     editBtn.disabled         = false;
     editBtn.setAttribute("aria-disabled", "false");
     editBtn.textContent      = "✏️ Edit Draft";
@@ -852,12 +937,29 @@ function _memoirEvaluateState() {
     if (subtitle) subtitle.textContent = "Building Blocks Collected";
     intro.hidden             = true;
     content.hidden           = false;
+    if (threadsHint) threadsHint.hidden = false;
     editBtn.disabled         = false;
     editBtn.setAttribute("aria-disabled", "false");
     editBtn.textContent      = "✏️ Refine Details";
   }
 
   if (popover) popover.dataset.memoirState = _memoirState;
+
+  // Quiet cue on threads → draft promotion
+  if (prevState === "threads" && _memoirState === "draft") {
+    _memoirShowPromotionCue();
+  }
+}
+
+function _memoirShowPromotionCue() {
+  const cue = document.getElementById("memoirPromotionCue");
+  if (!cue) return;
+  cue.hidden = false;
+  cue.classList.add("visible");
+  setTimeout(() => {
+    cue.classList.remove("visible");
+    setTimeout(() => { cue.hidden = true; }, 500);
+  }, 3000);
 }
 
 // Clear memoir content and reset to empty state (narrator switch / new person).
@@ -1080,6 +1182,10 @@ function openFocusTrappedEdit() {
       .trim();
     textArea.value = cleanText;
   }
+
+  // Show editor hint only when opening from threads (not draft)
+  const editorHint = document.getElementById("memoirEditorHint");
+  if (editorHint) editorHint.hidden = (_memoirState !== "threads");
 
   if (modal && typeof modal.showModal === "function") modal.showModal();
 }
