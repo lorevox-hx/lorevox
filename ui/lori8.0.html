@@ -1149,7 +1149,10 @@ const _LV80_NON_MEMOIR_PATTERNS = [
   // Covers both "is someone X-ing" and "someone is X-ing" word order; adds they/government subjects
   /\b(are they|is someone|someone is|somebody is|people are|they are|he is|she is)\b.{0,40}\b(watch(ing)?|follow(ing)?|spy(ing)?|listen(ing)?|record(ing)?|tap(ping)?|monitor(ing)?)\b/i,
   /\b(the government|they|someone|somebody)\b.{0,30}\b(is watching|are watching|watching me|watching us|is monitoring|are monitoring|monitoring my|is recording|is listening)\b/i,
-  /\b(someone|they|people)\s+(has been|have been|keeps?|been)\s+(coming in(to)?|breaking in|going through|getting in|moving things?|watching|following)\b/i,
+  /\b(someone|they|people)('s)?\s+(has been|have been|keeps?|been)\s+(coming in(to)?|breaking in|going through|getting in(to)?|moving things?|watching|following)\b/i,
+  // Displacement signal — things moved / not where narrator left them
+  /\b(things?|stuff|items?|belongings?)\b.{0,40}\b(moved|not where|rearranged|been touched|been moved|out of place)\b/i,
+  /\bkeep(s|ing)?\s+(hearing|seeing|noticing)\b.{0,50}\b(someone|somebody|a person)\b/i,
   /\bcan (hear|see) (them|someone|people)\b/i,
   /\bmy (phone|computer|house|food|water|mail) is (tapped|bugged|poisoned|contaminated|watched|monitored)\b/i,
   /\b(don't trust|can't trust|don't feel safe)\b.{0,40}\b(neighbors?|neighbours?|landlord|building|street|area)\b/i,
@@ -1165,7 +1168,9 @@ const _LV80_NON_MEMOIR_PATTERNS = [
   /\b(getting worse|gotten worse|getting bad|getting worse)\b.{0,25}\b(lately|recently|these days|this week)\b/i,
   // Loneliness / social bid (present tense — not memoir reminiscence)
   /\b(it gets|gets so)\s+(quiet|lonely|empty|long|boring|dull)\b.{0,30}\b(here|at home|in the|evenings?|nights?|days?|house|apartment|room)\b/i,
+  /\b(house|place|room|apartment)\b.{0,20}\b(gets|is|feels?)\b.{0,15}\b(quiet|lonely|empty|still|silent)\b/i,
   /\b(just like|just want|would like|nice to have)\s+(someone|company|a friend|somebody)\s+(to talk|to chat|to sit|around)\b/i,
+  /\b(don't|doesn't|no one|nobody|no longer)\b.{0,30}\b(anyone|someone|somebody|company)\b.{0,30}\b(to sit|to talk|to visit|with me|anymore)\b/i,
   /\b(miss|been missing)\s+(having someone|the company|a friend|people|visitors?)\b/i,
   /\bso (lonely|alone|isolated|quiet|empty)\b.{0,30}\b(here|at home|since|without)\b/i,
   // Practical present-day concern addressed to helper/Lori
