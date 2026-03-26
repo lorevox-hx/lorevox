@@ -614,14 +614,33 @@ const _LV80_MC_MAP = { life_story: 0, memory_exercise: 1, companion: 2 };
 // _lv80NonMemoirModeActive is a separate, temporary, auto-detected override.
 let _lv80InteractionMode = "life_story";
 
+// Returns the effective posture for routing, extraction, idle, and badge.
+// Three user-facing postures + one automatic override:
+//   life_story | memory_exercise | companion | safety
+// non_memoir collapses into "companion" here — same behavior, different cause.
+// Use _lv80GetOverrideReason() to distinguish when needed (WS injection, logs).
 function _lv80GetInteractionMode() {
-  // Safety always overrides — if active, treat as "safety" for routing logic
-  if (_lv80SafetyModeActive) return "safety";
-  if (_lv80NonMemoirModeActive) return "non_memoir";
+  if (_lv80SafetyModeActive)    return "safety";
+  if (_lv80NonMemoirModeActive) return "companion";
   return _lv80InteractionMode;
 }
 
+// Returns the automatic-override reason, or null for deliberate posture.
+// Used in WS injection to pick the right system framing and in debug logs.
+function _lv80GetOverrideReason() {
+  if (_lv80SafetyModeActive)    return "safety_pattern";
+  if (_lv80NonMemoirModeActive) return "non_memoir_pattern";
+  return null;
+}
+
+// Logs an explicit mode transition edge — critical for debugging state flow.
+function lv80LogModeTransition(from, to, reason) {
+  lv80LogTurnDebug({ event: "mode_transition", from, to, reason });
+  console.log(`[Lori 8.0] mode_transition: ${from} → ${to} (${reason})`);
+}
+
 function lv80SetMemoryMode(mode) {
+  const prev = _lv80GetInteractionMode();
   _lv80InteractionMode = mode;
 
   // Clear idle — posture has changed
@@ -636,16 +655,11 @@ function lv80SetMemoryMode(mode) {
   // Propagate to session state
   if (typeof state !== "undefined" && state?.session) {
     const modeNames = ["open", "recognition", "alongside"];
-    state.session.currentMode   = modeNames[_LV80_MC_MAP[mode] ?? 0];
+    state.session.currentMode     = modeNames[_LV80_MC_MAP[mode] ?? 0];
     state.session.interactionMode = mode;
   }
 
-  lv80LogTurnDebug({
-    event:            "mode_switch",
-    interaction_mode: mode,
-    memoir_state:     typeof _memoirState !== "undefined" ? _memoirState : null,
-  });
-
+  lv80LogModeTransition(prev, mode, "manual_switch");
   lv80UpdatePostureBadge();
   console.log("[Lori 8.0] Interaction mode →", mode);
 }
@@ -658,18 +672,16 @@ function lv80UpdatePostureBadge() {
 
   const effective = _lv80GetInteractionMode();
 
+  // _lv80GetInteractionMode() now returns only: life_story | memory_exercise | companion | safety
+  // non_memoir is collapsed into companion upstream — no special-casing needed here.
   const labels = {
     life_story:      "Life Story",
     memory_exercise: "Memory Exercise",
     companion:       "Companion",
-    non_memoir:      "Companion",   // non_memoir auto-routing shows as Companion
     safety:          "Support Mode",
   };
 
-  // Treat non_memoir as companion for display — same user-facing concept
-  const displayPosture = (effective === "non_memoir") ? "companion" : effective;
-
-  badge.dataset.posture = displayPosture;
+  badge.dataset.posture = effective;
   const labelEl = badge.querySelector(".posture-label");
   if (labelEl) labelEl.textContent = labels[effective] ?? effective;
 }
@@ -970,9 +982,11 @@ function _lv80ScanSafety(text) {
 }
 
 function _lv80OnSafetyDetected() {
+  const prev = _lv80GetInteractionMode();
   _lv80SafetyModeActive = true;
   lv80ClearIdle();
   _lv80IdleWasThinking = false;
+  lv80LogModeTransition(prev, "safety", "safety_pattern");
   lv80UpdatePostureBadge();
   console.log("[Lori 8.0] Safety mode ACTIVE — idle suppressed.");
 }
@@ -1003,10 +1017,11 @@ function _lv80InstallSafetyHook() {
     } else if (nonMemoirPattern) {
       _lv80OnNonMemoirDetected(nonMemoirPattern);
     } else if (text && _lv80NonMemoirModeActive && _lv80IsLikelyMemoirAnswer(text)) {
-      // User has returned to memoir content — clear helper mode
+      // User has returned to memoir content — clear companion override
       _lv80NonMemoirModeActive = false;
+      lv80LogModeTransition("companion", _lv80InteractionMode, "memoir_answer_detected");
       lv80UpdatePostureBadge();
-      console.log("[Lori 8.0] Non-memoir mode cleared — memoir answer detected.");
+      console.log("[Lori 8.0] Companion override cleared — memoir answer detected.");
     }
 
     // ── Turn debug log ────────────────────────────────────────────
@@ -1023,6 +1038,7 @@ function _lv80InstallSafetyHook() {
       non_memoir_mode_active: _lv80NonMemoirModeActive,
       interaction_mode:       _lv80InteractionMode,
       effective_posture:      _lv80GetInteractionMode(),
+      override_reason:        _lv80GetOverrideReason(),
       memoir_state_before:    _memoirState,
       assistant_role:         state?.session?.assistantRole ?? null,
       identity_phase:         state?.session?.identityPhase ?? null,
@@ -1031,11 +1047,11 @@ function _lv80InstallSafetyHook() {
     });
 
     // ── WS context injection ──────────────────────────────────────
-    // Build the context block for this turn based on effective posture.
-    // Safety and non-memoir are automatic overrides; memory_exercise and
-    // companion are deliberate posture selections.
-    // life_story needs no injection — app.js system prompt already covers it.
-    const _wsPosture = _lv80GetInteractionMode();
+    // Effective posture is now always one of: life_story | memory_exercise | companion | safety.
+    // companion has two causes — deliberate (manual switch) and override (non_memoir pattern).
+    // The override uses stricter grounding framing; deliberate uses social framing.
+    const _wsPosture    = _lv80GetInteractionMode();
+    const _wsOverride   = _lv80GetOverrideReason(); // "non_memoir_pattern" | "safety_pattern" | null
 
     const _WS_CONTEXT = {
       safety:
@@ -1044,31 +1060,37 @@ function _lv80InstallSafetyHook() {
         "'I can't continue', 'I cannot provide medical advice', or cite 1-800-273-TALK. " +
         "Give the resource or 911 directly. Do NOT reset to interview mode.]",
 
-      non_memoir:
-        "\n\n[HELPER MODE: The narrator has raised a non-memoir concern. " +
-        "Shift to a calm, warm, grounding tone for this reply only. " +
-        "Do NOT validate implausible claims (e.g., product contamination). " +
-        "Do NOT continue the memoir interview in this reply. " +
-        "Do NOT provide medical advice or diagnosis. " +
-        "Respond in one to two sentences. " +
-        "Gently invite the narrator to continue their story when they feel ready.]",
-
-      memory_exercise:
-        "\n\n[INTERACTION MODE: Memory Exercise — Use gentle, encouraging recall prompts. " +
-        "Accept partial, vague, or uncertain answers warmly and without correction. " +
-        "Do not pressure for factual precision. Do not continue a structured biography interview. " +
-        "Focus on evoking memories softly — a place, a person, a feeling. " +
-        "Never make the narrator feel tested or wrong.]",
+      companion_override:
+        "\n\n[COMPANION MODE (concern detected): The narrator has raised something that may be " +
+        "worrying them. Shift to a calm, warm, grounding tone. " +
+        "Do NOT validate implausible claims (e.g., contamination, surveillance). " +
+        "Do NOT continue the memoir interview. Do NOT provide medical advice or diagnosis. " +
+        "Do NOT say 'let's get back to your story' or any memoir-redirect phrase in this reply. " +
+        "Respond in one to two sentences. Acknowledge the concern gently, then be present.]",
 
       companion:
-        "\n\n[INTERACTION MODE: Companion Chat — This is a social conversation, not an interview. " +
+        "\n\n[INTERACTION MODE: Companion — This is a social conversation, not an interview. " +
         "Do NOT conduct memoir interviewing or push for biographical facts. " +
+        "Do NOT say 'let's get back to your story', 'shall we return to the interview', " +
+        "'where were we', or any other memoir-redirect phrase. " +
         "Do NOT extract or archive anything said here. " +
-        "Respond naturally and warmly as a conversational companion. " +
-        "Follow wherever the narrator leads. No agenda, no extraction pressure.]",
+        "Respond naturally and warmly. Follow wherever the narrator leads. No agenda.]",
+
+      memory_exercise:
+        "\n\n[INTERACTION MODE: Memory Exercise — Your goal is to evoke memories gently, " +
+        "not capture facts. Use sensory and emotional prompts: " +
+        "'What did it look like?', 'Who was there?', 'How did it feel?' " +
+        "Accept partial, vague, or uncertain answers warmly and without correction. " +
+        "Never sequence events or press for dates. Never make the narrator feel tested or wrong. " +
+        "Focus on what feels alive in the narrator's memory, however incomplete.]",
     };
 
-    const _wsContextBlock = _WS_CONTEXT[_wsPosture] ?? null;
+    // Companion with non_memoir override gets the stricter grounding framing
+    const _wsContextKey = (_wsPosture === "companion" && _wsOverride === "non_memoir_pattern")
+      ? "companion_override"
+      : _wsPosture;
+
+    const _wsContextBlock = _WS_CONTEXT[_wsContextKey] ?? null;
 
     if (_wsContextBlock && typeof ws !== "undefined" && ws && ws.readyState === 1) {
       const _origWsSend = ws.send.bind(ws);
@@ -1119,8 +1141,17 @@ const _LV80_NON_MEMOIR_PATTERNS = [
   /\bi('m| am) (dizzy|nauseous|nauseated|vomiting|throwing up|shaking|trembling|confused|disoriented)\b/i,
 ];
 
+// Past-tense / historical-context guard — if the text reads as a memory or story
+// (was/were, back then, growing up, etc.) suppress non-memoir detection.
+// Example: "We thought someone was poisoning the well back then" → memoir story, not paranoia.
+const _LV80_PAST_TENSE_GUARD_RX = /\b(was|were|had been|thought|remembered|used to|back then|at the time|years ago|in those days|growing up|as a child|when i was young|back when|in the \d{4}s?|those days|that time|back in)\b/i;
+
 // Returns the pattern label that matched, or null.
 function _lv80ScanNonMemoir(text) {
+  // If the text is clearly historical / past-tense, it is probably a memoir story.
+  // Skip detection to avoid false positives on valid biographical content.
+  if (_LV80_PAST_TENSE_GUARD_RX.test(text)) return null;
+
   for (const rx of _LV80_NON_MEMOIR_PATTERNS) {
     if (rx.test(text)) return rx.source.slice(0, 60) + "…";
   }
@@ -1136,16 +1167,19 @@ function _lv80IsLikelyMemoirAnswer(text) {
 }
 
 function _lv80OnNonMemoirDetected(matchedPattern) {
+  const prev = _lv80GetInteractionMode(); // capture before flag is set
   _lv80NonMemoirModeActive = true;
   lv80ClearIdle();
   _lv80IdleWasThinking = false;
+  lv80LogModeTransition(prev, "companion", "non_memoir_pattern");
   lv80LogTurnDebug({
-    event: "non_memoir_detected",
+    event:           "non_memoir_detected",
     matched_pattern: matchedPattern,
-    memoir_state: _memoirState,
+    override_reason: "non_memoir_pattern",
+    memoir_state:    _memoirState,
   });
   lv80UpdatePostureBadge();
-  console.log("[Lori 8.0] Non-memoir concern detected — memoir idle + extraction suppressed.");
+  console.log("[Lori 8.0] Non-memoir concern — companion posture active, extraction + idle suppressed.");
 }
 
 /* ── 7. GOLDEN THREAD / MEMOIR SCROLL ───────────────────────── */
