@@ -1431,9 +1431,71 @@ function onAssistantReply(text){
    The user never sees this happening — it just works.
 ═══════════════════════════════════════════════════════════════ */
 
+// ── Meaning signal patterns (Phase A — meaning infrastructure) ─────────────
+// These are probabilistic — over-tagging is worse than under-tagging.
+// Patterns detect signal categories; they do not attempt semantic parsing.
+
+const _LV80_STAKES_RX = /\b(almost lost|had to leave|no choice|had no choice|everything (was |at )risk|couldn'?t afford|going to lose|things got bad|had to decide|there was no (way|choice)|we were going to|forced to|had to get out|at stake|couldn'?t go on|had to fight|had no other)\b/i;
+
+const _LV80_VULNERABILITY_RX = /\b(divorced|divorce|estranged|estrangement|all alone|left me|she left|he left|they left|never came back|didn'?t know how to tell|never told (him|her)|fell apart|broke apart|no one (was there|cared)|nobody (was there|cared)|I was alone|felt abandoned|she (was gone|left us)|he (was gone|left us)|never talked about it)\b/i;
+
+const _LV80_TURNING_POINT_RX = /\b(changed (my|our|everything|it all)|never the same|from that (day|moment|point) on|that was when|everything changed|changed (forever|my life)|after that (everything|nothing|it all)|that'?s when (I|we|it all|everything))\b/i;
+
+const _LV80_IDENTITY_RX = /\b(I became|I was no longer|that'?s when I became|I realized (who|what) I (was|am)|found (myself|my place)|I stopped being|I started to become|I (was|am) (a different|a new) person|had to become|became the person)\b/i;
+
+const _LV80_LOSS_RX = /\b(passed away|died|lost (my|her|him|them|our)|death of|the day (she|he|they) (died|left|passed)|never saw (her|him|them) again|gone forever|I lost (my|her|him|them)|we lost)\b/i;
+
+const _LV80_BELONGING_RX = /\b(finally felt|belonged|my people|felt at home|fit in|first time I (felt|belonged|fit)|found my place|where I belonged|felt like I (was )?home|felt like I belonged)\b/i;
+
+const _LV80_REFLECTION_RX = /\b(I know now|looking back|in retrospect|I understand now|I realize now|now I (see|understand|know)|I can see now|all these years later|I'?ve come to (understand|realize|see|know)|what I know now|thinking back|from this distance|with hindsight|years later I)\b/i;
+
+function _lv80DetectMeaningTags(text) {
+  const tags = [];
+  if (_LV80_STAKES_RX.test(text))        tags.push("stakes");
+  if (_LV80_VULNERABILITY_RX.test(text)) tags.push("vulnerability");
+  if (_LV80_TURNING_POINT_RX.test(text)) tags.push("turning_point");
+  if (_LV80_IDENTITY_RX.test(text))      tags.push("identity");
+  if (_LV80_LOSS_RX.test(text))          tags.push("loss");
+  if (_LV80_BELONGING_RX.test(text))     tags.push("belonging");
+  return tags;
+}
+
+// Map meaning signals and fact_type to a narrative role.
+// Text-based signals take priority over structural fact_type defaults.
+function _lv80DetectNarrativeRole(text, factType) {
+  if (_LV80_REFLECTION_RX.test(text))    return "reflection";
+  if (_LV80_TURNING_POINT_RX.test(text)) return "climax";
+  if (_LV80_STAKES_RX.test(text))        return "escalation";
+  if (_LV80_LOSS_RX.test(text))          return "climax";
+  switch (factType) {
+    case "birth":               return "setup";
+    case "family_relationship": return "setup";
+    case "education":           return "setup";
+    case "employment_start":    return "setup";
+    case "marriage":            return "inciting";
+    case "residence":           return "inciting";
+    case "employment_end":      return "resolution";
+    case "death":               return "climax";
+    default:                    return null;
+  }
+}
+
+// Phase B — dual persona: separate "you then" (experience) from "you now" (reflection).
+// A turn with reflection language gets reflection field populated; experience left null.
+// A turn without reflection language gets experience populated; reflection left null.
+function _lv80DetectDualPersona(text) {
+  const isReflection = _LV80_REFLECTION_RX.test(text);
+  return {
+    experience: isReflection ? null : text.slice(0, 300),
+    reflection: isReflection ? text.slice(0, 300) : null,
+  };
+}
+
 /**
  * Extract atomic facts from a single exchange (user turn + Lori's reply).
  * Returns an array of fact objects ready to POST to /api/facts/add.
+ * Each fact includes meaning_tags, narrative_role, experience, and reflection
+ * fields (Meaning Engine Phase A+B).
  */
 function _extractFacts(userText, loriText){
   const facts = [];
@@ -1444,12 +1506,22 @@ function _extractFacts(userText, loriText){
 
   const sid = state.chat?.conv_id || null;
 
-  const _f = (statement, fact_type, date_text="", date_normalized="", confidence=0.7) => ({
-    person_id: pid, statement, fact_type,
-    date_text, date_normalized, confidence,
-    status: "extracted", inferred: false,
-    session_id: sid, meta: { source: "chat_extraction", user_turn: src.slice(0,200) },
-  });
+  const _f = (statement, fact_type, date_text="", date_normalized="", confidence=0.7) => {
+    const meaning_tags   = _lv80DetectMeaningTags(src);
+    const narrative_role = _lv80DetectNarrativeRole(src, fact_type);
+    const persona        = _lv80DetectDualPersona(src);
+    return {
+      person_id: pid, statement, fact_type,
+      date_text, date_normalized, confidence,
+      status: "extracted", inferred: false,
+      session_id: sid,
+      meaning_tags,
+      narrative_role,
+      experience: persona.experience,
+      reflection: persona.reflection,
+      meta: { source: "chat_extraction", user_turn: src.slice(0,200) },
+    };
+  };
 
   // ── Birthplace ───────────────────────────────────────────────
   let m;

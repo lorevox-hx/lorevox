@@ -1537,6 +1537,10 @@ async function _extractAndPostFacts(userText, loriText) {
     suppressed:           false,
     memoir_state:         _memoirState,
     sample_fact:          facts[0]?.statement?.slice(0, 80) ?? null,
+    // Meaning Engine Phase A+B telemetry
+    meaning_tags:         [...new Set(facts.flatMap(f => f.meaning_tags  || []))],
+    narrative_roles:      [...new Set(facts.map(f  => f.narrative_role).filter(Boolean))],
+    has_reflection:       facts.some(f => f.reflection !== null),
   });
   if (typeof updateArchiveReadiness === "function") updateArchiveReadiness();
   // Refresh memoir panel so newly stored facts are visible without requiring a badge click
