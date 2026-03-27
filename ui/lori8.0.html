@@ -476,9 +476,14 @@
         <h3 id="memoirScrollHeading">Your Story</h3>
         <p id="memoirPanelSubtitle" class="scroll-subtitle">Getting Started</p>
       </div>
-      <button id="memoirEditBtn" class="scroll-action-btn" disabled aria-disabled="true">
-        ✏️ Draft Not Ready Yet
-      </button>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button id="memoirExportTxtBtn" class="scroll-action-btn">
+          ⬇️ Export TXT
+        </button>
+        <button id="memoirEditBtn" class="scroll-action-btn" disabled aria-disabled="true">
+          ✏️ Draft Not Ready Yet
+        </button>
+      </div>
     </div>
     <!-- Empty state: shown when no facts exist yet -->
     <div id="memoirScrollIntro" class="scroll-intro">
@@ -1236,6 +1241,73 @@ let _goldenThreadCleanup = null;
 
 let _memoirState = "empty"; // "empty" | "threads" | "draft"
 
+// ── MEMOIR TXT EXPORT ─────────────────────────────────────────────────────
+
+function _memoirBuildTxtFilename() {
+  const basics   = state?.profile?.basics || {};
+  const rawName  = basics.preferred || basics.fullname || state?.person_id || "narrator";
+  const safeName = String(rawName).trim().toLowerCase()
+    .replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
+  return `lorevox_memoir_${safeName}_${_memoirState}.txt`;
+}
+
+function _memoirBuildTxtContent() {
+  const heading  = document.getElementById("memoirScrollHeading")?.textContent?.trim() || "Your Story";
+  const subtitle = document.getElementById("memoirPanelSubtitle")?.textContent?.trim() || "";
+  const content  = document.getElementById("memoirScrollContent");
+  const lines    = [];
+
+  lines.push("=== LOREVOX MEMOIR ===");
+  lines.push(heading);
+  if (subtitle) lines.push(subtitle);
+  lines.push("");
+
+  if (_memoirState === "empty") {
+    const lead    = document.getElementById("memoirPanelLead")?.textContent?.trim();
+    const bullets = Array.from(document.querySelectorAll("#memoirPanelBullets li"))
+      .map(li => li.textContent.trim()).filter(Boolean);
+    const note    = document.getElementById("memoirPanelNote")?.textContent?.trim();
+    if (lead)           { lines.push(lead); lines.push(""); }
+    if (bullets.length) { bullets.forEach(b => lines.push(`- ${b}`)); lines.push(""); }
+    if (note)           { lines.push(note); }
+
+  } else if (_memoirState === "threads") {
+    // Renderer produces <p><mark>text</mark></p> — textContent strips mark cleanly
+    const paras = Array.from(content?.querySelectorAll("p") || [])
+      .map(p => p.textContent.trim()).filter(Boolean);
+    paras.forEach(p => lines.push(`- ${p}`));
+
+  } else if (_memoirState === "draft") {
+    // After save: <p>text</p> — clean paragraphs
+    const els = Array.from(content?.querySelectorAll("p, h4") || [])
+      .map(el => el.textContent.trim()).filter(Boolean);
+    els.forEach(text => { lines.push(text); lines.push(""); });
+  }
+
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}
+
+function _memoirDownloadTxt(filename, text) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function memoirExportTXT() {
+  const filename = _memoirBuildTxtFilename();
+  const text     = _memoirBuildTxtContent();
+  _memoirDownloadTxt(filename, text);
+  lv80LogTurnDebug({
+    event:                       "memoir_export_triggered",
+    format:                      "txt",
+    memoir_state:                _memoirState,
+    export_matches_visible_state: true,
+  });
+}
+
 // View-layer quality filter — suppresses obviously broken fragments from
 // the memoir panel display. Does NOT remove them from storage.
 function _memoirQualityFilter(text) {
@@ -1316,6 +1388,13 @@ function _memoirEvaluateState() {
   // Quiet cue on threads → draft promotion
   if (prevState === "threads" && _memoirState === "draft") {
     _memoirShowPromotionCue();
+  }
+
+  // Export button — enabled in all states (empty exports visible scaffold)
+  const exportTxtBtn = document.getElementById("memoirExportTxtBtn");
+  if (exportTxtBtn) {
+    exportTxtBtn.disabled = false;
+    exportTxtBtn.setAttribute("aria-disabled", "false");
   }
 }
 
@@ -1822,6 +1901,7 @@ async function lv80Init() {
 
   editBtn?.addEventListener("click", openFocusTrappedEdit);
   saveBtn?.addEventListener("click", saveAndCloseModal);
+  document.getElementById("memoirExportTxtBtn")?.addEventListener("click", memoirExportTXT);
 
   peekBtn?.addEventListener("click", () => {
     // Global peek uses docked slide-in — reset any Floating UI anchoring
