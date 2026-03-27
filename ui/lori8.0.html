@@ -1272,6 +1272,14 @@ function _memoirBuildTxtContent() {
     if (note)           { lines.push(note); }
 
   } else if (_memoirState === "threads") {
+    // Narrative arc coverage — which arc parts are represented in this export
+    const arcMarks = Array.from(content?.querySelectorAll("mark.new-fact[data-narrative-role]") || []);
+    const arcRoles = [...new Set(arcMarks.map(m => m.dataset.narrativeRole).filter(Boolean))];
+    if (arcRoles.length && typeof _LV80_NARRATIVE_TEMPLATE !== "undefined") {
+      const labelMap = Object.fromEntries(_LV80_NARRATIVE_TEMPLATE.map(({ role, label }) => [role, label]));
+      lines.push(`Story arc: ${arcRoles.map(r => labelMap[r] || r).join(" · ")}`);
+      lines.push("");
+    }
     // Section-based: read mark.new-fact per section, skip empty sections in export
     const sections = Array.from(content?.querySelectorAll(".memoir-section") || []);
     if (sections.length) {
@@ -1292,10 +1300,26 @@ function _memoirBuildTxtContent() {
     }
 
   } else if (_memoirState === "draft") {
-    // After save: <p>text</p> — clean paragraphs
-    const els = Array.from(content?.querySelectorAll("p, h4") || [])
+    // Draft paragraphs — exclude placeholders and threads marks
+    const paras = Array.from(content?.querySelectorAll("p:not(.memoir-placeholder)") || [])
+      .filter(el => !el.querySelector("mark.new-fact"))
       .map(el => el.textContent.trim()).filter(Boolean);
-    els.forEach(text => { lines.push(text); lines.push(""); });
+
+    for (const para of paras) {
+      // Detect arc label on first line: "-- label --" (written by assembly pass)
+      const paraLines = para.split("\n");
+      const arcLabel  = paraLines[0].trim().match(/^--\s*(.+?)\s*--$/);
+      if (arcLabel) {
+        // Format as TXT section heading
+        const label = arcLabel[1].trim().toUpperCase();
+        lines.push(label);
+        lines.push("-".repeat(Math.min(label.length, 36)));
+        paraLines.slice(1).map(l => l.trim()).filter(Boolean).forEach(l => lines.push(l));
+      } else {
+        lines.push(para);
+      }
+      lines.push("");
+    }
   }
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
@@ -1314,11 +1338,27 @@ function memoirExportTXT() {
   const filename = _memoirBuildTxtFilename();
   const text     = _memoirBuildTxtContent();
   _memoirDownloadTxt(filename, text);
+
+  // Telemetry — Phase E: include section and arc coverage
+  const exportContent = document.getElementById("memoirScrollContent");
+  const sectionsExported = _memoirState === "threads"
+    ? Array.from(exportContent?.querySelectorAll(".memoir-section") || [])
+        .filter(s => s.querySelectorAll("mark.new-fact").length > 0).length
+    : 0;
+  const arcPartsDetected = _memoirState !== "empty"
+    ? [...new Set(
+        Array.from(exportContent?.querySelectorAll("mark.new-fact[data-narrative-role]") || [])
+          .map(m => m.dataset.narrativeRole).filter(Boolean)
+      )]
+    : [];
+
   lv80LogTurnDebug({
     event:                       "memoir_export_triggered",
     format:                      "txt",
     memoir_state:                _memoirState,
     export_matches_visible_state: true,
+    sections_exported:           sectionsExported,
+    arc_parts_detected:          arcPartsDetected,
   });
 }
 
