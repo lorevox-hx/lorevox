@@ -516,7 +516,7 @@
     </div>
     <!-- Shown only when opening from threads state -->
     <p id="memoirEditorHint" class="scroll-editor-hint" hidden>
-      Turn these story threads into fuller sentences or short paragraphs. You don't need to make it perfect.
+      Your story threads are arranged by arc — who you were, what changed, what happened, what came after. Write past each structure lines into your own words. You don't need to make it perfect.
     </p>
     <textarea id="memoirEditTextarea" class="scroll-body edit-mode"></textarea>
   </dialog>
@@ -1545,6 +1545,7 @@ async function _memoirLoadStoredFacts(personId) {
           const mark = document.createElement("mark");
           mark.className = "new-fact";
           mark.setAttribute("data-fact-text", text);
+          mark.setAttribute("data-narrative-role", fact.narrative_role || "");
           mark.textContent = text;
           p.appendChild(mark);
           section.appendChild(p);
@@ -1768,6 +1769,65 @@ function resetMemoirPopoverToDocked() {
   popover.style.cssText = "";
 }
 
+// ── Narrative assembly pass (Phase D) ───────────────────────────────────────
+// Maps narrative roles → human-readable arc labels for the edit modal scaffold.
+// Template is invisible in the panel; visible only as structure in the edit textarea.
+const _LV80_NARRATIVE_TEMPLATE = [
+  { role: "setup",      label: "Who you were"      },
+  { role: "inciting",   label: "What changed"      },
+  { role: "escalation", label: "What was at stake" },
+  { role: "climax",     label: "What happened"     },
+  { role: "resolution", label: "What came after"   },
+  { role: "reflection", label: "What it means now" },
+];
+
+// Read narrative roles from mark data attributes, bucket by arc part.
+function _lv80AssembleNarrativeStructure() {
+  const content = document.getElementById("memoirScrollContent");
+  if (!content) return null;
+  const marks = Array.from(content.querySelectorAll("mark.new-fact"));
+  if (!marks.length) return null;
+
+  const byRole = { other: [] };
+  for (const { role } of _LV80_NARRATIVE_TEMPLATE) byRole[role] = [];
+
+  for (const mark of marks) {
+    const role = mark.dataset.narrativeRole;
+    const text = mark.textContent.trim();
+    if (!text) continue;
+    if (role && byRole[role] !== undefined) byRole[role].push(text);
+    else byRole.other.push(text);
+  }
+  return byRole;
+}
+
+// Build textarea text for the edit modal: facts grouped by narrative arc.
+// Each populated arc part becomes one block separated by a blank line.
+// Empty arc parts are skipped. Ungrouped facts go to "Other details".
+// Falls back to flat list if no facts carry narrative roles (legacy data).
+function _lv80BuildAssemblyText() {
+  const byRole = _lv80AssembleNarrativeStructure();
+  if (!byRole) return "";
+
+  const blocks = [];
+  for (const { role, label } of _LV80_NARRATIVE_TEMPLATE) {
+    const items = byRole[role] || [];
+    if (!items.length) continue;
+    blocks.push(`-- ${label} --\n${items.join("\n")}`);
+  }
+  if (byRole.other?.length) {
+    blocks.push(`-- Other details --\n${byRole.other.join("\n")}`);
+  }
+
+  // No named roles matched (all legacy / untagged) — return flat list
+  if (!blocks.length) {
+    const content = document.getElementById("memoirScrollContent");
+    return Array.from(content?.querySelectorAll("mark.new-fact") || [])
+      .map(m => m.textContent.trim()).filter(Boolean).join("\n\n");
+  }
+  return blocks.join("\n\n");
+}
+
 function openFocusTrappedEdit() {
   // Defensive guard: refuse to open if button is disabled or state is empty
   const editBtn = document.getElementById("memoirEditBtn");
@@ -1788,8 +1848,8 @@ function openFocusTrappedEdit() {
   if (scrollContent && textArea) {
     const marks = scrollContent.querySelectorAll("mark.new-fact");
     if (marks.length > 0) {
-      // Threads state: collect only fact text (no headings, no placeholders)
-      textArea.value = Array.from(marks).map(m => m.textContent.trim()).join("\n\n");
+      // Assembly pass: organize facts by narrative arc as starting scaffold
+      textArea.value = _lv80BuildAssemblyText();
     } else {
       // Draft state: collect prose paragraphs (no placeholders)
       textArea.value = Array.from(scrollContent.querySelectorAll("p:not(.memoir-placeholder)"))
