@@ -26,4 +26,4 @@ fi
 
 printf '\nLorevox API reloaded and ready.\n'
 printf 'API: http://127.0.0.1:%s\n' "$API_PORT"
-printf 'UI still at: http://127.0.0.1:%s/ui/lori7.4c.html\n' "$UI_PORT"
+printf 'UI still at: http://127.0.0.1:%s/ui/lori8.0.html\n' "$UI_PORT"

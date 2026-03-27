@@ -25,7 +25,7 @@ UI_CMD="${LOREVOX_UI_CMD:-$UI_CMD_DEFAULT}"
 
 api_up() { curl -fsS "http://127.0.0.1:${API_PORT}/api/ping" >/dev/null 2>&1; }
 tts_up() { curl -fsS "http://127.0.0.1:${TTS_PORT}/api/tts/voices" >/dev/null 2>&1; }
-ui_up()  { curl -fsS "http://127.0.0.1:${UI_PORT}/ui/lori7.5.html" >/dev/null 2>&1; }
+ui_up()  { curl -fsS "http://127.0.0.1:${UI_PORT}/ui/lori8.0.html" >/dev/null 2>&1; }
 
 pid_is_running() {
   local pid="${1:-}"
@@ -122,7 +122,7 @@ wait_for_health() {
 }
 
 open_ui_in_windows() {
-  local url="${1:-http://localhost:8080/ui/lori7.5.html}"
+  local url="${1:-http://localhost:8080/ui/lori8.0.html}"
   if command -v powershell.exe >/dev/null 2>&1; then
     powershell.exe -NoProfile -Command "Start-Process '$url'" >/dev/null 2>&1 || true
   fi
