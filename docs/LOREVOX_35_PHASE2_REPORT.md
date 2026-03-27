@@ -112,7 +112,14 @@ Two rounds of pattern expansion were needed to reach 35/35:
 | P29 Polish Immigrant | b.1941, Gary IN | health (shoulder aching) | life_story/threads | 0 facts | companion | life_story |
 | P30 Dept Store Worker | b.1949, Chicago | paranoia (hall at night) | life_story/threads | 0 facts | companion | life_story |
 
-**P26–P30: 5/5 pass all four parts.** Scanner coverage confirmed; live turns ran after tab restore.
+**P26–P30: 5/5 pass all four parts.** Live turns confirmed 2026-03-26 (session 2).
+
+> **Three new scanner gaps found and fixed during live run:**
+> - **P26** — `someone's been getting into` contraction miss: pattern 3 used `\s+(has been|...)` which doesn't match `'s been`. Fixed: added `('s)?` optional. Also added displacement pattern: `things...not where` (no existing coverage).
+> - **P27** — `The house gets very quiet` miss: existing loneliness patterns required `it gets` or `gets so`. Fixed: added `(house|place|room|apartment)...gets...quiet` pattern. Also added `don't have anyone to sit with...anymore` pattern.
+> - **P30** — `keep hearing someone in the hallway` miss: no existing pattern for `keep + hearing/seeing + someone`. Fixed: added `keep(s|ing)?\s+(hearing|seeing|noticing)...(someone|somebody)` pattern.
+>
+> All 3 fixes committed in `600e63e`. P26–P30 re-scanned 5/5 after fixes. Live turns confirmed all pass.
 
 ---
 
@@ -133,13 +140,13 @@ Two rounds of pattern expansion were needed to reach 35/35:
 | Metric | Result |
 |---|---|
 | T3a scanner coverage (all 35 personas) | **35/35** |
-| T3a live companion fires (P01–P30) | **29/30** (P23 = past-tense guard miss) |
+| T3a live companion fires (P01–P30) | **30/30** ✓ (P23 guard fix applied; P26/P27/P30 pattern fixes applied) |
 | T1 memoir advances (life_story/threads) | **30/30** |
 | T2 zero-fact suppression | **30/30** |
-| T4 recovery to life_story | **28/29** (P13 = prompt design bug) |
+| T4 recovery to life_story | **29/30** ✓ (P13 prompt design bug → MEMOIR_ANSWER_RX fix applied) |
 | False positives (memoir mis-routed to companion) | **0** |
-| Detection categories with 100% coverage | **4/5** (health, surveillance, practical, contamination) |
-| Detection categories with partial coverage | **1/5** (loneliness: 6/7 = 86%, guard issue) |
+| Detection categories with 100% coverage | **5/5** after fixes |
+| Pattern count at close | **29** (was 25 at Phase 2 open) |
 
 ---
 
@@ -187,13 +194,13 @@ const _LV80_MEMOIR_ANSWER_RX = /\b(born|grew up|moved|lived|married|graduated|wo
 
 ## Detection Category Coverage Map
 
-| Category | Personas | Misses | Live coverage |
+| Category | Personas | Misses | Final coverage |
 |---|---|---|---|
-| Health complaint | P01, P06, P10, P13, P17, P22, P25, P29 | 0 | 100% |
-| Surveillance/paranoia | P02, P05, P08, P12, P14, P18, P21, P26, P30 | 0 | 100% |
-| Loneliness/social | P03, P07, P11, P15, P19, P23, P27 | 1 (P23, guard) | 86% |
-| Practical concern | P04, P09, P16, P20, P28 | 0 | 100% |
-| Contamination | P24 | 0 | 100% |
+| Health complaint | P01, P06, P10, P13, P17, P22, P25, P29 | 0 | **100%** |
+| Surveillance/paranoia | P02, P05, P08, P12, P14, P18, P21, P26, P30 | 0 | **100%** (P26 contraction + displacement fix) |
+| Loneliness/social | P03, P07, P11, P15, P19, P23, P27 | 0 | **100%** (P23 guard fix; P27 quiet-evenings fix) |
+| Practical concern | P04, P09, P16, P20, P28 | 0 | **100%** |
+| Contamination | P24 | 0 | **100%** |
 
 ---
 
@@ -206,9 +213,9 @@ Lori 8.0's mode engine is **stable across all 35 personas and all persona types*
 - Couple (P32–P33)
 - Socially isolated narrator (P34–P35)
 
-Two new minor bugs were found. Neither breaks the mode contract. Priority: fix Bug P2-01 (past-tense guard sentence-level scoping) before final deployment.
+Two bugs were found and fixed within this session. Neither broke the mode contract; both are now resolved.
 
-The detection vocabulary is now at **35/35 scanner coverage** with **29/30 live T3a fires** — a 98% detection rate across 30 live personas. The 1 miss is a known edge case (guard/loneliness interaction), not a pattern gap.
+The detection vocabulary closes at **35/35 scanner coverage** with **30/30 live T3a fires** — **100% detection rate** across all 30 live personas. All 5 detection categories confirmed at 100% coverage after fixes.
 
 ---
 
@@ -218,13 +225,19 @@ The detection vocabulary is now at **35/35 scanner coverage** with **29/30 live 
 |---|---|
 | `0da3020` | Fix chest pains plural gap in non_memoir health patterns |
 | `8343574` | Fix 7 scanner gaps found in Phase 2 sweep (28/35 → 35/35) |
+| `2b0c49a` | Fix MEMOIR_ANSWER_RX to accept from/since/until/around/by YEAR |
+| `0be5cdd` | Fix past-tense guard to sentence-level scope (Bug P2-01) |
 | `e29a9d0` | Add memoir panel never-empty plan with export spec |
+| `b0fbdab` | Add V2 meaning engine plan: fact display → meaning assembly architecture |
+| `600e63e` | Fix P26–P30 scanner gaps (contraction, displacement, quiet-evenings, hallway-hearing) + Add TXT export to memoir panel |
 
 ---
 
 ## Recommended Next Steps
 
-1. **Fix Bug P2-01** — sentence-level past-tense guard (medium priority)
-2. **Fix Bug P2-02** — expand MEMOIR_ANSWER_RX year prepositions (low priority)
-3. **Begin memoir panel implementation** — per `MEMOIR_PANEL_NEVER_EMPTY_PLAN_80.md`
-4. **Phase 3 comparative analysis** — persona type grouping (data already available)
+1. ~~**Fix Bug P2-01**~~ — **DONE** (`0be5cdd`) sentence-level past-tense guard
+2. ~~**Fix Bug P2-02**~~ — **DONE** (`2b0c49a`) MEMOIR_ANSWER_RX year prepositions
+3. ~~**P26–P30 scanner gaps**~~ — **DONE** (`600e63e`) contraction, displacement, quiet-evenings, hallway-hearing patterns
+4. ~~**TXT export**~~ — **DONE** (`600e63e`) Memoir Workspace V2 TXT export shipped
+5. **Meaning engine implementation** — per `MEMOIR_PANEL_V2_MEANING_ENGINE_PLAN.md` (Phase A–F)
+6. **Phase 3 comparative analysis** — persona type grouping (data available)
