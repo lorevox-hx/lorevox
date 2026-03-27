@@ -147,6 +147,20 @@ textarea.edit-mode {
 }
 mark.new-fact { background: #fef08a; padding: 2px 4px; border-radius: 4px; color: #1e293b; }
 
+/* Meaning Engine Phase C — section-based memoir rendering */
+.memoir-section { margin-bottom: 28px; }
+.memoir-section-heading {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.09em; color: #94a3b8;
+  margin: 0 0 10px 0; padding-bottom: 6px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.memoir-section p { margin: 0 0 8px 0; }
+.memoir-placeholder {
+  font-size: 13px; color: #94a3b8; font-style: italic;
+  line-height: 1.55; margin: 0;
+}
+
 .scroll-action-btn {
   background: #6366f1; color: white; border: none; padding: 8px 16px;
   border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;

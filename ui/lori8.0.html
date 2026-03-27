@@ -1272,10 +1272,24 @@ function _memoirBuildTxtContent() {
     if (note)           { lines.push(note); }
 
   } else if (_memoirState === "threads") {
-    // Renderer produces <p><mark>text</mark></p> — textContent strips mark cleanly
-    const paras = Array.from(content?.querySelectorAll("p") || [])
-      .map(p => p.textContent.trim()).filter(Boolean);
-    paras.forEach(p => lines.push(`- ${p}`));
+    // Section-based: read mark.new-fact per section, skip empty sections in export
+    const sections = Array.from(content?.querySelectorAll(".memoir-section") || []);
+    if (sections.length) {
+      for (const sec of sections) {
+        const sHeading = sec.querySelector(".memoir-section-heading")?.textContent?.trim();
+        const marks    = Array.from(sec.querySelectorAll("mark.new-fact"))
+          .map(m => m.textContent.trim()).filter(Boolean);
+        if (!marks.length) continue; // empty section — skip in export
+        if (sHeading) { lines.push(sHeading); lines.push(""); }
+        marks.forEach(f => lines.push(`- ${f}`));
+        lines.push("");
+      }
+    } else {
+      // Fallback: flat mark extraction (pre-Phase-C content)
+      const marks = Array.from(content?.querySelectorAll("mark.new-fact") || [])
+        .map(m => m.textContent.trim()).filter(Boolean);
+      marks.forEach(f => lines.push(`- ${f}`));
+    }
 
   } else if (_memoirState === "draft") {
     // After save: <p>text</p> — clean paragraphs
@@ -1330,7 +1344,9 @@ function _memoirQualityFilter(text) {
 // Draft threshold: at least 2 paragraphs of 120+ characters each.
 // Intentionally a structural heuristic — see product notes.
 function _memoirIsDraft(contentEl) {
-  const substantial = Array.from(contentEl.querySelectorAll("p"))
+  // Draft = user-saved prose: plain <p> without marks, not placeholders, ≥120 chars
+  const substantial = Array.from(contentEl.querySelectorAll("p:not(.memoir-placeholder)"))
+    .filter(p => !p.querySelector("mark.new-fact"))
     .map(p => p.textContent.trim())
     .filter(t => t.length >= 120);
   return substantial.length >= 2;
@@ -1348,8 +1364,12 @@ function _memoirEvaluateState() {
   const editBtn      = document.getElementById("memoirEditBtn");
   if (!content || !intro || !heading || !editBtn) return;
 
-  const prevState  = _memoirState;
-  const hasContent = content.children.length > 0;
+  const prevState    = _memoirState;
+  // "hasContent" means real facts (threads) or real prose (draft) — not just placeholder sections
+  const hasRealFacts = content.querySelectorAll("mark.new-fact").length > 0;
+  const hasDraftProse = !hasRealFacts && Array.from(content.querySelectorAll("p:not(.memoir-placeholder)"))
+    .some(p => !p.querySelector("mark") && p.textContent.trim().length >= 20);
+  const hasContent   = hasRealFacts || hasDraftProse;
 
   if (!hasContent) {
     _memoirState             = "empty";
@@ -1416,6 +1436,65 @@ function _memoirClearContent() {
   _memoirEvaluateState();
 }
 
+// ── Memoir section config (Phase C — meaning-based thread grouping) ──────────
+// Meaning sections take priority; structural sections are fallback by fact_type.
+const _LV80_MEMOIR_SECTIONS = [
+  {
+    id: "turning_points", label: "Turning Points",
+    placeholder: "The moments that changed everything — irreversible decisions, days you still carry. Often begin: \"That was when…\" or \"Everything changed after…\"",
+  },
+  {
+    id: "hard_moments", label: "Hard Moments",
+    placeholder: "Loss, struggle, and what was at stake. Often heard as: \"We almost lost…\" or \"There was no choice…\"",
+  },
+  {
+    id: "identity_belonging", label: "Identity & Belonging",
+    placeholder: "Who you were, who you became, and where you felt you fit. Often: \"That's when I became…\" or \"Looking back, I understand now…\"",
+  },
+  {
+    id: "change_transition", label: "Change & Transition",
+    placeholder: "Moves, departures, new starts. The times when the map of your life shifted.",
+  },
+  {
+    id: "family_relationships", label: "Family & Relationships",
+    placeholder: "The people who shaped your story — births, marriages, losses, those you still carry with you.",
+  },
+  {
+    id: "work_daily", label: "Work & Daily Life",
+    placeholder: "How you spent your days, what you built, who you worked alongside.",
+  },
+  {
+    id: "education", label: "Education",
+    placeholder: "Schools, teachers, the learning that opened doors.",
+  },
+  {
+    id: "story_details", label: "Story Details",
+    placeholder: "Other details Lori has gathered.",
+  },
+];
+
+// Assign a fact to its best-fit section.
+// Meaning tags (from Phase A) take priority over structural fact_type fallback.
+function _lv80AssignMemoirSection(fact) {
+  const tags = Array.isArray(fact.meaning_tags) ? fact.meaning_tags : [];
+  const role = fact.narrative_role || null;
+  const type = fact.fact_type      || "";
+
+  if (tags.includes("turning_point") || role === "climax")
+    return "turning_points";
+  if (tags.includes("loss") || tags.includes("stakes") || tags.includes("vulnerability"))
+    return "hard_moments";
+  if (tags.includes("identity") || tags.includes("belonging") || role === "reflection")
+    return "identity_belonging";
+
+  if (type === "residence")                                         return "change_transition";
+  if (["birth","family_relationship","marriage","death"].includes(type)) return "family_relationships";
+  if (["employment_start","employment_end"].includes(type))         return "work_daily";
+  if (type === "education")                                         return "education";
+
+  return "story_details";
+}
+
 // Fetch stored facts for a person, apply quality filter, populate memoir panel.
 // Called after loadPerson() and on narrator switch.
 async function _memoirLoadStoredFacts(personId) {
@@ -1429,30 +1508,59 @@ async function _memoirLoadStoredFacts(personId) {
     const data  = await r.json();
     const facts = data?.items || data?.facts || data || [];
     if (!Array.isArray(facts) || facts.length === 0) {
+      content.innerHTML = "";
       _memoirEvaluateState();
       return;
     }
 
     content.innerHTML = "";
-    const seen = new Set();
+    const seen    = new Set();
+    const buckets = {};
+    for (const sec of _LV80_MEMOIR_SECTIONS) buckets[sec.id] = [];
 
     for (const f of facts) {
       const text = f.statement || f.text || f.value || "";
       if (!text || seen.has(text)) continue;
       if (!_memoirQualityFilter(text)) continue;
       seen.add(text);
+      const secId = _lv80AssignMemoirSection(f);
+      (buckets[secId] ?? (buckets["story_details"] = buckets["story_details"] || [])).push({ text, fact: f });
+    }
 
-      const p    = document.createElement("p");
-      const mark = document.createElement("mark");
-      mark.className = "new-fact";
-      mark.setAttribute("data-fact-text", text);
-      mark.textContent = text;
-      p.appendChild(mark);
-      content.appendChild(p);
+    for (const sec of _LV80_MEMOIR_SECTIONS) {
+      const items = buckets[sec.id] || [];
+
+      const section = document.createElement("section");
+      section.className = "memoir-section";
+      section.dataset.section = sec.id;
+
+      const h4 = document.createElement("h4");
+      h4.className = "memoir-section-heading";
+      h4.textContent = sec.label;
+      section.appendChild(h4);
+
+      if (items.length) {
+        for (const { text } of items) {
+          const p    = document.createElement("p");
+          const mark = document.createElement("mark");
+          mark.className = "new-fact";
+          mark.setAttribute("data-fact-text", text);
+          mark.textContent = text;
+          p.appendChild(mark);
+          section.appendChild(p);
+        }
+      } else {
+        const ph = document.createElement("p");
+        ph.className = "memoir-placeholder";
+        ph.textContent = sec.placeholder;
+        section.appendChild(ph);
+      }
+
+      content.appendChild(section);
     }
 
     _memoirEvaluateState();
-    console.log(`[memoir] Loaded ${seen.size} quality-filtered fact(s) from DB.`);
+    console.log(`[memoir] Loaded ${seen.size} quality-filtered fact(s) across ${_LV80_MEMOIR_SECTIONS.length} sections.`);
   } catch (e) {
     console.warn("[memoir] Failed to load stored facts:", e);
     _memoirEvaluateState();
@@ -1612,14 +1720,8 @@ function attachGoldenThreadBadge(bubbleElement, factText) {
     ).some(el => el.getAttribute("data-fact-text") === factText);
 
     if (!alreadyPresent && _memoirQualityFilter(factText)) {
-      const p    = document.createElement("p");
-      const mark = document.createElement("mark");
-      mark.className = "new-fact";
-      mark.setAttribute("data-fact-text", factText);
-      mark.textContent = factText;
-      p.appendChild(mark);
-      scrollContent.appendChild(p);
-      _memoirEvaluateState();
+      // Reload from backend so the fact lands in the correct section
+      _memoirLoadStoredFacts(state?.person_id);
     }
 
     // Show the native popover
@@ -1684,13 +1786,15 @@ function openFocusTrappedEdit() {
   }
 
   if (scrollContent && textArea) {
-    const cleanText = scrollContent.innerHTML
-      .replace(/<mark[^>]*>/g, "")
-      .replace(/<\/mark>/g, "")
-      .replace(/<p[^>]*>/g, "")
-      .replace(/<\/p>/g, "\n\n")
-      .trim();
-    textArea.value = cleanText;
+    const marks = scrollContent.querySelectorAll("mark.new-fact");
+    if (marks.length > 0) {
+      // Threads state: collect only fact text (no headings, no placeholders)
+      textArea.value = Array.from(marks).map(m => m.textContent.trim()).join("\n\n");
+    } else {
+      // Draft state: collect prose paragraphs (no placeholders)
+      textArea.value = Array.from(scrollContent.querySelectorAll("p:not(.memoir-placeholder)"))
+        .map(p => p.textContent.trim()).filter(Boolean).join("\n\n");
+    }
   }
 
   // Show editor hint only when opening from threads (not draft)
