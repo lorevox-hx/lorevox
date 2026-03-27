@@ -1232,10 +1232,11 @@ async function _resolveOrCreatePerson(){
     await saveProfile();
     sendSystemPrompt(
       `[SYSTEM: You have successfully captured ${name}'s identity. ` +
-      `Their profile is now saved. ` +
-      `Transition naturally into the memoir interview — ` +
-      `start by asking an open, inviting question about their earliest memory or childhood. ` +
-      `Don't mention any technical steps or form saving.]`
+      `They were born in ${pob || "an unspecified location"}. ` +
+      `Acknowledge their birthplace warmly (one sentence — mention it by name). ` +
+      `Then transition naturally into the memoir interview by asking one open, inviting ` +
+      `question about their earliest memory or childhood. Two sentences total. ` +
+      `Do not mention any technical steps or form saving.]`
     );
   } else {
     // Backend unavailable — still set up local state
@@ -1524,9 +1525,21 @@ function _extractFacts(userText, loriText){
   };
 
   // ── Birthplace ───────────────────────────────────────────────
+  // Capture "City" or "City, Country" format.
+  // Pattern A: "born/grew up ... in/at/near City[, Country]"
+  // Pattern B: "I'm/I am from City[, Country]" (no in/at/near needed)
   let m;
-  m = src.match(/\b(?:born|grew up|I(?:'m| am) from|originally from|I(?:'m| am) originally from)[^.!?]{0,8}(?:in|at|near)\s+([A-Z][^,.!?]{2,60})/i);
-  if(m) facts.push(_f(`Born or raised in ${m[1].trim()}`, "birth", m[1].trim(), "", 0.75));
+  const _PLACE_CAP = /([A-Z][^,.!?]{1,35}(?:,\s*[A-Z][^,.!?]{1,30})?)/;
+  m = src.match(new RegExp(
+    String.raw`\b(?:born|grew up)[^.!?]{0,8}(?:in|at|near)\s+` + _PLACE_CAP.source, "i"
+  ));
+  if(!m) m = src.match(new RegExp(
+    String.raw`\bI(?:'m| am)\s+(?:originally\s+)?from\s+` + _PLACE_CAP.source, "i"
+  ));
+  if(!m) m = src.match(new RegExp(
+    String.raw`\boriginally\s+from\s+` + _PLACE_CAP.source, "i"
+  ));
+  if(m){ const place = m[1].trim(); facts.push(_f(`Born or raised in ${place}`, "birth", place, "", 0.75)); }
 
   // ── Date of birth ─────────────────────────────────────────────
   m = src.match(/\b(?:born on|born)\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:[,\s]+\d{4})?|\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})/i);
@@ -1681,7 +1694,46 @@ function unlockAudio(){
   _ttsAudio.play().catch(()=>{});
 }
 
-function enqueueTts(text){ ttsQueue.push(text); if(!ttsBusy) drainTts(); }
+// Strip markdown formatting so TTS doesn't read "asterisk asterisk" etc.
+function _stripMarkdownForTts(text){
+  return text
+    .replace(/#{1,6}\s+/g, "")                       // ## headings
+    .replace(/\*\*(.+?)\*\*/g, "$1")                  // **bold**
+    .replace(/\*(.+?)\*/g, "$1")                      // *italic*
+    .replace(/__(.+?)__/g, "$1")                      // __bold__
+    .replace(/_(.+?)_/g, "$1")                        // _italic_
+    .replace(/`{1,3}[^`\n]*`{1,3}/g, "")             // `code`
+    .replace(/^\s*[-*+]\s+/gm, "")                    // - bullet items
+    .replace(/^\s*\d+\.\s+/gm, "")                    // 1. numbered list
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")          // [text](url)
+    .replace(/\n{2,}/g, ". ")                         // paragraph break → brief pause
+    .replace(/\n/g, " ")                              // single newline → space
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+// Split cleaned text into ≤400-char chunks at sentence boundaries.
+function _splitIntoTtsChunks(text, maxLen=400){
+  const sentences = text.match(/[^.!?]+[.!?]+\s*/g) || [text];
+  const chunks = [];
+  let current = "";
+  for(const s of sentences){
+    if((current+s).length > maxLen){
+      if(current.trim()) chunks.push(current.trim());
+      current = s;
+    } else {
+      current += s;
+    }
+  }
+  if(current.trim()) chunks.push(current.trim());
+  return chunks.length ? chunks : [text.slice(0, maxLen)];
+}
+
+function enqueueTts(text){
+  const cleaned = _stripMarkdownForTts(text);
+  _splitIntoTtsChunks(cleaned).forEach(c => ttsQueue.push(c));
+  if(!ttsBusy) drainTts();
+}
 async function drainTts(){
   ttsBusy=true;
   // v7.4D — stop mic and mark Lori as speaking before any audio plays.
@@ -1692,7 +1744,7 @@ async function drainTts(){
     const chunk=ttsQueue.shift();
     try{
       const r=await fetch(TTS_ORIG+"/api/tts/speak_stream",{method:"POST",headers:ctype(),
-        body:JSON.stringify({text:chunk.slice(0,400),voice:"p335"})});
+        body:JSON.stringify({text:chunk,voice:"p335"})});
       if(!r.ok) continue;
       // Server returns NDJSON: {"wav_b64":"<base64 WAV>"}
       const ndjson = await r.text();
@@ -1721,6 +1773,8 @@ async function drainTts(){
    VOICE INPUT
 ═══════════════════════════════════════════════════════════════ */
 function toggleRecording(){ unlockAudio(); isRecording?stopRecording():startRecording(); }
+// HTML button calls toggleMic() — alias to toggleRecording.
+function toggleMic(){ toggleRecording(); }
 // Normalise spoken punctuation words produced by Web Speech API.
 // Runs on each final transcript chunk before appending to the input box.
 function _normalisePunctuation(t){
