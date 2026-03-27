@@ -648,6 +648,11 @@ function lv80SetMemoryMode(mode) {
   const prev = _lv80GetInteractionMode();
   _lv80InteractionMode = mode;
 
+  // If leaving Memory Exercise, abandon any in-progress fact-seed follow-up
+  if (prev === "memory_exercise" && mode !== "memory_exercise") {
+    _lv80FactSeedPending = null;
+  }
+
   // Clear idle — posture has changed
   lv80ClearIdle();
   _lv80SafetyClearIdle();
@@ -1041,6 +1046,50 @@ function _lv80InstallSafetyHook() {
       console.log("[Lori 8.0] Companion override cleared — memoir answer detected.");
     }
 
+    // ── Memory Exercise fact-seed detection ──────────────────────
+    // Clear stale pending state if posture has switched away from memory_exercise
+    if (_lv80FactSeedPending && _lv80InteractionMode !== "memory_exercise") {
+      _lv80FactSeedPending = null;
+    }
+    if (!safetyTriggered && !nonMemoirPattern && text &&
+        _lv80InteractionMode === "memory_exercise") {
+      if (_lv80FactSeedPending?.asked) {
+        // Follow-up answer received — extraction handled in _extractAndPostFacts
+        lv80LogTurnDebug({
+          event:        "fact_seed_followup_answered",
+          fragment:     _lv80FactSeedPending.fragment?.slice(0, 200),
+          anchor_type:  _lv80FactSeedPending.anchor_type,
+          answer_text:  text.slice(0, 200),
+        });
+      } else if (!_lv80FactSeedPending) {
+        // Look for new anchored memory fragment
+        const _detected = _lv80DetectMemoryFragment(text);
+        if (_detected) {
+          _lv80FactSeedPending = {
+            fragment:    text,
+            anchor_type: _detected.anchor_type,
+            asked:       false,
+            turn_index:  window.__lv80TurnDebug?.length || 0,
+          };
+          _lv80MemoryFragments.push({
+            fragment:          text,
+            anchor_type:       _detected.anchor_type,
+            followup_answered: false,
+            converted_to_fact: false,
+          });
+          lv80LogTurnDebug({
+            event:          "memory_fragment_detected",
+            fragment:       text.slice(0, 200),
+            anchor_type:    _detected.anchor_type,
+            has_sensory:    _detected.hasSensory,
+            has_emotional:  _detected.hasEmotional,
+          });
+          // Show fragment in memoir panel immediately
+          if (typeof _memoirRenderFragments === "function") _memoirRenderFragments();
+        }
+      }
+    }
+
     // ── Turn debug log ────────────────────────────────────────────
     lv80LogTurnDebug({
       event:                  "user_send",
@@ -1100,12 +1149,45 @@ function _lv80InstallSafetyHook() {
         "Accept partial, vague, or uncertain answers warmly and without correction. " +
         "Never sequence events or press for dates. Never make the narrator feel tested or wrong. " +
         "Focus on what feels alive in the narrator's memory, however incomplete.]",
+
+      memory_exercise_fact_seed:
+        "\n\n[INTERACTION MODE: Memory Exercise — FACT-SEED MOMENT: The narrator just shared a " +
+        "meaningful sensory or emotional memory. You are still in gentle recall mode. " +
+        "Ask exactly ONE gentle question to place this memory in life context. " +
+        "Good options: approximate age or life period, who was with them, whether it was " +
+        "a regular occurrence or a special occasion, whether they were living there or visiting. " +
+        "Do NOT ask for exact dates or years. Do NOT ask multiple questions. " +
+        "Do NOT make the narrator feel tested. Keep the tone warm, curious, and unhurried. " +
+        "Good examples: 'Do you remember about how old you were then?' / " +
+        "'Was that a place you went with family?' / 'Were you living there around that time?']",
+
+      memory_exercise_followup:
+        "\n\n[INTERACTION MODE: Memory Exercise — FOLLOW-UP ANSWER: The narrator is responding " +
+        "to your gentle follow-up question. Accept whatever they share warmly, whether the " +
+        "answer is clear or vague. If their answer gives useful context, acknowledge it naturally " +
+        "and continue the gentle recall flow. Do NOT ask more follow-up questions. " +
+        "Do NOT press for more detail or dates. If they are uncertain or quiet, stay present.]",
     };
 
-    // Companion with non_memoir override gets the stricter grounding framing
-    const _wsContextKey = (_wsPosture === "companion" && _wsOverride === "non_memoir_pattern")
-      ? "companion_override"
-      : _wsPosture;
+    // Companion with non_memoir override gets the stricter grounding framing.
+    // Memory Exercise with an active fact-seed pending gets the follow-up prompt.
+    const _wsContextKey = (() => {
+      if (_wsPosture === "companion" && _wsOverride === "non_memoir_pattern")
+        return "companion_override";
+      if (_wsPosture === "memory_exercise" && _lv80FactSeedPending) {
+        if (!_lv80FactSeedPending.asked) {
+          _lv80FactSeedPending.asked = true;
+          lv80LogTurnDebug({
+            event:       "fact_seed_followup_asked",
+            fragment:    _lv80FactSeedPending.fragment?.slice(0, 200),
+            anchor_type: _lv80FactSeedPending.anchor_type,
+          });
+          return "memory_exercise_fact_seed";
+        }
+        return "memory_exercise_followup";
+      }
+      return _wsPosture;
+    })();
 
     const _wsContextBlock = _WS_CONTEXT[_wsContextKey] ?? null;
 
@@ -1140,6 +1222,16 @@ function _lv80InstallSafetyHook() {
 // Resets automatically on the next turn if that turn looks like memoir content.
 
 let _lv80NonMemoirModeActive = false;
+
+// ── MEMORY EXERCISE FACT-SEED STATE ──────────────────────────────────────
+// Tracks an in-progress fact-seed flow for the current Memory Exercise turn.
+// Reset on follow-up answer, mode change, or narrator switch.
+let _lv80FactSeedPending = null;
+// Shape: { fragment, anchor_type, asked: bool, turn_index: int }
+
+// Accumulated memory fragments for this session (sensory/emotional recalls
+// preserved as memoir-relevant material before structured fact conversion).
+let _lv80MemoryFragments = [];
 
 const _LV80_NON_MEMOIR_PATTERNS = [
   // Bodily / urinary observation during interview
@@ -1205,6 +1297,34 @@ function _lv80ScanNonMemoir(text) {
     return rx.source.slice(0, 60) + "…";
   }
   return null;
+}
+
+/* ── 6c. MEMORY EXERCISE FACT-SEED DETECTION ────────────────── */
+// Detects "anchored memory fragments" in Memory Exercise mode.
+// A fragment qualifies when it contains a sensory or emotional signal
+// AND at least one usable anchor (named place, person/relationship, or routine).
+
+const _LV80_SENSORY_FRAG_RX      = /\b(smell(ed|s)?|taste(d|s)?|look(ed)?\s+(like|the same)|sound(ed)?\s+like|felt like|texture|the way (it|the|things?|everything) (smelled?|tasted?|looked?|felt|sounded)|used to smell|used to taste|used to look)\b/i;
+const _LV80_EMOTIONAL_FRAG_RX    = /\b(loved?|miss(ed)?|still think(ing)? about|can'?t forget|makes? me (think|remember)|reminds? me|used to (go|be|eat|visit|get|do)|would always|we always|every (sunday|saturday|friday|week|summer|winter|christmas|holiday|night|morning)|after (school|church|work|dinner))\b/i;
+const _LV80_PLACE_FRAG_ANCHOR_RX = /\b[A-Z][a-z]+(\'s)?\s+[A-Z][a-z]+\b|\b(Pizza|Diner|Café|Cafe|Restaurant|Grocery|Bakery|Butcher|Church|School|Store|Market|Barbershop|Pharmacy|Drugstore|Hospital|Park|Lake|River|Avenue|Boulevard|Drive)\b/i;
+const _LV80_PERSON_FRAG_ANCHOR_RX= /\b(my (father|mother|dad|mom|papa|mama|brother|sister|friend|neighbor|neighbour|husband|wife|grandfather|grandmother|grandpa|grandma|uncle|aunt|teacher|coach|boss)|with (family|my family|the family|dad|mom|grandma|grandpa|my (brother|sister|kids?|children)))\b/i;
+const _LV80_ROUTINE_FRAG_ANCHOR_RX=/\b(every (sunday|saturday|friday|week|month|summer|christmas|holiday|year|night|morning|evening)|used to (go|visit|eat|get|buy|stop by|pick up)|we (always|would|used to)|after (school|church|work|dinner|the game)|when (i was|we were) (young|growing up|kids?|little|a child|children))\b/i;
+
+function _lv80DetectMemoryFragment(text) {
+  if (!text || text.length < 15) return null;
+  const hasSensory   = _LV80_SENSORY_FRAG_RX.test(text);
+  const hasEmotional = _LV80_EMOTIONAL_FRAG_RX.test(text);
+  const hasPlace     = _LV80_PLACE_FRAG_ANCHOR_RX.test(text);
+  const hasPerson    = _LV80_PERSON_FRAG_ANCHOR_RX.test(text);
+  const hasRoutine   = _LV80_ROUTINE_FRAG_ANCHOR_RX.test(text);
+  const hasSignal    = hasSensory || hasEmotional;
+  const hasAnchor    = hasPlace || hasPerson || hasRoutine;
+  if (!hasSignal || !hasAnchor) return null;
+  return {
+    anchor_type:  hasPlace ? "place_business" : hasPerson ? "person_relationship" : "routine_event",
+    hasSensory,
+    hasEmotional,
+  };
 }
 
 // Returns true if the turn looks like a memoir/interview answer
@@ -1297,6 +1417,16 @@ function _memoirBuildTxtContent() {
       const marks = Array.from(content?.querySelectorAll("mark.new-fact") || [])
         .map(m => m.textContent.trim()).filter(Boolean);
       marks.forEach(f => lines.push(`- ${f}`));
+    }
+
+    // Memory Moments — unconverted fragments from Memory Exercise sessions
+    const fragMarks = Array.from(content?.querySelectorAll("mark.fragment-fact") || [])
+      .map(m => m.textContent.trim()).filter(Boolean);
+    if (fragMarks.length) {
+      lines.push("Memory Moments");
+      lines.push("");
+      fragMarks.forEach(f => lines.push(`~ ${f}`));
+      lines.push("");
     }
 
   } else if (_memoirState === "draft") {
@@ -1405,11 +1535,14 @@ function _memoirEvaluateState() {
   if (!content || !intro || !heading || !editBtn) return;
 
   const prevState    = _memoirState;
-  // "hasContent" means real facts (threads) or real prose (draft) — not just placeholder sections
-  const hasRealFacts = content.querySelectorAll("mark.new-fact").length > 0;
-  const hasDraftProse = !hasRealFacts && Array.from(content.querySelectorAll("p:not(.memoir-placeholder)"))
-    .some(p => !p.querySelector("mark") && p.textContent.trim().length >= 20);
-  const hasContent   = hasRealFacts || hasDraftProse;
+  // "hasContent" means real facts (threads), memory fragments, or real prose (draft) —
+  // not just placeholder sections
+  const hasRealFacts  = content.querySelectorAll("mark.new-fact").length > 0;
+  const hasFragments  = content.querySelectorAll("mark.fragment-fact").length > 0;
+  const hasDraftProse = !hasRealFacts && !hasFragments &&
+    Array.from(content.querySelectorAll("p:not(.memoir-placeholder)"))
+      .some(p => !p.querySelector("mark") && p.textContent.trim().length >= 20);
+  const hasContent    = hasRealFacts || hasFragments || hasDraftProse;
 
   if (!hasContent) {
     _memoirState             = "empty";
@@ -1473,6 +1606,55 @@ function _memoirShowPromotionCue() {
 function _memoirClearContent() {
   const content = document.getElementById("memoirScrollContent");
   if (content) content.innerHTML = "";
+  // Also clear in-session memory fragments on narrator reset
+  _lv80MemoryFragments = [];
+  _lv80FactSeedPending = null;
+  _memoirEvaluateState();
+}
+
+/* ── Memory Exercise fragment panel rendering ────────────────── */
+// Renders preserved (not-yet-converted) memory fragments in a dedicated
+// "Memory Moments" section at the bottom of the memoir panel.
+// Uses mark.fragment-fact (green italic) to distinguish from hard facts.
+function _memoirRenderFragments() {
+  const content = document.getElementById("memoirScrollContent");
+  if (!content) return;
+
+  // Remove stale section before re-rendering
+  content.querySelector("section[data-section='memory_moments']")?.remove();
+
+  const unconverted = _lv80MemoryFragments.filter(f => !f.converted_to_fact);
+  if (!unconverted.length) {
+    _memoirEvaluateState();
+    return;
+  }
+
+  const sec = document.createElement("section");
+  sec.className     = "memoir-section";
+  sec.dataset.section = "memory_moments";
+
+  const h4 = document.createElement("h4");
+  h4.className  = "memoir-section-heading";
+  h4.textContent = "Memory Moments";
+  sec.appendChild(h4);
+
+  for (const frag of unconverted) {
+    const p    = document.createElement("p");
+    const mark = document.createElement("mark");
+    mark.className = "fragment-fact";
+    mark.setAttribute("data-anchor-type", frag.anchor_type || "");
+    mark.textContent = String(frag.fragment || "").slice(0, 300);
+    p.appendChild(mark);
+    if (!frag.followup_answered) {
+      const note = document.createElement("span");
+      note.className  = "memoir-fragment-note";
+      note.textContent = " — awaiting context";
+      p.appendChild(note);
+    }
+    sec.appendChild(p);
+  }
+
+  content.appendChild(sec);
   _memoirEvaluateState();
 }
 
@@ -1601,10 +1783,12 @@ async function _memoirLoadStoredFacts(personId) {
     }
 
     _memoirEvaluateState();
+    _memoirRenderFragments(); // overlay in-session memory fragments (Memory Exercise)
     console.log(`[memoir] Loaded ${seen.size} quality-filtered fact(s) across ${_LV80_MEMOIR_SECTIONS.length} sections.`);
   } catch (e) {
     console.warn("[memoir] Failed to load stored facts:", e);
     _memoirEvaluateState();
+    _memoirRenderFragments();
   }
 }
 
@@ -1645,6 +1829,67 @@ async function _extractAndPostFacts(userText, loriText) {
   }
 
   const rawFacts = _extractFacts(userText, loriText);
+
+  // ── Fact-seed follow-up answer handling ──────────────────────
+  // When a fact-seed follow-up has been asked, this turn is the answer.
+  // Clear answers allow structured fact extraction; vague answers preserve the fragment only.
+  if (mode === "memory_exercise" && _lv80FactSeedPending?.asked) {
+    const pendingFragment = _lv80FactSeedPending;
+    // Let _extractFacts be the primary judge of usefulness.
+    // Do NOT gate on _LV80_HEDGE_RX here — "I think I was in junior high and we
+    // lived in Grand Forks then" contains "I think" but is still a convertible answer.
+    // Only block if the answer is empty or a trivially short non-answer.
+    const followupFacts = (!userText || userText.trim().length < 5) ? [] : (rawFacts || []);
+
+    if (followupFacts.length > 0) {
+      // Extractable facts in follow-up — convert fragment to structured facts
+      const fragIdx = _lv80MemoryFragments.findIndex(f => f.fragment === pendingFragment.fragment);
+      if (fragIdx >= 0) _lv80MemoryFragments[fragIdx].converted_to_fact = true;
+      _lv80FactSeedPending = null;
+      lv80LogTurnDebug({
+        event:           "fact_seed_converted_to_fact",
+        fragment:        pendingFragment.fragment?.slice(0, 200),
+        anchor_type:     pendingFragment.anchor_type,
+        facts_extracted: followupFacts.length,
+        sample_fact:     followupFacts[0]?.statement?.slice(0, 80) ?? null,
+      });
+      for (const f of followupFacts) {
+        try {
+          await fetch(API.FACTS_ADD, { method: "POST", headers: ctype(), body: JSON.stringify(f) });
+        } catch (err) { console.warn("[facts] post failed", err, f); }
+      }
+      lv80LogTurnDebug({
+        event:                 "facts_extracted",
+        facts_extracted_count: followupFacts.length,
+        facts_posted_count:    followupFacts.length,
+        suppressed:            false,
+        memoir_state:          _memoirState,
+        sample_fact:           followupFacts[0]?.statement?.slice(0, 80) ?? null,
+      });
+      if (typeof updateArchiveReadiness === "function") updateArchiveReadiness();
+      _memoirLoadStoredFacts(state.person_id);
+      return;
+    } else {
+      // No extractable facts — preserve fragment, no hard fact created
+      const fragIdx = _lv80MemoryFragments.findIndex(f => f.fragment === pendingFragment.fragment);
+      if (fragIdx >= 0) _lv80MemoryFragments[fragIdx].followup_answered = true;
+      _lv80FactSeedPending = null;
+      lv80LogTurnDebug({
+        event:       "fact_seed_not_converted",
+        fragment:    pendingFragment.fragment?.slice(0, 200),
+        anchor_type: pendingFragment.anchor_type,
+        reason:      "no_facts_extracted",
+      });
+      lv80LogTurnDebug({
+        event:       "memory_fragment_preserved",
+        fragment:    pendingFragment.fragment?.slice(0, 200),
+        anchor_type: pendingFragment.anchor_type,
+      });
+      if (typeof _memoirRenderFragments === "function") _memoirRenderFragments();
+      return;
+    }
+  }
+
   const facts    = (mode === "memory_exercise")
     ? _lv80FilterHighConfidenceFacts(rawFacts)
     : (rawFacts || []);

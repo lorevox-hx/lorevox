@@ -167,3 +167,18 @@ mark.new-fact { background: #fef08a; padding: 2px 4px; border-radius: 4px; color
   font-family: 'Inter', sans-serif; transition: background 0.2s;
 }
 .scroll-action-btn:hover { background: #4f46e5; }
+
+/* ── 6. Memory Exercise — fact-seed fragment visual ── */
+mark.fragment-fact {
+  background: #d1fae5;
+  color: #064e3b;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-style: italic;
+}
+.memoir-fragment-note {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+  margin-left: 6px;
+}
