@@ -1,0 +1,79 @@
+LOREVOX — FACT-SEED FLOW SAMPLE RUN
+Memory Exercise mode · Persona: P_FS_01
+
+--- FRAGMENT DETECTED ---
+
+Narrator input:
+  "I liked the smell of pizza at Shakey's Pizza in Grand Forks."
+
+Debug event: memory_fragment_detected
+  anchor_type: place_business
+  has_sensory: true
+  has_emotional: false
+
+_lv80FactSeedPending set:
+  fragment: "I liked the smell of pizza at Shakey's Pizza in Grand Forks."
+  anchor_type: place_business
+  asked: false
+
+--- FOLLOW-UP ASKED ---
+
+WS context injected: memory_exercise_fact_seed
+  "...Ask exactly ONE gentle question to place this memory in life context..."
+
+Debug event: fact_seed_followup_asked
+  anchor_type: place_business
+
+Lori response (example):
+  "Do you remember about how old you were then?"
+
+--- FOLLOW-UP ANSWERED (clear) ---
+
+Narrator input:
+  "I think I was about 12 and we lived in Grand Forks then."
+
+WS context injected: memory_exercise_followup
+
+Debug event: fact_seed_followup_answered
+
+_extractFacts result:
+  - "Lived in Grand Forks"  [fact_type: residence]
+
+Debug event: fact_seed_converted_to_fact
+  facts_extracted: 1
+  sample_fact: "Lived in Grand Forks"
+
+Debug event: facts_extracted
+  facts_extracted_count: 1
+  suppressed: false
+
+--- ALTERNATE PATH: VAGUE ANSWER ---
+
+If narrator had answered:
+  "I'm not sure, just when I was young."
+
+_extractFacts result: []
+
+Debug event: fact_seed_not_converted
+  reason: no_facts_extracted
+
+Debug event: memory_fragment_preserved
+  fragment: "I liked the smell of pizza at Shakey's Pizza in Grand Forks."
+
+Panel: Memory Moments section retained
+  ~ I liked the smell of pizza at Shakey's Pizza in Grand Forks.
+
+--- MEMOIR PANEL (threads state) ---
+
+[Memory Moments]
+~ I liked the smell of pizza at Shakey's Pizza in Grand Forks.
+
+--- TXT EXPORT EXCERPT ---
+
+=== LOREVOX MEMOIR ===
+Story Threads
+Building Blocks Collected
+
+Memory Moments
+
+~ I liked the smell of pizza at Shakey's Pizza in Grand Forks.
