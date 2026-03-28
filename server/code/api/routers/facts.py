@@ -18,7 +18,7 @@ Design rules enforced here:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -49,6 +49,11 @@ class FactAddRequest(BaseModel):
     session_id: Optional[str] = None
     source_turn_index: Optional[int] = None
     meta: Dict[str, Any] = Field(default_factory=dict)
+    # Meaning Engine fields (Bug MAT-01 fix — these were sent but not persisted before)
+    meaning_tags: List[str] = Field(default_factory=list, description="Semantic tags: stakes, vulnerability, turning_point, identity, loss, belonging")
+    narrative_role: Optional[str] = Field(default=None, description="Narrative arc role: setup | inciting | escalation | climax | resolution | reflection")
+    experience: Optional[str] = Field(default=None, description="Experiential voice (you then) — raw in-the-moment memory text")
+    reflection: Optional[str] = Field(default=None, description="Reflective voice (you now) — meaning-making, retrospective text")
 
 
 class FactStatusUpdateRequest(BaseModel):
@@ -79,6 +84,11 @@ def api_add_fact(req: FactAddRequest):
         session_id=req.session_id,
         source_turn_index=req.source_turn_index,
         meta=req.meta,
+        # Meaning Engine fields (Bug MAT-01)
+        meaning_tags=req.meaning_tags or [],
+        narrative_role=req.narrative_role,
+        experience=req.experience,
+        reflection=req.reflection,
     )
     return {"ok": True, "fact": fact}
 

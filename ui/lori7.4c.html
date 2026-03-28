@@ -42,6 +42,9 @@
   <!-- v7.3 shell layout — new, no CDN dependency -->
   <link rel="stylesheet" href="css/lori73.css">
 
+  <!-- Life Map prototype — vendored Mind Elixir (no CDN) -->
+  <link rel="stylesheet" href="vendor/mind-elixir/mind-elixir.css">
+
   <style>
     /* ── v7.1 runtime status pills (preserved exactly) ─────────── */
     .runtime-status-bar {
@@ -220,6 +223,16 @@
         onclick="showTab('timeline')">
         <span class="lv73-tab-icon" aria-hidden="true">📅</span>
         <span class="lv73-label">Timeline</span>
+      </button>
+
+      <button id="tab-lifemap"
+        class="lv73-tab tab-btn"
+        role="tab"
+        aria-selected="false"
+        aria-controls="pane-lifemap"
+        onclick="showTab('lifemap')">
+        <span class="lv73-tab-icon" aria-hidden="true">🗺</span>
+        <span class="lv73-label">Life Map</span>
       </button>
 
       <button id="tab-memoir"
@@ -719,6 +732,46 @@
       </div><!-- end pane-timeline -->
 
       <!-- ════════════════════════════════════════════════
+           LIFE MAP  (Mind Elixir prototype)
+      ════════════════════════════════════════════════════ -->
+      <div id="pane-lifemap" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-lifemap">
+        <div class="max-w-4xl mx-auto">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <h1 class="serif text-2xl text-white">Life Map</h1>
+              <p class="text-xs text-slate-500 mt-0.5">
+                A visual map of life periods and saved memories. Click a life period node to move Lori into that era.
+              </p>
+            </div>
+            <div class="flex gap-2 flex-shrink-0 mt-1">
+              <button class="btn btn-ghost btn-sm" onclick="window.LorevoxLifeMap?.refresh()">
+                Refresh Map
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="showTab('interview')">
+                Back to Interview
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="text-xs text-slate-500 mb-3">
+              This prototype is navigation-first. It visualises the timeline spine and local memories but does not edit verified facts or archive records.
+            </div>
+
+            <div id="lifeMapSelectionMeta" class="text-xs text-slate-400 mb-3">
+              Select a life period node to move Lori into that era.
+            </div>
+
+            <div id="lifeMapEmpty" class="text-sm text-slate-500 text-center py-8 italic">
+              Select a person to view their Life Map.
+            </div>
+
+            <div id="lifeMapHost" class="hidden" style="min-height:560px;border-radius:10px;background:rgba(15,23,42,.55);border:1px solid rgba(255,255,255,.06);overflow:hidden;"></div>
+          </div>
+        </div>
+      </div><!-- end pane-lifemap -->
+
+      <!-- ════════════════════════════════════════════════
            MEMOIR DRAFT
       ════════════════════════════════════════════════════ -->
       <div id="pane-memoir" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-memoir">
@@ -1050,6 +1103,10 @@
 <!-- v7.2 runtime support layer -->
 <script src="js/debug-overlay.js"></script>
 <script src="js/cognitive-auto.js"></script>
+
+<!-- Life Map prototype — vendored Mind Elixir + local integration (no CDN) -->
+<script src="vendor/mind-elixir/mind-elixir.js"></script>
+<script src="js/life-map.js"></script>
 
 <!-- ═══════════════════════════════════════════════════════════════
      v7.1 PATCH LAYER (inline — extends state, interview, app)

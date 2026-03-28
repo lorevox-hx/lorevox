@@ -19,12 +19,12 @@ window.onload = async () => {
   updateArchiveReadiness();
   update71RuntimeUI();   // v7.1 — paint runtime badges on first load
   document.addEventListener("keydown", e => { if(e.key==="Escape" && isFocusMode) toggleFocus(); });
-  // v7.4D Phase 6B — back-compat guard: returning sessions loaded from
-  // localStorage may not have identityPhase set. Default to "incomplete"
-  // so getEffectivePass74() gates correctly until basics are confirmed.
-  if (state.session && typeof state.session.identityPhase === "undefined") {
-    state.session.identityPhase = "incomplete";
-  }
+  // Step 3 (Task 6 audit): identityPhase starts as null in state.js.
+  // getIdentityPhase74() handles null by checking hasIdentityBasics74():
+  //   • returning user (has profile basics) → "complete" → correct pass routing
+  //   • new user (no profile)               → "incomplete" → identity gate
+  // The original `=== undefined` check was dead code (state.js uses null, not undefined).
+  // No functional guard needed; null is the correct initial value for both paths.
 
   const saved = localStorage.getItem(LS_ACTIVE);
   if(saved){
@@ -37,6 +37,14 @@ window.onload = async () => {
     // first message goes out via the streaming path.
     setTimeout(startIdentityOnboarding, 800);
   }
+
+  // Step 3 — log device context block on every session start for diagnostics.
+  const _dc = {
+    date:     new Intl.DateTimeFormat("en-US", { weekday:"long", year:"numeric", month:"long", day:"numeric" }).format(new Date()),
+    time:     new Intl.DateTimeFormat("en-US", { hour:"numeric", minute:"2-digit", hour12:true }).format(new Date()),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+  console.log("[device_context]", _dc);
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -139,6 +147,47 @@ function buildRuntime71() {
     pob: state.profile?.basics?.pob || state.session?.identityCapture?.birthplace || null,
     /* v7.4E — profile seed tracking: what seed questions have been answered */
     profile_seed: state.session?.profileSeed || null,
+    /* Step 3 — device context: local date, time, timezone.
+       Gives Lori reliable temporal grounding on every turn.
+       date/time are re-evaluated each call so they stay current. */
+    device_context: {
+      date:     new Intl.DateTimeFormat("en-US", { weekday:"long", year:"numeric", month:"long", day:"numeric" }).format(new Date()),
+      time:     new Intl.DateTimeFormat("en-US", { hour:"numeric", minute:"2-digit", hour12:true }).format(new Date()),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
+    /* Step 3 — optional location context (city/region only, consent-gated).
+       null when user has not opted in or location was unavailable.
+       prompt_composer.py must never assume location is present. */
+    location_context: state.session?.locationContext || null,
+    /* Meaning Engine — memoir context for narrative-aware interview guidance.
+       memoir_state: current panel state (empty | threads | draft).
+       arc_roles_present: which narrative arc parts have been captured this session.
+         prompt_composer.py uses this to identify narrative gaps and shape questions.
+       Reads from the memoir panel DOM. Falls back gracefully if panel is not mounted. */
+    memoir_context: (function() {
+      try {
+        const mState = (typeof _memoirState !== "undefined") ? _memoirState : "empty";
+        const content = document.getElementById("memoirScrollContent");
+        const arcRoles = content
+          ? [...new Set(
+              Array.from(content.querySelectorAll("mark.new-fact[data-narrative-role]"))
+                .map(m => m.dataset.narrativeRole).filter(Boolean)
+            )]
+          : [];
+        const meaningTags = content
+          ? [...new Set(
+              Array.from(content.querySelectorAll("mark.new-fact[data-meaning-tags]"))
+                .flatMap(m => (m.dataset.meaningTags || "").split(",").map(t => t.trim()).filter(Boolean))
+            )]
+          : [];
+        return { state: mState, arc_roles_present: arcRoles, meaning_tags_present: meaningTags };
+      } catch (_) {
+        return { state: "empty", arc_roles_present: [], meaning_tags_present: [] };
+      }
+    })(),
+    /* Media Builder — photo count for Lori's contextual awareness.
+       window._lv80MediaCount is updated by the gallery on every load/upload/delete. */
+    media_count: (window._lv80MediaCount || 0),
   };
 }
 
@@ -296,6 +345,10 @@ async function loadPerson(pid){
   // Update memoir source name
   const msn=document.getElementById("memoirSourceName");
   if(msn){ const n=state.profile?.basics?.preferred||state.profile?.basics?.fullname||"No person selected"; msn.textContent=n; }
+  // Life Map — refresh after person load (view layer only, no state mutation)
+  window.LorevoxLifeMap?.refresh();
+  // Bio Builder — refresh per-narrator state when person switches
+  window.LorevoxBioBuilder?.refresh();
 }
 function normalizeProfile(p){
   const b=p.basics||p.basic||p.identity||{};
@@ -323,6 +376,10 @@ async function saveProfile(){
       initTimelineSpine();
     }
     updateArchiveReadiness();
+    // Life Map — refresh after profile save so spine changes are reflected
+    window.LorevoxLifeMap?.refresh();
+    // Bio Builder — refresh if open (no truth mutation; staging layer only)
+    window.LorevoxBioBuilder?.refresh();
     if(state.chat?.conv_id){
       fetch(API.SESS_PUT,{method:"POST",headers:ctype(),body:JSON.stringify({
         conv_id:state.chat.conv_id,
@@ -995,6 +1052,8 @@ function getEffectivePass74() {
  * voice so the user experiences it as a natural conversation, not a form.
  */
 function startIdentityOnboarding(){
+  // Step 3 diagnostic — confirms auto-start fired; visible in DevTools.
+  console.log("[onboarding] startIdentityOnboarding() — new user path, phase=askName");
   state.session.identityPhase   = "askName";
   state.session.identityCapture = { name: null, dob: null, birthplace: null };
   // v7.4E — profile seed tracking: records which of the 10 seed questions have been answered.
@@ -1568,7 +1627,9 @@ function _extractFacts(userText, loriText){
   if(m) facts.push(_f(`Education: ${m[1].trim()}`, "education", "", "", 0.65));
 
   // ── Residence / moves ─────────────────────────────────────────
-  m = src.match(/\b(?:moved to|we moved to|living in|lived in|grew up in)\s+([A-Z][^.!?,]{2,60})/i);
+  // Gap G-01 fix: added "settled in|ended up in|made.*home in" to catch narrator idioms
+  // like "I settled in San Diego in 1980" which were previously missed.
+  m = src.match(/\b(?:moved to|we moved to|living in|lived in|grew up in|settled in|ended up in|made (?:my|our) home in)\s+([A-Z][^.!?,]{2,60})/i);
   if(m) facts.push(_f(`Residence: ${m[1].trim()}`, "residence", "", "", 0.6));
 
   // ── Death (family member) ────────────────────────────────────
@@ -1740,37 +1801,60 @@ async function drainTts(){
   // This prevents the STT engine from transcribing Lori's own voice.
   isLoriSpeaking=true;
   if(isRecording) stopRecording();
-  while(ttsQueue.length){
-    const chunk=ttsQueue.shift();
-    try{
-      const r=await fetch(TTS_ORIG+"/api/tts/speak_stream",{method:"POST",headers:ctype(),
-        body:JSON.stringify({text:chunk,voice:"p335"})});
-      if(!r.ok) continue;
-      // Server returns NDJSON: {"wav_b64":"<base64 WAV>"}
-      const ndjson = await r.text();
-      for(const line of ndjson.split("\n")){
-        const t=line.trim(); if(!t) continue;
-        let obj; try{ obj=JSON.parse(t); }catch{ continue; }
-        if(!obj.wav_b64) continue;
-        const raw=atob(obj.wav_b64);
-        const bytes=new Uint8Array(raw.length);
-        for(let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i);
-        const blob=new Blob([bytes],{type:"audio/wav"});
-        const url=URL.createObjectURL(blob);
-        const a=_ttsAudio||new Audio();
-        a.src=url;
-        await new Promise(res=>{ a.onended=a.onerror=res; a.play().catch(res); });
-        URL.revokeObjectURL(url);
-      }
-    }catch{}
+  try {
+    while(ttsQueue.length){
+      const chunk=ttsQueue.shift();
+      try{
+        const r=await fetch(TTS_ORIG+"/api/tts/speak_stream",{method:"POST",headers:ctype(),
+          body:JSON.stringify({text:chunk,voice:"p335"})});
+        if(!r.ok) continue;
+        // Server returns NDJSON: {"wav_b64":"<base64 WAV>"}
+        const ndjson = await r.text();
+        for(const line of ndjson.split("\n")){
+          const t=line.trim(); if(!t) continue;
+          let obj; try{ obj=JSON.parse(t); }catch{ continue; }
+          if(!obj.wav_b64) continue;
+          const raw=atob(obj.wav_b64);
+          const bytes=new Uint8Array(raw.length);
+          for(let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i);
+          const blob=new Blob([bytes],{type:"audio/wav"});
+          const url=URL.createObjectURL(blob);
+          const a=_ttsAudio||new Audio();
+          a.src=url;
+          await new Promise(res=>{ a.onended=a.onerror=res; a.play().catch(res); });
+          URL.revokeObjectURL(url);
+        }
+      }catch{}
+    }
+  } finally {
+    // Step 3 hardening — always clear both flags on exit, even if an unexpected
+    // exception escapes the inner loop. Without this, isLoriSpeaking could be
+    // stuck true permanently, silently suppressing all STT forever.
+    isLoriSpeaking=false;
+    ttsBusy=false;
   }
-  // v7.4D — Lori has finished speaking. Mic stays off — user decides when to speak.
-  isLoriSpeaking=false;
-  ttsBusy=false;
 }
 
 /* ═══════════════════════════════════════════════════════════════
    VOICE INPUT
+   ─────────────────────────────────────────────────────────────
+   STT/TTS FEEDBACK-LOOP GUARD CONTRACT (v7.4D / Step 3 hardened)
+   ─────────────────────────────────────────────────────────────
+   Problem: the Web Speech API can transcribe Lori's own TTS audio
+   through the speaker, producing feedback-loop ghost transcripts.
+
+   Guard: isLoriSpeaking (bool, declared in TTS section above)
+   ├─ Set TRUE  — immediately before drainTts() starts any audio.
+   ├─ Set FALSE — in a finally{} block after all audio is drained,
+   │              guaranteeing it is cleared even if an exception
+   │              escapes the inner chunk loop.
+   ├─ recognition.onresult — returns early (discards result) when
+   │  isLoriSpeaking is true. Emits console.warn for diagnostics.
+   └─ recognition.onend   — only auto-restarts when
+      isRecording === true AND isLoriSpeaking === false.
+
+   Invariant: isLoriSpeaking must NEVER be left stuck at true.
+   The finally{} block in drainTts() is the enforced safety net.
 ═══════════════════════════════════════════════════════════════ */
 function toggleRecording(){ unlockAudio(); isRecording?stopRecording():startRecording(); }
 // HTML button calls toggleMic() — alias to toggleRecording.
@@ -1812,7 +1896,11 @@ function _ensureRecognition(){
   recognition.onresult=e=>{
     // v7.4D — if Lori is speaking, discard all recognition results entirely.
     // This is the primary guard against self-transcription.
-    if(isLoriSpeaking) return;
+    if(isLoriSpeaking){
+      // Step 3 diagnostic — visible in DevTools during testing.
+      console.warn("[STT guard] Recognition fired while isLoriSpeaking=true — result discarded.");
+      return;
+    }
     let fin=""; for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) fin+=e.results[i][0].transcript;
     if(!fin) return;
     const trimmed=fin.trim().toLowerCase();

@@ -406,6 +406,16 @@
 
       } catch (err) {
         console.warn('[LoreVoxEmotion] Camera access denied or unavailable:', err);
+        // Step 3 fix: clean up partially-created DOM and state on failed start.
+        // Without this, every failed attempt leaves an orphaned <video> element in the DOM.
+        if (_videoEl) {
+          try { _videoEl.remove(); } catch (_) {}
+          _videoEl = null;
+        }
+        if (_camera) {
+          try { _camera.stop(); } catch (_) {}
+          _camera = null;
+        }
         _active = false;
         return false;
       }
@@ -419,9 +429,12 @@
         _camera = null;
       }
       if (_videoEl) {
-        _videoEl.remove();
+        try { _videoEl.remove(); } catch (_) {}
         _videoEl = null;
       }
+      // Step 3 fix: reset _faceMesh reference so a subsequent init() starts clean
+      // and doesn't hold a stale reference to the closed mesh/video pair.
+      _faceMesh = null;
       _sustainTracker.reset();
       _lastAffectState = 'steady';
       console.log('[LoreVoxEmotion] Stopped.');

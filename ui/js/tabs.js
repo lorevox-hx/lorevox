@@ -21,6 +21,7 @@ function showTab(id){
   document.getElementById('tab-'+id).classList.add('active');
   if(id==='events')   renderEventsGrid();
   if(id==='timeline') renderTimeline();
+  if(id==='lifemap')  window.LorevoxLifeMap?.render(true);
   if(id==='memoir')   renderMemoirChapters();
   if(id==='obituary'){
     // Auto-fill only if user hasn't made manual edits OR if the draft is empty.

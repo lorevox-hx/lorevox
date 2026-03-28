@@ -1,0 +1,281 @@
+go to work.  Why:
+
+lori8.0.html already has camera-capable UI, optional location settings, Bio Builder, memoir, and control surfaces, so the product is now advanced enough that vague or hidden sensing behavior will feel wrong to users.
+The camera preview restoration is complete, and the preview now appears after camera consent when camera is active. That means the system already has the technical foundation; what is missing is the startup explanation, explicit control, and persistent clarity of state.
+Your attached Media Builder work order is clearly marked as Step 4, with Step 3 complete as prerequisite, so this privacy/consent/UI pass should be framed as the last trust-facing closure before opening Media Builder work.
+
+So I would do this next:
+
+Work Order — Startup Consent, Sensor Control, and Trust-State UI
+Objective
+
+Make Lorevox explicitly explain camera/emotion/location use at startup for new users and returning users, provide clear on/off controls, and show an always-readable state indicator for what is currently active.
+
+Core product rule
+
+Lorevox must never leave the user wondering:
+
+whether camera is on
+whether emotion sensing is on
+whether location is on
+whether any of these are optional
+why they would be used
+What the UI should do
+1. Startup trust/consent card every new-user start
+
+When a new user starts, Lorevox should show a short plain-language onboarding card before interview flow continues.
+
+It should explain:
+
+Camera
+optional
+used only if enabled
+may help with pacing / affect-sensitive interaction
+visible preview appears when active
+Emotion/face sensing
+optional
+only works when camera is enabled
+used to help Lori respond more gently or adjust pacing
+not hidden surveillance
+Location
+optional
+session-scoped
+used for time/place context only when shared
+Story storage
+story material may be preserved locally to help build archive, biography, life map, and memoir
+
+The user should explicitly choose:
+
+Camera: On / Off
+Emotion sensing: On / Off
+Location: On / Off
+Text size: Normal / Large
+2. Startup status check for returning users
+
+For returning users, do not force full onboarding again, but do show a short startup status ribbon or popover that says something like:
+
+Camera: Off
+Emotion sensing: Off
+Location: Not shared
+Large text: On
+
+with buttons to change them immediately.
+
+3. Always-visible indicator in the main UI
+
+Add a compact trust-state indicator in the header or near settings showing at least:
+
+Camera: On/Off
+Emotion: On/Off
+Location: On/Off
+
+It should be glanceable and readable.
+
+Example:
+
+📷 Camera Off
+🙂 Emotion Off
+📍 Location Off
+
+If camera is on, that indicator should visibly change.
+
+4. Real on/off controls
+
+The user needs explicit controls to:
+
+turn camera on/off
+turn emotion sensing on/off
+turn location on/off
+
+These should exist in:
+
+startup onboarding / consent flow
+settings panel after startup
+5. Behavior dependencies
+
+Enforce these rules:
+
+Emotion sensing cannot be On if camera is Off
+Turning camera Off also disables emotion sensing
+Turning camera On does not silently force emotion sensing On
+Location remains independent
+If camera is On, preview appears
+If camera is Off, preview disappears or is unavailable
+6. Clear language Lori should use
+
+Lori should explain the purpose in plain language, for example:
+
+“The camera is optional. If you turn it on, Lorevox can use it for features like visible camera preview and optional emotion-aware pacing.”
+“Emotion sensing is optional and only works if the camera is on.”
+“You can turn these off any time.”
+“Lorevox should always show you what’s on and what’s off.”
+7. No contradiction rule
+
+Lori must never say:
+
+“there is no camera involved”
+“nothing is stored”
+“I’m not using any of that”
+if optional enabled features exist or archive functionality exists.
+
+That needs to be enforced both in prompt behavior and UI copy.
+
+Recommended files to touch
+
+Based on what you’ve uploaded, I’d expect Claude to inspect and likely modify:
+
+ui/lori8.0.html — startup UI, settings popover, status indicator, onboarding state UI
+ui/css/lori80.css — trust-state indicator, consent card styling, toggle styling
+ui/js/app.js — startup flow, consent state, sensor toggles, runtime behavior
+ui/js/facial-consent.js — existing consent logic
+ui/js/emotion.js
+ui/js/emotion-ui.js
+ui/js/affect-bridge.js
+ui/js/permissions.js
+server/code/api/prompt_composer.py — trust/transparency language alignment
+possibly onboarding helpers already present in the app flow
+Acceptance criteria
+New user
+startup explanation appears
+camera/emotion/location choices are explicit
+interview does not proceed until the required startup decision step is complete
+choices are reflected immediately in UI indicators
+Returning user
+full onboarding does not repeat unnecessarily
+short trust-state summary appears
+controls remain editable
+Camera
+On → preview visible, indicator On
+Off → preview unavailable/hidden, indicator Off
+Emotion
+can only be enabled if camera is enabled
+indicator reflects real state
+Location
+optional, session-scoped, clearly labeled
+Trust
+no false denial in Lori responses
+UI and Lori language agree
+Claude Prompt
+Read the latest camera preview ship report and the current lori8.0.html shell first.
+
+Mission:
+Implement a startup consent + live trust-state control pass for Lorevox 8.0.
+
+This is the final trust-facing UI pass before Media Builder.
+Do not start Media Builder work.
+
+## Goal
+Every time Lorevox starts for a new user, and in a lighter form for returning users, the UI must clearly explain and control:
+- camera
+- emotion sensing
+- location
+- story storage / archive use
+
+The user should never be unsure whether these are on or off.
+
+## Required outcomes
+
+### 1. New-user startup consent flow
+Add a startup UI that explains in plain language:
+- camera is optional
+- emotion sensing is optional and depends on camera
+- location is optional and session-scoped
+- story material may be preserved locally for archive / bio / memoir purposes
+
+Provide explicit choices:
+- Camera On / Off
+- Emotion sensing On / Off
+- Location On / Off
+- Text size Normal / Large
+
+Do not proceed into full interview flow until this startup step is handled appropriately.
+
+### 2. Returning-user startup summary
+For returning users, do not repeat full onboarding unnecessarily.
+Instead, show a short startup trust-state summary with current states and quick controls.
+
+### 3. Always-visible trust-state indicator
+Add a compact indicator to the main UI showing:
+- Camera On/Off
+- Emotion On/Off
+- Location On/Off
+
+This must update live.
+
+### 4. Real controls in settings
+In the settings area, add or improve controls so the user can always:
+- turn camera on/off
+- turn emotion sensing on/off
+- turn location on/off
+
+Enforce:
+- emotion sensing cannot be on while camera is off
+- camera off disables emotion sensing
+- camera on does not silently force emotion on
+
+### 5. Camera behavior
+When camera is on and consented:
+- preview appears
+- indicator says camera is on
+
+When camera is off:
+- preview is hidden/unavailable
+- indicator says camera is off
+
+Do not break the restored preview behavior.
+
+### 6. Trust language alignment
+Patch prompt/system behavior so Lori does not falsely deny:
+- storage
+- camera capability
+- optional sensing
+
+Keep language calm, plain, and truthful.
+
+### 7. Report
+Create:
+`docs/TRUST_SENSOR_STARTUP_CONTROL_REPORT.md`
+
+Include:
+- files changed
+- startup flow behavior
+- returning-user behavior
+- indicator behavior
+- toggle dependency behavior
+- before/after example wording
+- tests performed
+- remaining gaps before Media Builder
+
+## Constraints
+- no CDN
+- no Media Builder work
+- no architecture reset
+- preserve local-first behavior
+- preserve camera preview restoration
+- keep UI readable for older users
+
+Proceed now.
+What else I think should be added
+
+Two small but important extras:
+
+A. “Why this helps” line under each toggle
+
+Not just the toggle itself. Users need the reason.
+
+Example:
+
+Camera: “Used only if you want visible camera-based features.”
+Emotion sensing: “Helps Lori adjust pacing and tone.”
+Location: “Helps with local time and context.”
+B. One-click “Turn all optional sensing off”
+
+A simple safety button:
+
+“Turn camera, emotion, and location off”
+
+That would be very good UX for trust.
+
+My recommendation
+
+Do this before Media Builder, even though Step 4 is ready. The attached Media Builder work order is solid, but this startup/control pass makes Lorevox feel honest and safe, which matters more than adding photos one step sooner.

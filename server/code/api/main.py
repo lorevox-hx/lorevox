@@ -69,6 +69,7 @@ from .routers import (  # type: ignore
     facts,
     stt,
     affect,          # v6.1 Track B — Emotion Signal Layer
+    memoir_export,   # Phase E — server-side DOCX export
 )
 
 # Core Entity & State Routers
@@ -84,6 +85,7 @@ app.include_router(calendar.router)
 app.include_router(facts.router)
 app.include_router(stt.router)
 app.include_router(affect.router)  # v6.1 Track B
+app.include_router(memoir_export.router)  # Phase E — DOCX export
 
 # Real LLM Routers (REST and WS)
 app.include_router(llm_api.router)

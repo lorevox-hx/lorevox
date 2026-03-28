@@ -1,0 +1,466 @@
+/* ═══════════════════════════════════════════════════════════════
+   bio-review.css — Lorevox Phase E Review & Promote UI
+   Local CSS only. No Tailwind. No CDN.
+   Loaded alongside bio-builder.css (lori80.css) inside the
+   #bioBuilderPopover :popover-open context.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens ──────────────────────────────────────────── */
+:root {
+  --br-bg:           #11151c;
+  --br-panel:        #171c24;
+  --br-panel-2:      #1d2430;
+  --br-border:       rgba(255,255,255,.08);
+  --br-border-strong:rgba(124,156,255,.25);
+  --br-text:         #e7edf7;
+  --br-muted:        #97a4b8;
+  --br-soft:         #6f7d92;
+  --br-accent:       #7c9cff;
+  --br-accent-2:     #c6a7ff;
+  --br-good:         #4ade80;
+  --br-warn:         #fbbf24;
+  --br-bad:          #f87171;
+  --br-chip:         rgba(124,156,255,.10);
+  --br-shadow:       0 18px 40px rgba(0,0,0,.28);
+  --br-radius:       14px;
+  --br-radius-sm:    10px;
+  --br-gap:          14px;
+}
+
+/* ── Root ───────────────────────────────────────────────────── */
+.bio-review-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: var(--br-text);
+  background: transparent;
+  padding: 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.bio-review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+.bio-review-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bio-review-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--br-text);
+}
+.bio-review-subtitle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--br-muted);
+  max-width: 420px;
+}
+.bio-review-stats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.bio-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--br-chip);
+  border: 1px solid var(--br-border-strong);
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  color: var(--br-text);
+  white-space: nowrap;
+}
+.bio-stat-count {
+  color: var(--br-accent);
+  font-weight: 700;
+}
+
+/* ── Main body layout ───────────────────────────────────────── */
+.bio-review-body {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--br-gap);
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Shared panel chrome ────────────────────────────────────── */
+.bio-review-queue,
+.bio-review-detail {
+  background: linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
+  border: 1px solid var(--br-border);
+  border-radius: var(--br-radius);
+  box-shadow: var(--br-shadow);
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Queue panel ────────────────────────────────────────────── */
+.bio-review-queue-head {
+  padding: 12px 12px 8px 12px;
+  border-bottom: 1px solid var(--br-border);
+  flex-shrink: 0;
+}
+.bio-review-queue-title {
+  margin: 0 0 9px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--br-text);
+}
+.bio-review-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.bio-review-tab {
+  appearance: none;
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.03);
+  color: var(--br-muted);
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: .16s ease;
+}
+.bio-review-tab:hover {
+  border-color: rgba(124,156,255,.22);
+  color: var(--br-text);
+}
+.bio-review-tab.active {
+  background: rgba(124,156,255,.12);
+  border-color: rgba(124,156,255,.28);
+  color: var(--br-accent);
+}
+.bio-review-queue-toolbar {
+  margin-top: 8px;
+}
+.bio-review-filter {
+  width: 100%;
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.03);
+  color: var(--br-text);
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+.bio-review-filter::placeholder { color: var(--br-soft); }
+.bio-review-filter:focus { border-color: rgba(124,156,255,.30); }
+
+.bio-review-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.bio-review-list-empty {
+  color: var(--br-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 12px;
+  border: 1px dashed var(--br-border);
+  border-radius: 10px;
+  margin: 2px;
+  background: rgba(255,255,255,.02);
+}
+
+/* ── Candidate queue cards ──────────────────────────────────── */
+.bio-candidate-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.02);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: .16s ease;
+}
+.bio-candidate-card:hover {
+  border-color: rgba(124,156,255,.25);
+  background: rgba(124,156,255,.04);
+}
+.bio-candidate-card.active {
+  border-color: rgba(124,156,255,.36);
+  background: rgba(124,156,255,.08);
+  box-shadow: inset 0 0 0 1px rgba(124,156,255,.18);
+}
+.bio-candidate-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+.bio-candidate-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--br-text);
+  line-height: 1.3;
+}
+.bio-candidate-type {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--br-accent);
+  background: rgba(124,156,255,.12);
+  border: 1px solid rgba(124,156,255,.24);
+  border-radius: 999px;
+  padding: 3px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bio-candidate-snippet {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--br-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bio-candidate-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.bio-mini-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--br-soft);
+  border: 1px solid var(--br-border);
+  border-radius: 999px;
+  padding: 3px 6px;
+  background: rgba(255,255,255,.02);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bio-confidence.low    { color: var(--br-soft); }
+.bio-confidence.medium { color: var(--br-warn); }
+.bio-confidence.high   { color: var(--br-good); }
+
+/* ── Detail panel ───────────────────────────────────────────── */
+.bio-review-detail {
+  display: flex;
+  flex-direction: column;
+}
+.bio-review-detail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+.bio-review-detail-empty {
+  padding: 20px;
+  color: var(--br-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.bio-detail-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.bio-detail-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--br-text);
+}
+.bio-detail-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--br-muted);
+  white-space: nowrap;
+}
+.bio-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--br-warn);
+  flex-shrink: 0;
+}
+.bio-status-dot.approved { background: var(--br-good); }
+.bio-status-dot.rejected { background: var(--br-bad);  }
+.bio-status-dot.pending  { background: var(--br-warn); }
+
+.bio-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.bio-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bio-field.full { grid-column: 1 / -1; }
+
+.bio-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--br-muted);
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.bio-input,
+.bio-select,
+.bio-textarea {
+  width: 100%;
+  border: 1px solid var(--br-border);
+  background: var(--br-panel-2);
+  color: var(--br-text);
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  transition: .16s ease;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.bio-input:focus,
+.bio-select:focus,
+.bio-textarea:focus {
+  border-color: rgba(124,156,255,.35);
+  box-shadow: 0 0 0 3px rgba(124,156,255,.10);
+}
+.bio-textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.bio-select option { background: var(--br-panel); }
+
+/* ── Detail sub-blocks ──────────────────────────────────────── */
+.bio-detail-block {
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.02);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.bio-detail-block-title {
+  margin: 0 0 7px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--br-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.bio-snippet-box,
+.bio-provenance-box,
+.bio-merge-box {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--br-muted);
+  white-space: pre-wrap;
+  font-style: italic;
+}
+.bio-provenance-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+.bio-provenance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--br-border);
+  border-radius: 999px;
+  padding: 4px 7px;
+  font-size: 11px;
+  color: var(--br-soft);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bio-possible-duplicate {
+  margin-top: 8px;
+  border-left: 3px solid var(--br-accent-2);
+  background: rgba(198,167,255,.06);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--br-muted);
+}
+
+/* ── Action footer ──────────────────────────────────────────── */
+.bio-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--br-border);
+  background: rgba(255,255,255,.01);
+  flex-shrink: 0;
+}
+.bio-btn {
+  appearance: none;
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.03);
+  color: var(--br-text);
+  border-radius: 9px;
+  padding: 8px 13px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .16s ease;
+  font-family: inherit;
+}
+.bio-btn:hover       { border-color: rgba(124,156,255,.26); }
+.bio-btn.primary     { background: rgba(74,222,128,.12);  border-color: rgba(74,222,128,.24);  color: var(--br-good); }
+.bio-btn.warn        { background: rgba(251,191,36,.10);  border-color: rgba(251,191,36,.22);  color: var(--br-warn); }
+.bio-btn.danger      { background: rgba(248,113,113,.10); border-color: rgba(248,113,113,.22); color: var(--br-bad);  }
+.bio-btn.secondary   { background: rgba(124,156,255,.10); border-color: rgba(124,156,255,.22); color: var(--br-accent); }
+.bio-btn:disabled    { opacity: .55; cursor: default; }
+
+.bio-review-helper {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--br-soft);
+  align-self: center;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .bio-review-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .bio-review-queue  { min-height: 200px; }
+  .bio-review-detail { min-height: 280px; }
+  .bio-detail-grid   { grid-template-columns: 1fr; }
+  .bio-review-header { flex-direction: column; align-items: stretch; }
+}

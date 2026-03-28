@@ -73,11 +73,27 @@ async function startEmotionEngine(){
       onAffectState: onBrowserAffectEvent,
     });
     LoreVoxEmotion.setSection(INTERVIEW_ROADMAP[sectionIndex]?.id || null);
-    await LoreVoxEmotion.start();
-    cameraActive=true;
-    updateEmotionAwareBtn();
+    // Step 3 fix: LoreVoxEmotion.start() returns false on failure (doesn't throw).
+    // Must check the return value — NOT assume success from the absence of an exception.
+    const started = await LoreVoxEmotion.start();
+    if (started) {
+      cameraActive=true;
+      updateEmotionAwareBtn();
+      // Step 3 diagnostic — confirm srcObject is set after camera start.
+      const videoEl = document.querySelector("video[playsinline]");
+      if (videoEl && !videoEl.srcObject) {
+        console.warn("[camera] Video element has no srcObject after start — stream may not have attached.");
+      }
+    } else {
+      console.warn("[camera] LoreVoxEmotion.start() returned false — camera did not start. Affect-aware mode disabled.");
+      emotionAware = false;
+      updateEmotionAwareBtn();
+    }
   }catch(e){
-    console.warn("LoreVox: emotion engine could not start", e);
+    console.warn("[camera] Emotion engine threw on start:", e);
+    emotionAware = false;
+    cameraActive = false;
+    updateEmotionAwareBtn();
   }
 }
 

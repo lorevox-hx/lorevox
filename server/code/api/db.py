@@ -329,6 +329,71 @@ def init_db() -> None:
         if col_name not in existing_cols:
             cur.execute(alter_sql)
 
+    # -----------------------------
+    # Migrate facts: add Meaning Engine fields if missing (Bug MAT-01 fix)
+    # These fields were sent by the frontend in POST /api/facts/add but not persisted.
+    # Added in the meaning engine implementation (Phase A+B).
+    # -----------------------------
+    facts_cols = {
+        row[1] for row in cur.execute("PRAGMA table_info(facts);").fetchall()
+    }
+    meaning_cols = {
+        "meaning_tags_json": "ALTER TABLE facts ADD COLUMN meaning_tags_json TEXT NOT NULL DEFAULT '[]';",
+        "narrative_role":    "ALTER TABLE facts ADD COLUMN narrative_role TEXT DEFAULT NULL;",
+        "experience":        "ALTER TABLE facts ADD COLUMN experience TEXT DEFAULT NULL;",
+        "reflection":        "ALTER TABLE facts ADD COLUMN reflection TEXT DEFAULT NULL;",
+    }
+    for col_name, alter_sql in meaning_cols.items():
+        if col_name not in facts_cols:
+            cur.execute(alter_sql)
+
+    # -----------------------------
+    # Migrate media: add rich metadata columns if missing (Bug MB-01 fix)
+    # Original table only had kind/filename/mime/bytes/sha256/meta_json.
+    # Router expected description/taken_at/location_name/latitude/longitude/exif_json.
+    # -----------------------------
+    media_cols = {
+        row[1] for row in cur.execute("PRAGMA table_info(media);").fetchall()
+    }
+    media_new_cols = {
+        "description":   "ALTER TABLE media ADD COLUMN description TEXT NOT NULL DEFAULT '';",
+        "taken_at":      "ALTER TABLE media ADD COLUMN taken_at TEXT DEFAULT NULL;",
+        "location_name": "ALTER TABLE media ADD COLUMN location_name TEXT DEFAULT NULL;",
+        "latitude":      "ALTER TABLE media ADD COLUMN latitude REAL DEFAULT NULL;",
+        "longitude":     "ALTER TABLE media ADD COLUMN longitude REAL DEFAULT NULL;",
+        "exif_json":     "ALTER TABLE media ADD COLUMN exif_json TEXT NOT NULL DEFAULT '{}';",
+    }
+    for col_name, alter_sql in media_new_cols.items():
+        if col_name not in media_cols:
+            cur.execute(alter_sql)
+
+    # -----------------------------
+    # Media attachments — links a photo to a memoir section or fact (Media Builder)
+    # -----------------------------
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS media_attachments (
+          id TEXT PRIMARY KEY,
+          media_id TEXT NOT NULL,
+          entity_type TEXT NOT NULL DEFAULT 'memoir_section',
+          entity_id TEXT NOT NULL,
+          person_id TEXT,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE,
+          FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE SET NULL
+        );
+        """
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_attachments_media ON media_attachments(media_id);"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_attachments_entity ON media_attachments(entity_type, entity_id);"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_attachments_person ON media_attachments(person_id);"
+    )
+
     # Default plan (safe even if empty)
     now = _now_iso()
     cur.execute(
@@ -812,15 +877,23 @@ def update_profile_field(person_id: str, profile_path: str, value: Any) -> None:
 
 # -----------------------------------------------------------------------------
 # Media (routers/media.py)
+# Bug MB-01 fix: updated signatures to match what the router actually sends.
+# Original function accepted (kind, filename, mime, bytes, sha256, meta) but
+# the router called with (file_path, mime_type, description, taken_at, ...).
 # -----------------------------------------------------------------------------
 def add_media(
     person_id: Optional[str],
-    kind: str,
     filename: str,
     mime: str,
     bytes: int = 0,
     sha256: str = "",
-    meta: Optional[Dict[str, Any]] = None,
+    kind: str = "image",
+    description: str = "",
+    taken_at: Optional[str] = None,
+    location_name: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    exif: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     init_db()
     mid = _uuid()
@@ -828,47 +901,139 @@ def add_media(
     con = _connect()
     con.execute(
         """
-        INSERT INTO media(id,person_id,kind,filename,mime,bytes,sha256,created_at,meta_json)
-        VALUES(?,?,?,?,?,?,?,?,?);
+        INSERT INTO media(
+          id, person_id, kind, filename, mime, bytes, sha256, created_at,
+          description, taken_at, location_name, latitude, longitude, exif_json, meta_json
+        )
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
         """,
-        (mid, person_id, kind or "image", filename or "", mime or "", int(bytes or 0), sha256 or "", now, _json_dump(meta or {})),
+        (
+            mid, person_id, kind or "image", filename or "", mime or "",
+            int(bytes or 0), sha256 or "", now,
+            description or "", taken_at, location_name,
+            latitude, longitude,
+            _json_dump(exif or {}), "{}",
+        ),
     )
     con.commit()
     con.close()
-    return {"id": mid, "person_id": person_id, "kind": kind, "filename": filename, "mime": mime, "bytes": int(bytes or 0), "sha256": sha256, "created_at": now, "meta": meta or {}}
+    return {
+        "id": mid, "person_id": person_id, "kind": kind, "filename": filename,
+        "mime": mime, "bytes": int(bytes or 0), "sha256": sha256, "created_at": now,
+        "description": description, "taken_at": taken_at, "location_name": location_name,
+        "latitude": latitude, "longitude": longitude, "exif": exif or {},
+    }
 
 
 def list_media(person_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
     init_db()
     con = _connect()
+    cols = (
+        "id, person_id, kind, filename, mime, bytes, sha256, created_at, "
+        "description, taken_at, location_name, latitude, longitude, exif_json"
+    )
     if person_id:
         rows = con.execute(
-            """
-            SELECT id,person_id,kind,filename,mime,bytes,sha256,created_at,meta_json
-            FROM media
-            WHERE person_id=?
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?;
-            """,
+            f"SELECT {cols} FROM media WHERE person_id=? ORDER BY created_at DESC LIMIT ? OFFSET ?;",
             (person_id, int(limit), int(offset)),
         ).fetchall()
     else:
         rows = con.execute(
-            """
-            SELECT id,person_id,kind,filename,mime,bytes,sha256,created_at,meta_json
-            FROM media
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?;
-            """,
+            f"SELECT {cols} FROM media ORDER BY created_at DESC LIMIT ? OFFSET ?;",
             (int(limit), int(offset)),
         ).fetchall()
     con.close()
     out: List[Dict[str, Any]] = []
     for r in rows:
         d = dict(r)
-        d["meta"] = _json_load(d.pop("meta_json", "{}"), {})
+        d["exif"] = _json_load(d.pop("exif_json", "{}"), {})
         out.append(d)
     return out
+
+
+def get_media_item(media_id: str) -> Optional[Dict[str, Any]]:
+    """Return a single media row by id, or None if not found."""
+    init_db()
+    con = _connect()
+    row = con.execute(
+        "SELECT id,person_id,kind,filename,mime,bytes,sha256,created_at,"
+        "description,taken_at,location_name,latitude,longitude,exif_json "
+        "FROM media WHERE id=?;",
+        (media_id,),
+    ).fetchone()
+    con.close()
+    if not row:
+        return None
+    d = dict(row)
+    d["exif"] = _json_load(d.pop("exif_json", "{}"), {})
+    return d
+
+
+def delete_media(media_id: str) -> bool:
+    """Delete a media row. Returns True if a row was deleted."""
+    init_db()
+    con = _connect()
+    cur = con.execute("DELETE FROM media WHERE id=?;", (media_id,))
+    deleted = cur.rowcount > 0
+    con.commit()
+    con.close()
+    return deleted
+
+
+# Media attachments — links a photo to a memoir section or fact
+# -----------------------------------------------------------------------------
+def add_media_attachment(
+    media_id: str,
+    entity_type: str,
+    entity_id: str,
+    person_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    init_db()
+    aid = _uuid()
+    now = _now_iso()
+    con = _connect()
+    con.execute(
+        "INSERT INTO media_attachments(id,media_id,entity_type,entity_id,person_id,created_at) VALUES(?,?,?,?,?,?);",
+        (aid, media_id, entity_type, entity_id, person_id, now),
+    )
+    con.commit()
+    con.close()
+    return {"id": aid, "media_id": media_id, "entity_type": entity_type,
+            "entity_id": entity_id, "person_id": person_id, "created_at": now}
+
+
+def delete_media_attachment(attachment_id: str) -> bool:
+    init_db()
+    con = _connect()
+    cur = con.execute("DELETE FROM media_attachments WHERE id=?;", (attachment_id,))
+    deleted = cur.rowcount > 0
+    con.commit()
+    con.close()
+    return deleted
+
+
+def list_media_attachments(person_id: Optional[str] = None, media_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    init_db()
+    con = _connect()
+    if media_id:
+        rows = con.execute(
+            "SELECT id,media_id,entity_type,entity_id,person_id,created_at "
+            "FROM media_attachments WHERE media_id=? ORDER BY created_at ASC;",
+            (media_id,),
+        ).fetchall()
+    elif person_id:
+        rows = con.execute(
+            "SELECT id,media_id,entity_type,entity_id,person_id,created_at "
+            "FROM media_attachments WHERE person_id=? ORDER BY created_at ASC;",
+            (person_id,),
+        ).fetchall()
+    else:
+        rows = con.execute(
+            "SELECT id,media_id,entity_type,entity_id,person_id,created_at "
+            "FROM media_attachments ORDER BY created_at ASC;"
+        ).fetchall()
+    con.close()
+    return [dict(r) for r in rows]
 
 
 # -----------------------------------------------------------------------------
@@ -1281,6 +1446,11 @@ def add_fact(
     session_id: Optional[str] = None,
     source_turn_index: Optional[int] = None,
     meta: Optional[Dict[str, Any]] = None,
+    # Meaning Engine fields (Phase A+B — Bug MAT-01 fix)
+    meaning_tags: Optional[List[str]] = None,
+    narrative_role: Optional[str] = None,
+    experience: Optional[str] = None,
+    reflection: Optional[str] = None,
 ) -> Dict[str, Any]:
     init_db()
     fid = _uuid()
@@ -1291,8 +1461,9 @@ def add_fact(
         INSERT INTO facts(
           id,person_id,session_id,fact_type,statement,
           date_text,date_normalized,confidence,status,inferred,
-          source_turn_index,created_at,updated_at,meta_json
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+          source_turn_index,created_at,updated_at,meta_json,
+          meaning_tags_json,narrative_role,experience,reflection
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
         """,
         (
             fid, person_id, session_id, fact_type or "general", statement,
@@ -1300,6 +1471,10 @@ def add_fact(
             float(confidence or 0.0), status or "extracted",
             1 if inferred else 0, source_turn_index, now, now,
             _json_dump(meta or {}),
+            _json_dump(meaning_tags or []),
+            narrative_role or None,
+            experience or None,
+            reflection or None,
         ),
     )
     con.commit()
@@ -1310,6 +1485,10 @@ def add_fact(
         "date_text": date_text, "date_normalized": date_normalized,
         "confidence": float(confidence or 0.0), "status": status or "extracted",
         "inferred": bool(inferred), "created_at": now,
+        "meaning_tags": meaning_tags or [],
+        "narrative_role": narrative_role,
+        "experience": experience,
+        "reflection": reflection,
     }
 
 
@@ -1321,24 +1500,21 @@ def list_facts(
 ) -> List[Dict[str, Any]]:
     init_db()
     con = _connect()
+    _FACTS_COLS = """
+        id,person_id,session_id,fact_type,statement,date_text,
+        date_normalized,confidence,status,inferred,source_turn_index,
+        created_at,meta_json,meaning_tags_json,narrative_role,experience,reflection
+    """
     if status:
         rows = con.execute(
-            """
-            SELECT id,person_id,session_id,fact_type,statement,date_text,
-                   date_normalized,confidence,status,inferred,source_turn_index,created_at,meta_json
-            FROM facts WHERE person_id=? AND status=?
-            ORDER BY created_at ASC LIMIT ? OFFSET ?;
-            """,
+            f"SELECT {_FACTS_COLS} FROM facts WHERE person_id=? AND status=? "
+            "ORDER BY created_at ASC LIMIT ? OFFSET ?;",
             (person_id, status, int(limit), int(offset)),
         ).fetchall()
     else:
         rows = con.execute(
-            """
-            SELECT id,person_id,session_id,fact_type,statement,date_text,
-                   date_normalized,confidence,status,inferred,source_turn_index,created_at,meta_json
-            FROM facts WHERE person_id=?
-            ORDER BY created_at ASC LIMIT ? OFFSET ?;
-            """,
+            f"SELECT {_FACTS_COLS} FROM facts WHERE person_id=? "
+            "ORDER BY created_at ASC LIMIT ? OFFSET ?;",
             (person_id, int(limit), int(offset)),
         ).fetchall()
     con.close()
@@ -1346,6 +1522,7 @@ def list_facts(
     for r in rows:
         d = dict(r)
         d["meta"] = _json_load(d.pop("meta_json", "{}"), {})
+        d["meaning_tags"] = _json_load(d.pop("meaning_tags_json", "[]"), [])
         d["inferred"] = bool(d.get("inferred"))
         out.append(d)
     return out

@@ -40,11 +40,6 @@ let state = {
     currentMode: "open",
     /* v7.2 — Sustained confusion tracking (persisted within session) */
     confusionTurnCount: 0,  // increments on confused turns, decrements on clear turns
-    /* v7.4D Phase 6B — identity gating.
-       "incomplete" until name+DOB+birthplace are all confirmed.
-       State machine: incomplete → askName → askDob → askBirthplace → resolving → complete */
-    identityPhase: "incomplete",
-
     /* v7.4A — Real visual affect bridge target.
        Written by AffectBridge74.consume(); read by buildRuntime71().
        gazeOnScreen is optional in 7.4A — null is valid throughout this phase. */
@@ -83,9 +78,12 @@ let state = {
        'safety'      : safety companion mode                                        */
     assistantRole: "interviewer",
 
-    /* v7.4D — Identity-first onboarding state machine.
-       identityPhase: null | 'askName' | 'askDob' | 'askBirthplace' | 'resolving' | 'complete'
-       identityCapture: collects the three identity anchors before person is created.  */
+    /* v7.4D Phase 6B — Identity-first onboarding state machine.
+       null  = not yet started (new user before first message, OR returning user with profile)
+       'askName' → 'askDob' → 'askBirthplace' → 'resolving' → 'complete'
+       getIdentityPhase74() interprets null as "complete" when hasIdentityBasics74() is true,
+       and as "incomplete" when the profile has no basics — so null is safe for both paths.
+       Step 3: removed the duplicate `identityPhase: "incomplete"` that was shadowing this. */
     identityPhase: null,
     identityCapture: { name: null, dob: null, birthplace: null },
   },
@@ -152,6 +150,7 @@ let cameraActive   = false;  // camera + MediaPipe running
 let showAffectArc  = false;  // timeline affect arc toggle
 let permMicOn      = true;   // mic permission (default on)
 let permCamOn      = false;  // camera permission (default off)
+let permLocOn      = false;  // location permission (default off — Step 3: optional, consent-gated)
 let permCardShown  = false;  // has the permission card been shown this session?
 // Session affect events: { ts, section_id, affect_state, confidence }[]
 let sessionAffectLog = [];

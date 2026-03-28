@@ -1,0 +1,614 @@
+/* ═══════════════════════════════════════════════════════════════
+   life-map.js — Mind Elixir Life Map prototype for Lorevox
+   Branch: feature/mind-elixir-life-map
+
+   Load order: after timeline-ui.js and interview.js, before or
+   after app.js (uses only global functions, no hard dependency).
+
+   Exposes:  window.LorevoxLifeMap
+   ──────────────────────────────────────────────────────────────
+   PURPOSE
+   -------
+   Render a read-only, navigation-first Life Map from the Lorevox
+   timeline spine.  Clicking a life-period node calls setEra() and
+   the existing runtime refresh chain — it never writes to the
+   archive, facts, or timeline spine directly.
+
+   ARCHITECTURE CONTRACT
+   ─────────────────────
+   • state.timeline.spine.periods  → authoritative source for life periods
+   • state.timeline.memories       → local memory items (optional, display only)
+   • setEra() / setPass()          → existing era-navigation functions
+   • renderRoadmap / renderInterview / updateContextTriggers / renderTimeline
+                                   → existing UI refresh chain
+   • The map is a VIEW + NAVIGATION layer only.
+   • No parallel state is created or maintained.
+
+   See also: docs/MIND_ELIXIR_PROTOTYPE.md
+═══════════════════════════════════════════════════════════════ */
+
+(function () {
+  "use strict";
+
+  // Guard against double-registration (e.g. hot reload in dev)
+  if (typeof window.LorevoxLifeMap !== "undefined") return;
+
+  var NS       = {};
+  var _map     = null;
+  var _lastSig = null;
+
+  /* ── DOM helpers ─────────────────────────────────────────── */
+  function _el(id) { return document.getElementById(id); }
+
+  function _safeText(v) { return String(v || "").trim(); }
+
+  /* ── Era label prettifier ────────────────────────────────── */
+  function _prettyEra(v) {
+    if (typeof prettyEra === "function") return prettyEra(v);
+    return _safeText(v)
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+  }
+
+  /* ── State accessors (defensive) ─────────────────────────── */
+  function _personName() {
+    return (
+      (typeof state !== "undefined" &&
+        state.profile && state.profile.basics &&
+        (state.profile.basics.preferred || state.profile.basics.fullname)) ||
+      "Life Story"
+    );
+  }
+
+  function _getPeriods() {
+    if (typeof state === "undefined") return [];
+    if (!state.timeline || !state.timeline.spine) return [];
+    var periods = state.timeline.spine.periods;
+    if (!Array.isArray(periods)) return [];
+    // Guard: only return periods that have a usable label
+    return periods.filter(function (p) {
+      return p && typeof p.label === "string" && p.label.trim() !== "";
+    });
+  }
+
+  function _getLocalMemories() {
+    if (typeof state === "undefined") return [];
+    if (!state.timeline || !Array.isArray(state.timeline.memories)) return [];
+    return state.timeline.memories;
+  }
+
+  function _currentEra() {
+    if (typeof getCurrentEra === "function") return getCurrentEra();
+    return (
+      (typeof state !== "undefined" && state.session && state.session.currentEra) ||
+      null
+    );
+  }
+
+  function _getBirthYear() {
+    if (typeof getBirthYear === "function") return getBirthYear();
+    return null;
+  }
+
+  /* ── Memory helpers — multi-schema defensive ──────────────── */
+  function _yearFromMemory(m) {
+    if (!m) return null;
+    var raw = m.year     != null ? m.year
+            : m.start_year != null ? m.start_year
+            : m.ts       != null ? m.ts
+            : m.date     != null ? m.date
+            : m.when     != null ? m.when
+            : null;
+    if (raw == null) return null;
+    if (typeof raw === "number" && isFinite(raw)) return raw;
+    var match = String(raw).match(/\b(18|19|20)\d{2}\b/);
+    return match ? parseInt(match[0], 10) : null;
+  }
+
+  function _memoryTitle(m) {
+    return (
+      m.title ||
+      m.label ||
+      m.name  ||
+      (m.description ? String(m.description).slice(0, 48) : null) ||
+      "Memory"
+    );
+  }
+
+  function _memoryDesc(m) {
+    return m.description || m.notes || m.summary || m.text || "";
+  }
+
+  function _memoryNodeId(periodLabel, idx, m) {
+    var slug = _safeText(_memoryTitle(m))
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .slice(0, 32);
+    return "memory:" + periodLabel + ":" + idx + ":" + (slug || "item");
+  }
+
+  function _memoryBelongsToPeriod(memory, period) {
+    var y     = _yearFromMemory(memory);
+    if (!y) return false;
+    var start = Number(period.start_year);
+    var end   = period.end_year != null ? Number(period.end_year) : null;
+    if (!isFinite(start)) return false;
+    if (end == null) return y >= start;
+    return y >= start && y <= end;
+  }
+
+  /* ── Build grandchildren (memory nodes) for a period ─────── */
+  function _buildMemoryChildren(period) {
+    var memories = _getLocalMemories();
+    return memories
+      .filter(function (m) { return _memoryBelongsToPeriod(m, period); })
+      .map(function (m, idx) {
+        var y     = _yearFromMemory(m);
+        var title = _memoryTitle(m);
+        var desc  = _memoryDesc(m);
+        // Topic format: "◦ Title · Year"
+        // ◦ (hollow bullet) marks this as an anchor / navigation cue,
+        // not a verified fact.  "·" separator mirrors era node style.
+        var anchorLabel = y ? ("◦ " + title + " · " + y) : ("◦ " + title);
+        return {
+          id:    _memoryNodeId(period.label, idx, m),
+          topic: anchorLabel,
+          style: {
+            background: "rgba(52,211,153,.08)",
+            color:      "#94a3b8",
+            border:     "1px dashed rgba(52,211,153,.25)"
+          },
+          tags: ["memory"],
+          data: {
+            kind:        "memory",
+            era:         period.label,
+            year:        y,
+            title:       title,
+            description: desc
+          },
+          children: []
+        };
+      });
+  }
+
+  /* ── Core data transform ──────────────────────────────────── */
+  function buildLifeMapFromLorevoxState() {
+    var periods    = _getPeriods();
+    var name       = _personName();
+    var activeEra  = _currentEra();
+    var birthPlace = (
+      (typeof state !== "undefined" && state.profile && state.profile.basics && state.profile.basics.pob) ||
+      (typeof state !== "undefined" && state.timeline && state.timeline.spine && state.timeline.spine.birth_place) ||
+      ""
+    );
+    var birthYear  = _getBirthYear();
+
+    // Map each life period → a branch node
+    // Status mirrors memoir chapter list: active / has-memories / not-started
+    var periodNodes = periods.map(function (period) {
+      var isActive     = (activeEra === period.label);
+      var memChildren  = _buildMemoryChildren(period);
+      var memCount     = memChildren.length;
+      var hasMemories  = memCount > 0;
+
+      var start    = period.start_year != null ? period.start_year : "—";
+      var end      = period.end_year   != null ? period.end_year   : null;
+      var subtitle = start + (end != null ? ("–" + end) : "+");
+      // Memory count suffix mirrors chapter-status badges in memoir preview
+      var countSuffix = memCount > 0 ? (" · " + memCount + " memor" + (memCount === 1 ? "y" : "ies")) : "";
+      var topicStr = _prettyEra(period.label) + " · " + subtitle + countSuffix;
+
+      // Style tiers:
+      //  active      → indigo (current working period)
+      //  has content → teal-tinted (In progress equivalent)
+      //  empty       → dim (Not started equivalent)
+      var style = isActive
+        ? { background: "rgba(99,102,241,.22)", color: "#e2e8f0", border: "1px solid rgba(99,102,241,.55)" }
+        : hasMemories
+          ? { background: "rgba(20,184,166,.10)", color: "#cbd5e1", border: "1px solid rgba(20,184,166,.28)" }
+          : { background: "rgba(255,255,255,.04)", color: "#94a3b8", border: "1px solid rgba(255,255,255,.10)" };
+
+      return {
+        id:    "era:" + period.label,
+        topic: topicStr,
+        style: style,
+        tags:  ["life-period"],
+        data: {
+          kind:       "era",
+          era:        period.label,
+          start_year: period.start_year != null ? period.start_year : null,
+          end_year:   period.end_year   != null ? period.end_year   : null,
+          places:     Array.isArray(period.places) ? period.places.filter(Boolean) : [],
+          notes:      Array.isArray(period.notes)  ? period.notes.filter(Boolean)  : []
+        },
+        children: memChildren
+      };
+    });
+
+    // Optional birth seed node (display-only, no click action)
+    var rootChildren = [];
+    if (birthYear || birthPlace) {
+      rootChildren.push({
+        id:    "seed:birth",
+        topic: birthYear ? ("Born · " + birthYear) : "Born",
+        style: {
+          background: "rgba(255,155,107,.10)",
+          color:      "#e2e8f0",
+          border:     "1px solid rgba(255,155,107,.22)"
+        },
+        tags:  ["seed"],
+        data: {
+          kind:  "seed",
+          title: "Birth",
+          place: birthPlace,
+          year:  birthYear
+        },
+        children: []
+      });
+    }
+
+    rootChildren = rootChildren.concat(periodNodes);
+
+    return {
+      nodeData: {
+        id:    "root:person",
+        topic: name,
+        style: {
+          background: "rgba(124,156,255,.16)",
+          color:      "#f8fafc",
+          border:     "1px solid rgba(124,156,255,.35)"
+        },
+        tags:  ["person"],
+        data: {
+          kind:      "person",
+          person_id: (typeof state !== "undefined" && state.person_id) || null,
+          name:      name
+        },
+        children: rootChildren
+      }
+    };
+  }
+
+  /* ── Change-detection signature ───────────────────────────── */
+  function _signature() {
+    var periods  = _getPeriods();
+    var memories = _getLocalMemories();
+    var era      = _currentEra();
+    var pid      = (typeof state !== "undefined" && state.person_id) || null;
+    return JSON.stringify({
+      pid:  pid,
+      name: _personName(),
+      era:  era,
+      periods: periods.map(function (p) {
+        return { label: p.label, sy: p.start_year, ey: p.end_year };
+      }),
+      mems: memories.map(function (m) {
+        return { t: _memoryTitle(m), y: _yearFromMemory(m) };
+      })
+    });
+  }
+
+  /* ── Host / empty-state visibility ───────────────────────── */
+  // Empty-state messages mirror memoir preview clarity:
+  // each state tells the user exactly what is missing and what to do next.
+  function _syncHostVisibility() {
+    var host  = _el("lifeMapHost");
+    var empty = _el("lifeMapEmpty");
+    if (!host || !empty) return;
+
+    var pid     = (typeof state !== "undefined" && state.person_id) || null;
+    var spine   = (typeof state !== "undefined" && state.timeline && state.timeline.spine) || null;
+    var periods = _getPeriods();
+    var ready   = !!(pid && periods.length > 0);
+
+    host.classList.toggle("hidden", !ready);
+    empty.classList.toggle("hidden", ready);
+
+    if (!ready) {
+      var msg, hint;
+      if (!pid) {
+        msg  = "No narrator selected.";
+        hint = "Choose a person from the selector above to view their Life Map.";
+      } else if (!spine) {
+        msg  = "The life map is building.";
+        hint = "Share a name, date of birth, and birthplace with Lori in the interview — life periods will appear here as she maps the story.";
+      } else if (periods.length === 0) {
+        msg  = "No life periods yet.";
+        hint = "Continue the interview — Lori will plot life periods here as the story develops.";
+      } else {
+        // Should not reach here, but guard anyway
+        msg  = "Preparing map…";
+        hint = "";
+      }
+      var target =
+        '<div style="text-align:center; padding: 32px 16px;">' +
+          '<div style="font-size:14px; color:#64748b; font-weight:500; margin-bottom:8px;">' + msg + "</div>" +
+          '<div style="font-size:13px; color:#475569; font-style:italic; line-height:1.6; max-width:320px; margin:0 auto;">' + hint + "</div>" +
+        "</div>";
+      if (empty.innerHTML !== target) empty.innerHTML = target;
+    }
+  }
+
+  /* ── MindElixir availability guard ───────────────────────── */
+  function _libraryReady() {
+    if (typeof MindElixir !== "undefined") return true;
+    var host  = _el("lifeMapHost");
+    var empty = _el("lifeMapEmpty");
+    if (host)  host.classList.add("hidden");
+    if (empty) {
+      empty.classList.remove("hidden");
+      empty.innerHTML =
+        '<div class="text-sm text-amber-300 text-center py-8 italic">' +
+        'Mind Elixir is not loaded. Ensure <code>vendor/mind-elixir/mind-elixir.js</code> ' +
+        'is included in the HTML shell before life-map.js.</div>';
+    }
+    return false;
+  }
+
+  /* ── Shared era navigation (used by both era + memory clicks) */
+  function _navigateToEra(era) {
+    if (!era) return;
+    if (typeof setEra === "function") setEra(era);
+    if (typeof setPass === "function" &&
+        typeof interviewMode !== "undefined" &&
+        interviewMode === "chronological") {
+      setPass("pass2a");
+    }
+    if (typeof update71RuntimeUI     === "function") update71RuntimeUI();
+    if (typeof renderRoadmap         === "function") renderRoadmap();
+    if (typeof renderInterview       === "function") renderInterview();
+    if (typeof updateContextTriggers === "function") updateContextTriggers();
+  }
+
+  /**
+   * _jumpToInterview — mirror jumpToSection()'s final step.
+   *
+   * In lori8.0 the Life Map is a popover; dismissing it returns the user
+   * to the chat window, which IS the interview surface.
+   *
+   * In lori7.4c the Life Map is a tab pane; calling showTab("interview")
+   * switches directly to the Interview tab, identical to jumpToSection().
+   *
+   * Either way: the user lands in the interview context after clicking a
+   * map node, mirroring the exact behaviour of memoir chapter row clicks.
+   */
+  function _jumpToInterview() {
+    // lori8.0 popover path
+    var popover = _el("lifeMapPopover");
+    if (popover && typeof popover.hidePopover === "function" && popover.hasAttribute("open")) {
+      popover.hidePopover();
+      return;
+    }
+    // lori7.4c tab path
+    if (typeof showTab === "function") showTab("interview");
+  }
+
+  /* ── Node-click handler ───────────────────────────────────── */
+  function _onNodeSelect(rawNode) {
+    if (!rawNode || !rawNode.data) return;
+    var data = rawNode.data;
+
+    // ── Life-period click ─────────────────────────────────────
+    // Mirrors jumpToSection(): navigate era → jump to interview.
+    // In lori8.0 "jump" = dismiss popover → user is back in chat.
+    // In lori7.4c "jump" = showTab("interview").
+    //
+    // NOTE: _jumpToInterview() is called FIRST so the popover always
+    // closes even if any navigation function throws.  State setters
+    // (setEra/setPass) are called before DOM refresh functions so the
+    // era context is correct when the user lands in the interview.
+    if (data.kind === "era" && data.era) {
+      _jumpToInterview();                           // ① dismiss / tab-switch
+      if (typeof setEra  === "function") setEra(data.era);
+      if (typeof setPass === "function" &&
+          typeof interviewMode !== "undefined" &&
+          interviewMode === "chronological") {
+        setPass("pass2a");
+      }
+      // ② UI refresh — wrapped individually so one failure doesn't
+      //   block the rest.  In lori8.0 several of these are no-ops
+      //   (their root elements don't exist in the 8.0 DOM).
+      try { if (typeof update71RuntimeUI     === "function") update71RuntimeUI();     } catch (_) {}
+      try { if (typeof renderRoadmap         === "function") renderRoadmap();         } catch (_) {}
+      try { if (typeof renderInterview       === "function") renderInterview();       } catch (_) {}
+      try { if (typeof updateContextTriggers === "function") updateContextTriggers(); } catch (_) {}
+      try { if (typeof renderTimeline        === "function") renderTimeline();        } catch (_) {}
+      return;
+    }
+
+    // ── Memory click ──────────────────────────────────────────
+    // Set era context, surface memory meta, then jump to interview.
+    // Memory nodes are navigation cues — they are NOT truth assertions.
+    if (data.kind === "memory" && data.era) {
+      // Update meta bar before jumping so user sees the selection cue
+      var meta = _el("lifeMapSelectionMeta");
+      if (meta) {
+        var bits = [
+          data.title || "Memory",
+          data.year  ? ("" + data.year) : null,
+          data.description ? data.description.slice(0, 60) : null
+        ].filter(Boolean);
+        meta.textContent = bits.join(" · ") + " — navigating…";
+      }
+      // Navigate era state (same defensive pattern as era click)
+      if (typeof setEra  === "function") setEra(data.era);
+      if (typeof setPass === "function" &&
+          typeof interviewMode !== "undefined" &&
+          interviewMode === "chronological") {
+        setPass("pass2a");
+      }
+      try { if (typeof update71RuntimeUI     === "function") update71RuntimeUI();     } catch (_) {}
+      try { if (typeof renderRoadmap         === "function") renderRoadmap();         } catch (_) {}
+      try { if (typeof renderInterview       === "function") renderInterview();       } catch (_) {}
+      try { if (typeof updateContextTriggers === "function") updateContextTriggers(); } catch (_) {}
+      // Brief pause so user sees the "navigating…" cue, then jump
+      setTimeout(function () { _jumpToInterview(); }, 220);
+    }
+  }
+
+  /* ── Create and mount a new map instance ─────────────────── */
+  function _mountMap(data) {
+    var host = _el("lifeMapHost");
+    if (!host) return null;
+    host.innerHTML = "";
+
+    var map = new MindElixir({
+      el:               "#lifeMapHost",
+      direction:        MindElixir.LEFT,
+      draggable:        false,
+      contextMenu:      false,
+      toolBar:          false,
+      nodeMenu:         false,
+      keypress:         false,
+      locale:           "en",
+      overflowHidden:   false,
+      primaryLinkStyle: 2,
+      allowUndo:        false,
+      data:             data
+    });
+
+    map.init();
+
+    // Wire selectNode event (Mind Elixir bus API)
+    if (map.bus && typeof map.bus.addListener === "function") {
+      map.bus.addListener("selectNode", _onNodeSelect);
+    }
+
+    return map;
+  }
+
+  /* ── Public API ───────────────────────────────────────────── */
+
+  /**
+   * destroy() — tear down the current map instance and clear local state.
+   * Safe to call repeatedly.
+   */
+  function destroy() {
+    if (_map && typeof _map.destroy === "function") {
+      try { _map.destroy(); } catch (e) {}
+    }
+    var host = _el("lifeMapHost");
+    if (host) host.innerHTML = "";
+    _map     = null;
+    _lastSig = null;
+  }
+
+  /**
+   * render(force) — (re)build the map if data has changed.
+   * Always pass force=true after a tab switch or explicit refresh.
+   *
+   * Design note: if the Life Map pane is not the active tab (hidden),
+   * we skip the SVG mount entirely because offsetWidth = 0 inside a
+   * display:none parent produces wrong layout dimensions.  We reset
+   * _lastSig so the next tab-open forces a full rebuild with correct dims.
+   */
+  function render(force) {
+    _syncHostVisibility();
+    if (!_libraryReady()) return;
+
+    var host = _el("lifeMapHost");
+    if (!host || host.classList.contains("hidden")) return;
+
+    // Skip expensive SVG build when the Life Map panel is not visible.
+    // In lori8.0 the panel is a popover; the browser sets the `open`
+    // attribute when it is shown.  render(true) is called by the
+    // popover "toggle" listener (lv80Init) on open.
+    // In lori7.4c the panel is a tab-pane with class "hidden".
+    // We support both patterns by checking each in turn.
+    var pane    = _el("pane-lifemap");        // 7.4c tab pane (may be null in 8.0)
+    var popover = _el("lifeMapPopover");      // 8.0 popover panel (may be null in 7.4c)
+    var isHidden =
+      (pane    && pane.classList.contains("hidden")) ||
+      (popover && !popover.hasAttribute("open"));
+    if (isHidden) {
+      _lastSig = null;  // force fresh build next time the panel opens
+      return;
+    }
+
+    var sig = _signature();
+    if (!force && _map && sig === _lastSig) return;
+
+    var data = buildLifeMapFromLorevoxState();
+    destroy();
+    _map     = _mountMap(data);
+    _lastSig = sig;
+
+    // Update meta bar — mirrors chapter-status in memoir preview.
+    // Shows current era + memory count for that era, or a clear invitation.
+    var meta      = _el("lifeMapSelectionMeta");
+    var activeEra = _currentEra();
+    if (meta) {
+      if (activeEra) {
+        var activePeriodObj = _getPeriods().filter(function (p) { return p.label === activeEra; })[0];
+        var activeMemCount  = activePeriodObj ? _buildMemoryChildren(activePeriodObj).length : 0;
+        var memNote = activeMemCount > 0
+          ? " · " + activeMemCount + " memor" + (activeMemCount === 1 ? "y" : "ies") + " anchored"
+          : "";
+        meta.textContent = "Lori is in: " + _prettyEra(activeEra) + memNote + " — click a period to navigate, or use the button below.";
+      } else {
+        meta.textContent = "Click a life period to move Lori into that era and continue the interview.";
+      }
+    }
+
+    // Sync the persistent "Continue in Interview" button label
+    var goBtn = _el("lifeMapGoBtn");
+    if (goBtn) {
+      goBtn.textContent = activeEra
+        ? "→ Continue in " + _prettyEra(activeEra)
+        : "→ Continue in Interview";
+    }
+  }
+
+  /**
+   * refresh() — force a full rebuild (called by app.js after
+   * person load or profile save).
+   */
+  function refresh() {
+    render(true);
+  }
+
+  /**
+   * jumpToCurrentEra() — persistent "Continue in Interview" action.
+   *
+   * Invoked by the #lifeMapGoBtn button in the Life Map popover.
+   * Refreshes context for the current era (if one is active) and
+   * then dismisses the popover / switches to Interview tab.
+   *
+   * Mirrors the memoir chapter-row click: user jumps into interview
+   * work at the currently active life period without needing to click
+   * a specific SVG node first.
+   */
+  function jumpToCurrentEra() {
+    var era = _currentEra();
+    if (era) {
+      if (typeof setEra  === "function") setEra(era);
+      if (typeof setPass === "function" &&
+          typeof interviewMode !== "undefined" &&
+          interviewMode === "chronological") {
+        setPass("pass2a");
+      }
+      try { if (typeof update71RuntimeUI     === "function") update71RuntimeUI();     } catch (_) {}
+      try { if (typeof renderRoadmap         === "function") renderRoadmap();         } catch (_) {}
+      try { if (typeof renderInterview       === "function") renderInterview();       } catch (_) {}
+      try { if (typeof updateContextTriggers === "function") updateContextTriggers(); } catch (_) {}
+      try { if (typeof renderTimeline        === "function") renderTimeline();        } catch (_) {}
+    }
+    _jumpToInterview();
+  }
+
+  /* ── Register global ──────────────────────────────────────── */
+  NS.buildLifeMapFromLorevoxState = buildLifeMapFromLorevoxState;
+  NS.render                       = render;
+  NS.refresh                      = refresh;
+  NS.destroy                      = destroy;
+  NS.jumpToCurrentEra             = jumpToCurrentEra;
+  window.LorevoxLifeMap           = NS;
+
+  // Sync host visibility once DOM is ready (handles cold-load no-person state)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", _syncHostVisibility);
+  } else {
+    _syncHostVisibility();
+  }
+
+})();

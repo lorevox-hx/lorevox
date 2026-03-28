@@ -1,0 +1,252 @@
+here is a work order to get to work on.  Go.  here’s a clean work order and a Claude prompt you can paste directly.
+
+A few anchor facts Claude should use while doing this review:
+
+The current backend DB path is built as DATA_DIR / "db" / DB_NAME, with defaults of data/db/lorevox.sqlite3 unless overridden by .env.
+The FastAPI entrypoint loads .env from repo root before startup, mounts /ui, and includes the core routers, including media, facts, affect, and memoir_export.
+The current shell is ui/lori8.0.html, and it now loads the 8.0 UI, Bio Builder / Phase F surfaces, vendored local assets, and the Media Builder UI.
+Media Builder is now shipped end-to-end, including upload, gallery, attachments, DOCX enrichment, and media_count runtime context.
+Your 20-run deep report came back PASS with 0 critical failures, with one remaining warning: add an explicit transparency rule for direct trust questions in prompt_composer.py.
+The old README is now outdated; it still describes Lorevox as v7.1 and lists older pending items.
+Work Order — Lorevox Repository Audit + README Refresh
+Objective
+
+Have Claude review the current real state of Lorevox, update the README so it matches what is actually shipped now, and produce an explicit inventory of:
+
+folders in active use
+code files in active use
+the database folder and DB file path actually used
+current major modules and features
+outdated docs or references that should be marked legacy
+Why this is needed
+
+The current README is behind the actual codebase. It still reflects a v7.1 snapshot, while the repo now includes:
+
+Lorevox 8.0 shell
+startup/onboarding improvements
+camera consent and preview
+Bio Builder D/E/F
+Phase F debug/report/test/control-center stack
+Media Builder shipped
+newer runtime/context work in prompt_composer.py and app.js
+Required outcomes
+
+Claude should:
+
+inspect the repo and determine the actual current architecture
+update the README to reflect current shipped status
+list all active folders and major purpose of each
+list all code files currently used by the running app
+identify the DB folder and DB filename/path logic
+identify stale/legacy files or docs that should be marked as historical
+produce a report summarizing what changed
+Specific deliverables
+updated README.md
+new docs/REPO_AUDIT_AND_RUNTIME_INVENTORY.md
+README must include
+current product description
+current version state
+major shipped systems
+startup/runtime overview
+active architecture summary
+active folder structure
+code inventory by layer
+DB location and environment logic
+what is shipped vs what is still pending
+trust/privacy/local-first stance
+major docs list
+license section
+Required inventory sections
+1. Folders used
+
+Example categories:
+
+server/
+server/code/api/
+server/code/api/routers/
+ui/
+ui/js/
+ui/css/
+ui/vendor/
+data/
+data/db/
+data/media/
+docs/
+tests/
+launchers/
+
+Claude should only list folders that are actually relevant now, and mark any legacy/uncertain ones.
+
+2. Files with code used
+
+Claude should explicitly identify active code files used by the running system, including at minimum:
+
+backend entrypoint
+DB module
+prompt composer
+active routers
+current HTML shell
+current JS modules loaded by lori8.0.html
+active CSS files
+vendored runtime dependencies actually used
+3. DB folder used
+
+Claude should document clearly:
+
+DATA_DIR
+DB_DIR
+DB_NAME
+DB_PATH
+default path
+how .env changes it
+
+The current logic defaults to:
+
+DATA_DIR = data
+DB_DIR = data/db
+DB_NAME = lorevox.sqlite3
+DB_PATH = data/db/lorevox.sqlite3 unless overridden.
+4. Legacy/outdated items
+
+Claude should note that the prior README content is outdated and should be replaced or reframed as historical.
+
+Claude Prompt
+You are working inside the Lorevox repo.
+
+## Mission
+Perform a repository audit of Lorevox as it exists now, then update the README so it reflects the real current system instead of older v7.1-era status.
+
+This is a documentation and inventory pass.
+Do not redesign architecture.
+Do not start a new feature.
+Do not remove working code.
+
+## Required outputs
+1. Update `README.md`
+2. Create `docs/REPO_AUDIT_AND_RUNTIME_INVENTORY.md`
+
+## What you must do
+
+### A. Review current repo state
+Inspect the active code and determine:
+- what the current running UI shell is
+- what the backend entrypoint is
+- what routers are included
+- what current major systems are actually shipped
+- what folders are actively used
+- what code files are actively used by the running system
+- what DB folder and DB file path are actually used
+- what docs or references are outdated
+
+### B. Update the README
+Rewrite or heavily update the README so it reflects the current state of Lorevox.
+
+The README must include:
+- what Lorevox is
+- current active architecture
+- major shipped systems
+- startup/runtime overview
+- local-first / privacy-first stance
+- active folder structure
+- active code file inventory by layer
+- DB path and environment-variable logic
+- shipped vs pending status
+- key docs
+- license
+
+### C. Create a repo inventory report
+Create:
+`docs/REPO_AUDIT_AND_RUNTIME_INVENTORY.md`
+
+Include:
+1. Executive summary
+2. Current runtime entrypoints
+3. Active folders and purpose
+4. Active code files and purpose
+5. Active vendored dependencies and purpose
+6. Database path logic
+7. Data folders in use
+8. Legacy or outdated files/docs to review
+9. Recommended cleanup list (documentation only, no code deletion)
+
+### D. Be precise about the DB path
+Document the actual DB path logic from code, including:
+- DATA_DIR
+- DB_DIR
+- DB_NAME
+- DB_PATH
+- default path
+- env override path logic
+
+### E. Be precise about active files
+Use the running shell and actual script/include chain to determine active frontend files.
+Use the backend entrypoint and router includes to determine active backend files.
+
+### F. Include current shipped status
+At minimum account for:
+- Lorevox 8.0 shell
+- onboarding / identity-first startup
+- trust/privacy and consent work
+- camera preview / emotion pipeline
+- Bio Builder
+- Phase F orchestration and tooling
+- Media Builder
+- memoir export support
+- runtime context work
+
+### G. Do not guess
+If something is uncertain, mark it as:
+- confirmed active
+- likely active
+- legacy / outdated
+- needs manual verification
+
+## Important context clues from current code
+- DB path is derived from DATA_DIR / "db" / DB_NAME
+- .env is loaded from repo root by the backend entrypoint
+- main.py mounts /ui and includes core routers
+- lori8.0.html is the current shell to inspect for active frontend files
+- Media Builder is already shipped, not pending
+- the previous README is out of date and still reflects v7.1-era status
+- there is a recent 20-run PASS report with one warning about adding a transparency rule for trust questions
+
+## Constraints
+- no new feature work
+- no architecture rewrite
+- no Media Builder redesign
+- no code deletion
+- documentation must match shipped reality
+
+## Final response required
+When done, report:
+1. files changed
+2. what the README now says at a high level
+3. the exact DB folder/file path logic
+4. the active folders list
+5. the active code files list
+6. what was outdated and corrected
+What Claude should probably conclude
+Active runtime entrypoints
+Backend: server/code/api/main.py
+DB module: server/code/api/db.py
+Prompt builder: server/code/api/prompt_composer.py
+Current UI shell: ui/lori8.0.html
+DB folder used
+
+Default:
+
+data/db/lorevox.sqlite3
+Overrideable via .env:
+DATA_DIR
+DB_NAME
+Shipped systems README should mention
+identity-first onboarding
+runtime71 / device context
+camera consent + preview
+affect/emotion pipeline
+trust/privacy alignment work
+Bio Builder
+Phase F
+Media Builder
+memoir DOCX export
+local-first storage and no cloud dependency

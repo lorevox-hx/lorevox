@@ -1,6 +1,6 @@
 # Lorevox Action Plan
 **Generated: March 21, 2026 — Revised March 21, 2026 (Phase 0 added, build order corrected)**
-**Updated: March 21, 2026 — Phases 0–7 + ISSUE-15/16 implemented. Phase 8–9 remaining.**
+**Updated: March 27, 2026 — Transparency Rule patched (v8.0). Camera stream unification logged. Phase 8–9 remaining.**
 
 ## ✅ Completed This Session
 - **Phase 0** — DB verification: `inspect_db.py`, `db.py` logging
@@ -14,9 +14,30 @@
 - **ISSUE-15** — Archive growth visible: `updateArchiveReadiness()` called after fact extraction
 - **ISSUE-16** — Active person display: `#dockActivePerson` in Lori dock header, `_updateDockActivePerson()`
 
+## ✅ Additional Completed (March 27, 2026)
+- **v8.0 — Transparency Rule** — Added `TRANSPARENCY RULE` directive to `prompt_composer.py`
+  `_build_directive_block()`. Anchors Lori's trust-question answers to actual LORI_RUNTIME
+  state. Prevents false denial and false assertion. Applies universally (all roles).
+- **v8.0 — 20-Run Deep Runtime Report** — `docs/LOREVOX_20_RUN_DEEP_RUNTIME_REPORT.md`.
+  20/20 PASS across TP-01 (Nora Vance ×10) and TC-01 (Harold & June Mercer ×10).
+  No critical failures. No drift. Architecture integrity confirmed.
+- **Step 3 — Camera Preview** — `window.lv74.showCameraPreview()` IIFE in `lori8.0.html`.
+  Draggable, closeable, re-openable.
+- **Media Builder** — Full photo lifecycle: upload, gallery, lightbox, attach-to-section,
+  DOCX export with inline photos. Bug MB-01 (router/db signature mismatch) fixed.
+
 ## 🔲 Remaining
 - **Phase 8** — MediaPipe WASM crash fix: vendor asset verification, SIMD path testing
 - **Phase 9** — UI scale and focus mode: widen Lori dock, wire focus mode CSS
+
+## 📋 Tracked Issues (non-blocking)
+- **ISSUE-17 — Camera stream unification** *(logged 2026-03-27)*
+  `window.lv74.showCameraPreview()` calls `getUserMedia` independently from the emotion
+  engine (`LoreVoxEmotion`). On browsers that haven't cached the camera permission, the
+  user may see a second permission dialog when the preview activates. This is a UX issue
+  only — no data leakage. Fix: pass the existing `LoreVoxEmotion` MediaStream into the
+  preview element instead of opening a new stream. Priority: low. Do before first public
+  narrator session.
 
 ---
 

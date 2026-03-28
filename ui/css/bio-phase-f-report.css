@@ -1,0 +1,126 @@
+/* ═══════════════════════════════════════════════════════════════
+   bio-phase-f-report.css — Lorevox Phase F report card styles
+   Local CSS only. No Tailwind. No CDN.
+═══════════════════════════════════════════════════════════════ */
+
+.bio-phasef-report-empty {
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 12px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.bio-phasef-report-card {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 14px;
+  color: #e5edf8;
+}
+
+.bio-phasef-report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bio-phasef-report-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.bio-phasef-report-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Status chip */
+.bio-phasef-report-status {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,.10);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bio-phasef-report-status.ok {
+  color: #4ade80;
+  background: rgba(74,222,128,.10);
+}
+
+.bio-phasef-report-status.warnings,
+.bio-phasef-report-status.not_run {
+  color: #fbbf24;
+  background: rgba(251,191,36,.10);
+}
+
+.bio-phasef-report-status.not_loaded {
+  color: #f87171;
+  background: rgba(248,113,113,.10);
+}
+
+/* Mini stat grid */
+.bio-phasef-report-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .bio-phasef-report-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.bio-phasef-report-mini {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.bio-phasef-report-label {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.bio-phasef-report-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e5edf8;
+}
+
+/* Action buttons */
+.bio-phasef-report-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bio-phasef-report-btn {
+  appearance: none;
+  border: 1px solid rgba(124,156,255,.22);
+  background: rgba(124,156,255,.10);
+  color: #7c9cff;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.bio-phasef-report-btn:hover {
+  background: rgba(124,156,255,.18);
+  border-color: rgba(124,156,255,.40);
+}

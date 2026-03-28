@@ -9,9 +9,9 @@
   <script src="vendor/mediapipe/face_mesh/face_mesh.js"></script>
   <script src="vendor/mediapipe/camera_utils/camera_utils.js"></script>
 
-  <!-- Floating UI — used by Golden Thread badge anchoring -->
-  <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.6.4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.6.3"></script>
+  <!-- Floating UI — vendored locally (Step 3: CDN removed for offline deployments) -->
+  <script src="vendor/floating-ui/core.min.js"></script>
+  <script src="vendor/floating-ui/dom.min.js"></script>
 
   <link rel="stylesheet" href="css/tailwind.min.css">
   <link rel="stylesheet" href="css/base.css">
@@ -19,6 +19,12 @@
   <link rel="stylesheet" href="css/safety.css">
   <link rel="stylesheet" href="css/affect.css">
   <link rel="stylesheet" href="css/lori80.css">
+  <link rel="stylesheet" href="css/bio-review.css">
+  <link rel="stylesheet" href="css/bio-phase-f-debug.css">
+  <link rel="stylesheet" href="css/bio-phase-f-report.css">
+  <link rel="stylesheet" href="css/bio-phase-f-tests.css">
+  <link rel="stylesheet" href="css/bio-control-center.css">
+  <link rel="stylesheet" href="vendor/mind-elixir/mind-elixir.css">
 
   <!-- 8.0 layout stubs — tailwind.min.css is a minimal pre-compiled build;
        utility classes used only in 8.0 need explicit definitions here -->
@@ -67,7 +73,7 @@
       outline: none;
     }
     #lv80NewBtn {
-      font-size: 12px; color: #94a3b8;
+      font-size: 14px; color: #94a3b8;
       border: 1px solid #334155; border-radius: 6px;
       padding: 4px 8px; background: transparent; cursor: pointer;
       transition: color 0.2s, border-color 0.2s;
@@ -79,7 +85,7 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 500;
       padding: 3px 9px;
       border-radius: 20px;
@@ -274,7 +280,7 @@
     }
     .brand-ver {
       font-family: system-ui, sans-serif;
-      font-size: 11px;
+      font-size: 14px;
       color: #475569;
       font-weight: 400;
       letter-spacing: normal;
@@ -294,7 +300,7 @@
     .scroll-threads-hint {
       margin: 0 0 12px;
       padding: 0 4px;
-      font-size: 13px;
+      font-size: 14px;
       color: #94a3b8;
       font-style: italic;
       line-height: 1.5;
@@ -304,7 +310,7 @@
     .scroll-editor-hint {
       margin: 0 0 10px;
       padding: 8px 12px;
-      font-size: 13px;
+      font-size: 14px;
       color: #94a3b8;
       background: rgba(99,102,241,0.06);
       border-left: 2px solid rgba(99,102,241,0.3);
@@ -334,6 +340,621 @@
       z-index: 50;
     }
     .memoir-promotion-cue.visible { opacity: 1; }
+
+    /* ── Settings popover (Step 3) ── */
+    #lv80SettingsPopover {
+      /* base: no display property — Popover API discipline */
+      background: #0f172a;
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 12px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      padding: 0;
+      max-width: 520px;
+      width: 95vw;
+      color: #e2e8f0;
+    }
+    #lv80SettingsPopover:popover-open {
+      display: flex;
+      flex-direction: column;
+    }
+    #lv80SettingsPopover::backdrop { background: rgba(0,0,0,0.5); }
+    .lv80-settings-shell { padding: 28px; }
+    .lv80-settings-header { margin-bottom: 24px; }
+    .lv80-settings-title { font-size: 18px; font-weight: 600; color: #e2e8f0; margin: 0 0 6px; }
+    .lv80-settings-subtitle { font-size: 14px; color: #64748b; margin: 0; line-height: 1.5; }
+    .lv80-settings-section { margin-bottom: 24px; }
+    .lv80-settings-section-title { font-size: 16px; font-weight: 600; color: #a5b4fc; margin: 0 0 10px; }
+    .lv80-settings-desc { font-size: 14px; color: #94a3b8; line-height: 1.6; margin: 0 0 16px; }
+    .lv80-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+    .lv80-settings-label { font-size: 15px; color: #cbd5e1; font-weight: 500; }
+    .lv80-settings-note { font-size: 13px; color: #475569; font-style: italic; margin: 0; }
+    .lv80-settings-btn {
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.4);
+      color: #a5b4fc;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .lv80-settings-btn:hover {
+      background: rgba(99,102,241,0.3);
+      border-color: rgba(99,102,241,0.7);
+    }
+    .lv80-settings-btn.secondary {
+      background: transparent;
+      border-color: rgba(71,85,105,0.5);
+      color: #64748b;
+    }
+    .lv80-settings-btn.secondary:hover {
+      background: rgba(71,85,105,0.2);
+      border-color: #475569;
+      color: #94a3b8;
+    }
+
+    /* ── Bio Builder Control Center button ── */
+    #lv80BioControlBtn {
+      background: transparent;
+      border: 1px solid rgba(251,191,36,0.35);
+      color: #fbbf24;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    #lv80BioControlBtn:hover {
+      background: rgba(251,191,36,0.10);
+      border-color: rgba(251,191,36,0.6);
+    }
+
+    /* ── Life Map popover ── */
+    #lv80LifeMapBtn {
+      background: transparent;
+      border: 1px solid rgba(99,102,241,0.35);
+      color: #a5b4fc;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    #lv80LifeMapBtn:hover {
+      background: rgba(99,102,241,0.12);
+      border-color: rgba(99,102,241,0.6);
+    }
+
+    /* ── Bio Builder button ── */
+    #lv80BioBuilderBtn {
+      background: transparent;
+      border: 1px solid rgba(20,184,166,0.35);
+      color: #5eead4;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    #lv80BioBuilderBtn:hover {
+      background: rgba(20,184,166,0.10);
+      border-color: rgba(20,184,166,0.6);
+    }
+
+    /* ── Bio Builder popover ──────────────────────────────────────
+       Same pattern as Life Map / Peek at Memoir:
+       NO display property on base rule — UA sheet handles hidden state.
+       display:flex lives on :popover-open only.
+    ──────────────────────────────────────────────────────────── */
+    #bioBuilderPopover {
+      background: #0f0f1a;
+      border: 1px solid rgba(20,184,166,0.30);
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      padding: 0;
+      margin: auto;
+      overflow: hidden;
+    }
+    #bioBuilderPopover:popover-open {
+      display: flex;
+      flex-direction: column;
+      width: min(92vw, 920px);
+      height: min(88vh, 680px);
+    }
+    #bioBuilderPopover::backdrop {
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+    }
+
+    /* ── Bio Builder Control Center popover ───────────────────── */
+    #bioControlCenterPopover {
+      background: #0f0f1a;
+      border: 1px solid rgba(251,191,36,0.28);
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      padding: 0;
+      margin: auto;
+      overflow: hidden;
+    }
+    #bioControlCenterPopover:popover-open {
+      display: flex;
+      flex-direction: column;
+      width: min(94vw, 1180px);
+      height: min(90vh, 760px);
+    }
+    #bioControlCenterPopover::backdrop {
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+    }
+
+    .bcc-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+    .bcc-header {
+      flex-shrink: 0;
+      padding: 20px 24px 0;
+      border-bottom: 1px solid rgba(251,191,36,0.14);
+    }
+    .bcc-header h3 {
+      margin: 0 0 2px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+    #bccSubtitle {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+    #bioControlCenterRoot {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 20px 24px;
+    }
+
+    /* Bio Builder internal layout */
+    .bb-header {
+      flex-shrink: 0;
+      padding: 20px 24px 0;
+      border-bottom: 1px solid rgba(20,184,166,0.15);
+    }
+    .bb-header h3 {
+      margin: 0 0 2px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+    #bbSubtitle {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 14px;
+      display: block;
+    }
+    .bb-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: none;
+    }
+    .bb-tab {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #64748b;
+      font-size: 13px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .bb-tab:hover { color: #94a3b8; }
+    .bb-tab.bb-tab-active {
+      color: #5eead4;
+      border-bottom-color: #14b8a6;
+    }
+    #bbTabContent {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+    }
+
+    /* Bio Builder content components */
+    .bb-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #475569;
+      margin-bottom: 10px;
+    }
+    .bb-section-title--mt { margin-top: 20px; }
+    .bb-hint-text {
+      font-size: 13px;
+      color: #475569;
+      margin: 0 0 16px;
+      line-height: 1.5;
+    }
+    .bb-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 48px 24px;
+      text-align: center;
+    }
+    .bb-empty-title { font-size: 15px; font-weight: 600; color: #94a3b8; }
+    .bb-empty-message { font-size: 13px; color: #475569; max-width: 340px; line-height: 1.5; }
+    .bb-empty-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+    .bb-empty-sub { font-size: 13px; color: #334155; padding: 16px 0; }
+
+    /* Quick capture */
+    .bb-quick-entry { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+    .bb-entry-row { display: flex; gap: 8px; align-items: flex-start; }
+    .bb-entry-row--end { justify-content: flex-end; }
+    .bb-input {
+      flex: 1;
+      background: rgba(30,41,59,0.5);
+      border: 1px solid rgba(20,184,166,0.2);
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 13px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .bb-input:focus { border-color: rgba(20,184,166,0.5); }
+    .bb-textarea {
+      width: 100%;
+      background: rgba(30,41,59,0.5);
+      border: 1px solid rgba(20,184,166,0.2);
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      resize: vertical;
+      font-family: inherit;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    .bb-textarea:focus { border-color: rgba(20,184,166,0.5); }
+    .bb-btn-sm {
+      background: rgba(20,184,166,0.12);
+      border: 1px solid rgba(20,184,166,0.35);
+      color: #5eead4;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .bb-btn-sm:hover { background: rgba(20,184,166,0.22); }
+    .bb-btn-primary {
+      background: rgba(20,184,166,0.18);
+      border: 1px solid rgba(20,184,166,0.45);
+      color: #5eead4;
+      border-radius: 6px;
+      padding: 8px 20px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .bb-btn-primary:hover { background: rgba(20,184,166,0.30); }
+    .bb-ghost-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #64748b;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .bb-ghost-btn:hover { color: #94a3b8; border-color: rgba(255,255,255,0.18); }
+    .bb-add-entry-btn { margin-top: 12px; width: 100%; }
+    .bb-quick-list { display: flex; flex-direction: column; gap: 6px; }
+    .bb-quick-item {
+      display: flex;
+      gap: 10px;
+      padding: 8px 12px;
+      background: rgba(30,41,59,0.4);
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .bb-quick-type { font-size: 11px; color: #5eead4; font-weight: 600; flex-shrink: 0; padding-top: 1px; }
+    .bb-quick-text { font-size: 13px; color: #94a3b8; line-height: 1.4; }
+    .bb-quick-links { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+
+    /* Questionnaire section grid */
+    .bb-section-grid { display: flex; flex-direction: column; gap: 8px; }
+    .bb-section-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      background: rgba(30,41,59,0.35);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .bb-section-card:hover {
+      background: rgba(20,184,166,0.07);
+      border-color: rgba(20,184,166,0.25);
+    }
+    .bb-section-card-icon { font-size: 18px; flex-shrink: 0; }
+    .bb-section-card-body { flex: 1; min-width: 0; }
+    .bb-section-card-title { font-size: 13px; font-weight: 600; color: #cbd5e1; }
+    .bb-section-card-hint { font-size: 12px; color: #475569; margin-top: 2px; }
+    .bb-section-card-progress { flex-shrink: 0; }
+    .bb-pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .bb-pill--empty { background: rgba(255,255,255,0.05); color: #475569; }
+    .bb-pill--has   { background: rgba(20,184,166,0.15); color: #5eead4; }
+
+    /* Questionnaire section detail */
+    .bb-section-nav { margin-bottom: 12px; }
+    .bb-back-btn { font-size: 12px; }
+    .bb-fields-list { display: flex; flex-direction: column; gap: 12px; }
+    .bb-field { display: flex; flex-direction: column; gap: 4px; }
+    .bb-label { font-size: 12px; color: #64748b; font-weight: 500; }
+    .bb-repeat-entry {
+      padding: 14px;
+      background: rgba(30,41,59,0.3);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .bb-repeat-label { font-size: 11px; font-weight: 600; color: #5eead4; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .bb-section-footer { margin-top: 20px; display: flex; justify-content: flex-end; }
+
+    /* Source inbox */
+    .bb-drop-zone {
+      border: 2px dashed rgba(20,184,166,0.25);
+      border-radius: 10px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      margin-bottom: 16px;
+    }
+    .bb-drop-zone:hover {
+      background: rgba(20,184,166,0.05);
+      border-color: rgba(20,184,166,0.45);
+    }
+    .bb-drop-icon { font-size: 28px; margin-bottom: 8px; }
+    .bb-drop-label { font-size: 14px; color: #94a3b8; font-weight: 500; margin-bottom: 4px; }
+    .bb-drop-hint { font-size: 12px; color: #475569; }
+    .bb-source-cards-list { display: flex; flex-direction: column; gap: 8px; }
+    .bb-source-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: rgba(30,41,59,0.35);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+    }
+    .bb-source-card-icon { font-size: 18px; flex-shrink: 0; }
+    .bb-source-card-body { flex: 1; min-width: 0; }
+    .bb-source-card-name { font-size: 13px; color: #cbd5e1; font-weight: 500; }
+    .bb-source-card-meta { font-size: 12px; color: #475569; margin-top: 2px; }
+    .bb-source-card-actions { flex-shrink: 0; }
+
+    /* Candidate cards */
+    .bb-bucket { margin-bottom: 20px; }
+    .bb-bucket-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .bb-count { color: #475569; font-weight: 400; }
+    .bb-candidate-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 14px;
+      background: rgba(30,41,59,0.3);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+      margin-bottom: 6px;
+    }
+    .bb-candidate-body { flex: 1; min-width: 0; }
+    .bb-candidate-name { font-size: 13px; color: #cbd5e1; font-weight: 500; }
+    .bb-candidate-detail { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .bb-candidate-src { font-size: 11px; color: #334155; margin-top: 4px; }
+    .bb-candidate-actions { flex-shrink: 0; }
+    .bb-candidate-note { font-size: 11px; color: #334155; font-style: italic; }
+
+    /* ── Bio Builder Phase D — Source review surface ───────── */
+    .bb-source-card-badges { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+    .bb-source-added-badge {
+      font-size: 10px; padding: 1px 7px; border-radius: 8px;
+      background: rgba(20,184,166,0.15); color: #5eead4; font-weight: 600;
+    }
+    .bb-source-detected-badge {
+      font-size: 10px; padding: 1px 7px; border-radius: 8px;
+      background: rgba(99,102,241,0.12); color: #a5b4fc; font-weight: 500;
+    }
+    .bb-review-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px; flex-wrap: wrap; gap: 6px;
+    }
+    .bb-review-added-summary { font-size: 12px; color: #5eead4; }
+    .bb-review-header { margin-bottom: 16px; }
+    .bb-review-filename { font-size: 15px; font-weight: 600; color: #e2e8f0; }
+    .bb-review-meta { font-size: 12px; color: #475569; margin-top: 3px; }
+    .bb-review-section { margin-bottom: 20px; }
+    .bb-review-section-title {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #475569; margin-bottom: 8px;
+    }
+    .bb-review-chars { text-transform: none; font-weight: 400; color: #334155; letter-spacing: 0; }
+    .bb-review-text-preview {
+      background: rgba(15,15,26,0.6);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 6px; padding: 12px 14px;
+      font-size: 12px; color: #64748b; line-height: 1.6;
+      max-height: 140px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .bb-paste-area { min-height: 140px; }
+    .bb-review-footer { margin-top: 10px; display: flex; justify-content: flex-start; }
+    .bb-det-bucket { margin-bottom: 16px; }
+    .bb-det-bucket-header {
+      font-size: 12px; font-weight: 600; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;
+    }
+    .bb-det-count { color: #475569; font-weight: 400; text-transform: none; letter-spacing: 0; }
+    .bb-det-items-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 6px; }
+    .bb-det-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 9px 12px;
+      background: rgba(30,41,59,0.4);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 7px; transition: border-color 0.15s;
+    }
+    .bb-det-item--added {
+      background: rgba(20,184,166,0.05);
+      border-color: rgba(20,184,166,0.18); opacity: 0.7;
+    }
+    .bb-det-item-body { flex: 1; min-width: 0; }
+    .bb-det-item-text {
+      font-size: 13px; color: #cbd5e1; font-weight: 500;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .bb-det-relation {
+      font-size: 11px; color: #5eead4; background: rgba(20,184,166,0.12);
+      padding: 1px 7px; border-radius: 8px; font-weight: 500;
+    }
+    .bb-det-context { font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.5; font-style: italic; }
+    .bb-det-item-actions { flex-shrink: 0; display: flex; align-items: center; }
+    .bb-det-added { font-size: 11px; color: #5eead4; white-space: nowrap; }
+    .bb-det-add-btn { font-size: 11px; padding: 4px 10px; }
+    .bb-det-add-all { font-size: 11px; padding: 4px 12px; width: 100%; margin-top: 4px; }
+    .bb-review-add-all-row {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.05); margin-top: 8px;
+    }
+
+    /* ── Life Map popover ────────────────────────────────────────
+       CRITICAL: display:flex must live on :popover-open, NOT on the
+       base #lifeMapPopover rule.  The browser's UA sheet hides closed
+       popovers via [popover]:not(:popover-open){display:none}.
+       An unconditional display:flex in an author rule has higher
+       specificity and wins, leaving the popover permanently visible
+       (the bug that caused it to "cover over the chat and not go away").
+       The memoir scroll uses the same correct pattern.
+    ──────────────────────────────────────────────────────────── */
+    #lifeMapPopover {
+      /* Shape / chrome — applied regardless of open/closed state.
+         NO display property here — let UA display:none work when closed. */
+      background: #0f0f1a;
+      border: 1px solid rgba(99,102,241,0.35);
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      padding: 24px;
+      margin: auto;
+      overflow: hidden;
+    }
+    /* Only when the popover is open — set flex layout and dimensions */
+    #lifeMapPopover:popover-open {
+      display: flex;
+      flex-direction: column;
+      width: min(92vw, 860px);
+      height: min(88vh, 640px);
+    }
+    #lifeMapPopover::backdrop {
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+    }
+    #lifeMapPopover .scroll-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      margin-bottom: 16px;
+    }
+    #lifeMapPopover .scroll-header h3 {
+      margin: 0;
+      white-space: nowrap;
+      color: #a5b4fc;
+      font-family: 'Georgia', serif;
+      font-size: 17px;
+    }
+    #lifeMapHost {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(15,15,30,0.6);
+    }
+    #lifeMapEmpty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #lifeMapEmpty.hidden { display: none; }
+    #lifeMapSelectionMeta {
+      flex: 1;
+      font-size: 13px;
+      color: #94a3b8;
+      font-style: italic;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    /* Persistent action bar — always visible at bottom of popover.
+       Provides an explicit "jump to Interview" path without requiring
+       the user to click a specific SVG node — mirrors the UX of
+       memoir chapter-row click but as a standing affordance. */
+    #lifeMapActionBar {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 14px;
+      border-top: 1px solid rgba(99,102,241,0.15);
+      margin-top: 12px;
+    }
+    #lifeMapGoBtn {
+      background: transparent;
+      border: 1px solid rgba(99,102,241,0.4);
+      color: #a5b4fc;
+      border-radius: 8px;
+      padding: 7px 18px;
+      font-size: 13px;
+      font-family: 'Inter', system-ui, sans-serif;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    #lifeMapGoBtn:hover {
+      background: rgba(99,102,241,0.14);
+      border-color: rgba(99,102,241,0.7);
+      color: #c7d2fe;
+    }
   </style>
 </head>
 <body>
@@ -380,6 +1001,18 @@
     </span>
 
     <div>
+      <button id="lv80BioBuilderBtn" popovertarget="bioBuilderPopover" title="Capture and organize biographical material">
+        🧩 Bio Builder
+      </button>
+      <button id="lv80BioControlBtn"
+              popovertarget="bioControlCenterPopover"
+              title="Open Bio Builder control center"
+              class="dev-only hidden">
+        🛠 Control Center
+      </button>
+      <button id="lv80LifeMapBtn" popovertarget="lifeMapPopover" title="View your Life Map">
+        🗺 Life Map
+      </button>
       <button id="lv80PeekBtn" popovertarget="memoirScrollPopover" title="Read your story so far">
         📖 Peek at Memoir
       </button>
@@ -443,6 +1076,17 @@
        They live hidden here so app.js never crashes; 8.0 drives its
        own UI (person select dropdown, capture bar, status dot, etc.)
   ──────────────────────────────────────────────────────────────-->
+  <!-- ── PERM CARD shim — interview.js calls getElementById("permCard").
+       Hidden in 8.0 (UI uses lv80SettingsPopover instead), but present
+       so interview.js doesn't throw. Contains full permission toggles. ── -->
+  <div id="permCard" class="hidden" style="display:none" aria-hidden="true">
+    <button class="perm-toggle on" id="permMicToggle" onclick="togglePermMic()"></button>
+    <button class="perm-toggle"    id="permCamToggle" onclick="togglePermCam()"></button>
+    <button class="perm-toggle"    id="permLocToggle" onclick="togglePermLoc()"></button>
+    <button onclick="confirmPermCard()">Start</button>
+    <button onclick="dismissPermCard()">Skip</button>
+  </div>
+
   <div id="lv80AppShims" style="display:none" aria-hidden="true">
     <span id="chatSessionLabel"></span>
     <div id="peopleList"></div>
@@ -478,7 +1122,13 @@
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <button id="memoirExportTxtBtn" class="scroll-action-btn">
-          ⬇️ Export TXT
+          ⬇️ Save TXT
+        </button>
+        <button id="memoirExportDocxBtn" class="scroll-action-btn">
+          ⬇️ Save DOCX
+        </button>
+        <button id="lv80PhotosTabBtn">
+          📷 Photos
         </button>
         <button id="memoirEditBtn" class="scroll-action-btn" disabled aria-disabled="true">
           ✏️ Draft Not Ready Yet
@@ -506,6 +1156,151 @@
     </p>
     <!-- Threads / Draft content: shown when facts exist -->
     <div id="memoirScrollContent" class="scroll-body" hidden></div>
+
+    <!-- Photos gallery — shown when 📷 Photos tab is active -->
+    <div id="lv80PhotoGallery" hidden>
+      <div class="lv80-gallery-header">
+        <span class="lv80-gallery-title">📷 Photos</span>
+        <button id="lv80AddPhotoBtn">＋ Add Photo</button>
+        <input type="file" id="lv80PhotoFileInput" accept="image/*" style="display:none">
+      </div>
+      <!-- Upload preview card (hidden until file selected) -->
+      <div id="lv80UploadCard" hidden>
+        <img id="lv80UploadPreviewImg" src="" alt="preview">
+        <div class="lv80-upload-meta">
+          <input type="text" id="lv80UploadDescInput" placeholder="Description (optional)">
+          <input type="text" id="lv80UploadDateInput" placeholder="Date taken (e.g. Summer 1962)">
+          <div class="lv80-upload-actions">
+            <button id="lv80UploadSubmitBtn">Upload</button>
+            <button id="lv80UploadCancelBtn">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <!-- Gallery grid -->
+      <div id="lv80GalleryGrid" class="lv80-gallery-grid"></div>
+    </div>
+  </div>
+
+  <!-- ── LIFE MAP POPOVER ─────────────────────────────────────
+       Uses the same popover="auto" pattern as memoirScrollPopover.
+       Triggered by #lv80LifeMapBtn (popovertarget="lifeMapPopover").
+       The browser adds/removes the `open` attribute automatically;
+       a toggle event listener in the shell script calls render(true).
+  ──────────────────────────────────────────────────────────────-->
+  <div id="lifeMapPopover" popover="auto" class="parchment-scroll">
+    <div class="scroll-header">
+      <h3>Life Map</h3>
+      <span id="lifeMapSelectionMeta">Click a life period to move Lori into that era and continue the interview.</span>
+    </div>
+    <!-- SVG canvas — MindElixir / stub renderer mounts here -->
+    <div id="lifeMapHost"></div>
+    <!-- Empty state — shown when no person / no periods -->
+    <div id="lifeMapEmpty" class="hidden"></div>
+    <!-- Persistent action bar — always visible.
+         Lets users jump to the interview without clicking a specific node.
+         Label is updated by life-map.js render() to reflect current era. -->
+    <div id="lifeMapActionBar">
+      <button id="lifeMapGoBtn"
+              onclick="window.LorevoxLifeMap?.jumpToCurrentEra()"
+              title="Jump to the interview at the current life period">
+        → Continue in Interview
+      </button>
+    </div>
+  </div>
+
+  <!-- ── BIO BUILDER POPOVER ───────────────────────────────────
+       Intake and staging layer — sits between Archive and Structured History.
+       Uses the same popover="auto" pattern as Life Map and Peek at Memoir.
+       Triggered by #lv80BioBuilderBtn (popovertarget="bioBuilderPopover").
+       bio-builder.js exposes window.LorevoxBioBuilder; the toggle listener
+       in lv80Init() calls render() when the popover opens.
+
+       Architecture: Archive / Source Intake
+                       ↓
+                     Bio Builder  ← THIS POPOVER
+                       ↓
+                     Structured History
+                       ↓
+                     Derived Views (Life Map, Timeline, Peek at Memoir)
+
+       Truth rule: Bio Builder writes only to state.bioBuilder.
+       It never writes to state.archive, state.facts, or state.timeline.
+  ──────────────────────────────────────────────────────────────-->
+  <div id="bioBuilderPopover" popover="auto">
+
+    <!-- Header: title + narrator context + section tabs -->
+    <div class="bb-header">
+      <h3>🧩 Bio Builder</h3>
+      <span id="bbSubtitle">Choose a narrator to begin</span>
+      <div class="bb-tabs" role="tablist">
+        <button id="bbTabCapture"       class="bb-tab bb-tab-active" data-tab="capture"
+                onclick="window.LorevoxBioBuilder._switchTab('capture')"
+                role="tab" aria-selected="true">Quick Capture</button>
+        <button id="bbTabQuestionnaire" class="bb-tab" data-tab="questionnaire"
+                onclick="window.LorevoxBioBuilder._switchTab('questionnaire')"
+                role="tab" aria-selected="false">Questionnaire</button>
+        <button id="bbTabSources"       class="bb-tab" data-tab="sources"
+                onclick="window.LorevoxBioBuilder._switchTab('sources')"
+                role="tab" aria-selected="false">Source Inbox</button>
+        <button id="bbTabCandidates"    class="bb-tab" data-tab="candidates"
+                onclick="window.LorevoxBioBuilder._switchTab('candidates')"
+                role="tab" aria-selected="false">Candidates</button>
+      </div>
+    </div>
+
+    <!-- Active tab content — rendered by bio-builder.js -->
+    <div id="bbTabContent" role="tabpanel"></div>
+
+  </div>
+
+  <!-- ── BIO BUILDER CONTROL CENTER POPOVER ───────────────────
+       Dev/admin operational surface for Phase E / F:
+       review counts, orchestration status, reports, and tests.
+       Triggered by #lv80BioControlBtn (popovertarget="bioControlCenterPopover").
+       Rendered by bio-control-center.js on popover open.
+  ──────────────────────────────────────────────────────────────-->
+  <div id="bioControlCenterPopover" popover="auto">
+    <div class="bcc-shell">
+      <div class="bcc-header">
+        <h3>🛠 Bio Builder Control Center</h3>
+        <span id="bccSubtitle">
+          Review queue, promotion status, feed sync, reporting, and tests.
+        </span>
+      </div>
+
+      <div id="bioControlCenterRoot"></div>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS POPOVER (Step 3) ───────────────────────────
+       Triggered by the gear icon in the header via toggleSettings().
+       Contains location opt-in and future settings expansion.
+  ──────────────────────────────────────────────────────────────-->
+  <div id="lv80SettingsPopover" popover="auto">
+    <div class="lv80-settings-shell">
+      <div class="lv80-settings-header">
+        <h2 class="lv80-settings-title">⚙️ Settings &amp; Privacy</h2>
+        <p class="lv80-settings-subtitle">These settings are optional and session-scoped only. Nothing here is saved between sessions unless noted.</p>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h3 class="lv80-settings-section-title">📍 Location (Optional)</h3>
+        <p class="lv80-settings-desc">
+          Sharing your approximate city helps Lori give more contextual responses — for example, referencing your local time of day or region. Only city and region are used. Exact coordinates are never stored or sent.
+          <strong>Location is completely optional.</strong> Lori works normally without it.
+        </p>
+        <div class="lv80-settings-row">
+          <div>
+            <div class="lv80-settings-label" id="lv80LocStatus">Not shared this session</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="lv80-settings-btn" onclick="requestOptionalLocation()">📍 Share my location</button>
+            <button class="lv80-settings-btn secondary" onclick="clearOptionalLocation()">Clear</button>
+          </div>
+        </div>
+        <p class="lv80-settings-note">Location is used only for this session and is not stored to disk.</p>
+      </div>
+    </div>
   </div>
 
   <!-- ── MEMOIR EDIT MODAL (focus-trapped) ─────────────────── -->
@@ -547,6 +1342,15 @@
 <script src="js/interview.js"></script>
 <script src="js/app.js"></script>
 <script src="js/cognitive-auto.js"></script>
+<script src="vendor/mind-elixir/mind-elixir.js"></script>
+<script src="js/life-map.js"></script>
+<script src="js/bio-builder.js"></script>
+<script src="js/bio-review.js"></script>
+<script src="js/bio-promotion-adapters.js"></script>
+<script src="js/bio-phase-f.js"></script>
+<script src="js/bio-phase-f-report.js"></script>
+<script src="js/bio-phase-f-test-harness.js"></script>
+<script src="js/bio-control-center.js"></script>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════
@@ -1492,6 +2296,118 @@ function memoirExportTXT() {
   });
 }
 
+// ── MEMOIR DOCX EXPORT (Phase E) ───────────────────────────────────────────
+// Builds the export payload from the visible panel state and calls
+// POST /api/memoir/export-docx — returns a .docx blob and triggers download.
+// Falls back to a clear user message if the server is unavailable.
+async function memoirExportDOCX() {
+  if (_memoirState === "empty") return; // button should be disabled, but guard anyway
+
+  const content   = document.getElementById("memoirScrollContent");
+  const basics    = state?.profile?.basics || {};
+  const rawName   = basics.preferred || basics.fullname || state?.person_id || "Narrator";
+  const narName   = String(rawName).trim() || "Narrator";
+
+  // Build the section list from the visible panel (threads state)
+  const sectionsPayload = [];
+  if (_memoirState === "threads") {
+    const domSections = Array.from(content?.querySelectorAll(".memoir-section") || []);
+    for (const sec of domSections) {
+      const label = sec.querySelector(".memoir-section-heading")?.textContent?.trim() || "";
+      const items = Array.from(sec.querySelectorAll("mark.new-fact"))
+        .map(m => m.textContent.trim()).filter(Boolean);
+      const secId = sec.dataset.section || "";
+      if (items.length) sectionsPayload.push({ id: secId, label, items });
+    }
+  }
+
+  // Arc roles for the header line
+  const arcMarks = Array.from(content?.querySelectorAll("mark.new-fact[data-narrative-role]") || []);
+  const arcRoleKeys = [...new Set(arcMarks.map(m => m.dataset.narrativeRole).filter(Boolean))];
+  let arcRoleLabels = [];
+  if (arcRoleKeys.length && typeof _LV80_NARRATIVE_TEMPLATE !== "undefined") {
+    const labelMap = Object.fromEntries(_LV80_NARRATIVE_TEMPLATE.map(({ role, label }) => [role, label]));
+    arcRoleLabels = arcRoleKeys.map(r => labelMap[r] || r);
+  }
+
+  // Prose (draft state) — collect paragraphs in textarea / panel
+  let prose = null;
+  if (_memoirState === "draft") {
+    const paras = Array.from(content?.querySelectorAll("p:not(.memoir-placeholder)") || [])
+      .filter(el => !el.querySelector("mark.new-fact"))
+      .map(el => el.textContent.trim()).filter(Boolean);
+    prose = paras.join("\n\n");
+  }
+
+  // Media Builder — collect attached photos for DOCX inline images
+  // Each entry: { media_id, section_key, file_path, description, taken_at }
+  // file_path is the server-local path so python-docx can read it directly.
+  const attachedPhotos = [];
+  if (typeof window._lv80GetAttachments === "function" &&
+      typeof window._lv80GetMediaItems  === "function") {
+    const allAttachments = window._lv80GetAttachments();
+    const allMedia       = window._lv80GetMediaItems();
+    const mediaMap = {};
+    allMedia.forEach(function (m) { mediaMap[m.id] = m; });
+    allAttachments.forEach(function (a) {
+      if (a.entity_type !== "memoir_section") return;
+      const item = mediaMap[a.media_id];
+      if (!item) return;
+      attachedPhotos.push({
+        media_id:    item.id,
+        section_key: a.entity_id,
+        // filename is the absolute server path stored at upload time
+        file_path:   item.filename,
+        description: item.description || "",
+        taken_at:    item.taken_at    || "",
+      });
+    });
+  }
+
+  const body = {
+    narrator_name:   narName,
+    memoir_state:    _memoirState,
+    sections:        sectionsPayload,
+    prose:           prose,
+    arc_roles:       arcRoleLabels,
+    attached_photos: attachedPhotos,
+  };
+
+  try {
+    const resp = await fetch("/api/memoir/export-docx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      console.warn("[memoir-docx] Server error:", err);
+      alert("DOCX export failed: " + (err.detail || resp.status));
+      return;
+    }
+    const blob = await resp.blob();
+    const safeName = narName.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
+    const filename = `lorevox_memoir_${safeName}_${_memoirState}.docx`;
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+
+    lv80LogTurnDebug({
+      event:                       "memoir_export_triggered",
+      format:                      "docx",
+      memoir_state:                _memoirState,
+      export_matches_visible_state: true,
+      sections_exported:           sectionsPayload.length,
+      arc_parts_detected:          arcRoleLabels,
+    });
+  } catch (e) {
+    console.warn("[memoir-docx] Network error:", e);
+    alert("DOCX export is only available when Lori's server is running. Use 'Save TXT' instead.");
+  }
+}
+
 // View-layer quality filter — suppresses obviously broken fragments from
 // the memoir panel display. Does NOT remove them from storage.
 function _memoirQualityFilter(text) {
@@ -1583,11 +2499,24 @@ function _memoirEvaluateState() {
     _memoirShowPromotionCue();
   }
 
-  // Export button — enabled in all states (empty exports visible scaffold)
-  const exportTxtBtn = document.getElementById("memoirExportTxtBtn");
+  // Export buttons — TXT enabled in all states; DOCX enabled in threads/draft only
+  const exportTxtBtn  = document.getElementById("memoirExportTxtBtn");
+  const exportDocxBtn = document.getElementById("memoirExportDocxBtn");
   if (exportTxtBtn) {
     exportTxtBtn.disabled = false;
     exportTxtBtn.setAttribute("aria-disabled", "false");
+  }
+  if (exportDocxBtn) {
+    const docxEnabled = (_memoirState !== "empty");
+    exportDocxBtn.disabled = !docxEnabled;
+    exportDocxBtn.setAttribute("aria-disabled", String(!docxEnabled));
+    // Update label to reflect photo attachment status
+    const photoCount = (typeof window._lv80GetAttachments === "function")
+      ? window._lv80GetAttachments().filter(a => a.entity_type === "memoir_section").length
+      : 0;
+    exportDocxBtn.textContent = photoCount > 0
+      ? `⬇️ Save DOCX (${photoCount} photo${photoCount > 1 ? "s" : ""})`
+      : "⬇️ Save DOCX";
   }
 }
 
@@ -1762,12 +2691,17 @@ async function _memoirLoadStoredFacts(personId) {
       section.appendChild(h4);
 
       if (items.length) {
-        for (const { text } of items) {
+        // Bug fix: destructure { text, fact } — previously { text } only, leaving
+        // fact undefined which silently cleared the data-narrative-role attribute.
+        for (const { text, fact: itemFact } of items) {
           const p    = document.createElement("p");
           const mark = document.createElement("mark");
           mark.className = "new-fact";
           mark.setAttribute("data-fact-text", text);
-          mark.setAttribute("data-narrative-role", fact.narrative_role || "");
+          mark.setAttribute("data-narrative-role", itemFact?.narrative_role || "");
+          // data-meaning-tags: comma-joined list for buildRuntime71() memoir_context read
+          const tags = Array.isArray(itemFact?.meaning_tags) ? itemFact.meaning_tags : [];
+          mark.setAttribute("data-meaning-tags", tags.join(","));
           mark.textContent = text;
           p.appendChild(mark);
           section.appendChild(p);
@@ -1784,6 +2718,8 @@ async function _memoirLoadStoredFacts(personId) {
 
     _memoirEvaluateState();
     _memoirRenderFragments(); // overlay in-session memory fragments (Memory Exercise)
+    // Overlay section photo thumbnails if any have been attached
+    if (typeof window._lv80RenderSectionThumbs === "function") window._lv80RenderSectionThumbs();
     console.log(`[memoir] Loaded ${seen.size} quality-filtered fact(s) across ${_LV80_MEMOIR_SECTIONS.length} sections.`);
   } catch (e) {
     console.warn("[memoir] Failed to load stored facts:", e);
@@ -2326,6 +3262,20 @@ function _lv80MirrorStatus(active) {
   };
 })();
 
+// Step 3 — Settings popover toggle. Called by the gear icon in the header.
+function toggleSettings() {
+  const popover = document.getElementById("lv80SettingsPopover");
+  if (!popover) return;
+  // Sync location status label before opening
+  if (typeof _lv80UpdateLocStatus === "function") _lv80UpdateLocStatus();
+  try {
+    if (popover.matches(":popover-open")) popover.hidePopover();
+    else popover.showPopover();
+  } catch {
+    popover.hidden = !popover.hidden;
+  }
+}
+
 async function lv80Init() {
   // 1. Wrap setLoriState before anything tries to use it
   lv80WrapSetLoriState();
@@ -2355,6 +3305,10 @@ async function lv80Init() {
   editBtn?.addEventListener("click", openFocusTrappedEdit);
   saveBtn?.addEventListener("click", saveAndCloseModal);
   document.getElementById("memoirExportTxtBtn")?.addEventListener("click", memoirExportTXT);
+  document.getElementById("memoirExportDocxBtn")?.addEventListener("click", memoirExportDOCX);
+
+  // Media Builder init
+  if (typeof window._lv80InitMedia === "function") window._lv80InitMedia();
 
   peekBtn?.addEventListener("click", () => {
     // Global peek uses docked slide-in — reset any Floating UI anchoring
@@ -2374,6 +3328,36 @@ async function lv80Init() {
           _goldenThreadCleanup = null;
         }
         resetMemoirPopoverToDocked();
+      }
+    });
+  }
+
+  // 5b. Life Map popover — render(true) when opened
+  const lifeMapPopover = document.getElementById("lifeMapPopover");
+  if (lifeMapPopover) {
+    lifeMapPopover.addEventListener("toggle", (event) => {
+      if (event.newState === "open") {
+        window.LorevoxLifeMap?.render(true);
+      }
+    });
+  }
+
+  // 5c. Bio Builder popover — render() when opened
+  const bioBuilderPopover = document.getElementById("bioBuilderPopover");
+  if (bioBuilderPopover) {
+    bioBuilderPopover.addEventListener("toggle", (event) => {
+      if (event.newState === "open") {
+        window.LorevoxBioBuilder?.render();
+      }
+    });
+  }
+
+  // 5d. Bio Builder Control Center popover — render() when opened
+  const bioControlCenterPopover = document.getElementById("bioControlCenterPopover");
+  if (bioControlCenterPopover) {
+    bioControlCenterPopover.addEventListener("toggle", (event) => {
+      if (event.newState === "open") {
+        window.LorevoxBioControlCenter?.render("bioControlCenterRoot");
       }
     });
   }
@@ -2425,6 +3409,499 @@ async function lv80Init() {
 
   console.log("[Lori 8.0] Shell initialised.");
 }
+</script>
+
+<!-- ── Media Builder Lightbox ─────────────────────────────────────────────── -->
+<div id="lv80Lightbox" hidden>
+  <div class="lv80-lightbox-inner">
+    <button id="lv80LbClose" title="Close">✕</button>
+    <img id="lv80LbImg" src="" alt="">
+    <div class="lv80-lb-meta">
+      <input type="text" id="lv80LbDesc" placeholder="Description (optional)">
+      <input type="text" id="lv80LbDate" placeholder="Date taken (optional)">
+      <select id="lv80LbSectionPick">
+        <option value="">Attach to memoir section…</option>
+        <option value="turning_points">Turning Points</option>
+        <option value="hard_moments">Hard Moments</option>
+        <option value="identity_belonging">Identity &amp; Belonging</option>
+        <option value="change_transition">Change &amp; Transition</option>
+        <option value="family_relationships">Family &amp; Relationships</option>
+        <option value="work_daily">Work &amp; Daily Life</option>
+        <option value="education">Education</option>
+        <option value="story_details">Story Details</option>
+      </select>
+      <div class="lv80-lb-actions">
+        <button id="lv80LbAttach">📌 Attach to Section</button>
+        <button id="lv80LbDelete">🗑 Remove Photo</button>
+      </div>
+      <div id="lv80LbAttachStatus"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Media Builder ─────────────────────────────────────────────────────── -->
+<script>
+(function () {
+  "use strict";
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  var _mediaItems      = [];   // [{id, filename, mime, url, description, taken_at, …}]
+  var _attachments     = [];   // [{id, media_id, entity_type, entity_id, person_id}]
+  var _lightboxItem    = null; // media item currently shown in lightbox
+  var _pendingFile     = null; // File object awaiting upload confirmation
+  var _photosTabActive = false;
+
+  // Expose count for buildRuntime71()
+  window._lv80MediaCount = 0;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function _getPersonId() {
+    try {
+      return (typeof state !== "undefined" && state.person_id) ? state.person_id : null;
+    } catch (_) { return null; }
+  }
+
+  function _apiBase() { return window.location.origin; }
+
+  function _showEl(id)  { var el = document.getElementById(id); if (el) el.hidden = false; }
+  function _hideEl(id)  { var el = document.getElementById(id); if (el) el.hidden = true;  }
+
+  // ── Tab toggle ─────────────────────────────────────────────────────────────
+
+  function _togglePhotosTab() {
+    _photosTabActive = !_photosTabActive;
+    var btn = document.getElementById("lv80PhotosTabBtn");
+    var gallery = document.getElementById("lv80PhotoGallery");
+    var intro   = document.getElementById("memoirScrollIntro");
+    var content = document.getElementById("memoirScrollContent");
+    var hint    = document.getElementById("memoirThreadsHint");
+
+    if (_photosTabActive) {
+      if (btn) btn.classList.add("lv80-photos-active");
+      if (gallery) gallery.hidden = false;
+      // Hide memoir content while photos tab is open
+      if (intro)   intro.hidden   = true;
+      if (content) content.hidden = true;
+      if (hint)    hint.hidden    = true;
+      _loadGallery();
+    } else {
+      if (btn) btn.classList.remove("lv80-photos-active");
+      if (gallery) gallery.hidden = true;
+      // Restore memoir state
+      try { _memoirEvaluateState(); } catch (_) {}
+    }
+  }
+
+  // ── Load gallery ───────────────────────────────────────────────────────────
+
+  function _loadGallery() {
+    var pid = _getPersonId();
+    if (!pid) {
+      _renderGalleryEmpty("No narrator loaded.");
+      return;
+    }
+    // Load photos + attachments in parallel
+    Promise.all([
+      fetch(_apiBase() + "/api/media/list/" + encodeURIComponent(pid))
+        .then(function (r) { return r.json(); }),
+      fetch(_apiBase() + "/api/media/attachments?person_id=" + encodeURIComponent(pid))
+        .then(function (r) { return r.json(); }),
+    ]).then(function (results) {
+      _mediaItems  = (results[0].items || []);
+      _attachments = (results[1].items || []);
+      window._lv80MediaCount = _mediaItems.length;
+      _renderGallery();
+    }).catch(function (err) {
+      console.warn("[lv80 media] loadGallery error:", err.message);
+      _renderGalleryEmpty("Could not load photos.");
+    });
+  }
+
+  function _attachCountForMedia(mediaId) {
+    return _attachments.filter(function (a) { return a.media_id === mediaId; }).length;
+  }
+
+  function _renderGallery() {
+    var grid = document.getElementById("lv80GalleryGrid");
+    if (!grid) return;
+    grid.innerHTML = "";
+    if (!_mediaItems.length) {
+      _renderGalleryEmpty("No photos yet. Click ＋ Add Photo to get started.");
+      return;
+    }
+    _mediaItems.forEach(function (item) {
+      var card = document.createElement("div");
+      card.className = "lv80-gallery-thumb";
+      card.dataset.mediaId = item.id;
+
+      var img = document.createElement("img");
+      img.src = item.url || ("/api/media/file/" + item.id);
+      img.alt = item.description || item.filename || "photo";
+      img.loading = "lazy";
+      card.appendChild(img);
+
+      var cap = document.createElement("div");
+      cap.className = "lv80-thumb-caption";
+      cap.textContent = item.description || item.taken_at || item.filename || "Photo";
+      card.appendChild(cap);
+
+      var count = _attachCountForMedia(item.id);
+      if (count > 0) {
+        var badge = document.createElement("span");
+        badge.className = "lv80-attach-badge";
+        badge.textContent = "📌 " + count;
+        card.appendChild(badge);
+      }
+
+      card.addEventListener("click", function () { _openLightbox(item); });
+      grid.appendChild(card);
+    });
+    // Also refresh section thumbnails in memoir scroll
+    _renderSectionThumbs();
+  }
+
+  function _renderGalleryEmpty(msg) {
+    var grid = document.getElementById("lv80GalleryGrid");
+    if (!grid) return;
+    grid.innerHTML = "<div class=\"lv80-gallery-empty\">" + msg + "</div>";
+  }
+
+  // ── Upload flow ────────────────────────────────────────────────────────────
+
+  function _onFileSelected(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    // Reset input so selecting the same file again fires the event
+    e.target.value = "";
+
+    _pendingFile = file;
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var previewImg = document.getElementById("lv80UploadPreviewImg");
+      if (previewImg) previewImg.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    var descInput = document.getElementById("lv80UploadDescInput");
+    var dateInput = document.getElementById("lv80UploadDateInput");
+    if (descInput) descInput.value = "";
+    if (dateInput) dateInput.value = "";
+
+    _showEl("lv80UploadCard");
+  }
+
+  function _cancelUpload() {
+    _pendingFile = null;
+    _hideEl("lv80UploadCard");
+    var previewImg = document.getElementById("lv80UploadPreviewImg");
+    if (previewImg) previewImg.src = "";
+  }
+
+  function _submitUpload() {
+    if (!_pendingFile) return;
+    var pid = _getPersonId();
+    if (!pid) { alert("No narrator loaded. Cannot upload photo."); return; }
+
+    var desc = (document.getElementById("lv80UploadDescInput") || {}).value || "";
+    var takenAt = (document.getElementById("lv80UploadDateInput") || {}).value || "";
+
+    var submitBtn = document.getElementById("lv80UploadSubmitBtn");
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Uploading…"; }
+
+    var fd = new FormData();
+    fd.append("person_id", pid);
+    fd.append("description", desc);
+    if (takenAt) fd.append("taken_at", takenAt);
+    fd.append("file", _pendingFile);
+
+    fetch(_apiBase() + "/api/media/upload", { method: "POST", body: fd })
+      .then(function (r) {
+        if (!r.ok) return r.json().then(function (e) { throw new Error(e.detail || r.status); });
+        return r.json();
+      })
+      .then(function () {
+        _pendingFile = null;
+        _hideEl("lv80UploadCard");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Upload"; }
+        _loadGallery(); // refresh
+      })
+      .catch(function (err) {
+        console.warn("[lv80 media] upload error:", err.message);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Upload"; }
+        alert("Upload failed: " + err.message);
+      });
+  }
+
+  // ── Lightbox ───────────────────────────────────────────────────────────────
+
+  function _openLightbox(item) {
+    _lightboxItem = item;
+    var lb = document.getElementById("lv80Lightbox");
+    if (!lb) return;
+
+    var img  = document.getElementById("lv80LbImg");
+    var desc = document.getElementById("lv80LbDesc");
+    var date = document.getElementById("lv80LbDate");
+    var sel  = document.getElementById("lv80LbSectionPick");
+    var stat = document.getElementById("lv80LbAttachStatus");
+
+    if (img)  img.src = item.url || ("/api/media/file/" + item.id);
+    if (desc) desc.value = item.description || "";
+    if (date) date.value = item.taken_at || "";
+    if (sel)  sel.value  = "";
+    if (stat) stat.textContent = "";
+
+    // Show existing attachments for this photo
+    var existing = _attachments.filter(function (a) { return a.media_id === item.id; });
+    if (stat && existing.length) {
+      stat.textContent = "📌 Attached to: " +
+        existing.map(function (a) {
+          var sec = (typeof _LV80_MEMOIR_SECTIONS !== "undefined")
+            ? _LV80_MEMOIR_SECTIONS.find(function (s) { return s.id === a.entity_id; })
+            : null;
+          return sec ? sec.label : a.entity_id;
+        }).join(", ");
+    }
+
+    lb.hidden = false;
+  }
+
+  function _closeLightbox() {
+    var lb = document.getElementById("lv80Lightbox");
+    if (lb) lb.hidden = true;
+    _lightboxItem = null;
+  }
+
+  function _lbAttach() {
+    if (!_lightboxItem) return;
+    var sel  = document.getElementById("lv80LbSectionPick");
+    var stat = document.getElementById("lv80LbAttachStatus");
+    var sectionKey = sel && sel.value;
+    if (!sectionKey) { if (stat) stat.textContent = "Select a section first."; return; }
+
+    var pid = _getPersonId();
+    fetch(_apiBase() + "/api/media/attach", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        media_id: _lightboxItem.id,
+        entity_type: "memoir_section",
+        entity_id: sectionKey,
+        person_id: pid,
+      }),
+    }).then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok) {
+          _attachments.push(data.attachment);
+          var sec = (typeof _LV80_MEMOIR_SECTIONS !== "undefined")
+            ? _LV80_MEMOIR_SECTIONS.find(function (s) { return s.id === sectionKey; })
+            : null;
+          if (stat) stat.textContent = "📌 Attached to " + (sec ? sec.label : sectionKey) + "!";
+          if (sel) sel.value = "";
+          // Refresh gallery and section thumbs
+          _renderGallery();
+        }
+      })
+      .catch(function (err) {
+        console.warn("[lv80 media] attach error:", err.message);
+        if (stat) stat.textContent = "Attach failed.";
+      });
+  }
+
+  function _lbDelete() {
+    if (!_lightboxItem) return;
+    if (!confirm("Remove this photo? This cannot be undone.")) return;
+    var mid = _lightboxItem.id;
+    fetch(_apiBase() + "/api/media/" + encodeURIComponent(mid), { method: "DELETE" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok) {
+          _closeLightbox();
+          _mediaItems = _mediaItems.filter(function (m) { return m.id !== mid; });
+          _attachments = _attachments.filter(function (a) { return a.media_id !== mid; });
+          window._lv80MediaCount = _mediaItems.length;
+          _renderGallery();
+        }
+      })
+      .catch(function (err) { console.warn("[lv80 media] delete error:", err.message); });
+  }
+
+  // ── Section thumbnails in memoir scroll ────────────────────────────────────
+
+  function _renderSectionThumbs() {
+    var content = document.getElementById("memoirScrollContent");
+    if (!content) return;
+
+    // Remove any existing thumb strips
+    content.querySelectorAll(".lv80-section-thumbs").forEach(function (el) { el.remove(); });
+
+    if (!_attachments.length || !_mediaItems.length) return;
+
+    var sections = content.querySelectorAll(".memoir-section");
+    sections.forEach(function (sec) {
+      var sectionKey = sec.dataset.section;
+      if (!sectionKey) return;
+
+      var sectionAttachments = _attachments.filter(function (a) {
+        return a.entity_type === "memoir_section" && a.entity_id === sectionKey;
+      });
+      if (!sectionAttachments.length) return;
+
+      var strip = document.createElement("div");
+      strip.className = "lv80-section-thumbs";
+
+      sectionAttachments.forEach(function (attach) {
+        var item = _mediaItems.find(function (m) { return m.id === attach.media_id; });
+        if (!item) return;
+        var img = document.createElement("img");
+        img.className = "lv80-section-thumb";
+        img.src = item.url || ("/api/media/file/" + item.id);
+        img.alt = item.description || "photo";
+        img.title = item.description || item.taken_at || "Photo";
+        img.loading = "lazy";
+        img.addEventListener("click", function () { _openLightbox(item); });
+        strip.appendChild(img);
+      });
+
+      if (strip.children.length) {
+        // Insert after the heading
+        var heading = sec.querySelector(".memoir-section-heading");
+        var insertAfter = heading || sec.firstChild;
+        if (insertAfter && insertAfter.nextSibling) {
+          sec.insertBefore(strip, insertAfter.nextSibling);
+        } else {
+          sec.appendChild(strip);
+        }
+      }
+    });
+  }
+
+  // ── Wire events (called from lv80Init) ────────────────────────────────────
+
+  function _initMedia() {
+    var tabBtn     = document.getElementById("lv80PhotosTabBtn");
+    var fileInput  = document.getElementById("lv80PhotoFileInput");
+    var addBtn     = document.getElementById("lv80AddPhotoBtn");
+    var submitBtn  = document.getElementById("lv80UploadSubmitBtn");
+    var cancelBtn  = document.getElementById("lv80UploadCancelBtn");
+    var lbClose    = document.getElementById("lv80LbClose");
+    var lbAttach   = document.getElementById("lv80LbAttach");
+    var lbDelete   = document.getElementById("lv80LbDelete");
+    var lightbox   = document.getElementById("lv80Lightbox");
+
+    if (tabBtn)    tabBtn.addEventListener("click", _togglePhotosTab);
+    if (addBtn)    addBtn.addEventListener("click", function () { if (fileInput) fileInput.click(); });
+    if (fileInput) fileInput.addEventListener("change", _onFileSelected);
+    if (submitBtn) submitBtn.addEventListener("click", _submitUpload);
+    if (cancelBtn) cancelBtn.addEventListener("click", _cancelUpload);
+    if (lbClose)   lbClose.addEventListener("click", _closeLightbox);
+    if (lbAttach)  lbAttach.addEventListener("click", _lbAttach);
+    if (lbDelete)  lbDelete.addEventListener("click", _lbDelete);
+    // Click outside lightbox inner closes it
+    if (lightbox) {
+      lightbox.addEventListener("click", function (e) {
+        if (e.target === lightbox) _closeLightbox();
+      });
+    }
+
+    console.log("[lv80 media] Media Builder initialised.");
+  }
+
+  // ── Expose for getAttachments in DOCX export ──────────────────────────────
+  window._lv80GetAttachments = function () { return _attachments.slice(); };
+  window._lv80GetMediaItems  = function () { return _mediaItems.slice(); };
+  window._lv80InitMedia      = _initMedia;
+  window._lv80RenderSectionThumbs = _renderSectionThumbs;
+
+})();
+</script>
+
+<!-- ── Camera preview (lv74) ─────────────────────────────────────────────── -->
+<!-- lori73-shell.js is not loaded in 8.0; mount showCameraPreview directly. -->
+<script>
+(function () {
+  "use strict";
+
+  function _attachPreviewStream() {
+    var video = document.getElementById("lv74-cam-video");
+    if (!video) return;
+    if (video.srcObject) return; // already attached
+
+    // Re-request the camera — Chrome returns the same track, no second prompt
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then(function (stream) { video.srcObject = stream; })
+      .catch(function (err) {
+        console.warn("[lv74] Camera preview stream error:", err.message);
+      });
+  }
+
+  function showCameraPreview() {
+    if (document.getElementById("lv74-cam-preview")) {
+      // Already built — just make sure it's visible
+      document.getElementById("lv74-cam-preview").classList.remove("lv74-preview-hidden");
+      document.getElementById("lv74-cam-reopen").classList.remove("lv74-reopen-visible");
+      _attachPreviewStream();
+      return;
+    }
+
+    // Build preview container
+    var preview = document.createElement("div");
+    preview.id = "lv74-cam-preview";
+    preview.innerHTML =
+      '<div id="lv74-cam-preview-bar">' +
+        '<span>📷 Camera preview</span>' +
+        '<button id="lv74-cam-close" title="Hide preview (camera keeps running)">✕</button>' +
+      '</div>' +
+      '<video id="lv74-cam-video" autoplay playsinline muted></video>';
+    document.body.appendChild(preview);
+
+    // Re-open pill
+    var reopen = document.createElement("div");
+    reopen.id = "lv74-cam-reopen";
+    reopen.title = "Show camera preview";
+    reopen.innerHTML = "<span>📷</span><span>Camera</span>";
+    document.body.appendChild(reopen);
+
+    // Close hides preview without stopping the camera
+    document.getElementById("lv74-cam-close").addEventListener("click", function (e) {
+      e.stopPropagation();
+      preview.classList.add("lv74-preview-hidden");
+      reopen.classList.add("lv74-reopen-visible");
+    });
+
+    // Re-open pill restores preview
+    reopen.addEventListener("click", function () {
+      preview.classList.remove("lv74-preview-hidden");
+      reopen.classList.remove("lv74-reopen-visible");
+    });
+
+    // Drag: convert from CSS-centered transform to explicit top/left on first drag
+    var dragging = false, ox = 0, oy = 0;
+    preview.addEventListener("mousedown", function (e) {
+      if (e.target.id === "lv74-cam-close") return;
+      dragging = true;
+      var r = preview.getBoundingClientRect();
+      preview.style.left      = r.left + "px";
+      preview.style.top       = r.top  + "px";
+      preview.style.transform = "none";
+      ox = e.clientX - r.left;
+      oy = e.clientY - r.top;
+      e.preventDefault();
+    });
+    document.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      preview.style.left = (e.clientX - ox) + "px";
+      preview.style.top  = (e.clientY - oy) + "px";
+    });
+    document.addEventListener("mouseup", function () { dragging = false; });
+
+    _attachPreviewStream();
+  }
+
+  window.lv74 = window.lv74 || {};
+  window.lv74.showCameraPreview = showCameraPreview;
+})();
 </script>
 
 </body>

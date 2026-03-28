@@ -1,0 +1,394 @@
+/* ═══════════════════════════════════════════════════════════════
+   bio-control-center.css — Unified Bio Builder control center
+   Local CSS only. No Tailwind. No CDN.
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bcc-bg:           #0f141c;
+  --bcc-panel:        #161d27;
+  --bcc-panel-2:      #1d2632;
+  --bcc-border:       rgba(255,255,255,.08);
+  --bcc-border-strong:rgba(124,156,255,.22);
+  --bcc-text:         #e8eef8;
+  --bcc-muted:        #95a5bb;
+  --bcc-soft:         #6d8098;
+  --bcc-accent:       #7c9cff;
+  --bcc-accent-2:     #c6a7ff;
+  --bcc-good:         #4ade80;
+  --bcc-warn:         #fbbf24;
+  --bcc-bad:          #f87171;
+  --bcc-radius:       16px;
+  --bcc-radius-sm:    12px;
+  --bcc-shadow:       0 18px 42px rgba(0,0,0,.28);
+}
+
+/* ── Shell ────────────────────────────────────────────────── */
+
+.bio-control-center {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--bcc-text);
+  min-height: 620px;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+
+.bio-control-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bio-control-head-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bio-control-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.bio-control-subtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--bcc-muted);
+  max-width: 840px;
+}
+
+/* ── Status bar chips ─────────────────────────────────────── */
+
+.bio-control-statusbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.bio-control-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--bcc-border-strong);
+  background: rgba(124,156,255,.10);
+  font-size: 12px;
+}
+
+.bio-control-chip-count {
+  color: var(--bcc-accent);
+  font-weight: 700;
+}
+
+/* ── Two-column body ──────────────────────────────────────── */
+
+.bio-control-body {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  min-height: 0;
+  flex: 1;
+}
+
+.bio-control-sidebar,
+.bio-control-main {
+  min-height: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+  border: 1px solid var(--bcc-border);
+  border-radius: var(--bcc-radius);
+  box-shadow: var(--bcc-shadow);
+  overflow: hidden;
+}
+
+.bio-control-sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.bio-control-main {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Sidebar sections ─────────────────────────────────────── */
+
+.bio-control-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--bcc-border);
+}
+
+.bio-control-section:last-child {
+  border-bottom: none;
+}
+
+.bio-control-section-title {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bcc-text);
+}
+
+/* ── Mini stat grid ───────────────────────────────────────── */
+
+.bio-control-mini-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.bio-control-mini {
+  background: var(--bcc-panel-2);
+  border: 1px solid var(--bcc-border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.bio-control-mini-label {
+  font-size: 11px;
+  color: var(--bcc-muted);
+  margin-bottom: 4px;
+}
+
+.bio-control-mini-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bcc-text);
+}
+
+/* ── Action buttons ───────────────────────────────────────── */
+
+.bio-control-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bio-control-btn {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--bcc-border);
+  background: rgba(255,255,255,.03);
+  color: var(--bcc-text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .16s ease;
+}
+
+.bio-control-btn:hover {
+  border-color: rgba(124,156,255,.26);
+  background: rgba(124,156,255,.06);
+}
+
+.bio-control-btn.primary {
+  color: var(--bcc-good);
+  background: rgba(74,222,128,.10);
+  border-color: rgba(74,222,128,.22);
+}
+
+.bio-control-btn.secondary {
+  color: var(--bcc-accent);
+  background: rgba(124,156,255,.10);
+  border-color: rgba(124,156,255,.22);
+}
+
+.bio-control-btn.warn {
+  color: var(--bcc-warn);
+  background: rgba(251,191,36,.10);
+  border-color: rgba(251,191,36,.20);
+}
+
+.bio-control-btn.danger {
+  color: var(--bcc-bad);
+  background: rgba(248,113,113,.10);
+  border-color: rgba(248,113,113,.20);
+}
+
+.bio-control-btn:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+/* ── View tabs ────────────────────────────────────────────── */
+
+.bio-control-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bio-control-tab {
+  appearance: none;
+  border: 1px solid var(--bcc-border);
+  background: rgba(255,255,255,.03);
+  color: var(--bcc-muted);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: .14s ease;
+}
+
+.bio-control-tab.active {
+  background: rgba(124,156,255,.12);
+  border-color: rgba(124,156,255,.22);
+  color: var(--bcc-accent);
+}
+
+/* ── Main panel scroll area ───────────────────────────────── */
+
+.bio-control-main-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+/* ── Content blocks ───────────────────────────────────────── */
+
+.bio-control-block {
+  background: rgba(255,255,255,.02);
+  border: 1px solid var(--bcc-border);
+  border-radius: var(--bcc-radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.bio-control-block:last-child {
+  margin-bottom: 0;
+}
+
+.bio-control-block-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.bio-control-code {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--bcc-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Warning list ─────────────────────────────────────────── */
+
+.bio-control-warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bio-control-warning {
+  border-left: 3px solid var(--bcc-warn);
+  background: rgba(251,191,36,.08);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--bcc-muted);
+}
+
+.bio-control-warning.ok {
+  border-left-color: var(--bcc-good);
+  background: rgba(74,222,128,.08);
+}
+
+/* ── Test results table ───────────────────────────────────── */
+
+.bio-control-table-wrap {
+  overflow: auto;
+}
+
+.bio-control-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.bio-control-table th,
+.bio-control-table td {
+  border-bottom: 1px solid var(--bcc-border);
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.bio-control-table th {
+  color: var(--bcc-muted);
+  font-weight: 700;
+}
+
+/* ── Badges ───────────────────────────────────────────────── */
+
+.bio-control-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,.08);
+  white-space: nowrap;
+}
+
+.bio-control-badge.verified,
+.bio-control-badge.ok {
+  color: var(--bcc-good);
+  background: rgba(74,222,128,.10);
+}
+
+.bio-control-badge.inspected,
+.bio-control-badge.warnings,
+.bio-control-badge.partial,
+.bio-control-badge.not-run {
+  color: var(--bcc-warn);
+  background: rgba(251,191,36,.10);
+}
+
+.bio-control-badge.not-executed,
+.bio-control-badge.empty {
+  color: var(--bcc-soft);
+  background: rgba(148,163,184,.10);
+}
+
+.bio-control-badge.not-loaded,
+.bio-control-badge.bad {
+  color: var(--bcc-bad);
+  background: rgba(248,113,113,.10);
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+
+.bio-control-empty {
+  border: 1px dashed var(--bcc-border);
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--bcc-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+
+@media (max-width: 1040px) {
+  .bio-control-body {
+    grid-template-columns: 1fr;
+  }
+
+  .bio-control-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

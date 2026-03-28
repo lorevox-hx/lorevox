@@ -4,7 +4,7 @@
 
 Lorevox captures a person's memories through guided interview conversations, organises them into a verified timeline, and drafts a human-readable memoir. The AI is a scribe — it structures, prompts, and drafts. The human is the author. Every word they speak is the ground truth.
 
-**v7.1 is live and validated.**
+**Lorevox 8.0 — pre-production ready. 20/20 deep runtime tests passing. 0 critical failures.**
 
 ---
 
@@ -24,14 +24,15 @@ This separation is not a convention. It is enforced at every layer of the archit
 
 ---
 
-## What Makes Lorevox Different
+## Shipped Systems
+
+### Identity-first onboarding
+Lori learns the narrator's name, date of birth, and birthplace before any memoir interview begins. The identity phase is gated — no interview pass fires until core identity is established. The flow is warm and conversational, not form-like.
 
 ### A three-pass interview model
-
-Every session follows a deliberate structure. **Pass 1** seeds the timeline — birth year, birthplace, a few anchoring facts that give the whole system a backbone. **Pass 2A** walks the chronological spine — six named life periods from Early Childhood through Later Life, each driven by an era-specific prompt strategy. **Pass 2B** goes deep into scenes, sensory memory, and emotional texture. The interview has shape and direction. Lori knows where she is in the story.
+Every session follows a deliberate structure. **Pass 1** seeds the timeline — birth year, birthplace, a few anchoring facts. **Pass 2A** walks the chronological spine — six named life periods from Early Childhood through Later Life. **Pass 2B** goes deep into scenes, sensory memory, and emotional texture. The interview has shape and direction. Lori knows where she is in the story.
 
 ### A live cognitive state layer — runtime71
-
 Every turn, Lorevox sends a full cognitive state payload to the model:
 
 ```json
@@ -39,17 +40,18 @@ Every turn, Lorevox sends a full cognitive state payload to the model:
   "current_pass":       "pass2a",
   "current_era":        "early_childhood",
   "current_mode":       "open",
-  "affect_state":       "fatigue_hint",
-  "affect_confidence":  0.9,
-  "cognitive_mode":     "light",
-  "fatigue_score":      80
+  "affect_state":       "reflective",
+  "affect_confidence":  0.87,
+  "cognitive_mode":     "open",
+  "fatigue_score":      18,
+  "media_count":        3,
+  "narrator_location":  "Duluth, MN"
 }
 ```
 
-This isn't metadata. It drives the model's behavior through explicit behavioral directives in the system prompt — DO/DO NOT language for every pass, era, mode, and fatigue level. The model knows when someone is tired and shortens its responses. The model knows when someone is confused and offers anchoring language. The model knows when someone is distressed and slows down. This is not prompt magic — it is a validated, tested pipeline.
+This isn't metadata. It drives the model's behavior through explicit behavioral directives in the system prompt — DO/DO NOT language for every pass, era, mode, and fatigue level. The model knows when someone is tired and shortens its responses. The model knows when someone is confused and offers anchoring language. The model knows when someone is distressed and slows down.
 
 ### A full emotional intelligence pipeline
-
 The path from camera to model behavior is:
 
 ```
@@ -61,48 +63,47 @@ toAffectState() — raw emotion → interview-safe affect label
     ↓
 2000ms sustain filter + 3s debounce
     ↓
-setLoriState() → state.runtime (affectState, affectConfidence, cognitiveMode, fatigueScore)
-    ↓
-buildRuntime71() → WebSocket payload
+AffectBridge74 → state.session.visualSignals → buildRuntime71()
     ↓
 prompt_composer.py → behavioral directives → LLM
 ```
 
-No video ever leaves the browser. No landmarks are logged. No raw emotion labels are transmitted. Only derived affect states cross to the backend — and only after the narrator's facial expression has been sustained for two seconds, with a minimum three-second gap between signals. The system reads a person's emotional state to serve them better, not to analyse or store it.
+No video ever leaves the browser. No landmarks are logged. No raw emotion labels are transmitted. Only derived affect states cross to the backend — and only after the narrator's facial expression has been sustained for two seconds, with a minimum three-second gap between signals.
 
-### A facial consent gate
+### Camera consent and preview
+Before the camera activates, a dedicated consent modal requires the narrator to read an explicit explanation of facial expression analysis, check an acknowledgment box, and confirm. The button is disabled until the checkbox is ticked. Once consented, a draggable floating camera preview panel shows the narrator exactly what the camera sees. The preview can be hidden and re-opened. Closing the consent modal or declining disables emotion-aware mode for the session.
 
-Before the camera activates, a dedicated consent modal requires the narrator to read an explicit explanation of facial expression analysis, check an acknowledgment box, and confirm. The button is disabled until the checkbox is ticked. There is no way to start the emotion engine without completing this step. Closing the modal, or declining, disables emotion-aware mode for the session and the camera never opens.
+### Transparency rule (v8.0)
+If the narrator directly asks whether Lorevox is using their camera, recording their voice, tracking their location, or sensing their emotions — Lori answers truthfully based on the actual runtime state. Never denies an active capability. Never asserts an inactive one. This is enforced by a dedicated directive in `prompt_composer.py`, anchored to LORI_RUNTIME, not to model heuristics.
 
 ### Cognitive mode intelligence
-
 The system continuously reads the narrator's inputs and affect state and selects a cognitive mode for each turn:
 
 - **Open** — default; warm, open-ended questions, normal pacing
-- **Recognition** — activated by uncertainty language, short replies, or confusion signals; Lori uses anchoring language, concrete memory cues, shorter questions
+- **Recognition** — activated by uncertainty language or confusion signals; Lori uses anchoring language, concrete memory cues, shorter questions
 - **Grounding** — activated by distress or dissociation signals; Lori slows down, uses present-moment language, removes all pressure
 - **Light** — activated by fatigue signals; Lori shortens responses, offers breaks, reduces question complexity
 
-This runs automatically on every turn via `cognitive-auto.js` and writes to the same `state.runtime` object that feeds the model. Mode switches are logged with timestamps and reasons, visible in the debug overlay.
-
 ### A safety layer that never uses the LLM
+Every interview answer is scanned before Lori's next question is served. The scanner is fully local — keyword and compound pattern matching, no model call, no latency. Seven crisis categories: `suicidal_ideation`, `sexual_abuse`, `physical_abuse`, `domestic_abuse`, `child_abuse`, `caregiver_abuse`, `distress_call`. On detection: the segment is flagged private and excluded from memoir by default, Lori's tone is automatically gentled, and a crisis resource overlay surfaces category-relevant hotlines.
 
-Every interview answer is scanned before Lori's next question is served. The scanner is fully local — keyword and compound pattern matching, no model call, no latency. Seven crisis categories: `suicidal_ideation`, `sexual_abuse`, `physical_abuse`, `domestic_abuse`, `child_abuse`, `caregiver_abuse`, `distress_call`. On detection: the segment is flagged private and excluded from memoir by default, Lori's tone is automatically gentled for the next three turns, and a crisis resource overlay surfaces category-relevant hotlines. Softened mode always takes priority over any affect or cognitive mode.
+### Meaning engine
+Every turn is scanned for narrative significance using local regex and pattern matching. Turning points ("that was when everything changed"), reflections ("looking back…"), loss, identity, and change events are detected, tagged, and fed into memoir section routing. The model receives emotional theme context so memoir sections receive appropriate narrative weight.
 
-### Validated behavioral tests
+### Bio Builder (Phases D / E / F)
+A structured candidate pipeline that extracts biographical facts from conversation and surfaces them for narrator review. Phase D extracts candidates. Phase E presents them in a review queue — approve, edit, or reject. Phase F orchestrates the downstream sync: only approved items flow into the Life Map, Timeline, and Memoir Preview. No raw candidates ever reach downstream systems. Anti-leakage is enforced in code, not convention.
 
-Lorevox has a formal test suite for behavioral correctness — not API tests, but live interview tests that verify Lori responds appropriately under specific conditions. All eight tests pass:
+### Life Map navigator
+A mind-map canvas (powered by a local vendored Mind Elixir library) showing people, memories, events, and places derived from approved Bio Builder items. Updates on every Phase F run.
 
-| Test | Condition | What it verifies |
-|---|---|---|
-| 1 | Pass 1 seed | Timeline initiation, DOB capture |
-| 2 | Pass 2A | Chronological walk, era-appropriate prompts |
-| 3 | Era advancement | Correct transition between life periods |
-| 4 | Cognitive: open | Default warm pacing |
-| 5 | Cognitive: recognition | Anchoring language under uncertainty |
-| 6 | High fatigue (score 80) | Shortened response, break offered, pressure removed |
-| 7 | Emotional difficulty (distress_hint) | Acknowledgment before follow-up, no clinical language |
-| 8 | Memory contradiction | Uncertainty accepted, no correction, focuses on experience |
+### Media Builder
+Full photo lifecycle — upload (multipart POST), serve (FileResponse), gallery (3-column grid), lightbox (full-size view + metadata edit), attach photos to memoir sections, delete. DOCX memoir export includes photos inline at section headings (`doc.add_picture` via python-docx). Photo count (`media_count`) is emitted in runtime71 so Lori can acknowledge uploaded photos naturally in conversation.
+
+### Memoir DOCX export
+Server-side export via `memoir_export.py`. Two export modes: Threads (one section per heading, photos inline) and Draft (narrative + photo appendix). Attached photos included via `AttachedPhoto` model. Graceful skip on corrupt or missing photo files — a single bad photo does not abort the export.
+
+### Paired interview mode
+Harold and June can use Lorevox together. The `paired` and `paired_speaker` flags in runtime71 signal coupled-narrator sessions to the model. Identity extraction and memoir attributions maintain speaker context.
 
 ---
 
@@ -121,27 +122,6 @@ Lorevox has a formal test suite for behavioral correctness — not API tests, bu
 
 ---
 
-## What Lorevox Is
-
-- A life-story conversation platform where Lori — the AI — learns about a person by talking to them, across multiple structured interview passes
-- A system with its own cognitive layer — affect, fatigue, and cognitive mode shaping every single turn
-- A three-layer truth architecture: raw archive, reviewed history, generated memoir — never collapsed
-- A privacy-first design: all data stays on local infrastructure; no video, no landmarks, no raw emotions, nothing leaves the machine
-- An offline-first application — runs fully air-gapped after setup; LLM, TTS, and emotion engine all run locally
-- A safety system that scans every answer locally, with no model call and no data transmission
-- A consent-gated emotion engine that requires informed acknowledgment before the camera ever opens
-
-## What Lorevox Is Not
-
-- Not a chatbot or general assistant
-- Not a cloud service or subscription product
-- Not a social network or sharing platform
-- Not a medical records or legal document system
-- Not a product that treats memories as data to mine or monetise
-- Not a replacement for a human biographer or therapist
-
----
-
 ## Architecture
 
 ```
@@ -150,24 +130,26 @@ Narrator speaks (voice or keyboard)
    cognitive-auto.js — reads message + affect state, selects cognitive mode
         ↓
    buildRuntime71() — assembles full cognitive state payload
+   (pass, era, mode, affect, fatigue, location, media_count, meaning tags, paired state)
         ↓
    WebSocket → chat_ws.py
         ↓
-   prompt_composer.py — injects behavioral directives (pass / era / mode / fatigue)
+   prompt_composer.py — injects behavioral directives + TRANSPARENCY RULE
         ↓
    Llama 3.1-8B — generates response shaped by live cognitive state
         ↓
    Response → Archive (raw) → History (candidate facts) → Memoir (narrative)
 
-Parallel: MediaPipe Face Mesh (browser) → affect state → state.runtime → runtime71
+Parallel: MediaPipe Face Mesh (browser) → AffectBridge74 → visual_signals → runtime71
 Parallel: safety.py — local scan on every answer, no LLM involved
+Parallel: Bio Builder pipeline → candidate review → Phase F → Life Map / Timeline / Memoir Preview
 ```
 
 ### Two-server runtime
 
 | Server | Port | Handles |
 |---|---|---|
-| LLM / Interview API | 8000 | Interview engine, LLM chat, prompt composition, affect events, safety scan |
+| LLM / Interview API | 8000 | Interview engine, LLM chat, prompt composition, affect events, safety scan, media, facts, DOCX export |
 | TTS | 8001 | Text-to-speech synthesis, voice playback |
 
 ---
@@ -179,6 +161,7 @@ Parallel: safety.py — local scan on every answer, no LLM involved
 - WSL2 (Ubuntu 22.04 recommended)
 - NVIDIA GPU, CUDA 12.x
 - Python 3.11+
+- Chrome (recommended for MediaPipe WASM + WebSocket)
 
 ### Setup
 
@@ -186,7 +169,7 @@ Parallel: safety.py — local scan on every answer, no LLM involved
 git clone git@github.com:lorevox-hx/lorevox.git
 cd lorevox
 cp .env.example .env
-# Edit .env — set LV_DB_PATH, LV_MODEL_PATH, LV_ARCHIVE_ROOT
+# Edit .env — set DATA_DIR (absolute path), DB_NAME if non-default
 
 # GPU / LLM environment
 python3 -m venv .venv-gpu
@@ -199,45 +182,42 @@ python3 -m venv .venv-tts
 source .venv-tts/bin/activate
 pip install -r server/requirements.tts.txt
 deactivate
-
-# Seed database
-source .venv-gpu/bin/activate
-python -m server.code.seed_db
 ```
 
 ### Launch
 
 ```bash
-# Terminal 1 — LLM / Interview API
+# All services (recommended)
+bash launchers/run_all_dev.sh
+
+# Or individually:
+# Terminal 1 — LLM / Interview API (port 8000)
 bash launchers/run_gpu_8000.sh
 
-# Terminal 2 — TTS
+# Terminal 2 — TTS (port 8001)
 bash launchers/run_tts_8001.sh
-```
 
-**Launch the UI server (recommended for 7.4+):**
-
-```bash
-# Terminal 3 — Local UI server (required for camera + WASM reliability)
+# Terminal 3 — Local UI server (port 8080, required for camera + WASM)
 python lorevox-serve.py
 ```
 
-Then open: **http://localhost:8000/ui/lori7.3.html**
+Then open: **http://localhost:8000/ui/lori8.0.html**
 
-This is the supported launch path for 7.4+. The local server provides cross-origin
-isolation headers (COOP/COEP) required for reliable camera access and the
-multi-threaded WASM path. `file://` may still work on some machines but is
-not the recommended path.
+The local server provides cross-origin isolation headers (COOP/COEP) required for reliable camera access and the multi-threaded WASM path.
+
+### Stop
+
+```bash
+bash launchers/stop_all_dev.sh
+```
 
 ### Verify
 
 Open the browser console. Send a message to Lori. You should see:
 
 ```
-[Lori 7.1] runtime71 → model: { "current_pass": ..., "fatigue_score": ..., ... }
+[Lori 8.0] runtime71 → model: { "current_pass": ..., "fatigue_score": ..., ... }
 ```
-
-If that line appears on every send, the pipeline is working end to end.
 
 ---
 
@@ -263,134 +243,172 @@ If that line appears on every send, the pipeline is working end to end.
 | **Total Q4 + TTS** | **~8 GB** |
 | **Total Q5 + TTS** | **~9 GB** |
 
-A 12 GB card (RTX 3060 / 4070) runs both models comfortably. A 10 GB card runs Q4 + TTS with headroom.
+---
+
+## Database
+
+The database is a local SQLite file. Path logic (from `server/code/api/db.py`):
+
+```python
+DATA_DIR = Path(os.getenv("DATA_DIR", "data")).expanduser()
+DB_DIR   = DATA_DIR / "db"
+DB_NAME  = os.getenv("DB_NAME", "lorevox.sqlite3")
+DB_PATH  = DB_DIR / DB_NAME
+```
+
+| Variable | Default | Override via `.env` |
+|---|---|---|
+| `DATA_DIR` | `data` (relative to server CWD) | `DATA_DIR=/absolute/path/to/data` |
+| `DB_NAME` | `lorevox.sqlite3` | `DB_NAME=mydb.sqlite3` |
+| `DB_PATH` | `data/db/lorevox.sqlite3` | Derived |
+
+`DB_DIR` is created automatically on first startup. Set `DATA_DIR` to an absolute path in `.env` for production reliability. The database path is logged at startup: `Lorevox DB: <path>`.
 
 ---
 
-## Repo Structure
+## Active Folder Structure
 
 ```
 lorevox/
 ├── ui/
-│   ├── lori7.1.html               # Shell — external scripts only, no inline logic
+│   ├── lori8.0.html                 # Active shell — 8.0 UI, Bio Builder, Media Builder
 │   ├── css/
-│   │   ├── base.css
-│   │   ├── components.css
-│   │   ├── interview.css
-│   │   ├── timeline.css
-│   │   ├── memoir.css
-│   │   ├── overlays.css
-│   │   └── facial-consent.css     # Consent gate overlay styles
-│   └── js/
-│       ├── config.js              # API endpoints, constants
-│       ├── state.js               # All shared mutable state, including state.runtime
-│       ├── app.js                 # Core: setLoriState, buildRuntime71, WebSocket send paths
-│       ├── interview.js           # Interview session, roadmap, pass/era management
-│       ├── timeline-ui.js         # Timeline render, life period bands, memory slots
-│       ├── debug-overlay.js       # Live runtime state panel (Ctrl+Shift+D)
-│       ├── cognitive-auto.js      # Automatic cognitive mode selection per turn
-│       ├── emotion.js             # LoreVoxEmotion — MediaPipe engine (standalone)
-│       ├── emotion-ui.js          # Emotion toggle, camera lifecycle, consent gate
-│       └── facial-consent.js     # FacialConsent — session-scoped consent gate
+│   │   ├── tailwind.min.css         # Utility CSS base
+│   │   ├── base.css                 # Global base styles
+│   │   ├── layout.css               # Shell layout
+│   │   ├── safety.css               # Crisis overlay styles
+│   │   ├── affect.css               # Emotion toggle / affect arc
+│   │   ├── lori80.css               # Primary 8.0 styles (chat, tabs, media builder, camera preview)
+│   │   ├── bio-review.css           # Bio Builder candidate cards
+│   │   ├── bio-phase-f-*.css        # Phase F debug / report / test / control center styles
+│   │   └── bio-control-center.css   # Bio Builder control center
+│   ├── js/
+│   │   ├── state.js                 # All shared mutable state
+│   │   ├── data.js                  # Data layer helpers
+│   │   ├── api.js                   # API client
+│   │   ├── tabs.js                  # Tab switching
+│   │   ├── safety-ui.js             # Crisis overlay render
+│   │   ├── permissions.js           # Mic / camera / location toggles
+│   │   ├── emotion.js               # LoreVoxEmotion — MediaPipe engine
+│   │   ├── facial-consent.js        # FacialConsent — session-scoped camera consent gate
+│   │   ├── affect-bridge.js         # AffectBridge74 — debounce + baseline
+│   │   ├── emotion-ui.js            # Emotion toggle UI, camera lifecycle
+│   │   ├── timeline-ui.js           # Timeline render
+│   │   ├── interview.js             # Interview session, pass / era routing
+│   │   ├── app.js                   # Core: buildRuntime71, meaning engine, send flow, memoir export
+│   │   ├── cognitive-auto.js        # Auto cognitive mode selection per turn
+│   │   ├── life-map.js              # Life Map navigator canvas
+│   │   ├── bio-builder.js           # Bio Builder — quick capture, candidate pipeline
+│   │   ├── bio-review.js            # Bio Builder review surface
+│   │   ├── bio-promotion-adapters.js# Promotion adapters — candidates → structuredBio
+│   │   ├── bio-phase-f.js           # Phase F orchestrator — approved-only downstream sync
+│   │   ├── bio-phase-f-report.js    # Phase F run report UI
+│   │   ├── bio-phase-f-test-harness.js # Phase F test harness (dev/QA)
+│   │   └── bio-control-center.js   # Bio Builder control center
+│   └── vendor/
+│       ├── mediapipe/               # MediaPipe Face Mesh + camera utils (local WASM)
+│       ├── floating-ui/             # Tooltip / popover positioning
+│       └── mind-elixir/             # Life Map mind-map renderer
 │
 ├── server/
 │   └── code/
 │       └── api/
-│           ├── main.py            # FastAPI app, CORS, router registration
-│           ├── db.py              # SQLite CRUD
-│           ├── safety.py          # Crisis detection — fully local, no LLM
-│           ├── archive.py         # Interview archive write/rebuild
-│           ├── prompt_composer.py # System prompt assembly with runtime71 behavioral directives
-│           ├── session_engine.py  # Pass/era routing, prompt selection
-│           ├── session_vitals.py  # Fatigue estimation, session close recommendation
-│           ├── agent_loop.py      # Per-turn orchestration scaffold
-│           ├── hooks.py           # before_llm / after_llm / after_tool hooks
-│           ├── policies.py        # Biographical signal classification, write decisions
-│           ├── reflection.py      # Post-turn candidate extraction (write_plan only)
-│           ├── skills.py          # Skill wrappers: timeline, affect, safety, RAG
+│           ├── main.py              # FastAPI entrypoint; .env loader; CORS; mounts /ui
+│           ├── db.py                # SQLite CRUD; all table init; media + attachments
+│           ├── safety.py            # Crisis detection — local, no LLM
+│           ├── prompt_composer.py   # System prompt assembly; runtime71 directives; TRANSPARENCY RULE
+│           ├── api.py               # LLM REST router
 │           └── routers/
-│               ├── chat_ws.py     # WebSocket: start_turn, runtime71 extraction, prompt assembly
-│               ├── interview.py
-│               ├── persons.py
-│               ├── timeline.py
-│               ├── memoir.py
-│               └── affect.py
+│               ├── chat_ws.py       # WebSocket turn handler
+│               ├── people.py        # Narrator entity CRUD
+│               ├── profiles.py      # Profile: basics, facts, career, family map
+│               ├── media.py         # Photo upload / serve / delete / attach
+│               ├── timeline.py      # Life periods, events
+│               ├── interview.py     # Session / question advancement
+│               ├── sessions.py      # Session management
+│               ├── facts.py         # Fact extraction POST
+│               ├── stt.py           # Speech-to-text
+│               ├── affect.py        # Affect event logging
+│               ├── memoir_export.py # DOCX export with AttachedPhoto support
+│               ├── calendar.py      # Calendar utilities
+│               ├── db_inspector.py  # DB inspection (dev tool)
+│               └── tts.py           # TTS endpoint (optional; USE_TTS=1)
 │
-├── tests/
-│   ├── CLAUDE_LIVE_VALIDATION_SET_LOREVOX_7_1.md
-│   ├── Lorevox_7.1_Validation_Report_Tests6_7_8.docx
-│   └── FATIGUE_RUNTIME71_PATCH_AND_TESTS_7_8.md
+├── data/
+│   ├── db/
+│   │   └── lorevox.sqlite3          # Active database
+│   └── media/                       # Uploaded photos (created at first upload)
 │
 ├── launchers/
-│   ├── run_gpu_8000.sh
-│   └── run_tts_8001.sh
+│   ├── run_all_dev.sh               # Start all services
+│   ├── stop_all_dev.sh              # Stop all services
+│   ├── run_gpu_8000.sh              # LLM / API server
+│   └── run_tts_8001.sh              # TTS server
 │
-└── docs/
-    ├── PVDhandoff.md              # Master handoff — startup, architecture, guardrails, next steps
-    ├── LOREVOX_ARCHITECTURE.md
-    ├── Lorevox_Operating_Doctrine.md
-    ├── DESIGN_PHILOSOPHY.md
-    └── Providence.md              # Project status and milestone tracker
+├── scripts/
+│   ├── inspect_db.py                # DB inspection utility
+│   ├── warm_llm.py                  # LLM warm-up
+│   ├── warm_tts.py                  # TTS warm-up
+│   └── restart_api.sh               # Restart API without stopping TTS
+│
+├── tools/
+│   └── LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html  # Session debug visualiser
+│
+├── tests/                           # Validation reports, e2e specs, behavioral matrices
+├── docs/                            # All project documentation
+├── lorevox-serve.py                 # Local UI HTTP server (COOP/COEP for WASM)
+├── .env                             # Local environment config (not committed)
+└── .env.example                     # Environment template
 ```
 
 ---
 
-## Debug Tools
+## Active Code Inventory by Layer
 
-| Tool | How |
-|---|---|
-| Live runtime overlay | `Ctrl+Shift+D` in browser — shows pass, era, mode, affect, fatigue bar, cognitive log |
-| runtime71 per turn | Browser console: `[Lori 7.1] runtime71 → model: {...}` |
-| Compact server log | Always on: `[chat_ws] turn: conv=...` with affect/fatigue summary |
-| Full system prompt | Set `LV_DEV_MODE=1` in `.env` and restart backend |
-| Pipeline test (no GPU) | `python test_model.py --no-model` from `server/code/` |
-| Model behaviour test | `python test_model.py --verbose` |
-| Single test group | `python test_model.py --group 6 --verbose` |
-| **8.0 Runtime Inspector** | `http://localhost:8080/tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html` — paste or drag-drop a `window.__lv80TurnDebug` JSON export to render a visual session timeline |
+### Backend entrypoints
+`server/code/api/main.py` · `server/code/api/db.py` · `server/code/api/prompt_composer.py` · `server/code/api/api.py` · `server/code/api/safety.py`
 
-### Lori 8.0 — Runtime Inspector
+### Active routers (all registered in `main.py`)
+`chat_ws` · `people` · `profiles` · `media` · `timeline` · `interview` · `sessions` · `facts` · `stt` · `affect` · `memoir_export` · `db_inspector` · `ping` · `calendar` · `tts` *(optional)*
 
-The Debug Timeline Inspector is a standalone dev tool for visualising `window.__lv80TurnDebug` session exports from Lori 8.0.
+### Active frontend JavaScript (loaded by `lori8.0.html`)
+`state.js` · `data.js` · `api.js` · `tabs.js` · `safety-ui.js` · `permissions.js` · `emotion.js` · `facial-consent.js` · `affect-bridge.js` · `emotion-ui.js` · `timeline-ui.js` · `interview.js` · `app.js` · `cognitive-auto.js` · `life-map.js` · `bio-builder.js` · `bio-review.js` · `bio-promotion-adapters.js` · `bio-phase-f.js` · `bio-phase-f-report.js` · `bio-phase-f-test-harness.js` · `bio-control-center.js` + Media Builder IIFE + Camera Preview IIFE (both inline in `lori8.0.html`)
 
-**Access:** `http://localhost:8080/tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html`
-
-**Usage:**
-1. Open a Lori 8.0 session and run some turns
-2. In the browser console: `copy(JSON.stringify(window.__lv80TurnDebug))`
-3. Paste into the inspector and click **Render Timeline**
-
-The inspector renders a vertical event timeline colour-coded by posture (indigo = life_story, teal = memory_exercise, amber = companion, rose = safety) with chips showing override reason, extraction suppression, and idle decisions. Summary stat cards cover: total events, mode transitions, suppressed extractions, idle cancellations, override transitions, manual mode switches, and narrator resets.
-
-You can also drag-and-drop a saved `.json` export directly onto the page. Known-good session exports for regression comparison go in `tools/samples/`.
+### Vendored dependencies (all local, no CDN)
+`mediapipe/face_mesh/face_mesh.js` · `mediapipe/camera_utils/camera_utils.js` · `floating-ui/core.min.js` · `floating-ui/dom.min.js` · `mind-elixir/mind-elixir.js`
 
 ---
 
-## Status — v7.1
+## Shipped vs Pending
 
-### ✅ Fully working and validated
+### Shipped (v8.0 — confirmed active)
 
-- **Three-pass interview model** — Pass 1 (seed), Pass 2A (chronological spine), Pass 2B (scene depth)
-- **Timeline Spine** — six named life periods from DOB, persisted per person, drives all pass routing
-- **runtime71 pipeline** — affect, fatigue, cognitive mode delivered to model on every turn
-- **Cognitive auto-selection** — recognition, grounding, light, open modes selected per turn from message + affect signals
-- **Affect pipeline** — MediaPipe Face Mesh → classifyGeometry → affect state → setLoriState → model
-- **Facial consent gate** — camera blocked until explicit informed consent with checkbox acknowledgment
-- **Fatigue-aware pacing** — model behavior changes at fatigue ≥ 50 (moderate) and ≥ 70 (high)
-- **Safety scan** — local, no LLM, 8 crisis categories, softened mode, crisis overlay
-- **Archive / History / Memoir separation** — enforced at architecture level
-- **TTS voice** — Lori speaks (Coqui XTTS-v2 / Kokoro)
-- **Voice input** — browser speech recognition
-- **Debug overlay** — live runtime state, cognitive reason log, fatigue bar
-- **All 8 behavioral tests passing**
+- Identity-first onboarding
+- Three-pass interview model (Pass 1, Pass 2A, Pass 2B)
+- runtime71 cognitive state pipeline
+- Cognitive auto-mode selection (open / recognition / grounding / light)
+- Affect / emotion pipeline (MediaPipe → AffectBridge74 → model)
+- Camera consent gate + draggable preview
+- Transparency Rule — trust-question truthful answers
+- Safety scan (local, no LLM, 7 categories)
+- Meaning engine (turning points, reflections, loss, identity)
+- Bio Builder D / E / F (candidate pipeline → review → Phase F sync)
+- Phase F orchestration (approved-only downstream; Life Map / Timeline / Memoir preview)
+- Life Map navigator
+- Media Builder (upload / gallery / lightbox / attach / DOCX embed)
+- Memoir DOCX export (Threads + Draft modes, photo embed)
+- Paired interview mode (Harold and June pattern)
+- TTS voice (Coqui XTTS-v2 / Kokoro)
+- Voice input (browser speech recognition)
+- Debug Timeline Inspector (`tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html`)
+- 20-run deep runtime test — 20/20 PASS, 0 critical failures
 
-### 🔲 Pending
+### Pending
 
-- MediaPipe offline bundle — camera requires internet today; see `docs/PVDhandoff.md` Section 10
-- Run 2 model validation — `test_model.py --verbose` ready to execute with live GPU
-- Backend runtime71 logging in `chat_ws.py`
-- SessionVitals in live loop (automatic fatigue scoring per turn)
-- Backend-authoritative pass advancement
-- Agent loop live wiring (direct RAG/memory retrieval adapter pending)
+- Phase 8 — MediaPipe WASM crash fix (vendor asset verification, SIMD path testing)
+- Phase 9 — UI scale and focus mode (widen Lori dock, focus mode CSS)
+- ISSUE-17 — Camera stream unification (preview + emotion engine share one `getUserMedia` call)
+- First Narrator Session Protocol (behavioral guide for first real narrator session — not more code)
 
 ### Deliberately out of scope
 
@@ -402,19 +420,75 @@ You can also drag-and-drop a saved `.json` export directly onto the page. Known-
 
 ---
 
-## Supporting Documents
+## Trust, Privacy, and Local-First Stance
 
-- **[PVDhandoff.md](docs/PVDhandoff.md)** — master handoff: startup sequence, architecture, regression guardrails, ordered next steps
-- **[Architecture](docs/LOREVOX_ARCHITECTURE.md)** — full data model, DB schema, processing pipeline
-- **[Operating Doctrine](docs/Lorevox_Operating_Doctrine.md)** — 10 product principles with implementation rules
-- **[Design Philosophy](docs/DESIGN_PHILOSOPHY.md)** — UX rationale and decision history
-- **[Providence](docs/Providence.md)** — project milestone tracker
+- **No video ever leaves the browser.** MediaPipe runs entirely in the browser via WASM. No video frames, no facial landmarks, no raw emotion labels are transmitted to the backend or stored.
+- **Only derived, aggregated signals cross to the backend.** Affect state labels (`reflective`, `moved`, `steady`, etc.) and only after a 2-second sustain and 3-second inter-event gap.
+- **No cloud dependency at runtime.** LLM, TTS, and emotion engine all run locally. The system operates fully air-gapped after setup.
+- **Camera requires informed consent.** A dedicated modal with a checkbox acknowledgment — the button is disabled until checked. No camera opens without completing this step.
+- **Transparency is enforced.** If a narrator asks whether the camera, location, or emotion sensing is active, Lori answers truthfully based on actual runtime state — not model heuristics.
+- **Safety scan is local.** Crisis detection runs without a model call, without network access, without storing the flagged content in any external service.
+- **Data stays on your machine.** The database, media files, and all transcripts are stored in `data/` on the local machine. Nothing is sent anywhere.
 
-### Lori 8.0 Validation Artifacts
+---
 
-- **[LOREVOX_80_RUNTIME_ASSESSMENT_UPDATED.md](docs/LOREVOX_80_RUNTIME_ASSESSMENT_UPDATED.md)** — updated post-harness assessment; system classified as "behaviorally validated" after 10/10 matrix pass
-- **[LOREVOX_80_10_TURN_RUNTIME_MATRIX.md](docs/LOREVOX_80_10_TURN_RUNTIME_MATRIX.md)** — full 10-turn test harness spec with expected fields, scorecard, and run order
-- **[LOREVOX_80_RUNTIME_TEST_SHEET.md](docs/LOREVOX_80_RUNTIME_TEST_SHEET.md)** — runtime test sheet used during the harness run
+## Debug Tools
+
+| Tool | How |
+|---|---|
+| Live runtime overlay | `Ctrl+Shift+D` in browser — shows pass, era, mode, affect, fatigue bar, cognitive log |
+| runtime71 per turn | Browser console: `[Lori 8.0] runtime71 → model: {...}` |
+| Compact server log | Always on: `[chat_ws] turn: conv=...` with affect/fatigue summary |
+| Full system prompt | Set `LV_DEV_MODE=1` in `.env` and restart backend |
+| DB inspector | `python scripts/inspect_db.py` from repo root |
+| **8.0 Runtime Inspector** | `http://localhost:8080/tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html` — drag-drop or paste a `window.__lv80TurnDebug` JSON export to render a visual session timeline |
+
+### Lori 8.0 — Runtime Inspector
+
+The Debug Timeline Inspector is a standalone dev tool for visualising `window.__lv80TurnDebug` session exports.
+
+1. Open a Lori 8.0 session and run some turns
+2. In the browser console: `copy(JSON.stringify(window.__lv80TurnDebug))`
+3. Paste into the inspector and click **Render Timeline**
+
+The inspector renders a vertical event timeline colour-coded by posture (indigo = life_story, teal = memory_exercise, amber = companion, rose = safety). Summary stat cards cover: total events, mode transitions, suppressed extractions, idle cancellations, override transitions, manual mode switches, and narrator resets.
+
+---
+
+## Key Documents
+
+| Document | Purpose |
+|---|---|
+| `docs/REPO_AUDIT_AND_RUNTIME_INVENTORY.md` | **This audit** — complete active file inventory, DB path logic, legacy classification |
+| `docs/LOREVOX_20_RUN_DEEP_RUNTIME_REPORT.md` | 20-run deep runtime test — 20/20 PASS, 0 critical failures, findings and warnings |
+| `docs/LOREVOX_ACTION_PLAN.md` | Current action plan — completed milestones, remaining phases, tracked issues |
+| `docs/MEDIA_BUILDER_TEST_REPORT.md` | Media Builder ship report |
+| `docs/CAMERA_PREVIEW_SHIP_REPORT.md` | Camera preview ship report |
+| `docs/MEANING_ENGINE_POSTSHIP_REPORT.md` | Meaning engine post-ship analysis |
+| `docs/BIO_BUILDER_PHASE_F_REPORT.md` | Bio Builder Phase F ship report |
+| `docs/LOREVOX_80_RUNTIME_ASSESSMENT_UPDATED.md` | 10-turn runtime matrix — behaviorally validated |
+| `docs/Lorevox_Operating_Doctrine.md` | 10 product principles with implementation rules |
+| `docs/DESIGN_PHILOSOPHY.md` | UX rationale and decision history |
+| `docs/AGING_UI_PRINCIPLES.md` | Accessibility and aging-first UI principles |
+| `ui/docs/BIO_BUILDER_ARCHITECTURE.md` | Bio Builder architecture detail |
+| `ui/docs/LIFE_MAP_BEHAVIOR_TESTS.md` | Life Map behavior validation |
+| `tests/SAFETY_TEST_MATRIX_911_988.md` | Safety scan test matrix |
+
+---
+
+## Status — v8.0
+
+### ✅ Pre-production ready
+
+- 20-run deep runtime test: 20/20 PASS, 0 critical failures
+- No drift across repeated runs
+- Architecture integrity confirmed (Phase F anti-leakage, meaning engine, affect pipeline, identity gate)
+- All core invariants holding
+- Trust/privacy alignment enforced (TRANSPARENCY RULE, consent gate, local-only processing)
+
+### One tracked issue before first narrator session
+
+**ISSUE-17 — Camera stream unification.** The draggable preview and emotion engine currently call `getUserMedia` separately. On some browsers this may surface a second permission dialog. Fix: pass the existing emotion engine MediaStream into the preview element. Priority: low but should resolve before first narrator session.
 
 ---
 
@@ -432,4 +506,4 @@ See [LICENSE](LICENSE) for complete terms. For permissions: dev@lorevox.com
 
 ---
 
-*Lorevox v7.1 — local-first, privacy-first, human-first. Every word they speak is the ground truth. Lori is the app.*
+*Lorevox 8.0 — local-first, privacy-first, human-first. Every word they speak is the ground truth. Lori is the app.*

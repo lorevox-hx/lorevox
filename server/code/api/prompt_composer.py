@@ -329,6 +329,34 @@ def compose_system_prompt(
         # with a person named "Lori" or any other name mentioned in conversation)
         speaker_name      = (runtime71.get("speaker_name") or "").strip() or None
 
+        # Step 3 — device context (date/time/timezone from narrator's computer)
+        device_ctx   = runtime71.get("device_context") or {}
+        device_date  = (device_ctx.get("date") or "").strip() or None
+        device_time  = (device_ctx.get("time") or "").strip() or None
+        device_tz    = (device_ctx.get("timezone") or "").strip() or None
+
+        # Step 3 — optional location context (city/region; only present when consent granted)
+        location_ctx    = runtime71.get("location_context") or None
+        location_label  = (location_ctx.get("label") or "").strip() if location_ctx else None
+
+        # Meaning Engine — memoir context (narrative arc coverage, memoir panel state)
+        memoir_ctx         = runtime71.get("memoir_context") or {}
+        memoir_state_val   = (memoir_ctx.get("state") or "empty").strip()
+        arc_roles_present  = memoir_ctx.get("arc_roles_present") or []
+        meaning_tags_pres  = memoir_ctx.get("meaning_tags_present") or []
+
+        # All six narrative arc parts — used to compute gaps
+        _ALL_ARC_ROLES = ["setup", "inciting", "escalation", "climax", "resolution", "reflection"]
+        _ARC_LABELS = {
+            "setup":       "Who the narrator was before",
+            "inciting":    "What first disrupted things",
+            "escalation":  "What was at stake / the struggle",
+            "climax":      "The irreversible moment",
+            "resolution":  "What came after / new state",
+            "reflection":  "What it means now",
+        }
+        arc_roles_missing = [r for r in _ALL_ARC_ROLES if r not in arc_roles_present]
+
         # Base runtime block (always present)
         directive_lines = [
             "LORI_RUNTIME:",
@@ -342,6 +370,48 @@ def compose_system_prompt(
             f"  fatigue_score: {fatigue_score}",
             f"  assistant_role: {assistant_role}",
         ]
+
+        # Inject device time when available — gives Lori accurate temporal grounding
+        # (e.g., "What a lovely Friday morning to share your story")
+        if device_date or device_time:
+            time_str = f"{device_date}" + (f", {device_time}" if device_time else "")
+            tz_str   = f" ({device_tz})" if device_tz else ""
+            directive_lines.append(
+                f"  device_time: {time_str}{tz_str}  "
+                f"# Use this as your sense of 'today' and 'now'. "
+                f"Do not use your training cutoff date as the current date."
+            )
+
+        # Inject location when narrator has consented to share it
+        if location_label:
+            directive_lines.append(
+                f"  narrator_location: {location_label}  "
+                f"# Optional context only — do not bring it up unless relevant to their story."
+            )
+
+        # Inject memoir narrative context when in interview mode and panel has content
+        if memoir_state_val in ("threads", "draft"):
+            if arc_roles_present:
+                labels_present = ", ".join(_ARC_LABELS.get(r, r) for r in arc_roles_present)
+                directive_lines.append(
+                    f"  memoir_arc_covered: {labels_present}"
+                )
+            if arc_roles_missing:
+                # Show only the first two missing arc parts to avoid overwhelming the prompt
+                priority_gaps = arc_roles_missing[:2]
+                gap_hints = "; ".join(_ARC_LABELS.get(r, r) for r in priority_gaps)
+                directive_lines.append(
+                    f"  memoir_arc_gaps: {gap_hints}  "
+                    f"# These narrative parts are not yet in the memoir. "
+                    f"When natural, ask questions that could surface this material. "
+                    f"Do not force it — follow the narrator's lead."
+                )
+            if meaning_tags_pres:
+                directive_lines.append(
+                    f"  memoir_emotional_themes: {', '.join(meaning_tags_pres)}  "
+                    f"# These themes have emerged. Handle with care and appropriate depth."
+                )
+
         # Inject speaker anchor when we know who we're talking to
         if speaker_name:
             directive_lines.append(
@@ -349,6 +419,32 @@ def compose_system_prompt(
                 f"# This is the person you are interviewing. You are Lori, the interviewer. "
                 f"Never confuse the speaker with yourself or with any other person named in the conversation."
             )
+
+        # Media Builder — narrator photo count
+        media_count = int(runtime71.get("media_count") or 0)
+        if media_count > 0:
+            directive_lines.append(
+                f"  narrator_photos: {media_count} photo{'s' if media_count != 1 else ''} uploaded  "
+                f"# The narrator has added photos. You may acknowledge this naturally "
+                f"(e.g. 'I see you've added some photos — those can appear right in your memoir'). "
+                f"Do not press them on it if they do not bring it up."
+            )
+
+        directive_lines.append("")
+
+        # ── v8.0 — TRANSPARENCY RULE (universal — applies in all roles) ───────
+        # Anchors Lori's trust-question answers to the actual LORI_RUNTIME state.
+        # Prevents false denial (camera is on → "No I don't use a camera") and
+        # false assertion (camera is off → "Yes I'm reading your expressions").
+        # Must fire before role overrides so every role inherits it.
+        directive_lines.append(
+            "TRANSPARENCY RULE — If the narrator directly asks whether you are using their "
+            "camera, recording their voice, tracking their location, or sensing their "
+            "emotions, answer truthfully based on the current state shown in LORI_RUNTIME. "
+            "Never deny an active capability. Never assert an inactive capability. "
+            "If a sensor is Off or not shown in LORI_RUNTIME, say so clearly and calmly. "
+            "Keep the answer brief (1–2 sentences) and non-technical."
+        )
         directive_lines.append("")
 
         # ── v7.4D — ROLE OVERRIDES ────────────────────────────────────────────
