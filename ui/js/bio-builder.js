@@ -38,6 +38,47 @@
   "use strict";
 
   /* ───────────────────────────────────────────────────────────
+     OPTION CONSTANTS
+  ─────────────────────────────────────────────────────────── */
+
+  var ZODIAC_OPTIONS = [
+    "", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+  ];
+
+  var BIRTH_ORDER_OPTIONS = [
+    "", "First child", "Second child", "Third child", "Fourth child",
+    "Fifth child", "Sixth child", "Seventh child", "Eighth child",
+    "Ninth child", "Tenth child", "Only child", "Twin", "Triplet", "Other/custom"
+  ];
+
+  var RELATION_OPTIONS = [
+    "", "Mother", "Father", "Stepmother", "Stepfather",
+    "Adoptive mother", "Adoptive father", "Guardian",
+    "Grandmother", "Grandfather", "Other"
+  ];
+
+  var SIBLING_RELATION_OPTIONS = [
+    "", "Sister", "Brother", "Half-sister", "Half-brother",
+    "Stepsister", "Stepbrother", "Adoptive sister", "Adoptive brother", "Other"
+  ];
+
+  /* ── US state abbreviation map (for place-of-birth normalization) ── */
+  var US_STATES = {
+    AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",
+    CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",
+    HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",
+    KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",
+    MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",
+    NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",
+    NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",
+    OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",
+    SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",
+    VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",
+    WI:"Wisconsin",WY:"Wyoming",DC:"District of Columbia"
+  };
+
+  /* ───────────────────────────────────────────────────────────
      SECTION DEFINITIONS  (Janice Personal Information model)
   ─────────────────────────────────────────────────────────── */
 
@@ -48,11 +89,11 @@
       fields: [
         { id: "fullName",      label: "Full Name",      type: "text" },
         { id: "preferredName", label: "Preferred Name", type: "text" },
-        { id: "birthOrder",    label: "Birth Order",    type: "text",     placeholder: "e.g. 2 (second child)" },
-        { id: "dateOfBirth",   label: "Date of Birth",  type: "text",     placeholder: "YYYY-MM-DD" },
-        { id: "timeOfBirth",   label: "Time of Birth",  type: "text",     placeholder: "HH:MM (optional)" },
-        { id: "placeOfBirth",  label: "Place of Birth", type: "text",     placeholder: "City, State / Country" },
-        { id: "zodiacSign",    label: "Zodiac Sign",    type: "text",     placeholder: "optional" }
+        { id: "birthOrder",    label: "Birth Order",    type: "select",   options: BIRTH_ORDER_OPTIONS },
+        { id: "dateOfBirth",   label: "Date of Birth",  type: "text",     placeholder: "12241962, 12/24/1962, Dec 24 1962 → auto-parsed", inputHelper: "normalizeDob" },
+        { id: "timeOfBirth",   label: "Time of Birth",  type: "text",     placeholder: "1250p, 12:50 pm → auto-parsed", inputHelper: "normalizeTime" },
+        { id: "placeOfBirth",  label: "Place of Birth", type: "text",     placeholder: "Williston ND → Williston, North Dakota", inputHelper: "normalizePlace" },
+        { id: "zodiacSign",    label: "Zodiac Sign",    type: "select",   options: ZODIAC_OPTIONS, autoDerive: "zodiacFromDob" }
       ]
     },
     {
@@ -60,13 +101,16 @@
       hint: "Mother and father — names, dates, occupation, notable life events",
       repeatable: true, repeatLabel: "parent",
       fields: [
+        { id: "relation",          label: "Relation",                      type: "select",   options: RELATION_OPTIONS },
         { id: "firstName",         label: "First Name",                    type: "text" },
         { id: "middleName",        label: "Middle Name",                   type: "text" },
         { id: "lastName",          label: "Last Name",                     type: "text" },
-        { id: "birthDate",         label: "Birth Date",                    type: "text", placeholder: "YYYY-MM-DD" },
-        { id: "birthPlace",        label: "Birth Place",                   type: "text" },
+        { id: "maidenName",        label: "Maiden / Birth Name",           type: "text",     placeholder: "if different from last name" },
+        { id: "birthDate",         label: "Birth Date",                    type: "text",     placeholder: "YYYY-MM-DD", inputHelper: "normalizeDob" },
+        { id: "birthPlace",        label: "Birth Place",                   type: "text",     inputHelper: "normalizePlace" },
         { id: "occupation",        label: "Occupation",                    type: "text" },
-        { id: "notableLifeEvents", label: "Notable Life Events / Stories", type: "textarea" }
+        { id: "notableLifeEvents", label: "Notable Life Events / Stories", type: "textarea" },
+        { id: "notes",             label: "Additional Notes",              type: "textarea" }
       ]
     },
     {
@@ -86,13 +130,15 @@
       hint: "Birth order, unique characteristics, shared experiences, memories",
       repeatable: true, repeatLabel: "sibling",
       fields: [
+        { id: "relation",              label: "Relation",               type: "select",   options: SIBLING_RELATION_OPTIONS },
         { id: "firstName",             label: "First Name",             type: "text" },
         { id: "middleName",            label: "Middle Name",            type: "text" },
         { id: "lastName",              label: "Last Name",              type: "text" },
-        { id: "birthOrder",            label: "Birth Order",            type: "text" },
+        { id: "birthOrder",            label: "Birth Order",            type: "select",   options: BIRTH_ORDER_OPTIONS },
         { id: "uniqueCharacteristics", label: "Unique Characteristics", type: "textarea" },
         { id: "sharedExperiences",     label: "Shared Experiences",     type: "textarea" },
-        { id: "memories",              label: "Memories",               type: "textarea" }
+        { id: "memories",              label: "Memories",               type: "textarea" },
+        { id: "notes",                 label: "Additional Notes",       type: "textarea" }
       ]
     },
     {
@@ -252,6 +298,250 @@
     if (bytes < 1024)       return bytes + " B";
     if (bytes < 1048576)    return Math.round(bytes / 1024) + " KB";
     return (bytes / 1048576).toFixed(1) + " MB";
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     NORMALIZATION HELPERS
+  ─────────────────────────────────────────────────────────── */
+
+  var _MONTH_NAMES = {
+    jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,
+    may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,
+    oct:10,october:10,nov:11,november:11,dec:12,december:12
+  };
+
+  /**
+   * Smart DOB parser: accepts 12241962, 12/24/1962, 12-24-1962,
+   * Dec 24 1962, December 24, 1962, 1962-12-24 — returns YYYY-MM-DD or original.
+   */
+  function normalizeDobInput(raw) {
+    if (!raw) return "";
+    var s = raw.trim();
+    // Already ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+    var m, mm, dd, yyyy;
+
+    // 8-digit packed: MMDDYYYY
+    if (/^\d{8}$/.test(s)) {
+      mm = parseInt(s.slice(0, 2), 10);
+      dd = parseInt(s.slice(2, 4), 10);
+      yyyy = parseInt(s.slice(4), 10);
+      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && yyyy >= 1800 && yyyy <= 2100)
+        return yyyy + "-" + String(mm).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
+    }
+
+    // MM/DD/YYYY or MM-DD-YYYY
+    m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) {
+      mm = parseInt(m[1], 10); dd = parseInt(m[2], 10); yyyy = parseInt(m[3], 10);
+      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31)
+        return yyyy + "-" + String(mm).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
+    }
+
+    // "Dec 24 1962" or "December 24, 1962"
+    m = s.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})$/);
+    if (m) {
+      var mon = _MONTH_NAMES[m[1].toLowerCase()];
+      if (mon) {
+        dd = parseInt(m[2], 10); yyyy = parseInt(m[3], 10);
+        return yyyy + "-" + String(mon).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
+      }
+    }
+
+    // MM DD YYYY (space-separated)
+    m = s.match(/^(\d{1,2})\s+(\d{1,2})\s+(\d{4})$/);
+    if (m) {
+      mm = parseInt(m[1], 10); dd = parseInt(m[2], 10); yyyy = parseInt(m[3], 10);
+      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31)
+        return yyyy + "-" + String(mm).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
+    }
+
+    return s; // return as-is if unparseable
+  }
+
+  /**
+   * Smart time-of-birth parser: 1250p → 12:50 PM, 12:50 pm → 12:50 PM,
+   * 0830a → 8:30 AM, 14:30 → 2:30 PM.  Returns "HH:MM AM/PM" or original.
+   */
+  function normalizeTimeOfBirthInput(raw) {
+    if (!raw) return "";
+    var s = raw.trim().toLowerCase().replace(/\s+/g, "");
+
+    var m, h, min, ampm;
+
+    // Compact: 1250p, 1250pm, 0830a, 0830am
+    m = s.match(/^(\d{3,4})(a|am|p|pm)$/);
+    if (m) {
+      var digits = m[1].padStart(4, "0");
+      h = parseInt(digits.slice(0, 2), 10);
+      min = parseInt(digits.slice(2), 10);
+      ampm = m[2].charAt(0) === "a" ? "AM" : "PM";
+      if (h >= 1 && h <= 12 && min >= 0 && min <= 59)
+        return h + ":" + String(min).padStart(2, "0") + " " + ampm;
+    }
+
+    // HH:MM am/pm
+    m = s.match(/^(\d{1,2}):(\d{2})\s*(a|am|p|pm)$/);
+    if (m) {
+      h = parseInt(m[1], 10); min = parseInt(m[2], 10);
+      ampm = m[3].charAt(0) === "a" ? "AM" : "PM";
+      if (h >= 1 && h <= 12 && min >= 0 && min <= 59)
+        return h + ":" + String(min).padStart(2, "0") + " " + ampm;
+    }
+
+    // 24-hour HH:MM → 12-hour
+    m = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (m) {
+      h = parseInt(m[1], 10); min = parseInt(m[2], 10);
+      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
+        ampm = h >= 12 ? "PM" : "AM";
+        var h12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+        return h12 + ":" + String(min).padStart(2, "0") + " " + ampm;
+      }
+    }
+
+    // Bare 4-digit military/24h: 0915, 0600, 1430 (no am/pm marker)
+    m = s.match(/^(\d{4})$/);
+    if (m) {
+      h = parseInt(s.slice(0, 2), 10); min = parseInt(s.slice(2), 10);
+      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
+        ampm = h >= 12 ? "PM" : "AM";
+        var h12b = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+        return h12b + ":" + String(min).padStart(2, "0") + " " + ampm;
+      }
+    }
+
+    return raw.trim();
+  }
+
+  /**
+   * Place-of-birth cleanup: "Williston ND" → "Williston, North Dakota"
+   * Also handles "City, ST" format. Leaves non-US or already-clean strings alone.
+   */
+  // Reverse lookup: full state name → full state name (for validation)
+  var _US_STATE_NAMES = {};
+  (function () {
+    for (var abbr in US_STATES) {
+      _US_STATE_NAMES[US_STATES[abbr].toLowerCase()] = US_STATES[abbr];
+    }
+  })();
+
+  function normalizePlaceInput(raw) {
+    if (!raw) return "";
+    var s = raw.trim();
+    var m, full;
+
+    // "City, ST" — comma-separated two-letter (check first to avoid double-comma)
+    m = s.match(/^(.+?),\s*([A-Z]{2})$/i);
+    if (m) {
+      full = US_STATES[m[2].toUpperCase()];
+      if (full) return m[1].trim() + ", " + full;
+    }
+
+    // "City ST" (no comma) — two-letter state at end
+    m = s.match(/^(.+?)\s+([A-Z]{2})$/i);
+    if (m) {
+      full = US_STATES[m[2].toUpperCase()];
+      if (full) return m[1].trim().replace(/,\s*$/, "") + ", " + full;
+    }
+
+    // "City Statename" — full state name at end (e.g., "Boise Idaho")
+    // Try progressively longer tail words as state name
+    var words = s.split(/\s+/);
+    for (var i = words.length - 1; i >= 1; i--) {
+      var candidateState = words.slice(i).join(" ").toLowerCase();
+      var fullState = _US_STATE_NAMES[candidateState];
+      if (fullState) {
+        var city = words.slice(0, i).join(" ").replace(/,\s*$/, "");
+        return city + ", " + fullState;
+      }
+    }
+
+    return s;
+  }
+
+  /**
+   * Derive zodiac sign from YYYY-MM-DD date string.
+   * Returns zodiac name or "" if date invalid.
+   */
+  function deriveZodiacFromDob(isoDate) {
+    if (!isoDate) return "";
+    var parts = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!parts) return "";
+    var mm = parseInt(parts[2], 10), dd = parseInt(parts[3], 10);
+    if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
+
+    if ((mm===1 && dd<=19) || (mm===12 && dd>=22)) return "Capricorn";
+    if ((mm===1 && dd>=20) || (mm===2 && dd<=18)) return "Aquarius";
+    if ((mm===2 && dd>=19) || (mm===3 && dd<=20)) return "Pisces";
+    if ((mm===3 && dd>=21) || (mm===4 && dd<=19)) return "Aries";
+    if ((mm===4 && dd>=20) || (mm===5 && dd<=20)) return "Taurus";
+    if ((mm===5 && dd>=21) || (mm===6 && dd<=20)) return "Gemini";
+    if ((mm===6 && dd>=21) || (mm===7 && dd<=22)) return "Cancer";
+    if ((mm===7 && dd>=23) || (mm===8 && dd<=22)) return "Leo";
+    if ((mm===8 && dd>=23) || (mm===9 && dd<=22)) return "Virgo";
+    if ((mm===9 && dd>=23) || (mm===10 && dd<=22)) return "Libra";
+    if ((mm===10 && dd>=23) || (mm===11 && dd<=21)) return "Scorpio";
+    if ((mm===11 && dd>=22) || (mm===12 && dd<=21)) return "Sagittarius";
+    return "";
+  }
+
+  /**
+   * Build a canonical basics object from Bio Builder questionnaire data,
+   * suitable for merging into state.profile.basics.
+   * Does NOT auto-write — caller decides when/how to apply.
+   */
+  /**
+   * Split a full name into {first, middle, last} by simple whitespace rules.
+   * "Thomas Reed Walker" → {first:"Thomas", middle:"Reed", last:"Walker"}
+   * "Madonna" → {first:"Madonna", middle:"", last:""}
+   */
+  function _splitFullName(full) {
+    if (!full) return { first: "", middle: "", last: "" };
+    var parts = full.trim().split(/\s+/);
+    if (parts.length === 1) return { first: parts[0], middle: "", last: "" };
+    if (parts.length === 2) return { first: parts[0], middle: "", last: parts[1] };
+    return { first: parts[0], middle: parts.slice(1, -1).join(" "), last: parts[parts.length - 1] };
+  }
+
+  function buildCanonicalBasicsFromBioBuilder() {
+    var bb = _bb(); if (!bb) return null;
+    var q = bb.questionnaire.personal;
+    if (!q) return null;
+
+    var dob = normalizeDobInput(q.dateOfBirth || "");
+    var zodiac = q.zodiacSign || "";
+    if (!zodiac && dob) zodiac = deriveZodiacFromDob(dob);
+
+    var rawPlace = q.placeOfBirth || "";
+    var normPlace = normalizePlaceInput(rawPlace);
+    var nameParts = _splitFullName(q.fullName || "");
+
+    var birthOrder = q.birthOrder || "";
+    var birthOrderCustom = "";
+    if (birthOrder === "Other/custom") {
+      // In the future a custom text field can be placed beside the select;
+      // for now, keep the token so the UI can render a follow-up input.
+      birthOrderCustom = "";
+    }
+
+    return {
+      fullname:               q.fullName      || "",
+      preferred:              q.preferredName || "",
+      legalFirstName:         nameParts.first,
+      legalMiddleName:        nameParts.middle,
+      legalLastName:          nameParts.last,
+      dob:                    dob,
+      timeOfBirth:            normalizeTimeOfBirthInput(q.timeOfBirth || ""),
+      timeOfBirthDisplay:     normalizeTimeOfBirthInput(q.timeOfBirth || ""),
+      pob:                    normPlace,
+      placeOfBirthRaw:        rawPlace,
+      placeOfBirthNormalized: normPlace,
+      birthOrder:             birthOrder,
+      birthOrderCustom:       birthOrderCustom,
+      zodiacSign:             zodiac
+    };
   }
 
   /* ───────────────────────────────────────────────────────────
@@ -671,16 +961,18 @@
           sourceId: sectionId, sourceFilename: null,
           data: { name: name, birthDate: parent.birthDate || "",
                   birthPlace: parent.birthPlace || "", occupation: parent.occupation || "",
-                  notes: parent.notableLifeEvents || "" },
+                  maidenName: parent.maidenName || "",
+                  notes: [parent.notableLifeEvents, parent.notes].filter(Boolean).join("\n\n") },
           status: "pending"
         });
         var narratorName = _currentPersonName();
+        var relLabel = parent.relation || "parent";
         if (narratorName && name) {
           if (!_relCandidateExists(bb, narratorName, name)) {
             bb.candidates.relationships.push({
               id: _uid(), type: "relationship", source: "questionnaire:parents",
               sourceId: sectionId, sourceFilename: null,
-              data: { personA: narratorName, personB: name, relation: "parent" },
+              data: { personA: narratorName, personB: name, relation: relLabel },
               status: "pending"
             });
           }
@@ -714,8 +1006,8 @@
         bb.candidates.people.push({
           id: _uid(), type: "person", source: "questionnaire:siblings",
           sourceId: sectionId, sourceFilename: null,
-          data: { name: name, birthOrder: sib.birthOrder || "",
-                  notes: [sib.uniqueCharacteristics, sib.sharedExperiences, sib.memories].filter(Boolean).join("\n\n") },
+          data: { name: name, relation: sib.relation || "", birthOrder: sib.birthOrder || "",
+                  notes: [sib.uniqueCharacteristics, sib.sharedExperiences, sib.memories, sib.notes].filter(Boolean).join("\n\n") },
           status: "pending"
         });
       });
@@ -921,12 +1213,78 @@
 
   function _fieldHtml(field, domId, value) {
     var va = _esc(value);
+    var labelHtml = '<label class="bb-label" for="' + domId + '">' + _esc(field.label) + '</label>';
+
+    if (field.type === "select" && Array.isArray(field.options)) {
+      var optsHtml = field.options.map(function (opt) {
+        var ov = _esc(opt);
+        var sel = (opt === value) ? ' selected' : '';
+        return '<option value="' + ov + '"' + sel + '>' + (ov || '— select —') + '</option>';
+      }).join("");
+      return '<div class="bb-field">' + labelHtml
+        + '<select id="' + domId + '" class="bb-select">' + optsHtml + '</select></div>';
+    }
+
     if (field.type === "textarea") {
-      return '<div class="bb-field"><label class="bb-label" for="' + domId + '">' + _esc(field.label) + '</label>'
+      return '<div class="bb-field">' + labelHtml
         + '<textarea id="' + domId + '" class="bb-textarea" rows="3" placeholder="' + _esc(field.placeholder || "") + '">' + va + '</textarea></div>';
     }
-    return '<div class="bb-field"><label class="bb-label" for="' + domId + '">' + _esc(field.label) + '</label>'
-      + '<input id="' + domId + '" class="bb-input" type="text" value="' + va + '" placeholder="' + _esc(field.placeholder || "") + '" /></div>';
+
+    // Text input — with optional blur normalizer
+    var blurAttr = "";
+    if (field.inputHelper === "normalizeDob") {
+      blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'dob\')"';
+    } else if (field.inputHelper === "normalizeTime") {
+      blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'time\')"';
+    } else if (field.inputHelper === "normalizePlace") {
+      blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'place\')"';
+    }
+
+    // Auto-derive zodiac trigger on DOB blur
+    var deriveAttr = "";
+    if (field.inputHelper === "normalizeDob") {
+      deriveAttr = ' data-derive-zodiac="true"';
+    }
+
+    return '<div class="bb-field">' + labelHtml
+      + '<input id="' + domId + '" class="bb-input" type="text" value="' + va
+      + '" placeholder="' + _esc(field.placeholder || "") + '"' + blurAttr + deriveAttr + ' /></div>';
+  }
+
+  /**
+   * Inline normalization on blur — called from input onblur attributes.
+   * Also triggers zodiac auto-derive when DOB is normalized.
+   */
+  function _onNormalizeBlur(inputEl, kind) {
+    if (!inputEl) return;
+    var raw = inputEl.value;
+    var normalized;
+    if (kind === "dob") {
+      normalized = normalizeDobInput(raw);
+      inputEl.value = normalized;
+      // Auto-derive zodiac if a zodiac select exists in same form
+      _tryAutoZodiac(normalized);
+    } else if (kind === "time") {
+      normalized = normalizeTimeOfBirthInput(raw);
+      inputEl.value = normalized;
+    } else if (kind === "place") {
+      normalized = normalizePlaceInput(raw);
+      inputEl.value = normalized;
+    }
+  }
+
+  /**
+   * If there's a zodiac select in the current form context, and it's empty,
+   * derive from the DOB and set it. User can still override manually.
+   */
+  function _tryAutoZodiac(isoDob) {
+    // Look for the zodiac select — could be bbQ_zodiacSign (personal section)
+    var zodiacEl = _el("bbQ_zodiacSign");
+    if (!zodiacEl) return;
+    // Only auto-fill if empty (don't override manual choice)
+    if (zodiacEl.value) return;
+    var sign = deriveZodiacFromDob(isoDob);
+    if (sign) zodiacEl.value = sign;
   }
 
   /* ── Source Inbox Tab (Phase D) ─────────────────────────── */
@@ -1465,6 +1823,14 @@
   NS._addItemAsCandidate = _addItemAsCandidate;
   NS._addAllOfType       = _addAllOfType;
   NS._addAllFromCard     = _addAllFromCard;
+
+  // Normalization helpers (public for profile sync bridge)
+  NS.normalizeDobInput          = normalizeDobInput;
+  NS.normalizeTimeOfBirthInput  = normalizeTimeOfBirthInput;
+  NS.normalizePlaceInput        = normalizePlaceInput;
+  NS.deriveZodiacFromDob        = deriveZodiacFromDob;
+  NS.buildCanonicalBasicsFromBioBuilder = buildCanonicalBasicsFromBioBuilder;
+  NS._onNormalizeBlur           = _onNormalizeBlur;
 
   // Exposed for tests
   NS._parseTextItems     = _parseTextItems;

@@ -627,6 +627,20 @@
       transition: border-color 0.2s;
     }
     .bb-textarea:focus { border-color: rgba(20,184,166,0.5); }
+    .bb-select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(15,23,42,0.85);
+      color: #e2e8f0;
+      font-size: 13px;
+      font-family: inherit;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+      appearance: auto;
+    }
+    .bb-select:focus { border-color: rgba(20,184,166,0.5); }
     .bb-btn-sm {
       background: rgba(20,184,166,0.12);
       border: 1px solid rgba(20,184,166,0.35);
@@ -1111,6 +1125,17 @@
     <input id="bio_pob" type="text"/>
     <input id="bio_culture" type="text"/>
     <input id="bio_phonetic" type="text"/>
+    <!-- v8.0 Bio Builder extended fields -->
+    <input id="bio_legalFirstName" type="text"/>
+    <input id="bio_legalMiddleName" type="text"/>
+    <input id="bio_legalLastName" type="text"/>
+    <input id="bio_timeOfBirth" type="text"/>
+    <input id="bio_timeOfBirthDisplay" type="text"/>
+    <input id="bio_birthOrder" type="text"/>
+    <input id="bio_birthOrderCustom" type="text"/>
+    <input id="bio_zodiacSign" type="text"/>
+    <input id="bio_placeOfBirthRaw" type="text"/>
+    <input id="bio_placeOfBirthNormalized" type="text"/>
   </div>
 
   <!-- ── MEMOIR SCROLL (slide-out popover) ─────────────────── -->
@@ -3348,6 +3373,12 @@ async function lv80Init() {
     bioBuilderPopover.addEventListener("toggle", (event) => {
       if (event.newState === "open") {
         window.LorevoxBioBuilder?.render();
+      } else if (event.newState === "closed") {
+        // v8.0 sync bridge: apply Bio Builder personal data to profile on close
+        // Does NOT auto-save — just updates hidden inputs so next saveProfile() picks them up
+        if (typeof applyBioBuilderPersonalToProfile === "function") {
+          applyBioBuilderPersonalToProfile();
+        }
       }
     });
   }

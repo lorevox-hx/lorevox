@@ -356,7 +356,17 @@ function normalizeProfile(p){
     basics:{fullname:b.fullname||"",preferred:b.preferred||"",dob:b.dob||"",
             pob:b.pob||"",culture:b.culture||"",country:b.country||"us",
             pronouns:b.pronouns||"",phonetic:b.phonetic||"",
-            language:b.language||""},  // v6.2 bilingual
+            language:b.language||"",                           // v6.2 bilingual
+            legalFirstName:b.legalFirstName||"",               // v8.0
+            legalMiddleName:b.legalMiddleName||"",             // v8.0
+            legalLastName:b.legalLastName||"",                 // v8.0
+            timeOfBirth:b.timeOfBirth||"",                     // v8.0
+            timeOfBirthDisplay:b.timeOfBirthDisplay||"",       // v8.0
+            birthOrder:b.birthOrder||"",                       // v8.0
+            birthOrderCustom:b.birthOrderCustom||"",           // v8.0
+            zodiacSign:b.zodiacSign||"",                       // v8.0
+            placeOfBirthRaw:b.placeOfBirthRaw||"",             // v8.0
+            placeOfBirthNormalized:b.placeOfBirthNormalized||""},// v8.0
     kinship:Array.isArray(p.kinship||p.family)?p.kinship||p.family:[],
     pets:Array.isArray(p.pets)?p.pets:[],
   };
@@ -393,6 +403,39 @@ async function saveProfile(){
       place_of_birth:b.pob||undefined
     })}).catch(()=>{});
   }catch{ sysBubble("⚠ Save failed — is the server running?"); }
+}
+
+/* ── v8.0: Bio Builder → Profile sync bridge ── */
+/**
+ * Applies Bio Builder personal-section data to state.profile.basics
+ * WITHOUT auto-promotion. Caller must explicitly invoke this.
+ * Returns true if any field was updated, false otherwise.
+ */
+function applyBioBuilderPersonalToProfile(){
+  if(!window.LorevoxBioBuilder?.buildCanonicalBasicsFromBioBuilder) return false;
+  const canonical=window.LorevoxBioBuilder.buildCanonicalBasicsFromBioBuilder();
+  if(!canonical) return false;
+  if(!state.profile) state.profile=normalizeProfile({});
+  const b=state.profile.basics;
+  let changed=false;
+  // Map bio builder → profile basics (only overwrite if bio builder has a value)
+  const map={fullname:"fullname",preferred:"preferred",dob:"dob",pob:"pob",
+             legalFirstName:"legalFirstName",legalMiddleName:"legalMiddleName",
+             legalLastName:"legalLastName",
+             timeOfBirth:"timeOfBirth",timeOfBirthDisplay:"timeOfBirthDisplay",
+             birthOrder:"birthOrder",birthOrderCustom:"birthOrderCustom",
+             zodiacSign:"zodiacSign",
+             placeOfBirthRaw:"placeOfBirthRaw",placeOfBirthNormalized:"placeOfBirthNormalized"};
+  for(const [bbKey,profKey] of Object.entries(map)){
+    if(canonical[bbKey] && canonical[bbKey]!==b[profKey]){
+      b[profKey]=canonical[bbKey]; changed=true;
+    }
+  }
+  if(changed){
+    // Hydrate hidden inputs so next scrapeBasics picks them up
+    hydrateProfileForm();
+  }
+  return changed;
 }
 
 /* ── v7.4D ISSUE-16: Active person dock indicator ── */
@@ -465,6 +508,17 @@ function hydrateProfileForm(){
   setv("bio_fullname",b.fullname); setv("bio_preferred",b.preferred);
   setv("bio_dob",b.dob);          setv("bio_pob",b.pob);
   setv("bio_culture",b.culture||""); setv("bio_phonetic",b.phonetic||"");
+  // v8.0 bio builder extended fields
+  setv("bio_legalFirstName",b.legalFirstName||"");
+  setv("bio_legalMiddleName",b.legalMiddleName||"");
+  setv("bio_legalLastName",b.legalLastName||"");
+  setv("bio_timeOfBirth",b.timeOfBirth||"");
+  setv("bio_timeOfBirthDisplay",b.timeOfBirthDisplay||"");
+  setv("bio_birthOrder",b.birthOrder||"");
+  setv("bio_birthOrderCustom",b.birthOrderCustom||"");
+  setv("bio_zodiacSign",b.zodiacSign||"");
+  setv("bio_placeOfBirthRaw",b.placeOfBirthRaw||"");
+  setv("bio_placeOfBirthNormalized",b.placeOfBirthNormalized||"");
   const sel=document.getElementById("bio_country");
   if(sel && b.country) sel.value=b.country;
   const langSel=document.getElementById("bio_language");  // v6.2
@@ -495,7 +549,17 @@ function scrapeBasics(){
     dob:getv("bio_dob"),pob:getv("bio_pob"),
     culture:getv("bio_culture"),country:document.getElementById("bio_country").value,
     pronouns,phonetic:getv("bio_phonetic"),
-    language:langSel?langSel.value:""  // v6.2 bilingual
+    language:langSel?langSel.value:"",                         // v6.2 bilingual
+    legalFirstName:getv("bio_legalFirstName")||"",              // v8.0
+    legalMiddleName:getv("bio_legalMiddleName")||"",            // v8.0
+    legalLastName:getv("bio_legalLastName")||"",                // v8.0
+    timeOfBirth:getv("bio_timeOfBirth")||"",                    // v8.0
+    timeOfBirthDisplay:getv("bio_timeOfBirthDisplay")||"",      // v8.0
+    birthOrder:getv("bio_birthOrder")||"",                      // v8.0
+    birthOrderCustom:getv("bio_birthOrderCustom")||"",          // v8.0
+    zodiacSign:getv("bio_zodiacSign")||"",                      // v8.0
+    placeOfBirthRaw:getv("bio_placeOfBirthRaw")||"",            // v8.0
+    placeOfBirthNormalized:getv("bio_placeOfBirthNormalized")||"" // v8.0
   };
 }
 function onPronounsChange(){
@@ -592,7 +656,7 @@ function addKinRow(kind,data){
   d.innerHTML=`
     <input class="input-ghost" style="min-width:110px;flex:1" data-k="name" placeholder="Name" value="${escAttr(data.name||"")}">
     <select class="input-ghost" style="min-width:100px" data-k="relation">
-      ${["Mother","Father","Sibling","Spouse","Partner","Child","Step-parent","Step-child","Adoptive parent","Adopted child","Grandparent","Grandchild","Former spouse","Guardian","Chosen family","Other"]
+      ${["Mother","Father","Sister","Brother","Half-sister","Half-brother","Stepsister","Stepbrother","Sibling","Spouse","Partner","Child","Step-parent","Step-child","Adoptive parent","Adoptive mother","Adoptive father","Adopted child","Grandparent","Grandmother","Grandfather","Grandchild","Nephew","Niece","Cousin","Aunt","Uncle","Former spouse","Guardian","Chosen family","Other"]
         .map(x=>`<option ${(data.relation||kind)===x?"selected":""}>${x}</option>`).join("")}
     </select>
     <input class="input-ghost" style="flex:1;min-width:90px" data-k="pob" placeholder="Birthplace" value="${escAttr(data.pob||"")}">
@@ -2143,3 +2207,4 @@ function finalizeOnboarding74() {
 
   appendLoriOnboardingMessage("Whenever you're ready, we can begin at the beginning. I'll start by helping place your story in time.");
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
