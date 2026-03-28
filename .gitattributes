@@ -1,0 +1,34 @@
+# Normalize line endings: store LF in repo, checkout as native OS ending
+* text=auto eol=lf
+
+# Force LF for web/code files (always LF, even on Windows)
+*.html text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
+*.py   text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.sh   text eol=lf
+*.toml text eol=lf
+*.cfg  text eol=lf
+*.csv  text eol=lf
+
+# Keep binary files untouched
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.eot  binary
+*.wasm binary
+*.mp3  binary
+*.wav  binary
+*.mp4  binary
+*.pdf  binary
+*.zip  binary
