@@ -19,10 +19,11 @@ venv/
 env/
 
 # =========================
-# EDITORS / OS
+# EDITORS / OS / TOOLS
 # =========================
 .vscode/
 .idea/
+.claude/
 .DS_Store
 Thumbs.db
 desktop.ini
