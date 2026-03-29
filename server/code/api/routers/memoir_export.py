@@ -79,9 +79,13 @@ class MemoirExportRequest(BaseModel):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 # Colour constants for the Lorevox brand tone (dark warm palette)
-_DARK_BROWN = RGBColor(0x3B, 0x2A, 0x1A)   # heading primary
-_WARM_GREY  = RGBColor(0x5A, 0x55, 0x50)   # heading secondary
-_GOLD       = RGBColor(0xAA, 0x88, 0x44)   # accent line / arc label
+# Guarded: RGBColor only exists when python-docx is installed.
+if _DOCX_AVAILABLE:
+    _DARK_BROWN = RGBColor(0x3B, 0x2A, 0x1A)   # heading primary
+    _WARM_GREY  = RGBColor(0x5A, 0x55, 0x50)   # heading secondary
+    _GOLD       = RGBColor(0xAA, 0x88, 0x44)   # accent line / arc label
+else:
+    _DARK_BROWN = _WARM_GREY = _GOLD = None
 
 
 def _photos_for_section(req: MemoirExportRequest, section_key: str) -> List[AttachedPhoto]:

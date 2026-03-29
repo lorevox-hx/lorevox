@@ -171,6 +171,50 @@
       });
   }
 
+  /* ── v5 — Draft context accessor ─────────────────────────── */
+  /* Reads FT/LT draft surfaces (read-only, never writes to truth).
+     Returns { ftNodes: [], ltNodes: [], ftEdges: [], ltEdges: [] } */
+  function _getDraftContext() {
+    if (typeof window.LorevoxBioBuilder === "undefined" || !window.LorevoxBioBuilder._getDraftFamilyContext) {
+      return { ftNodes: [], ltNodes: [], ftEdges: [], ltEdges: [] };
+    }
+    var ctx = window.LorevoxBioBuilder._getDraftFamilyContext();
+    if (!ctx) return { ftNodes: [], ltNodes: [], ftEdges: [], ltEdges: [] };
+    return {
+      ftNodes: (ctx.familyTree && ctx.familyTree.nodes) || [],
+      ltNodes: (ctx.lifeThreads && ctx.lifeThreads.nodes) || [],
+      ftEdges: (ctx.familyTree && ctx.familyTree.edges) || [],
+      ltEdges: (ctx.lifeThreads && ctx.lifeThreads.edges) || []
+    };
+  }
+
+  /* ── v6 — Era-aware draft context accessor ─────────────── */
+  /* Returns era-scoped draft items when the v6 accessor exists,
+     otherwise falls back to the global v5 path.
+     Returns { ftItems: [], ltItems: [], era: string|null, isEraAware: bool } */
+  function _getDraftContextForEra(era) {
+    var BB = window.LorevoxBioBuilder;
+    // v6 path: era-aware accessor available and era specified
+    if (era && BB && typeof BB._getDraftFamilyContextForEra === "function") {
+      var eraCtx = BB._getDraftFamilyContextForEra(null, era);
+      if (eraCtx) {
+        // primary = high-relevance items for this era, secondary = moderate
+        var items = (eraCtx.primary || []).concat(eraCtx.secondary || []);
+        var ftItems = [], ltItems = [];
+        items.forEach(function (it) {
+          if (it.source === "familyTree" || it.role) ftItems.push(it);
+          else ltItems.push(it);
+        });
+        return { ftItems: ftItems, ltItems: ltItems, era: era, isEraAware: true };
+      }
+    }
+    // v5 fallback: global context (no era filtering)
+    var g = _getDraftContext();
+    var ftFallback = g.ftNodes.filter(function (n) { return n.role !== "narrator"; });
+    var ltFallback = g.ltNodes;
+    return { ftItems: ftFallback, ltItems: ltFallback, era: era || null, isEraAware: false };
+  }
+
   /* ── Core data transform ──────────────────────────────────── */
   function buildLifeMapFromLorevoxState() {
     var periods    = _getPeriods();
@@ -196,7 +240,21 @@
       var subtitle = start + (end != null ? ("–" + end) : "+");
       // Memory count suffix mirrors chapter-status badges in memoir preview
       var countSuffix = memCount > 0 ? (" · " + memCount + " memor" + (memCount === 1 ? "y" : "ies")) : "";
-      var topicStr = _prettyEra(period.label) + " · " + subtitle + countSuffix;
+
+      // v6 integration — era-specific draft enrichment (v5 fallback: global counts)
+      var draftSuffix = "";
+      var eraDraft = _getDraftContextForEra(period.label);
+      var ftPeopleCount = eraDraft.ftItems.length;
+      var ltThemeCount  = eraDraft.ltItems.filter(function (n) { return n.type === "theme"; }).length;
+      if (ftPeopleCount > 0 || ltThemeCount > 0) {
+        var parts = [];
+        if (ftPeopleCount > 0) parts.push(ftPeopleCount + " family");
+        if (ltThemeCount  > 0) parts.push(ltThemeCount  + " theme" + (ltThemeCount > 1 ? "s" : ""));
+        draftSuffix = " · " + parts.join(", ");
+        if (eraDraft.isEraAware) draftSuffix += " (era)";
+      }
+
+      var topicStr = _prettyEra(period.label) + " · " + subtitle + countSuffix + draftSuffix;
 
       // Style tiers:
       //  active      → indigo (current working period)
@@ -544,7 +602,21 @@
         var memNote = activeMemCount > 0
           ? " · " + activeMemCount + " memor" + (activeMemCount === 1 ? "y" : "ies") + " anchored"
           : "";
-        meta.textContent = "Lori is in: " + _prettyEra(activeEra) + memNote + " — click a period to navigate, or use the button below.";
+
+        // v6 integration — era-specific draft context summary in meta bar
+        var draftMeta = "";
+        var metaDraft = _getDraftContextForEra(activeEra);
+        var dftPeople = metaDraft.ftItems.length;
+        var dltThemes = metaDraft.ltItems.filter(function (n) { return n.type === "theme"; }).length;
+        if (dftPeople > 0 || dltThemes > 0) {
+          var bits = [];
+          if (dftPeople > 0) bits.push(dftPeople + " family member" + (dftPeople > 1 ? "s" : ""));
+          if (dltThemes > 0) bits.push(dltThemes + " life theme" + (dltThemes > 1 ? "s" : ""));
+          draftMeta = " · Draft: " + bits.join(", ");
+          if (metaDraft.isEraAware) draftMeta += " (era-matched)";
+        }
+
+        meta.textContent = "Lori is in: " + _prettyEra(activeEra) + memNote + draftMeta + " — click a period to navigate, or use the button below.";
       } else {
         meta.textContent = "Click a life period to move Lori into that era and continue the interview.";
       }

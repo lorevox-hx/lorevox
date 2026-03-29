@@ -3,7 +3,7 @@
 **Date:** 2026-03-28
 **Scope:** `bio-builder.js`, `app.js`, `lori8.0.html`
 **Build:** v8.0 Bio Builder / Profile Unification
-**Test Method:** Unit tests (56 assertions) + static code review against 9 persona specifications
+**Test Method:** Reported unit tests (56 assertions, see `test_normalizers.js` in repo root) + static code review against 9 persona specifications
 
 ---
 
@@ -35,7 +35,7 @@ Expanded `scrapeBasics()` and `hydrateProfileForm()` to read/write all new hidde
 
 Added `applyBioBuilderPersonalToProfile()` sync bridge — maps Bio Builder canonical basics into `state.profile.basics` without auto-saving.
 
-Expanded kinship relation vocabulary to 30 options: Mother, Father, Sister, Brother, Half-sister, Half-brother, Stepsister, Stepbrother, Sibling, Spouse, Partner, Child, Step-parent, Step-child, Adoptive parent, Adoptive mother, Adoptive father, Adopted child, Grandparent, Grandmother, Grandfather, Grandchild, Nephew, Niece, Cousin, Aunt, Uncle, Former spouse, Guardian, Chosen family, Other.
+Expanded kinship relation vocabulary to include extended family (Nephew, Niece, Cousin, Aunt, Uncle), gendered parent/grandparent options, half/step variants, Former spouse, Guardian, Chosen family, and Other.
 
 ### lori8.0.html
 

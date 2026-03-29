@@ -870,6 +870,195 @@
       border-top: 1px solid rgba(255,255,255,0.05); margin-top: 8px;
     }
 
+    /* ── Family Tree tab (v3) ─────────────────────────────────── */
+    .ft-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .ft-group { margin-bottom: 18px; }
+    .ft-group-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #475569; margin-bottom: 8px;
+    }
+    .ft-cards { display: flex; flex-direction: column; gap: 6px; }
+    .ft-card {
+      padding: 10px 14px;
+      background: rgba(30,41,59,0.45);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      transition: border-color 0.15s;
+    }
+    .ft-card:hover { border-color: rgba(255,255,255,0.12); }
+    .ft-card-deceased {
+      border-left: 3px solid rgba(239,68,68,0.5);
+    }
+    .ft-card-header {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .ft-card-header strong { font-size: 13px; color: #cbd5e1; }
+    .ft-deceased-badge {
+      font-size: 10px; padding: 1px 7px; border-radius: 8px;
+      background: rgba(239,68,68,0.15); color: #fca5a5; font-weight: 500;
+    }
+    .ft-uncertain-badge {
+      font-size: 10px; padding: 1px 7px; border-radius: 8px;
+      background: rgba(234,179,8,0.12); color: #fde047; font-weight: 500;
+    }
+    .ft-card-death { font-size: 12px; color: #64748b; margin-top: 4px; font-style: italic; }
+    .ft-card-notes { font-size: 12px; color: #64748b; margin-top: 3px; }
+    .ft-card-detail { font-size: 12px; color: #475569; margin-top: 2px; }
+    .ft-card-edges { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); }
+    .ft-edge-line {
+      font-size: 11px; color: #64748b; display: flex; align-items: center; gap: 6px;
+      padding: 2px 0;
+    }
+    .ft-edge-label { color: #94a3b8; }
+    .ft-edge-del {
+      font-size: 10px; color: #475569; cursor: pointer; margin-left: 4px;
+      transition: color 0.15s;
+    }
+    .ft-edge-del:hover { color: #f87171; }
+    .ft-card-actions {
+      display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+    }
+
+    /* ── Life Threads tab (v3) ────────────────────────────────── */
+    .lt-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .lt-group { margin-bottom: 18px; }
+    .lt-group-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #475569; margin-bottom: 8px;
+    }
+    .lt-cards { display: flex; flex-direction: column; gap: 6px; }
+    .lt-card {
+      padding: 10px 14px;
+      background: rgba(30,41,59,0.45);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      transition: border-color 0.15s;
+    }
+    .lt-card:hover { border-color: rgba(255,255,255,0.12); }
+    .lt-card-person  { border-left: 3px solid rgba(20,184,166,0.5); }
+    .lt-card-place   { border-left: 3px solid rgba(99,102,241,0.5); }
+    .lt-card-memory  { border-left: 3px solid rgba(234,179,8,0.5); }
+    .lt-card-event   { border-left: 3px solid rgba(244,114,182,0.5); }
+    .lt-card-theme   { border-left: 3px solid rgba(168,85,247,0.5); }
+    .lt-card-header {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .lt-card-header strong { font-size: 13px; color: #cbd5e1; }
+    .lt-card-type {
+      font-size: 10px; padding: 1px 7px; border-radius: 8px;
+      background: rgba(255,255,255,0.06); color: #94a3b8; font-weight: 500;
+    }
+    .lt-card-text { font-size: 12px; color: #94a3b8; margin-top: 4px; line-height: 1.45; }
+    .lt-card-notes { font-size: 12px; color: #64748b; margin-top: 3px; font-style: italic; }
+    .lt-card-edges { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); }
+    .lt-edge-line {
+      font-size: 11px; color: #64748b; display: flex; align-items: center; gap: 6px;
+      padding: 2px 0;
+    }
+    .lt-edge-rel { color: #94a3b8; }
+    .lt-edge-del {
+      font-size: 10px; color: #475569; cursor: pointer; margin-left: 4px;
+      transition: color 0.15s;
+    }
+    .lt-edge-del:hover { color: #f87171; }
+    .lt-card-actions {
+      display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+    }
+
+    /* ── v4 Usability — Utilities bar & badges ──────────────── */
+    .ft-utilities-bar, .lt-utilities-bar {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
+      padding: 8px 10px; border-radius: 8px;
+      background: rgba(30,41,59,0.35);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .ft-util-badge, .lt-util-badge {
+      font-size: 11px; padding: 3px 10px; border-radius: 12px;
+      background: rgba(99,102,241,0.12); color: #a5b4fc;
+      cursor: pointer; transition: background 0.15s;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .ft-util-badge:hover, .lt-util-badge:hover {
+      background: rgba(99,102,241,0.22);
+    }
+    .ft-util-warn, .lt-util-warn {
+      background: rgba(234,179,8,0.12); color: #fde047;
+    }
+    .ft-util-warn:hover, .lt-util-warn:hover {
+      background: rgba(234,179,8,0.22);
+    }
+
+    /* ── v4 Usability — Collapse / expand ───────────────────── */
+    .ft-collapse-arrow, .lt-collapse-arrow {
+      display: inline-block; font-size: 10px; margin-right: 4px;
+      transition: transform 0.2s; cursor: pointer; color: #64748b;
+      user-select: none;
+    }
+    .ft-collapse-arrow.collapsed, .lt-collapse-arrow.collapsed {
+      transform: rotate(-90deg);
+    }
+    .ft-group-count, .lt-group-count {
+      font-size: 10px; color: #475569; margin-left: 6px; font-weight: 400;
+    }
+    .ft-group-collapsed .ft-cards,
+    .lt-group-collapsed .lt-cards {
+      display: none;
+    }
+
+    /* ── v4 Usability — Source badge ─────────────────────────── */
+    .ft-source-badge, .lt-source-badge {
+      font-size: 9px; padding: 1px 6px; border-radius: 6px;
+      background: rgba(20,184,166,0.10); color: #5eead4;
+      margin-left: 6px; font-weight: 500; letter-spacing: 0.03em;
+    }
+
+    /* ── v4 Usability — Extra small button ──────────────────── */
+    .bb-btn-xs {
+      font-size: 10px; padding: 2px 8px; border-radius: 6px;
+      background: rgba(255,255,255,0.06); color: #94a3b8;
+      border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .bb-btn-xs:hover {
+      background: rgba(255,255,255,0.12); color: #cbd5e1;
+    }
+
+    /* ── v6 — Graph mode styles ──────────────────────────────── */
+    .ft-view-toggle, .lt-view-toggle {
+      display: inline-flex; gap: 2px; margin-left: auto;
+      background: rgba(30,41,59,0.4); border-radius: 8px;
+      padding: 2px;
+    }
+    .ft-view-toggle .bb-btn-sm, .lt-view-toggle .bb-btn-sm {
+      font-size: 11px; padding: 3px 10px; border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .bb-btn-active {
+      background: rgba(99,102,241,0.22) !important;
+      color: #a5b4fc !important;
+    }
+    .ft-graph-svg, .lt-graph-svg {
+      background: rgba(15,23,42,0.6); border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+      margin-top: 8px;
+    }
+    .ft-graph-empty, .lt-graph-empty {
+      text-align: center; padding: 32px; color: #64748b;
+      font-size: 13px; font-style: italic;
+    }
+    .ft-graph-cap-notice, .lt-graph-cap-notice {
+      text-align: center; font-size: 10px; color: #f59e0b;
+      margin-top: 6px; font-style: italic;
+    }
+
+    /* ── v6 — Fuzzy info badge ────────────────────────────────── */
+    .ft-util-info, .lt-util-info {
+      background: rgba(56,189,248,0.10); color: #7dd3fc;
+    }
+    .ft-util-info:hover, .lt-util-info:hover {
+      background: rgba(56,189,248,0.20);
+    }
+
     /* ── Life Map popover ────────────────────────────────────────
        CRITICAL: display:flex must live on :popover-open, NOT on the
        base #lifeMapPopover rule.  The browser's UA sheet hides closed
@@ -1270,6 +1459,12 @@
         <button id="bbTabCandidates"    class="bb-tab" data-tab="candidates"
                 onclick="window.LorevoxBioBuilder._switchTab('candidates')"
                 role="tab" aria-selected="false">Candidates</button>
+        <button id="bbTabFamilyTree"   class="bb-tab" data-tab="familyTree"
+                onclick="window.LorevoxBioBuilder._switchTab('familyTree')"
+                role="tab" aria-selected="false">Family Tree</button>
+        <button id="bbTabLifeThreads"  class="bb-tab" data-tab="lifeThreads"
+                onclick="window.LorevoxBioBuilder._switchTab('lifeThreads')"
+                role="tab" aria-selected="false">Life Threads</button>
       </div>
     </div>
 

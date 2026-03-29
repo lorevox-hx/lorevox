@@ -177,16 +177,94 @@
   function _totalPending()  { var co = _bucketCounts(); return _TYPES.reduce(function (s, t) { return s + (co[t] || 0); }, 0); }
   function _totalApproved() { return _reviewState().approved.length; }
 
-  /* ── Duplicate detector (lightweight) ────────────────────── */
+  /* ── Duplicate detector (v6: fuzzy-aware) ───────────────── */
+
+  /* Access fuzzy scoring from bio-builder.js if available */
+  function _fuzzyScore(a, b) {
+    var BB = window.LorevoxBioBuilder;
+    if (BB && typeof BB._fuzzyNameScore === "function") return BB._fuzzyNameScore(a, b);
+    // Fallback: exact match only
+    var na = String(a || "").toLowerCase().trim();
+    var nb = String(b || "").toLowerCase().trim();
+    return (na && nb && na === nb) ? 1.0 : 0;
+  }
+
+  function _fuzzyTier(score) {
+    var BB = window.LorevoxBioBuilder;
+    if (BB && typeof BB._fuzzyDuplicateTier === "function") return BB._fuzzyDuplicateTier(score);
+    return score >= 1.0 ? "exact" : score >= 0.8 ? "likely" : score >= 0.5 ? "possible" : "distinct";
+  }
 
   function _possibleDuplicate(c, type) {
     var promoted = (_reviewState().promoted[type] || []);
-    var v = _title(c).toLowerCase().trim();
-    if (!v) return null;
-    var hit = promoted.find(function (p) {
-      return String(p.value || p.label || p.name || p.title || "").toLowerCase().trim() === v;
+    var v = _title(c);
+    if (!v || !v.trim()) return null;
+    var bestHit = null, bestScore = 0, bestTier = "distinct";
+    promoted.forEach(function (p) {
+      var pVal = String(p.value || p.label || p.name || p.title || "").trim();
+      if (!pVal) return;
+      var score = _fuzzyScore(v, pVal);
+      if (score > bestScore) {
+        bestScore = score;
+        bestHit = pVal;
+        bestTier = _fuzzyTier(score);
+      }
     });
-    return hit ? "A promoted " + (_SINGULAR[type] || type).toLowerCase() + " with the same value already exists." : null;
+    if (bestTier === "distinct") return null;
+    var singular = (_SINGULAR[type] || type).toLowerCase();
+    if (bestTier === "exact") {
+      return "A promoted " + singular + " with the same value already exists: \"" + bestHit + "\".";
+    }
+    return "A promoted " + singular + " is a " + bestTier + " match (" + Math.round(bestScore * 100) + "%): \"" + bestHit + "\".";
+  }
+
+  /* ── v5/v6 Integration — FT/LT cross-reference (fuzzy-aware) */
+
+  /* Check if a candidate's value appears in the Bio Builder
+     Family Tree or Life Threads draft for the current person.
+     v6: Uses fuzzy name scoring when available.
+     Returns { inFT: bool, inLT: bool, ftNode: obj|null, ltNode: obj|null,
+               ftScore: number, ltScore: number, ftTier: string, ltTier: string } */
+  function _draftCrossRef(c) {
+    var result = { inFT: false, inLT: false, ftNode: null, ltNode: null,
+                   ftScore: 0, ltScore: 0, ftTier: "distinct", ltTier: "distinct" };
+    if (typeof window.LorevoxBioBuilder === "undefined" || !window.LorevoxBioBuilder._getDraftFamilyContext) return result;
+    var ctx = window.LorevoxBioBuilder._getDraftFamilyContext();
+    if (!ctx) return result;
+    var v = _title(c);
+    if (!v || !v.trim()) return result;
+
+    // Search Family Tree nodes (fuzzy)
+    if (ctx.familyTree && Array.isArray(ctx.familyTree.nodes)) {
+      var bestFT = 0, bestFTNode = null;
+      ctx.familyTree.nodes.forEach(function (n) {
+        var nLabel = n.displayName || n.preferredName || n.label || "";
+        var score = _fuzzyScore(v, nLabel);
+        if (score > bestFT) { bestFT = score; bestFTNode = n; }
+      });
+      var ftTier = _fuzzyTier(bestFT);
+      if (ftTier !== "distinct") {
+        result.inFT = true; result.ftNode = bestFTNode;
+        result.ftScore = bestFT; result.ftTier = ftTier;
+      }
+    }
+
+    // Search Life Threads nodes (fuzzy)
+    if (ctx.lifeThreads && Array.isArray(ctx.lifeThreads.nodes)) {
+      var bestLT = 0, bestLTNode = null;
+      ctx.lifeThreads.nodes.forEach(function (n) {
+        var nLabel = n.label || n.displayName || "";
+        var score = _fuzzyScore(v, nLabel);
+        if (score > bestLT) { bestLT = score; bestLTNode = n; }
+      });
+      var ltTier = _fuzzyTier(bestLT);
+      if (ltTier !== "distinct") {
+        result.inLT = true; result.ltNode = bestLTNode;
+        result.ltScore = bestLT; result.ltTier = ltTier;
+      }
+    }
+
+    return result;
   }
 
   /* ── Render — stats ───────────────────────────────────────── */
@@ -222,6 +300,20 @@
     var active = ui.activeCandidateId === id ? " active" : "";
     var conf   = _confidence(c);
     var src    = _sourceLabel(c);
+    // v6: fuzzy cross-ref badges with confidence tier
+    var xref   = _draftCrossRef(c);
+    var xrefBadge = "";
+    if (xref.inFT) {
+      var ftPct = Math.round(xref.ftScore * 100);
+      var ftLabel = xref.ftTier === "exact" ? "FT" : "FT " + ftPct + "%";
+      xrefBadge += '<span class="bio-mini-chip" style="background:rgba(20,184,166,0.12);color:#5eead4;font-size:9px;" title="Family Tree: ' + xref.ftTier + ' match (' + ftPct + '%)">' + ftLabel + '</span>';
+    }
+    if (xref.inLT) {
+      var ltPct = Math.round(xref.ltScore * 100);
+      var ltLabel = xref.ltTier === "exact" ? "LT" : "LT " + ltPct + "%";
+      xrefBadge += '<span class="bio-mini-chip" style="background:rgba(168,85,247,0.12);color:#c4b5fd;font-size:9px;" title="Life Threads: ' + xref.ltTier + ' match (' + ltPct + '%)">' + ltLabel + '</span>';
+    }
+
     return '<div class="bio-candidate-card' + active + '" data-candidate-id="' + _esc(id) + '" data-candidate-type="' + _esc(type) + '">'
       + '<div class="bio-candidate-card-top">'
       +   '<div class="bio-candidate-title">' + _esc(_title(c)) + '</div>'
@@ -231,6 +323,7 @@
       + '<div class="bio-candidate-meta">'
       +   '<span class="bio-mini-chip" title="' + _esc(src) + '">📂 ' + _esc(src) + '</span>'
       +   '<span class="bio-mini-chip bio-confidence ' + _esc(conf) + '">' + _esc(conf) + '</span>'
+      +   xrefBadge
       + '</div>'
       + '</div>';
   }
@@ -272,6 +365,9 @@
     var status    = _status(c);
     var dup       = _possibleDuplicate(c, type);
     var conf      = _confidence(c);
+
+    // v5: Cross-reference with FT/LT draft
+    var xref = _draftCrossRef(c);
 
     var typeOptions = _TYPES.map(function (t) {
       return '<option value="' + t + '"' + (t === type ? ' selected' : '') + '>' + _PLURAL[t] + '</option>';
@@ -333,6 +429,35 @@
           +   '<h4 class="bio-detail-block-title">Possible Duplicate</h4>'
           +   '<div class="bio-merge-box">' + _esc(dup) + '</div>'
           +   '<div class="bio-possible-duplicate">Use Merge to combine with the existing record.</div>'
+          + '</div>'
+          : "")
+      /* v6: FT/LT cross-reference indicator with fuzzy confidence */
+      + ((xref.inFT || xref.inLT)
+          ? '<div class="bio-detail-block">'
+          +   '<h4 class="bio-detail-block-title">Bio Builder Cross-Reference</h4>'
+          +   '<div class="bio-provenance-row">'
+          +     (xref.inFT
+              ? '<span class="bio-provenance-chip" style="background:rgba(20,184,166,0.12);color:#5eead4;">'
+              +   (xref.ftTier === "exact" ? "Exact match" : (_esc(xref.ftTier.charAt(0).toUpperCase() + xref.ftTier.slice(1)) + " match (" + Math.round(xref.ftScore * 100) + "%)"))
+              +   ' in Family Tree'
+              +   (xref.ftNode && xref.ftNode.role ? ' — ' + _esc(xref.ftNode.role) : '')
+              +   (xref.ftNode ? ' — "' + _esc(xref.ftNode.displayName || xref.ftNode.preferredName || xref.ftNode.label || "") + '"' : '')
+              + '</span>'
+              : '')
+          +     (xref.inLT
+              ? '<span class="bio-provenance-chip" style="background:rgba(168,85,247,0.12);color:#c4b5fd;">'
+              +   (xref.ltTier === "exact" ? "Exact match" : (_esc(xref.ltTier.charAt(0).toUpperCase() + xref.ltTier.slice(1)) + " match (" + Math.round(xref.ltScore * 100) + "%)"))
+              +   ' in Life Threads'
+              +   (xref.ltNode && xref.ltNode.type ? ' — ' + _esc(xref.ltNode.type) : '')
+              +   (xref.ltNode ? ' — "' + _esc(xref.ltNode.label || xref.ltNode.displayName || "") + '"' : '')
+              + '</span>'
+              : '')
+          +   '</div>'
+          +   '<div style="font-size:11px;color:#64748b;margin-top:4px;">'
+          +     (xref.ftTier === "exact" || xref.ltTier === "exact"
+                  ? 'This candidate is already represented in the draft surfaces above.'
+                  : 'This candidate has a fuzzy match in the draft surfaces — review carefully before approving.')
+          +   '</div>'
           + '</div>'
           : "")
       + '</div>'  /* end scroll */
@@ -552,6 +677,9 @@
   NS._sourceLabel     = _sourceLabel;
   NS._promote         = _promote;
   NS._removeFromPending = _removeFromPending;
+  NS._draftCrossRef   = _draftCrossRef;    // v5/v6 (fuzzy-aware)
+  NS._fuzzyScore      = _fuzzyScore;       // v6
+  NS._fuzzyTier       = _fuzzyTier;        // v6
 
   window.LorevoxCandidateReview = NS;
 

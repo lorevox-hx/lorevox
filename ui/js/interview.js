@@ -146,8 +146,60 @@ function updateContextTriggers(){
       : mode === "grounding"
         ? `<div class="text-xs text-emerald-400 mb-2">Grounding mode — Lori is pacing gently right now.</div>`
         : "";
+
+    // v6 integration — era-aware draft context trigger cards
+    let draftCards = "";
+    if(typeof LorevoxBioBuilder !== "undefined"){
+      let eraItems = null;
+      // Try era-aware accessor first
+      if(LorevoxBioBuilder._getDraftFamilyContextForEra && era){
+        const eraCtx = LorevoxBioBuilder._getDraftFamilyContextForEra(null, era);
+        if(eraCtx && (eraCtx.primary.length > 0 || eraCtx.secondary.length > 0)){
+          eraItems = eraCtx.primary.concat(eraCtx.secondary);
+        }
+      }
+
+      const _draftHints = [];
+      if(eraItems){
+        // v6 path: ranked era-relevant items
+        eraItems.forEach(item=>{
+          if(item.node && item.node.notes && /do\s*not\s*prompt/i.test(item.node.notes)) return;
+          if(item.type === "ft_person") _draftHints.push(`Ask about ${item.role || "family member"}: ${esc(item.label)}`);
+          else if(item.type === "lt_theme") _draftHints.push(`Explore theme: ${esc(item.label)}`);
+          else if(item.type === "lt_place") _draftHints.push(`Places: ${esc(item.label)}`);
+          else if(item.type === "lt_event") _draftHints.push(`Event: ${esc(item.label)}`);
+        });
+      } else if(LorevoxBioBuilder._getDraftFamilyContext){
+        // v5 fallback: global context
+        const ctx = LorevoxBioBuilder._getDraftFamilyContext();
+        if(ctx){
+          if(ctx.familyTree && ctx.familyTree.nodes){
+            ctx.familyTree.nodes.forEach(n=>{
+              if(n.role === "narrator") return;
+              if(n.notes && /do\s*not\s*prompt/i.test(n.notes)) return;
+              const label = n.displayName || n.preferredName || n.label || "";
+              if(label) _draftHints.push(`Ask about ${n.role || "family member"}: ${esc(label)}`);
+            });
+          }
+          if(ctx.lifeThreads && ctx.lifeThreads.nodes){
+            ctx.lifeThreads.nodes.forEach(n=>{
+              if(n.type !== "theme") return;
+              const label = n.label || n.displayName || "";
+              if(label) _draftHints.push(`Explore theme: ${esc(label)}`);
+            });
+          }
+        }
+      }
+
+      if(_draftHints.length > 0){
+        const eraLabel = eraItems ? " (era-matched)" : "";
+        draftCards = `<div class="text-xs" style="color:#5eead4;margin-bottom:4px;margin-top:8px;">From Bio Builder draft${eraLabel}:</div>` +
+          _draftHints.slice(0,4).map(h=>`<div class="event-card" style="margin:0;border-left:2px solid rgba(20,184,166,0.4);">${h}</div>`).join("");
+      }
+    }
+
     el.innerHTML = modeHint + `<div class="space-y-2 py-1">` +
-      prompts.map(t=>`<div class="event-card" style="margin:0">${esc(t)}</div>`).join("") + `</div>`;
+      prompts.map(t=>`<div class="event-card" style="margin:0">${esc(t)}</div>`).join("") + draftCards + `</div>`;
     return;
   }
 
@@ -199,10 +251,90 @@ function build71InterviewPrompt(){
   const mode = getCurrentMode();
   const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "this person";
 
-  if(pass==="pass2a") return _timelinePassPrompt(era, mode);
-  if(pass==="pass2b") return _depthPassPrompt(era, mode, name);
-  // pass1
-  return "When were you born? And where were you born?";
+  var base;
+  if(pass==="pass2a") base = _timelinePassPrompt(era, mode);
+  else if(pass==="pass2b") base = _depthPassPrompt(era, mode, name);
+  else base = "When were you born? And where were you born?";
+
+  // v5 integration — enrich with Family Tree / Life Threads draft context
+  var draftHint = _buildDraftContextHint(era);
+  return draftHint ? base + " " + draftHint : base;
+}
+
+/* ── v6 — era-aware draft context hint for interview prompts ── */
+/* Uses the era-aware accessor to produce ranked, era-relevant
+   context hints. Falls back to global context if no era data.
+   Never leaks private notes or "Do Not Prompt" flagged nodes.
+   Returns empty string if no useful context is available. */
+function _buildDraftContextHint(era){
+  // Try era-aware accessor first (v6), fall back to global (v5)
+  if(typeof LorevoxBioBuilder === "undefined") return "";
+
+  var eraCtx = null;
+  if(LorevoxBioBuilder._getDraftFamilyContextForEra && era){
+    eraCtx = LorevoxBioBuilder._getDraftFamilyContextForEra(null, era);
+  }
+
+  if(eraCtx && (eraCtx.primary.length > 0 || eraCtx.secondary.length > 0)){
+    // v6 path: era-ranked hints
+    var hints = [];
+    var people = [];
+    var themes = [];
+    var places = [];
+
+    // Primary items first, then secondary, capped at 3 each
+    var allItems = eraCtx.primary.concat(eraCtx.secondary);
+    allItems.forEach(function(item){
+      // Respect "Do Not Prompt"
+      if(item.node && item.node.notes && /do\s*not\s*prompt/i.test(item.node.notes)) return;
+      if(item.type === "ft_person" && people.length < 3) people.push(item.role + " " + item.label);
+      else if(item.type === "lt_theme" && themes.length < 3) themes.push(item.label);
+      else if(item.type === "lt_place" && places.length < 2) places.push(item.label);
+    });
+
+    if(people.length > 0) hints.push("(Family for this era: " + people.join(", ") + ".)");
+    if(themes.length > 0) hints.push("(Themes: " + themes.join(", ") + ".)");
+    if(places.length > 0) hints.push("(Places: " + places.join(", ") + ".)");
+    if(hints.length > 0) return hints.join(" ");
+  }
+
+  // v5 fallback: global context
+  if(!LorevoxBioBuilder._getDraftFamilyContext) return "";
+  var ctx = LorevoxBioBuilder._getDraftFamilyContext();
+  if(!ctx) return "";
+  var hints = [];
+
+  var ft = ctx.familyTree;
+  if(ft && ft.nodes && ft.nodes.length > 1){
+    var relNames = [];
+    ft.nodes.forEach(function(n){
+      if(n.role === "narrator") return;
+      if(n.notes && /do\s*not\s*prompt/i.test(n.notes)) return;
+      var label = n.displayName || n.preferredName || n.label || "";
+      var role = n.role || "";
+      if(label && role) relNames.push(role + " " + label);
+    });
+    if(relNames.length > 0){
+      var sample = relNames.slice(0, 3);
+      hints.push("(Family context: " + sample.join(", ") + (relNames.length > 3 ? ", and others" : "") + ".)");
+    }
+  }
+
+  var lt = ctx.lifeThreads;
+  if(lt && lt.nodes && lt.nodes.length > 0){
+    var themes = [];
+    lt.nodes.forEach(function(n){
+      if(n.type !== "theme") return;
+      var label = n.label || n.displayName || "";
+      if(label) themes.push(label);
+    });
+    if(themes.length > 0){
+      var sample = themes.slice(0, 3);
+      hints.push("(Life themes: " + sample.join(", ") + (themes.length > 3 ? ", and more" : "") + ".)");
+    }
+  }
+
+  return hints.join(" ");
 }
 
 function _timelinePassPrompt(era, mode){

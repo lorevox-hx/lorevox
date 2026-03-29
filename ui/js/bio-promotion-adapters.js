@@ -342,6 +342,86 @@
     return state.phaseFFeeds;
   }
 
+  /* ── v5/v6 — Draft-enriched memoir context ───────────────── */
+  /* Returns supplementary relationship and theme context from the
+     Bio Builder draft surfaces, suitable for enriching memoir narrative
+     prompts WITHOUT writing to truth layers.
+     v6: When `era` is provided and the era-aware accessor exists,
+     returns only items relevant to that era (chapter-scoped context).
+     Falls back to global v5 path when no era or accessor unavailable. */
+  function buildDraftMemoirContext(era) {
+    var BB = window.LorevoxBioBuilder;
+    if (typeof BB === "undefined" || !BB._getDraftFamilyContext) return null;
+
+    var people = [];
+    var themes = [];
+    var places = [];
+    var isEraScoped = false;
+
+    // v6 path: era-aware accessor for chapter-scoped context
+    if (era && typeof BB._getDraftFamilyContextForEra === "function") {
+      var eraCtx = BB._getDraftFamilyContextForEra(null, era);
+      if (eraCtx) {
+        isEraScoped = true;
+        var items = (eraCtx.primary || []).concat(eraCtx.secondary || []);
+        items.forEach(function (it) {
+          if (!it) return;
+          // Respect "Do Not Prompt"
+          if (it.notes && /do\s*not\s*prompt/i.test(it.notes)) return;
+          var label = _safe(it.displayName || it.preferredName || it.label);
+          if (!label) return;
+          if (it.role && it.role !== "narrator") {
+            people.push({ label: label, role: it.role, source: "family_tree_draft", eraRelevance: it.score || null });
+          } else if (it.type === "theme") {
+            themes.push({ label: label, source: "life_threads_draft", eraRelevance: it.score || null });
+          } else if (it.type === "place") {
+            places.push({ label: label, source: "life_threads_draft", eraRelevance: it.score || null });
+          }
+        });
+      }
+    }
+
+    // v5 fallback: global context (no era filtering)
+    if (!isEraScoped) {
+      var ctx = BB._getDraftFamilyContext();
+      if (!ctx) return null;
+
+      // Extract FT people (skip narrator, respect "Do Not Prompt")
+      if (ctx.familyTree && Array.isArray(ctx.familyTree.nodes)) {
+        ctx.familyTree.nodes.forEach(function (n) {
+          if (n.role === "narrator") return;
+          if (n.notes && /do\s*not\s*prompt/i.test(n.notes)) return;
+          var label = _safe(n.displayName || n.preferredName || n.label);
+          if (label) people.push({ label: label, role: n.role || "other", source: "family_tree_draft" });
+        });
+      }
+
+      // Extract LT themes and places
+      if (ctx.lifeThreads && Array.isArray(ctx.lifeThreads.nodes)) {
+        ctx.lifeThreads.nodes.forEach(function (n) {
+          var label = _safe(n.label || n.displayName);
+          if (!label) return;
+          if (n.type === "theme") themes.push({ label: label, source: "life_threads_draft" });
+          else if (n.type === "place") places.push({ label: label, source: "life_threads_draft" });
+        });
+      }
+    }
+
+    if (people.length === 0 && themes.length === 0 && places.length === 0) return null;
+
+    return {
+      people:      people,
+      themes:      themes,
+      places:      places,
+      isDraft:     true,
+      isEraScoped: isEraScoped,
+      era:         era || null,
+      note:        isEraScoped
+        ? "Era-scoped draft context from Bio Builder for " + era + " — not yet approved or promoted."
+        : "Draft context from Bio Builder — not yet approved or promoted."
+    };
+  }
+
   /* ── Public API ───────────────────────────────────────────── */
 
   NS.promoteApprovedBucket   = promoteApprovedBucket;
@@ -354,10 +434,11 @@
   NS.adaptPlace        = _adaptPlace;
   NS.adaptDocument     = _adaptDocument;
 
-  NS.buildLifeMapFeed        = buildLifeMapFeed;
-  NS.buildTimelineFeed       = buildTimelineFeed;
-  NS.buildMemoirPreviewFeed  = buildMemoirPreviewFeed;
-  NS.syncPhaseFFeedsToState  = syncPhaseFFeedsToState;
+  NS.buildLifeMapFeed           = buildLifeMapFeed;
+  NS.buildTimelineFeed         = buildTimelineFeed;
+  NS.buildMemoirPreviewFeed    = buildMemoirPreviewFeed;
+  NS.buildDraftMemoirContext   = buildDraftMemoirContext;  // v5
+  NS.syncPhaseFFeedsToState    = syncPhaseFFeedsToState;
 
   window.LorevoxPromotionAdapters = NS;
 
