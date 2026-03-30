@@ -155,6 +155,13 @@ def _load_model():
         print(f"[LLM] Applying LoRA adapter: {LORA_ADAPTER_ID}")
         _model = PeftModel.from_pretrained(_model, LORA_ADAPTER_ID)
 
+    # Free CUDA allocator fragmentation after heavy model load
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        free_mb = torch.cuda.mem_get_info()[0] / 1024**2
+        total_mb = torch.cuda.mem_get_info()[1] / 1024**2
+        print(f"[LLM] VRAM after load: {free_mb:.0f} MB free / {total_mb:.0f} MB total")
+
     init_db()
     return _model, _tokenizer
 
@@ -293,35 +300,50 @@ def chat_stream(req: _ChatReq):
     stop = StoppingCriteriaList([StopOnEvent(ev)])
     def gen():
         full = ""
-        inputs = tok(prompt, return_tensors="pt").to(model.device)
-        streamer = TextIteratorStreamer(tok, skip_prompt=True, skip_special_tokens=True)
-        th = threading.Thread(
-            target=model.generate,
-            kwargs=dict(
-                **inputs,
-                streamer=streamer,
-                max_new_tokens=int(req.max_new),
-                temperature=float(req.temp),
-                top_p=float(req.top_p),
-                do_sample=True,
-                repetition_penalty=1.1,
-                stopping_criteria=stop,
-                pad_token_id=tok.eos_token_id,
-                eos_token_id=tok.eos_token_id,
-            ),
-            daemon=True,
-        )
-        th.start()
-        for delta in streamer:
-            if not delta: continue
-            full += delta
-            if stream_id: stream_bus.publish(stream_id, delta)
-            yield json.dumps({"delta": delta}, ensure_ascii=False) + "\n"
-        if conv_id:
-            add_turn(conv_id, "assistant", full, datetime.utcnow().isoformat(), anchor_id, {"section": section})
-            try:
-                _save_chat_memory_fs(conv_id, msgs + [{"role":"assistant","content":full}])
-            except Exception: pass
-        if stream_id: stream_bus.close(stream_id)
-        yield json.dumps({"done": True, "latency": round(time.time() - start, 2)}, ensure_ascii=False) + "\n"
+        try:
+            # Clear cache before inference to maximise available VRAM
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            inputs = tok(prompt, return_tensors="pt").to(model.device)
+            streamer = TextIteratorStreamer(tok, skip_prompt=True, skip_special_tokens=True)
+            th = threading.Thread(
+                target=model.generate,
+                kwargs=dict(
+                    **inputs,
+                    streamer=streamer,
+                    max_new_tokens=int(req.max_new),
+                    temperature=float(req.temp),
+                    top_p=float(req.top_p),
+                    do_sample=True,
+                    repetition_penalty=1.1,
+                    stopping_criteria=stop,
+                    pad_token_id=tok.eos_token_id,
+                    eos_token_id=tok.eos_token_id,
+                ),
+                daemon=True,
+            )
+            th.start()
+            for delta in streamer:
+                if not delta: continue
+                full += delta
+                if stream_id: stream_bus.publish(stream_id, delta)
+                yield json.dumps({"delta": delta}, ensure_ascii=False) + "\n"
+            if conv_id:
+                add_turn(conv_id, "assistant", full, datetime.utcnow().isoformat(), anchor_id, {"section": section})
+                try:
+                    _save_chat_memory_fs(conv_id, msgs + [{"role":"assistant","content":full}])
+                except Exception: pass
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+            # CUDA OOM — free what we can and report cleanly
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            err_msg = str(oom_err)
+            print(f"[LLM] CUDA OOM during generation: {err_msg[:200]}")
+            yield json.dumps({"error": "CUDA_OOM", "message": "GPU out of memory. Try again — VRAM has been freed."}, ensure_ascii=False) + "\n"
+        except Exception as exc:
+            print(f"[LLM] Generation error: {exc}")
+            yield json.dumps({"error": "generation_error", "message": str(exc)[:300]}, ensure_ascii=False) + "\n"
+        finally:
+            if stream_id: stream_bus.close(stream_id)
+            yield json.dumps({"done": True, "latency": round(time.time() - start, 2)}, ensure_ascii=False) + "\n"
     return StreamingResponse(gen(), media_type="application/x-ndjson")

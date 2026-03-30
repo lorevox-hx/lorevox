@@ -18,27 +18,46 @@ fi
 
 # Wait for API + LLM to be ready before opening browser,
 # so Lori's greeting doesn't fire into a dead backend.
+#
+# warm_llm.py exit codes:
+#   0 = warm and ready
+#   1 = still loading (retry)
+#   2 = CUDA OOM (retry once after cache clear, then give up)
 printf '\nWaiting for API to be ready before opening browser...\n'
 _llm_ready=0
-for _i in $(seq 1 180); do
+_oom_count=0
+_max_oom=2          # stop after 2 OOM failures (first triggers cache clear, second is fatal)
+_check_interval=10  # seconds between warmup attempts
+_max_wait=300       # 5 minutes max
+
+_elapsed=0
+while [[ "$_elapsed" -lt "$_max_wait" ]]; do
   if api_up; then
-    # API is healthy — try a quick warmup check
-    if python3 "$ROOT_DIR/scripts/warm_llm.py" >/dev/null 2>&1; then
+    python3 "$ROOT_DIR/scripts/warm_llm.py"
+    _rc=$?
+    if [[ "$_rc" -eq 0 ]]; then
       _llm_ready=1
       break
+    elif [[ "$_rc" -eq 2 ]]; then
+      _oom_count=$((_oom_count + 1))
+      if [[ "$_oom_count" -ge "$_max_oom" ]]; then
+        printf '\n  CUDA OOM %d times — GPU cannot allocate inference memory.\n' "$_oom_count"
+        printf '  The model is loaded but VRAM is too tight for generation.\n'
+        printf '  Opening browser anyway — chat may work after other GPU processes finish.\n'
+        break
+      fi
+      printf '  CUDA OOM (attempt %d/%d) — waiting %ds for VRAM to settle...\n' "$_oom_count" "$_max_oom" "$_check_interval"
     fi
   fi
-  # Show progress every 15 seconds
-  if (( _i % 15 == 0 )); then
-    printf '  Still waiting for LLM... (%ds)\n' "$_i"
-  fi
-  sleep 1
+  sleep "$_check_interval"
+  _elapsed=$((_elapsed + _check_interval))
+  printf '  Waiting for LLM... (%ds / %ds)\n' "$_elapsed" "$_max_wait"
 done
 
 if [[ "$_llm_ready" -eq 1 ]]; then
   printf 'LLM is warm. Opening browser.\n'
-else
-  printf 'LLM not ready after 3 min — opening browser anyway.\n'
+elif [[ "$_elapsed" -ge "$_max_wait" ]]; then
+  printf 'LLM not ready after %ds — opening browser anyway.\n' "$_max_wait"
 fi
 
 open_ui_in_windows

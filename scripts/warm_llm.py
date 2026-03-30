@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-scripts/warm_llm.py — Lorevox LLM warmup (v7.4D)
+scripts/warm_llm.py — Lorevox LLM warmup (v8.0)
 
 Sends a minimal dummy message to the LLM backend via HTTP (SSE chat endpoint)
 so that the model is fully loaded and cached before the first real user turn.
 
-The script exits 0 on success, 1 on failure.
-run_all_dev.sh calls this after the 8-second startup sleep and ignores failures
-with a friendly message so a slow model load doesn't block the launcher.
+Exit codes:
+  0 = success (model warm and generating)
+  1 = backend not reachable / still loading (retry is worthwhile)
+  2 = CUDA OOM or fatal error (retrying won't help — stop)
 
 Usage:
     python3 scripts/warm_llm.py
@@ -47,10 +48,14 @@ def _ping() -> bool:
         return False
 
 
-def _warm() -> bool:
+def _warm() -> int:
     """
-    POST to /api/chat/stream and consume at least one SSE token.
-    Returns True if we got any response, False on network/HTTP error.
+    POST to /api/chat/stream and inspect the response.
+
+    Returns:
+      0 = got real token data (model is warm)
+      1 = connection/HTTP error (model still loading, retry ok)
+      2 = CUDA OOM or fatal error (don't retry)
     """
     req = urllib.request.Request(
         CHAT_URL,
@@ -60,31 +65,70 @@ def _warm() -> bool:
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
-            # Read the first chunk — enough to confirm the model is loaded
-            chunk = resp.read(512)
-            return bool(chunk)
+            # Read enough to see if we got real tokens or an OOM error
+            data = b""
+            while len(data) < 4096:
+                chunk = resp.read(1024)
+                if not chunk:
+                    break
+                data += chunk
+                # Check early if we already have a done or error signal
+                text = data.decode("utf-8", errors="replace")
+                if '"CUDA_OOM"' in text or "out of memory" in text.lower():
+                    print("[warm_llm] CUDA OOM detected — GPU memory exhausted.", file=sys.stderr)
+                    return 2
+                if '"delta"' in text:
+                    # Got a real token — model is warm
+                    return 0
+                if '"done"' in text:
+                    break
+
+            text = data.decode("utf-8", errors="replace")
+            if '"CUDA_OOM"' in text or "out of memory" in text.lower():
+                print("[warm_llm] CUDA OOM detected — GPU memory exhausted.", file=sys.stderr)
+                return 2
+            if '"error"' in text:
+                print(f"[warm_llm] Backend error: {text[:300]}", file=sys.stderr)
+                return 2
+            if '"delta"' in text:
+                return 0
+            # Got a response but no tokens — ambiguous
+            print(f"[warm_llm] Unexpected response: {text[:200]}", file=sys.stderr)
+            return 1
+
     except urllib.error.HTTPError as e:
-        print(f"[warm_llm] HTTP {e.code} from {CHAT_URL}: {e.reason}", file=sys.stderr)
-        return False
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")[:300]
+        except Exception:
+            pass
+        print(f"[warm_llm] HTTP {e.code} from {CHAT_URL}: {e.reason} {body}", file=sys.stderr)
+        if "out of memory" in body.lower() or "CUDA" in body:
+            return 2
+        return 1
     except Exception as e:
         print(f"[warm_llm] Connection error: {e}", file=sys.stderr)
-        return False
+        return 1
 
 
 def main() -> int:
-    print("[warm_llm] Checking LLM backend…")
+    print("[warm_llm] Checking LLM backend...")
 
     if not _ping():
         print(f"[warm_llm] Backend not reachable at {LLM_BASE} — skipping warmup.")
         return 1
 
-    print(f"[warm_llm] Backend alive. Sending warmup turn to {CHAT_URL}…")
-    ok = _warm()
-    if ok:
-        print("[warm_llm] ✓ LLM warmed and ready.")
+    print(f"[warm_llm] Backend alive. Sending warmup turn to {CHAT_URL}...")
+    result = _warm()
+    if result == 0:
+        print("[warm_llm] LLM warmed and ready.")
         return 0
+    elif result == 2:
+        print("[warm_llm] FATAL: CUDA OOM — model loaded but GPU cannot allocate inference memory.")
+        print("[warm_llm] VRAM may have been freed. A second attempt might succeed.")
+        return 2
     else:
-        print("[warm_llm] ✗ Warmup request failed — model may still be loading.")
+        print("[warm_llm] Warmup request failed — model may still be loading.")
         return 1
 
 

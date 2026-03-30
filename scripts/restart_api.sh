@@ -21,9 +21,19 @@ wait_for_health "Lorevox API" api_up 90 || true
 
 if [[ -f "$ROOT_DIR/scripts/warm_llm.py" ]]; then
   printf '\nRe-warming LLM...\n'
-  python3 "$ROOT_DIR/scripts/warm_llm.py" \
-    && printf 'LLM warm.\n' \
-    || printf 'LLM warmup failed.\n'
+  python3 "$ROOT_DIR/scripts/warm_llm.py"
+  _rc=$?
+  if [[ "$_rc" -eq 0 ]]; then
+    printf 'LLM warm.\n'
+  elif [[ "$_rc" -eq 2 ]]; then
+    printf 'CUDA OOM — retrying in 10s...\n'
+    sleep 10
+    python3 "$ROOT_DIR/scripts/warm_llm.py" \
+      && printf 'LLM warm on retry.\n' \
+      || printf 'LLM warmup still failing.\n'
+  else
+    printf 'LLM warmup failed.\n'
+  fi
 fi
 
 printf '\n=== API restart complete ===\n'

@@ -20,10 +20,20 @@ else
 fi
 
 if [[ -f "$ROOT_DIR/scripts/warm_llm.py" ]]; then
-  printf '\nRe-warming LLM...\n'
-  python3 "$ROOT_DIR/scripts/warm_llm.py" \
-    && printf 'LLM warm.\n' \
-    || printf 'LLM warmup failed — model may still be loading or chat backend may be failing.\n'
+  printf '\nRe-warming LLM (first attempt)...\n'
+  python3 "$ROOT_DIR/scripts/warm_llm.py"
+  _rc=$?
+  if [[ "$_rc" -eq 0 ]]; then
+    printf 'LLM warm.\n'
+  elif [[ "$_rc" -eq 2 ]]; then
+    printf 'CUDA OOM on first try — VRAM freed, retrying in 10s...\n'
+    sleep 10
+    python3 "$ROOT_DIR/scripts/warm_llm.py" \
+      && printf 'LLM warm on retry.\n' \
+      || printf 'LLM warmup still failing — VRAM too tight for inference.\n'
+  else
+    printf 'LLM warmup failed — model may still be loading.\n'
+  fi
 fi
 
 printf '\nAPI restart complete.\n'
