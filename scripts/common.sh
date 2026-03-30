@@ -141,7 +141,28 @@ kill_stale_lorevox() {
     fi
   done
   if [[ "$killed" -eq 1 ]]; then
-    sleep 2  # give GPU time to release memory
+    printf 'Waiting for GPU memory to release...\n'
+    # CUDA driver needs time to reclaim memory after process death.
+    # Poll nvidia-smi until VRAM usage drops below 1 GB (or 15 seconds max).
+    local _waited=0
+    while [[ "$_waited" -lt 15 ]]; do
+      sleep 1
+      _waited=$((_waited + 1))
+      if command -v nvidia-smi >/dev/null 2>&1; then
+        local _used
+        _used="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1 | xargs)"
+        if [[ "$_used" -lt 1000 ]]; then
+          printf 'GPU memory freed (%s MB used).\n' "$_used"
+          break
+        fi
+        if (( _waited % 5 == 0 )); then
+          printf '  Still waiting... (%s MB used, %ds)\n' "$_used" "$_waited"
+        fi
+      else
+        sleep 4  # no nvidia-smi — just wait 5s total
+        break
+      fi
+    done
     printf 'Stale processes cleaned up.\n'
   fi
   # Clear stale PID files
