@@ -22,8 +22,8 @@ fi
 
 if [[ -f "$ROOT_DIR/scripts/warm_llm.py" ]]; then
   printf '\nWarming LLM (first attempt)...\n'
-  python3 "$ROOT_DIR/scripts/warm_llm.py"
-  _rc=$?
+  python3 "$ROOT_DIR/scripts/warm_llm.py" || _rc=$?
+  _rc="${_rc:-0}"
   if [[ "$_rc" -eq 0 ]]; then
     printf 'LLM warm.\n'
   elif [[ "$_rc" -eq 2 ]]; then
@@ -33,7 +33,7 @@ if [[ -f "$ROOT_DIR/scripts/warm_llm.py" ]]; then
       && printf 'LLM warm on retry.\n' \
       || printf 'LLM warmup still failing — VRAM too tight for inference.\n'
   else
-    printf 'LLM warmup failed — model may still be loading.\n'
+    printf 'LLM warmup skipped — model may still be loading. Chat will work once loading finishes.\n'
   fi
 fi
 

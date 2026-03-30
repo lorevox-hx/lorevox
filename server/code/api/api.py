@@ -65,6 +65,7 @@ SESSION_FS_DIR.mkdir(parents=True, exist_ok=True)
 # ---------------- Globals ----------------
 _model = None
 _tokenizer = None
+_model_lock = threading.Lock()
 
 def _device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
@@ -104,66 +105,74 @@ def _save_chat_memory_fs(conv_id: str, messages: List[Dict[str, Any]]) -> Dict[s
 # ---------------- PATCHED Model load ----------------
 def _load_model():
     global _model, _tokenizer
+
+    # Fast path: model already loaded — no lock needed
     if _model is not None and _tokenizer is not None:
         return _model, _tokenizer
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA not visible. Confirm `nvidia-smi` inside WSL.")
+    # Serialize all load attempts so only one thread loads the model
+    with _model_lock:
+        # Re-check after acquiring lock — another thread may have finished loading
+        if _model is not None and _tokenizer is not None:
+            return _model, _tokenizer
 
-    # Prefer local folder forever
-    model_src = MODEL_PATH if MODEL_PATH else (MODEL_ID or BASE_MODEL_ID).strip()
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA not visible. Confirm `nvidia-smi` inside WSL.")
 
-    # If MODEL_PATH is set, NEVER try network.
-    local_only = bool(MODEL_PATH) or (os.getenv("TRANSFORMERS_OFFLINE", "0") in ("1", "true", "True")) or (os.getenv("HF_HUB_OFFLINE", "0") in ("1", "true", "True"))
+        # Prefer local folder forever
+        model_src = MODEL_PATH if MODEL_PATH else (MODEL_ID or BASE_MODEL_ID).strip()
 
-    # Keep cache under your permanent HF_HOME if provided
-    cache_dir = HF_HOME if HF_HOME else None
+        # If MODEL_PATH is set, NEVER try network.
+        local_only = bool(MODEL_PATH) or (os.getenv("TRANSFORMERS_OFFLINE", "0") in ("1", "true", "True")) or (os.getenv("HF_HUB_OFFLINE", "0") in ("1", "true", "True"))
 
-    compute_dtype = torch.float16 if TORCH_DTYPE == "float16" else torch.bfloat16
-    quant_config = None
-    if LOAD_IN_4BIT:
-        quant_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=compute_dtype,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_use_double_quant=True,
+        # Keep cache under your permanent HF_HOME if provided
+        cache_dir = HF_HOME if HF_HOME else None
+
+        compute_dtype = torch.float16 if TORCH_DTYPE == "float16" else torch.bfloat16
+        quant_config = None
+        if LOAD_IN_4BIT:
+            quant_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=compute_dtype,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+            )
+
+        print(f"[LLM] Loading {model_src} local_only={local_only} 4bit={LOAD_IN_4BIT} attn={ATTN_IMPL} dtype={TORCH_DTYPE}")
+
+        _model = AutoModelForCausalLM.from_pretrained(
+            model_src,
+            device_map="auto",
+            quantization_config=quant_config,
+            attn_implementation=ATTN_IMPL,
+            trust_remote_code=True,
+            local_files_only=local_only,
+            cache_dir=cache_dir,
         )
 
-    print(f"[LLM] Loading {model_src} local_only={local_only} 4bit={LOAD_IN_4BIT} attn={ATTN_IMPL} dtype={TORCH_DTYPE}")
+        _tokenizer = AutoTokenizer.from_pretrained(
+            model_src,
+            trust_remote_code=True,
+            local_files_only=local_only,
+            cache_dir=cache_dir,
+        )
 
-    _model = AutoModelForCausalLM.from_pretrained(
-        model_src,
-        device_map="auto",
-        quantization_config=quant_config,
-        attn_implementation=ATTN_IMPL,
-        trust_remote_code=True,
-        local_files_only=local_only,
-        cache_dir=cache_dir,
-    )
+        if getattr(_tokenizer, "pad_token_id", None) is None:
+            _tokenizer.pad_token_id = _tokenizer.eos_token_id
 
-    _tokenizer = AutoTokenizer.from_pretrained(
-        model_src,
-        trust_remote_code=True,
-        local_files_only=local_only,
-        cache_dir=cache_dir,
-    )
+        if LORA_ADAPTER_ID:
+            print(f"[LLM] Applying LoRA adapter: {LORA_ADAPTER_ID}")
+            _model = PeftModel.from_pretrained(_model, LORA_ADAPTER_ID)
 
-    if getattr(_tokenizer, "pad_token_id", None) is None:
-        _tokenizer.pad_token_id = _tokenizer.eos_token_id
+        # Free CUDA allocator fragmentation after heavy model load
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            free_mb = torch.cuda.mem_get_info()[0] / 1024**2
+            total_mb = torch.cuda.mem_get_info()[1] / 1024**2
+            print(f"[LLM] VRAM after load: {free_mb:.0f} MB free / {total_mb:.0f} MB total")
 
-    if LORA_ADAPTER_ID:
-        print(f"[LLM] Applying LoRA adapter: {LORA_ADAPTER_ID}")
-        _model = PeftModel.from_pretrained(_model, LORA_ADAPTER_ID)
-
-    # Free CUDA allocator fragmentation after heavy model load
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        free_mb = torch.cuda.mem_get_info()[0] / 1024**2
-        total_mb = torch.cuda.mem_get_info()[1] / 1024**2
-        print(f"[LLM] VRAM after load: {free_mb:.0f} MB free / {total_mb:.0f} MB total")
-
-    init_db()
-    return _model, _tokenizer
+        init_db()
+        return _model, _tokenizer
 
 # ---------------- Schemas ----------------
 class ChatTurn(BaseModel):

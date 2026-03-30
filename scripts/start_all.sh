@@ -26,8 +26,8 @@ wait_for_health "Lorevox UI"  ui_up  30 || true
 
 if [[ -f "$ROOT_DIR/scripts/warm_llm.py" ]]; then
   printf '\nWarming LLM...\n'
-  python3 "$ROOT_DIR/scripts/warm_llm.py"
-  _rc=$?
+  python3 "$ROOT_DIR/scripts/warm_llm.py" || _rc=$?
+  _rc="${_rc:-0}"
   if [[ "$_rc" -eq 0 ]]; then
     printf 'LLM warm.\n'
   elif [[ "$_rc" -eq 2 ]]; then
