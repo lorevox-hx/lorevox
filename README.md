@@ -346,10 +346,19 @@ lorevox/
 │   └── run_tts_8001.sh              # TTS server
 │
 ├── scripts/
+│   ├── common.sh                    # Shared variables, health checks, process helpers
+│   ├── start_all.sh                 # Shell-native launcher (all 3 services + warmup)
+│   ├── restart_api.sh               # Shell-native API restart + warmup
+│   ├── stop_all.sh                  # Stop all services
+│   ├── status_all.sh                # Print service status
+│   ├── start_api_visible.sh         # Visible API startup (Windows Terminal tab)
+│   ├── start_tts_visible.sh         # Visible TTS startup (Windows Terminal tab)
+│   ├── start_ui_visible.sh          # Visible UI startup (Windows Terminal tab)
+│   ├── restart_api_visible.sh       # Visible API restart (Windows Terminal tab)
+│   ├── logs_visible.sh              # Visible combined log tail (Windows Terminal tab)
 │   ├── inspect_db.py                # DB inspection utility
 │   ├── warm_llm.py                  # LLM warm-up
-│   ├── warm_tts.py                  # TTS warm-up
-│   └── restart_api.sh               # Restart API without stopping TTS
+│   └── warm_tts.py                  # TTS warm-up
 │
 ├── tools/
 │   └── LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html  # Session debug visualiser

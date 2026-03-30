@@ -42,7 +42,7 @@ Phase 2 · Lorevox v8.0 · 2026-03-29
 **File:** `launchers/run_gpu_8000.sh`
 **Symptom:** After modifying `db.py` and `people.py`, the running API server continues serving old code. New endpoints return 404.
 **Root cause:** The uvicorn launch command does not include `--reload` flag: `python -m uvicorn code.api.main:app --host "$HOST" --port "$PORT"`
-**Workaround:** User must restart manually via `reload_api.bat` or `bash scripts/restart_api.sh`
+**Workaround:** User must restart manually via `reload_api.bat` (visible Windows Terminal tab) or `bash scripts/restart_api.sh`
 **Status:** Documented (not a code fix — development environment choice)
 
 ---

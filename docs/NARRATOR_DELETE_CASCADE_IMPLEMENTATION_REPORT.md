@@ -112,7 +112,7 @@ Phase 1 used localStorage backup + POST re-creation for undo, which created dupl
 
 The backend changes require an API server restart to take effect. The server at `localhost:8000` does not use `--reload` mode. The user can restart via:
 
-- Windows: double-click `reload_api.bat`
+- Windows (visible): double-click `reload_api.bat` (opens Windows Terminal tab with health check + warmup)
 - WSL: `bash scripts/restart_api.sh`
 
 The frontend gracefully handles the case where the backend hasn't been restarted yet (inventory returns null, soft delete returns error — both handled silently).

@@ -778,7 +778,7 @@ This means: if a supervisor has enabled memory care for this session, `cognitive
 | `interview_softened` / `softened_until_turn` columns | Keep. These handle the existing "soften for N turns" mechanic. Confusion scoring operates alongside this, not replacing it. |
 | `cognitive_mode = "recognition"` in prompt_composer | Keep exactly as-is. The scoring engine maps to this via `current_mode`, and memory care mode uses it via supervisor toggle. |
 | `cognitive_mode = "alongside"` | Keep. This is the deepest support level — scoring never auto-triggers it. Supervisor can manually set `runtime71.cognitive_mode = "alongside"` from the UI if needed. |
-| `launchers/run_all_dev.sh` | Keep as fallback. New scripts/start_all.sh is now the primary path. |
+| `launchers/run_all_dev.sh` | Keep as legacy fallback. Primary paths: `start_lorevox.bat` (visible Windows Terminal tabs) or `bash scripts/start_all.sh` (shell-native). |
 
 ---
 

@@ -51,7 +51,7 @@ The README must be updated. The current text reflects a v7.1 snapshot and will m
 | `data/media/` | **Confirmed active** | Uploaded photo files; created at first upload by media router |
 | `docs/` | **Confirmed active** | All project documentation |
 | `launchers/` | **Confirmed active** | `run_all_dev.sh`, `stop_all_dev.sh`, `run_gpu_8000.sh`, `run_tts_8001.sh` |
-| `scripts/` | **Confirmed active** | Utility scripts: `inspect_db.py`, `warm_llm.py`, `warm_tts.py`, `restart_api.sh`, etc. |
+| `scripts/` | **Confirmed active** | Launchers (`start_all.sh`, `restart_api.sh`, visible `*_visible.sh` variants), utilities (`inspect_db.py`, `warm_llm.py`, `warm_tts.py`), shared config (`common.sh`) |
 | `tests/` | **Confirmed active** | Validation reports, e2e specs (Playwright), behavioral test matrices |
 | `tools/` | **Confirmed active** | Debug HTML (`LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html`), scoring CSV, samples |
 | `schemas/` | **Likely active** | JSON schemas for scoring and ingestion; referenced by test tooling |
