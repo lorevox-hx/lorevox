@@ -33,8 +33,8 @@ _max_wait=300       # 5 minutes max
 _elapsed=0
 while [[ "$_elapsed" -lt "$_max_wait" ]]; do
   if api_up; then
+    _rc=0
     python3 "$ROOT_DIR/scripts/warm_llm.py" || _rc=$?
-    _rc="${_rc:-0}"
     if [[ "$_rc" -eq 0 ]]; then
       _llm_ready=1
       break

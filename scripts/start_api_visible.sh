@@ -22,8 +22,8 @@ fi
 
 if [[ -f "$ROOT_DIR/scripts/warm_llm.py" ]]; then
   printf '\nWarming LLM (first attempt)...\n'
+  _rc=0
   python3 "$ROOT_DIR/scripts/warm_llm.py" || _rc=$?
-  _rc="${_rc:-0}"
   if [[ "$_rc" -eq 0 ]]; then
     printf 'LLM warm.\n'
   elif [[ "$_rc" -eq 2 ]]; then

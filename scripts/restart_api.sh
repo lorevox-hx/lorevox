@@ -21,8 +21,8 @@ wait_for_health "Lorevox API" api_up 90 || true
 
 if [[ -f "$ROOT_DIR/scripts/warm_llm.py" ]]; then
   printf '\nRe-warming LLM...\n'
+  _rc=0
   python3 "$ROOT_DIR/scripts/warm_llm.py" || _rc=$?
-  _rc="${_rc:-0}"
   if [[ "$_rc" -eq 0 ]]; then
     printf 'LLM warm.\n'
   elif [[ "$_rc" -eq 2 ]]; then
