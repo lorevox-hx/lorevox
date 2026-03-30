@@ -38,1172 +38,122 @@
   "use strict";
 
   /* ───────────────────────────────────────────────────────────
-     OPTION CONSTANTS
+     CORE MODULE DELEGATION (Phase 1 module split)
+     All shared state, persistence, narrator scoping, and utility
+     functions now live in bio-builder-core.js.  We pull them in
+     as local aliases so existing code continues to work unchanged.
   ─────────────────────────────────────────────────────────── */
 
-  var ZODIAC_OPTIONS = [
-    "", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
-  ];
+  var _core = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.core;
+  if (!_core) throw new Error("bio-builder-core.js must load before bio-builder.js");
 
-  var BIRTH_ORDER_OPTIONS = [
-    "", "First child", "Second child", "Third child", "Fourth child",
-    "Fifth child", "Sixth child", "Seventh child", "Eighth child",
-    "Ninth child", "Tenth child", "Only child", "Twin", "Triplet", "Other/custom"
-  ];
+  // State access
+  var _ensureState              = _core._ensureState;
+  var _bb                       = _core._bb;
 
-  var RELATION_OPTIONS = [
-    "", "Mother", "Father", "Stepmother", "Stepfather",
-    "Adoptive mother", "Adoptive father", "Guardian",
-    "Grandmother", "Grandfather", "Other"
-  ];
+  // Narrator scoping
+  var _resetNarratorScopedState = _core._resetNarratorScopedState;
+  var _onNarratorSwitch         = _core._onNarratorSwitch;
+  var _personChanged            = _core._personChanged;
 
-  var SIBLING_RELATION_OPTIONS = [
-    "", "Sister", "Brother", "Half-sister", "Half-brother",
-    "Stepsister", "Stepbrother", "Adoptive sister", "Adoptive brother", "Other"
-  ];
+  // Persistence
+  var DRAFT_SCHEMA_VERSION      = _core.DRAFT_SCHEMA_VERSION;
+  var _LS_FT_PREFIX             = _core._LS_FT_PREFIX;
+  var _LS_LT_PREFIX             = _core._LS_LT_PREFIX;
+  var _LS_QQ_PREFIX             = _core._LS_QQ_PREFIX;
+  var _LS_DRAFT_INDEX           = _core._LS_DRAFT_INDEX;
+  var _persistDrafts            = _core._persistDrafts;
+  var _loadDrafts               = _core._loadDrafts;
+  var _clearDrafts              = _core._clearDrafts;
+  var _getDraftIndex            = _core._getDraftIndex;
 
-  /* ── US state abbreviation map (for place-of-birth normalization) ── */
-  var US_STATES = {
-    AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",
-    CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",
-    HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",
-    KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",
-    MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",
-    NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",
-    NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",
-    OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",
-    SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",
-    VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",
-    WI:"Wisconsin",WY:"Wyoming",DC:"District of Columbia"
-  };
+  // Utilities
+  var _el                       = _core._el;
+  var _uid                      = _core._uid;
+  var _esc                      = _core._esc;
+  var _currentPersonId          = _core._currentPersonId;
+  var _currentPersonName        = _core._currentPersonName;
+  var _formatBytes              = _core._formatBytes;
+  var _showInlineConfirm        = _core._showInlineConfirm;
+  var _emptyStateHtml           = _core._emptyStateHtml;
+  var _hasAnyValue              = _core._hasAnyValue;
+
+  // View state (mutable shared object from core)
+  var _viewState                = _core._viewState;
 
   /* ───────────────────────────────────────────────────────────
-     SECTION DEFINITIONS  (Janice Personal Information model)
+     QUESTIONNAIRE MODULE DELEGATION (Phase 2 module split)
+     All questionnaire definitions, rendering, normalization,
+     hydration, and candidate extraction now live in
+     bio-builder-questionnaire.js.  We pull them in as local
+     aliases so existing code continues to work unchanged.
   ─────────────────────────────────────────────────────────── */
 
-  var SECTIONS = [
-    {
-      id: "personal", label: "Personal Information", icon: "👤",
-      hint: "Full name, preferred name, birth date, birth place",
-      fields: [
-        { id: "fullName",      label: "Full Name",      type: "text" },
-        { id: "preferredName", label: "Preferred Name", type: "text" },
-        { id: "birthOrder",    label: "Birth Order",    type: "select",   options: BIRTH_ORDER_OPTIONS },
-        { id: "dateOfBirth",   label: "Date of Birth",  type: "text",     placeholder: "12241962, 12/24/1962, Dec 24 1962 → auto-parsed", inputHelper: "normalizeDob" },
-        { id: "timeOfBirth",   label: "Time of Birth",  type: "text",     placeholder: "1250p, 12:50 pm → auto-parsed", inputHelper: "normalizeTime" },
-        { id: "placeOfBirth",  label: "Place of Birth", type: "text",     placeholder: "Williston ND → Williston, North Dakota", inputHelper: "normalizePlace" },
-        { id: "zodiacSign",    label: "Zodiac Sign",    type: "select",   options: ZODIAC_OPTIONS, autoDerive: "zodiacFromDob" }
-      ]
-    },
-    {
-      id: "parents", label: "Parents", icon: "🌱",
-      hint: "Mother and father — names, dates, occupation, notable life events",
-      repeatable: true, repeatLabel: "parent",
-      fields: [
-        { id: "relation",          label: "Relation",                      type: "select",   options: RELATION_OPTIONS },
-        { id: "firstName",         label: "First Name",                    type: "text" },
-        { id: "middleName",        label: "Middle Name",                   type: "text" },
-        { id: "lastName",          label: "Last Name",                     type: "text" },
-        { id: "maidenName",        label: "Maiden / Birth Name",           type: "text",     placeholder: "if different from last name" },
-        { id: "birthDate",         label: "Birth Date",                    type: "text",     placeholder: "YYYY-MM-DD", inputHelper: "normalizeDob" },
-        { id: "birthPlace",        label: "Birth Place",                   type: "text",     inputHelper: "normalizePlace" },
-        { id: "occupation",        label: "Occupation",                    type: "text" },
-        { id: "notableLifeEvents", label: "Notable Life Events / Stories", type: "textarea" },
-        { id: "notes",             label: "Additional Notes",              type: "textarea" }
-      ]
-    },
-    {
-      id: "grandparents", label: "Grandparents", icon: "🌳",
-      hint: "Ancestry, cultural background, memorable stories",
-      repeatable: true, repeatLabel: "grandparent",
-      fields: [
-        { id: "firstName",           label: "First Name",          type: "text" },
-        { id: "lastName",            label: "Last Name",           type: "text" },
-        { id: "ancestry",            label: "Ancestry",            type: "text" },
-        { id: "culturalBackground",  label: "Cultural Background", type: "text" },
-        { id: "memorableStories",    label: "Memorable Stories",   type: "textarea" }
-      ]
-    },
-    {
-      id: "siblings", label: "Siblings", icon: "👫",
-      hint: "Birth order, unique characteristics, shared experiences, memories",
-      repeatable: true, repeatLabel: "sibling",
-      fields: [
-        { id: "relation",              label: "Relation",               type: "select",   options: SIBLING_RELATION_OPTIONS },
-        { id: "firstName",             label: "First Name",             type: "text" },
-        { id: "middleName",            label: "Middle Name",            type: "text" },
-        { id: "lastName",              label: "Last Name",              type: "text" },
-        { id: "birthOrder",            label: "Birth Order",            type: "select",   options: BIRTH_ORDER_OPTIONS },
-        { id: "uniqueCharacteristics", label: "Unique Characteristics", type: "textarea" },
-        { id: "sharedExperiences",     label: "Shared Experiences",     type: "textarea" },
-        { id: "memories",              label: "Memories",               type: "textarea" },
-        { id: "notes",                 label: "Additional Notes",       type: "textarea" }
-      ]
-    },
-    {
-      id: "earlyMemories", label: "Early Memories", icon: "🌙",
-      hint: "First memory, favorite toy, significant early events",
-      fields: [
-        { id: "firstMemory",      label: "First Memory",            type: "textarea" },
-        { id: "favoriteToy",      label: "Favorite Toy / Object",   type: "textarea" },
-        { id: "significantEvent", label: "Significant Early Event", type: "textarea" }
-      ]
-    },
-    {
-      id: "education", label: "Education & Career", icon: "🎓",
-      hint: "Schooling, higher education, career, community involvement",
-      fields: [
-        { id: "schooling",             label: "Schooling",              type: "textarea" },
-        { id: "higherEducation",       label: "Higher Education",       type: "textarea" },
-        { id: "earlyCareer",           label: "Early Career",           type: "textarea" },
-        { id: "careerProgression",     label: "Career Progression",     type: "textarea" },
-        { id: "communityInvolvement",  label: "Community Involvement",  type: "textarea" },
-        { id: "mentorship",            label: "Mentorship",             type: "textarea" }
-      ]
-    },
-    {
-      id: "laterYears", label: "Later Years", icon: "🌅",
-      hint: "Retirement, life lessons, advice for future generations",
-      fields: [
-        { id: "retirement",                     label: "Retirement",                      type: "textarea" },
-        { id: "lifeLessons",                    label: "Life Lessons",                    type: "textarea" },
-        { id: "adviceForFutureGenerations",     label: "Advice for Future Generations",   type: "textarea" }
-      ]
-    },
-    {
-      id: "hobbies", label: "Hobbies & Interests", icon: "🎨",
-      hint: "Hobbies, world events, personal challenges, travel",
-      fields: [
-        { id: "hobbies",             label: "Hobbies",             type: "textarea" },
-        { id: "worldEvents",         label: "World Events",        type: "textarea" },
-        { id: "personalChallenges",  label: "Personal Challenges", type: "textarea" },
-        { id: "travel",              label: "Travel",              type: "textarea" }
-      ]
-    },
-    {
-      id: "additionalNotes", label: "Additional Notes", icon: "📝",
-      hint: "Unfinished dreams, messages for future generations",
-      fields: [
-        { id: "unfinishedDreams",              label: "Unfinished Dreams",                type: "textarea" },
-        { id: "messagesForFutureGenerations",  label: "Messages for Future Generations",  type: "textarea" }
-      ]
-    }
-  ];
+  var _qq = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.questionnaire;
+  if (!_qq) throw new Error("bio-builder-questionnaire.js must load before bio-builder.js");
+
+  // Section definitions
+  var SECTIONS                          = _qq.SECTIONS;
+
+  // Rendering
+  var _renderQuestionnaireTab           = _qq._renderQuestionnaireTab;
+  var _renderSectionDetail              = _qq._renderSectionDetail;
+  var _fieldHtml                        = _qq._fieldHtml;
+  var _sectionFillCount                 = _qq._sectionFillCount;
+
+  // Normalization
+  var normalizeDobInput                 = _qq.normalizeDobInput;
+  var normalizeTimeOfBirthInput         = _qq.normalizeTimeOfBirthInput;
+  var normalizePlaceInput               = _qq.normalizePlaceInput;
+  var deriveZodiacFromDob               = _qq.deriveZodiacFromDob;
+  var buildCanonicalBasicsFromBioBuilder = _qq.buildCanonicalBasicsFromBioBuilder;
+  var _onNormalizeBlur                  = _qq._onNormalizeBlur;
+
+  // Hydration (registered as post-switch hook inside questionnaire module)
+  var _hydrateQuestionnaireFromProfile  = _qq._hydrateQuestionnaireFromProfile;
+
+  // Candidate extraction
+  var _extractQuestionnaireCandidates   = _qq._extractQuestionnaireCandidates;
+  var _candidateExists                  = _qq._candidateExists;
+  var _relCandidateExists               = _qq._relCandidateExists;
+  var _memCandidateExists               = _qq._memCandidateExists;
+
+  // Actions (save/repeat use callbacks for re-render coordination)
+  var _qqSaveSection                    = _qq._saveSection;
+  var _qqAddRepeatEntry                 = _qq._addRepeatEntry;
 
   /* ───────────────────────────────────────────────────────────
-     STATE MODEL
-     All Bio Builder state lives under state.bioBuilder.
-     Scoped per narrator by personId.
-     Never touches: state.archive, state.facts, state.timeline.
-
-     Phase D additions to source cards:
-       detectedItems:     { people, dates, places, memories } — raw detection output
-       addedCandidateIds: [] — candidate IDs generated from this card (provenance)
-       pastedText:        string | null — manually pasted text for non-text files
-       fileSize:          number — bytes
+     SOURCES MODULE DELEGATION (Phase 3 module split)
+     All source intake, text extraction engine, and source card
+     review rendering now live in bio-builder-sources.js.  We pull
+     them in as local aliases so existing code continues to work
+     unchanged.
   ─────────────────────────────────────────────────────────── */
 
-  function _ensureState() {
-    if (typeof state === "undefined") return null;
-    if (!state.bioBuilder) {
-      state.bioBuilder = {
-        personId:      null,
-        quickItems:    [],   // [{id, text, type, ts}]  type: "fact"|"note"
-        questionnaire: {},   // {sectionId: data}
-        sourceCards:   [],   // [{id, filename, fileSize, sourceType, ts, status,
-                             //   extractedText, pastedText, detectedItems,
-                             //   addedCandidateIds}]
-                             //   status: "extracting"|"extracted"|"manual-only"|"failed"
-        candidates: {
-          people:        [],
-          relationships: [],
-          events:        [],
-          memories:      [],
-          places:        [],
-          documents:     []
-        }
-      };
-    }
-    return state.bioBuilder;
-  }
+  var _src = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.sources;
+  if (!_src) throw new Error("bio-builder-sources.js must load before bio-builder.js");
 
-  function _bb() { return _ensureState(); }
+  // Extraction engine
+  var _parseTextItems                   = _src._parseTextItems;
 
-  /* ── v8 Narrator-switch hard reset ─────────────────────────
-     Called from app.js lvxSwitchNarratorSafe() BEFORE profile
-     hydration.  Runs even when Bio Builder popover is closed.
+  // Rendering (called from _renderActiveTab)
+  var _renderSourcesTab                 = _src._renderSourcesTab;
+  var _renderSourceReview               = _src._renderSourceReview;
+  var _sourceIcon                       = _src._sourceIcon;
+
+  // Source actions (wrapped below with _renderActiveTab callback)
+  var _srcHandleFiles                   = _src._handleFiles;
+  var _srcReviewSource                  = _src._reviewSource;
+  var _srcCloseSourceReview             = _src._closeSourceReview;
+  var _srcSavePastedText                = _src._savePastedText;
+  var _srcClearSourceReviewState        = _src._clearSourceReviewState;
+
+  /* ── Previously extracted modules ──────────────────────────
+     STATE MODEL — now in bio-builder-core.js
+     UTILITIES — now in bio-builder-core.js
+     QUESTIONNAIRE — now in bio-builder-questionnaire.js
+     SOURCE INTAKE + EXTRACTION — now in bio-builder-sources.js
   ─────────────────────────────────────────────────────────── */
-  function _resetNarratorScopedState(newId) {
-    var bb = _bb(); if (!bb) return;
-
-    // v8-fix: persist outgoing narrator's questionnaire before clearing (WD-1 fix)
-    var outgoingPid = bb.personId;
-    if (outgoingPid && bb.questionnaire && Object.keys(bb.questionnaire).length > 0) {
-      _persistDrafts(outgoingPid);
-    }
-
-    bb.personId      = newId || null;
-    bb.quickItems    = [];
-    bb.questionnaire = {};
-    bb.sourceCards   = [];
-    bb.candidates    = {
-      people: [], relationships: [], events: [], memories: [], places: [], documents: []
-    };
-
-    if (!bb.familyTreeDraftsByPerson)  bb.familyTreeDraftsByPerson  = {};
-    if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
-
-    // v8-fix: restore incoming narrator's questionnaire from localStorage (WD-1 fix)
-    _loadDrafts(newId);
-  }
-
-  /* ── v8 Explicit narrator-switch entry point ───────────────
-     Called from app.js after loadPerson() completes.
-     Resets narrator-scoped state, then re-hydrates from the
-     newly loaded profile.
-  ─────────────────────────────────────────────────────────── */
-  function _onNarratorSwitch(newId) {
-    var bb = _bb(); if (!bb) return;
-    _resetNarratorScopedState(newId);
-    _hydrateQuestionnaireFromProfile(bb);
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     PERSISTENCE (v4)
-     Persist FT/LT drafts to localStorage per narrator.
-     Keys: lorevox_ft_draft_{pid}, lorevox_lt_draft_{pid}
-     Schema version stamp for forward compat.
-  ─────────────────────────────────────────────────────────── */
-
-  var DRAFT_SCHEMA_VERSION = 1;
-  var _LS_FT_PREFIX = "lorevox_ft_draft_";
-  var _LS_LT_PREFIX = "lorevox_lt_draft_";
-  var _LS_QQ_PREFIX = "lorevox_qq_draft_";
-  var _LS_DRAFT_INDEX = "lorevox_draft_pids";
-
-  function _persistDrafts(pid) {
-    if (!pid) return;
-    var bb = _bb(); if (!bb) return;
-    try {
-      var ft = bb.familyTreeDraftsByPerson && bb.familyTreeDraftsByPerson[pid];
-      var lt = bb.lifeThreadsDraftsByPerson && bb.lifeThreadsDraftsByPerson[pid];
-      if (ft) localStorage.setItem(_LS_FT_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: ft }));
-      if (lt) localStorage.setItem(_LS_LT_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: lt }));
-      // v8-fix: persist questionnaire data per narrator (WD-1/WD-2 fix)
-      // GUARD: bb.questionnaire belongs to the CURRENT narrator only.
-      // FT/LT use per-person containers so any pid is safe, but qq is shared.
-      // Only persist qq when pid matches the active narrator to prevent cross-write.
-      if (pid === bb.personId) {
-        var qq = bb.questionnaire;
-        if (qq && Object.keys(qq).length > 0) {
-          localStorage.setItem(_LS_QQ_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: qq }));
-        }
-      }
-      // Track which pids have drafts
-      var idx = _getDraftIndex();
-      if (idx.indexOf(pid) < 0) {
-        idx.push(pid);
-        localStorage.setItem(_LS_DRAFT_INDEX, JSON.stringify(idx));
-      }
-    } catch (e) {
-      // localStorage full or unavailable — degrade silently
-    }
-  }
-
-  function _loadDrafts(pid) {
-    if (!pid) return;
-    var bb = _bb(); if (!bb) return;
-    if (!bb.familyTreeDraftsByPerson) bb.familyTreeDraftsByPerson = {};
-    if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
-    // v8-fix: load questionnaire BEFORE the FT early-return guard (WD-1/WD-2 fix)
-    // FT/LT use per-person containers so the early return is safe for them,
-    // but questionnaire uses a single bb.questionnaire object and MUST always load.
-    try {
-      var qqRaw = localStorage.getItem(_LS_QQ_PREFIX + pid);
-      if (qqRaw) {
-        var qqObj = JSON.parse(qqRaw);
-        var qqD = qqObj && (qqObj.d || qqObj.data);
-        if (qqD && typeof qqD === "object") {
-          bb.questionnaire = qqD;
-        }
-      }
-    } catch (e) { /* malformed — ignore */ }
-    // Don't overwrite FT/LT if already in memory
-    if (bb.familyTreeDraftsByPerson[pid] && bb.familyTreeDraftsByPerson[pid].nodes && bb.familyTreeDraftsByPerson[pid].nodes.length) return;
-    try {
-      var ftRaw = localStorage.getItem(_LS_FT_PREFIX + pid);
-      if (ftRaw) {
-        var ftObj = JSON.parse(ftRaw);
-        var ftD = ftObj && (ftObj.d || ftObj.data);
-        if (ftD && Array.isArray(ftD.nodes)) {
-          bb.familyTreeDraftsByPerson[pid] = ftD;
-        }
-      }
-      var ltRaw = localStorage.getItem(_LS_LT_PREFIX + pid);
-      if (ltRaw) {
-        var ltObj = JSON.parse(ltRaw);
-        var ltD = ltObj && (ltObj.d || ltObj.data);
-        if (ltD && Array.isArray(ltD.nodes)) {
-          bb.lifeThreadsDraftsByPerson[pid] = ltD;
-        }
-      }
-    } catch (e) {
-      // Malformed data — ignore, let lazy init create fresh
-    }
-  }
-
-  function _getDraftIndex() {
-    try {
-      var raw = localStorage.getItem(_LS_DRAFT_INDEX);
-      if (raw) { var arr = JSON.parse(raw); if (Array.isArray(arr)) return arr; }
-    } catch (e) {}
-    return [];
-  }
-
-  function _clearDrafts(pid) {
-    if (!pid) return;
-    try {
-      localStorage.removeItem(_LS_FT_PREFIX + pid);
-      localStorage.removeItem(_LS_LT_PREFIX + pid);
-      localStorage.removeItem(_LS_QQ_PREFIX + pid);
-      var idx = _getDraftIndex().filter(function (p) { return p !== pid; });
-      localStorage.setItem(_LS_DRAFT_INDEX, JSON.stringify(idx));
-    } catch (e) {}
-  }
-
-  function _personChanged(newId) {
-    var bb = _bb(); if (!bb) return;
-    if (bb.personId !== newId) {
-      // v8-fix: persist outgoing narrator's questionnaire before clearing
-      var outgoingPid = bb.personId;
-      if (outgoingPid && bb.questionnaire && Object.keys(bb.questionnaire).length > 0) {
-        _persistDrafts(outgoingPid);
-      }
-      bb.personId      = newId;
-      bb.quickItems    = [];
-      bb.questionnaire = {};
-      bb.sourceCards   = [];
-      bb.candidates    = {
-        people: [], relationships: [], events: [], memories: [], places: [], documents: []
-      };
-    }
-    // v3: ensure per-person draft containers exist (lazy — never reset on switch)
-    if (!bb.familyTreeDraftsByPerson)  bb.familyTreeDraftsByPerson  = {};
-    if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
-    // v4: restore persisted drafts for this narrator
-    _loadDrafts(newId);
-    // v6-fix: hydrate questionnaire from active profile if empty
-    _hydrateQuestionnaireFromProfile(bb);
-  }
-
-  /* ── v6-fix: Reverse hydration (profile → questionnaire) ── */
-  /* One-way: only fills empty questionnaire sections from profile.
-     NEVER overwrites existing Bio Builder questionnaire data.
-     This fixes the bug where opening Bio Builder for an existing
-     person shows a blank questionnaire even though profile has data. */
-  function _hydrateQuestionnaireFromProfile(bb) {
-    if (!bb) return;
-    try {
-      if (typeof state === "undefined" || !state.profile || !state.profile.basics) return;
-    } catch (_) { return; }
-    var basics = state.profile.basics;
-
-    // ── Personal section hydration ──
-    var q = bb.questionnaire.personal;
-    var personalEmpty = !q || !_hasAnyValue(q);
-    if (personalEmpty) {
-      bb.questionnaire.personal = {
-        fullName:      basics.fullname              || basics.legalFirstName
-                         ? [basics.legalFirstName || "", basics.legalMiddleName || "", basics.legalLastName || ""].filter(Boolean).join(" ").trim()
-                         : "",
-        preferredName: basics.preferred             || "",
-        birthOrder:    basics.birthOrder            || "",
-        dateOfBirth:   basics.dob                   || "",
-        timeOfBirth:   basics.timeOfBirth           || basics.timeOfBirthDisplay || "",
-        placeOfBirth:  basics.placeOfBirthNormalized || basics.pob || basics.placeOfBirthRaw || "",
-        zodiacSign:    basics.zodiacSign            || ""
-      };
-      // Prefer existing fullname if it exists as a single field
-      if (basics.fullname && basics.fullname.trim()) {
-        bb.questionnaire.personal.fullName = basics.fullname.trim();
-      }
-      // Auto-derive zodiac from DOB if not already set
-      if (bb.questionnaire.personal.dateOfBirth && !bb.questionnaire.personal.zodiacSign) {
-        var derived = deriveZodiacFromDob(bb.questionnaire.personal.dateOfBirth);
-        if (derived) bb.questionnaire.personal.zodiacSign = derived;
-      }
-    }
-
-    // ── Parents section hydration from profile kinship ──
-    if (state.profile.kinship && Array.isArray(state.profile.kinship.parents)) {
-      var existingParents = bb.questionnaire.parents;
-      var parentsEmpty = !existingParents || (Array.isArray(existingParents) && existingParents.length === 0)
-        || (!Array.isArray(existingParents) && !_hasAnyValue(existingParents));
-      if (parentsEmpty && state.profile.kinship.parents.length > 0) {
-        bb.questionnaire.parents = state.profile.kinship.parents.map(function (p) {
-          return {
-            relation:          p.relation           || "",
-            firstName:         p.firstName           || "",
-            middleName:        p.middleName          || "",
-            lastName:          p.lastName             || "",
-            maidenName:        p.maidenName           || "",
-            birthDate:         p.birthDate            || "",
-            birthPlace:        p.birthPlace           || "",
-            occupation:        p.occupation           || "",
-            notableLifeEvents: p.notableLifeEvents   || "",
-            notes:             p.notes                || ""
-          };
-        });
-      }
-    }
-
-    // ── Siblings section hydration from profile kinship ──
-    if (state.profile.kinship && Array.isArray(state.profile.kinship.siblings)) {
-      var existingSiblings = bb.questionnaire.siblings;
-      var siblingsEmpty = !existingSiblings || (Array.isArray(existingSiblings) && existingSiblings.length === 0)
-        || (!Array.isArray(existingSiblings) && !_hasAnyValue(existingSiblings));
-      if (siblingsEmpty && state.profile.kinship.siblings.length > 0) {
-        bb.questionnaire.siblings = state.profile.kinship.siblings.map(function (s) {
-          return {
-            relation:              s.relation              || "",
-            firstName:             s.firstName              || "",
-            middleName:            s.middleName             || "",
-            lastName:              s.lastName                || "",
-            birthOrder:            s.birthOrder              || "",
-            uniqueCharacteristics: s.uniqueCharacteristics   || "",
-            sharedExperiences:     s.sharedExperiences       || "",
-            memories:              s.memories                || "",
-            notes:                 s.notes                   || ""
-          };
-        });
-      }
-    }
-  }
-
-  /* Check if an object has any non-empty string values */
-  function _hasAnyValue(obj) {
-    if (!obj || typeof obj !== "object") return false;
-    if (Array.isArray(obj)) return obj.length > 0;
-    return Object.keys(obj).some(function (k) {
-      var v = obj[k];
-      return v && String(v).trim() !== "";
-    });
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     UTILITIES
-  ─────────────────────────────────────────────────────────── */
-
-  function _el(id) { return document.getElementById(id); }
-
-  /* ── v7: Inline confirmation dialog (replaces native confirm()) ── */
-  function _showInlineConfirm(message, onConfirm) {
-    var existing = document.getElementById("bbInlineConfirm");
-    if (existing) existing.remove();
-    var overlay = document.createElement("div");
-    overlay.id = "bbInlineConfirm";
-    overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:99999;display:flex;align-items:center;justify-content:center;";
-    var box = document.createElement("div");
-    box.style.cssText = "background:#fff;border-radius:8px;padding:20px 24px;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.2);text-align:center;font-family:inherit;";
-    box.innerHTML = '<p style="margin:0 0 16px;font-size:14px;color:#1e293b;">' + message + '</p>'
-      + '<div style="display:flex;gap:8px;justify-content:center;">'
-      + '<button id="bbConfirmCancel" style="padding:6px 16px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;cursor:pointer;font-size:13px;">Cancel</button>'
-      + '<button id="bbConfirmOk" style="padding:6px 16px;border:none;border-radius:4px;background:#ef4444;color:#fff;cursor:pointer;font-size:13px;">Delete</button>'
-      + '</div>';
-    overlay.appendChild(box);
-    // Append inside the popover (top layer) so overlay is visible above it
-    var popover = document.getElementById("bioBuilderPopover");
-    (popover || document.body).appendChild(overlay);
-    document.getElementById("bbConfirmCancel").onclick = function () { overlay.remove(); };
-    document.getElementById("bbConfirmOk").onclick = function () { overlay.remove(); onConfirm(); };
-    overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
-  }
-
-  function _uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  }
-
-  function _currentPersonId() {
-    try { return (typeof state !== "undefined" && state.person_id) ? state.person_id : null; }
-    catch (_) { return null; }
-  }
-
-  function _currentPersonName() {
-    try {
-      if (typeof state !== "undefined" && state.profile && state.profile.basics) {
-        return state.profile.basics.preferredName || state.profile.basics.fullName || null;
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  function _readFileAsText(file) {
-    return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function (e) { resolve(e.target.result || ""); };
-      reader.onerror = function () { reject(new Error("FileReader failed")); };
-      reader.readAsText(file, "UTF-8");
-    });
-  }
-
-  function _canExtractText(file) {
-    var name = (file.name || "").toLowerCase();
-    var mime = (file.type || "").toLowerCase();
-    return (
-      mime.startsWith("text/") ||
-      /\.(txt|md|markdown|csv|tsv|rtf|htm|html|log)$/.test(name)
-    );
-  }
-
-  function _esc(str) {
-    return String(str || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function _formatBytes(bytes) {
-    if (!bytes) return "";
-    if (bytes < 1024)       return bytes + " B";
-    if (bytes < 1048576)    return Math.round(bytes / 1024) + " KB";
-    return (bytes / 1048576).toFixed(1) + " MB";
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     NORMALIZATION HELPERS
-  ─────────────────────────────────────────────────────────── */
-
-  var _MONTH_NAMES = {
-    jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,
-    may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,
-    oct:10,october:10,nov:11,november:11,dec:12,december:12
-  };
-
-  /**
-   * Smart DOB parser: accepts 12241962, 12/24/1962, 12-24-1962,
-   * Dec 24 1962, December 24, 1962, 1962-12-24 — returns YYYY-MM-DD or original.
-   */
-  function normalizeDobInput(raw) {
-    if (!raw) return "";
-    var s = raw.trim();
-    // Already ISO
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-    var m, mm, dd, yyyy;
-
-    // 8-digit packed: MMDDYYYY
-    if (/^\d{8}$/.test(s)) {
-      mm = parseInt(s.slice(0, 2), 10);
-      dd = parseInt(s.slice(2, 4), 10);
-      yyyy = parseInt(s.slice(4), 10);
-      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && yyyy >= 1800 && yyyy <= 2100)
-        return yyyy + "-" + String(mm).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
-    }
-
-    // MM/DD/YYYY or MM-DD-YYYY
-    m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if (m) {
-      mm = parseInt(m[1], 10); dd = parseInt(m[2], 10); yyyy = parseInt(m[3], 10);
-      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31)
-        return yyyy + "-" + String(mm).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
-    }
-
-    // "Dec 24 1962" or "December 24, 1962"
-    m = s.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})$/);
-    if (m) {
-      var mon = _MONTH_NAMES[m[1].toLowerCase()];
-      if (mon) {
-        dd = parseInt(m[2], 10); yyyy = parseInt(m[3], 10);
-        return yyyy + "-" + String(mon).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
-      }
-    }
-
-    // MM DD YYYY (space-separated)
-    m = s.match(/^(\d{1,2})\s+(\d{1,2})\s+(\d{4})$/);
-    if (m) {
-      mm = parseInt(m[1], 10); dd = parseInt(m[2], 10); yyyy = parseInt(m[3], 10);
-      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31)
-        return yyyy + "-" + String(mm).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
-    }
-
-    return s; // return as-is if unparseable
-  }
-
-  /**
-   * Smart time-of-birth parser: 1250p → 12:50 PM, 12:50 pm → 12:50 PM,
-   * 0830a → 8:30 AM, 14:30 → 2:30 PM.  Returns "HH:MM AM/PM" or original.
-   */
-  function normalizeTimeOfBirthInput(raw) {
-    if (!raw) return "";
-    var s = raw.trim().toLowerCase().replace(/\s+/g, "");
-
-    var m, h, min, ampm;
-
-    // Compact: 1250p, 1250pm, 0830a, 0830am
-    m = s.match(/^(\d{3,4})(a|am|p|pm)$/);
-    if (m) {
-      var digits = m[1].padStart(4, "0");
-      h = parseInt(digits.slice(0, 2), 10);
-      min = parseInt(digits.slice(2), 10);
-      ampm = m[2].charAt(0) === "a" ? "AM" : "PM";
-      if (h >= 1 && h <= 12 && min >= 0 && min <= 59)
-        return h + ":" + String(min).padStart(2, "0") + " " + ampm;
-    }
-
-    // HH:MM am/pm
-    m = s.match(/^(\d{1,2}):(\d{2})\s*(a|am|p|pm)$/);
-    if (m) {
-      h = parseInt(m[1], 10); min = parseInt(m[2], 10);
-      ampm = m[3].charAt(0) === "a" ? "AM" : "PM";
-      if (h >= 1 && h <= 12 && min >= 0 && min <= 59)
-        return h + ":" + String(min).padStart(2, "0") + " " + ampm;
-    }
-
-    // 24-hour HH:MM → 12-hour
-    m = s.match(/^(\d{1,2}):(\d{2})$/);
-    if (m) {
-      h = parseInt(m[1], 10); min = parseInt(m[2], 10);
-      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
-        ampm = h >= 12 ? "PM" : "AM";
-        var h12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
-        return h12 + ":" + String(min).padStart(2, "0") + " " + ampm;
-      }
-    }
-
-    // Bare 4-digit military/24h: 0915, 0600, 1430 (no am/pm marker)
-    m = s.match(/^(\d{4})$/);
-    if (m) {
-      h = parseInt(s.slice(0, 2), 10); min = parseInt(s.slice(2), 10);
-      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
-        ampm = h >= 12 ? "PM" : "AM";
-        var h12b = h === 0 ? 12 : (h > 12 ? h - 12 : h);
-        return h12b + ":" + String(min).padStart(2, "0") + " " + ampm;
-      }
-    }
-
-    return raw.trim();
-  }
-
-  /**
-   * Place-of-birth cleanup: "Williston ND" → "Williston, North Dakota"
-   * Also handles "City, ST" format. Leaves non-US or already-clean strings alone.
-   */
-  // Reverse lookup: full state name → full state name (for validation)
-  var _US_STATE_NAMES = {};
-  (function () {
-    for (var abbr in US_STATES) {
-      _US_STATE_NAMES[US_STATES[abbr].toLowerCase()] = US_STATES[abbr];
-    }
-  })();
-
-  function normalizePlaceInput(raw) {
-    if (!raw) return "";
-    var s = raw.trim();
-    var m, full;
-
-    // "City, ST" — comma-separated two-letter (check first to avoid double-comma)
-    m = s.match(/^(.+?),\s*([A-Z]{2})$/i);
-    if (m) {
-      full = US_STATES[m[2].toUpperCase()];
-      if (full) return m[1].trim() + ", " + full;
-    }
-
-    // "City ST" (no comma) — two-letter state at end
-    m = s.match(/^(.+?)\s+([A-Z]{2})$/i);
-    if (m) {
-      full = US_STATES[m[2].toUpperCase()];
-      if (full) return m[1].trim().replace(/,\s*$/, "") + ", " + full;
-    }
-
-    // "City Statename" — full state name at end (e.g., "Boise Idaho")
-    // Try progressively longer tail words as state name
-    var words = s.split(/\s+/);
-    for (var i = words.length - 1; i >= 1; i--) {
-      var candidateState = words.slice(i).join(" ").toLowerCase();
-      var fullState = _US_STATE_NAMES[candidateState];
-      if (fullState) {
-        var city = words.slice(0, i).join(" ").replace(/,\s*$/, "");
-        return city + ", " + fullState;
-      }
-    }
-
-    return s;
-  }
-
-  /**
-   * Derive zodiac sign from YYYY-MM-DD date string.
-   * Returns zodiac name or "" if date invalid.
-   */
-  function deriveZodiacFromDob(isoDate) {
-    if (!isoDate) return "";
-    var parts = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!parts) return "";
-    var mm = parseInt(parts[2], 10), dd = parseInt(parts[3], 10);
-    if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
-
-    if ((mm===1 && dd<=19) || (mm===12 && dd>=22)) return "Capricorn";
-    if ((mm===1 && dd>=20) || (mm===2 && dd<=18)) return "Aquarius";
-    if ((mm===2 && dd>=19) || (mm===3 && dd<=20)) return "Pisces";
-    if ((mm===3 && dd>=21) || (mm===4 && dd<=19)) return "Aries";
-    if ((mm===4 && dd>=20) || (mm===5 && dd<=20)) return "Taurus";
-    if ((mm===5 && dd>=21) || (mm===6 && dd<=20)) return "Gemini";
-    if ((mm===6 && dd>=21) || (mm===7 && dd<=22)) return "Cancer";
-    if ((mm===7 && dd>=23) || (mm===8 && dd<=22)) return "Leo";
-    if ((mm===8 && dd>=23) || (mm===9 && dd<=22)) return "Virgo";
-    if ((mm===9 && dd>=23) || (mm===10 && dd<=22)) return "Libra";
-    if ((mm===10 && dd>=23) || (mm===11 && dd<=21)) return "Scorpio";
-    if ((mm===11 && dd>=22) || (mm===12 && dd<=21)) return "Sagittarius";
-    return "";
-  }
-
-  /**
-   * Build a canonical basics object from Bio Builder questionnaire data,
-   * suitable for merging into state.profile.basics.
-   * Does NOT auto-write — caller decides when/how to apply.
-   */
-  /**
-   * Split a full name into {first, middle, last} by simple whitespace rules.
-   * "Thomas Reed Walker" → {first:"Thomas", middle:"Reed", last:"Walker"}
-   * "Madonna" → {first:"Madonna", middle:"", last:""}
-   */
-  function _splitFullName(full) {
-    if (!full) return { first: "", middle: "", last: "" };
-    var parts = full.trim().split(/\s+/);
-    if (parts.length === 1) return { first: parts[0], middle: "", last: "" };
-    if (parts.length === 2) return { first: parts[0], middle: "", last: parts[1] };
-    return { first: parts[0], middle: parts.slice(1, -1).join(" "), last: parts[parts.length - 1] };
-  }
-
-  function buildCanonicalBasicsFromBioBuilder() {
-    var bb = _bb(); if (!bb) return null;
-    var q = bb.questionnaire.personal;
-    if (!q) return null;
-
-    var dob = normalizeDobInput(q.dateOfBirth || "");
-    var zodiac = q.zodiacSign || "";
-    if (!zodiac && dob) zodiac = deriveZodiacFromDob(dob);
-
-    var rawPlace = q.placeOfBirth || "";
-    var normPlace = normalizePlaceInput(rawPlace);
-    var nameParts = _splitFullName(q.fullName || "");
-
-    var birthOrder = q.birthOrder || "";
-    var birthOrderCustom = "";
-    if (birthOrder === "Other/custom") {
-      // In the future a custom text field can be placed beside the select;
-      // for now, keep the token so the UI can render a follow-up input.
-      birthOrderCustom = "";
-    }
-
-    return {
-      fullname:               q.fullName      || "",
-      preferred:              q.preferredName || "",
-      legalFirstName:         nameParts.first,
-      legalMiddleName:        nameParts.middle,
-      legalLastName:          nameParts.last,
-      dob:                    dob,
-      timeOfBirth:            normalizeTimeOfBirthInput(q.timeOfBirth || ""),
-      timeOfBirthDisplay:     normalizeTimeOfBirthInput(q.timeOfBirth || ""),
-      pob:                    normPlace,
-      placeOfBirthRaw:        rawPlace,
-      placeOfBirthNormalized: normPlace,
-      birthOrder:             birthOrder,
-      birthOrderCustom:       birthOrderCustom,
-      zodiacSign:             zodiac
-    };
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     PHASE D — TEXT EXTRACTION ENGINE
-
-     _parseTextItems(text) → { people, dates, places, memories }
-
-     Each detected item:
-     {
-       id:       uid,
-       text:     the matched value (name / year / place / sentence),
-       context:  surrounding sentence (shown in review surface),
-       relation: (people only) "mother" | "father" | "sister" etc.
-       added:    false   ← set true when user adds it as a candidate
-     }
-
-     Detection strategy:
-       people    — relationship keyword anchor + nearby proper noun
-       dates     — full dates, 4-digit years, decade refs
-       places    — movement/origin verbs + capitalized phrase
-       memories  — sentences containing recall/reminiscence language
-
-     All detection is conservative — context is always shown so the
-     user can judge whether each item is worth adding as a candidate.
-  ─────────────────────────────────────────────────────────── */
-
-  var REL_KEYWORDS = [
-    "mother","father","mom","dad","mama","papa","mum",
-    "grandmother","grandfather","grandma","grandpa","gran","granny","nana","grandad","granddad",
-    "sister","brother","aunt","uncle",
-    "wife","husband","spouse","partner",
-    "daughter","son","child",
-    "grandson","granddaughter","grandchild",
-    "cousin","niece","nephew",
-    "stepmother","stepfather","stepdad","stepmom","stepsis","stepbrother",
-    "mother-in-law","father-in-law","sister-in-law","brother-in-law"
-  ];
-
-  var MEMORY_TRIGGERS = [
-    "I remember", "I recall", "I can still", "I'll never forget", "I will never forget",
-    "I never forgot", "I always remember", "I used to", "used to",
-    "when I was", "as a child", "as a little", "as a kid", "as a young",
-    "growing up", "my earliest", "my first", "my favorite", "my fondest",
-    "fondly remember", "always cherished", "never forget", "miss those",
-    "those days", "back then", "in those days", "at that time"
-  ];
-
-  var MOVEMENT_VERBS = [
-    "born in", "born near", "born at",
-    "grew up in", "grew up near",
-    "raised in", "raised near",
-    "lived in", "lived near", "lived on",
-    "moved to", "moved from",
-    "settled in", "settled near",
-    "relocated to", "emigrated to", "emigrated from",
-    "immigrated to", "immigrated from",
-    "came from", "came to",
-    "was from", "originally from",
-    "grew up outside", "grew up around"
-  ];
-
-  /* Split text into sentences for context lookup */
-  function _sentences(text) {
-    return text
-      .split(/(?<=[.!?])\s+(?=[A-Z"']|$)/)
-      .map(function (s) { return s.trim(); })
-      .filter(function (s) { return s.length > 5; });
-  }
-
-  /* Find the sentence containing a match */
-  function _contextSentence(text, matchIndex, matchLength) {
-    var before  = text.slice(0, matchIndex);
-    var after   = text.slice(matchIndex + matchLength);
-    var sentStart = before.lastIndexOf(". ");
-    var sentEnd   = after.search(/[.!?]/);
-    var start = sentStart < 0 ? Math.max(0, matchIndex - 80) : sentStart + 2;
-    var end   = sentEnd < 0   ? Math.min(text.length, matchIndex + matchLength + 80)
-                              : matchIndex + matchLength + sentEnd + 1;
-    var ctx = text.slice(start, end).trim();
-    if (ctx.length > 200) ctx = ctx.slice(0, 197) + "…";
-    return ctx;
-  }
-
-  /*
-   * Words that begin with a capital letter but are NOT person names.
-   * Checked against both the full captured string and its first word.
-   */
-  var _NOT_NAMES = new Set([
-    // Articles / determiners
-    "The","A","An","My","Her","His","Their","Our","Your","Its",
-    // Pronouns
-    "I","We","She","He","They","You","It","Me","Us","Him","Them","Himself","Herself",
-    // Demonstratives
-    "This","That","These","Those",
-    // Prepositions / conjunctions
-    "For","On","In","At","To","Of","And","But","Or","So","As","If","By","Up",
-    "Out","Off","From","With","About","After","Before","During","Since","Until",
-    // Calendar
-    "January","February","March","April","May","June","July","August",
-    "September","October","November","December",
-    "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday",
-    // Common sentence-starters that aren't names
-    "There","Here","Where","When","While","Although","Because","Since",
-    "Then","Now","Later","Today","Yesterday","Tomorrow",
-    "Mr","Mrs","Miss","Ms","Dr","Prof",
-    // Days / time words
-    "Spring","Summer","Autumn","Fall","Winter",
-    "North","South","East","West","Northern","Southern","Eastern","Western",
-    // Very common non-name capitalized words in bio text
-    "World","War","School","College","University","Church","God","Lord",
-    "United","States","America","American","English","Irish","Scottish"
-  ]);
-
-  /*
-   * Return true if `name` looks like a real person name:
-   *   • first char is genuinely uppercase (charCode 65-90 = A-Z)
-   *   • not in the exclusion set
-   *   • has at least 2 words (single word = too ambiguous)
-   *   • each word is 2+ chars
-   */
-  // Last-word suffixes that indicate a street, road, or geographic feature — not a person
-  var _GEO_SUFFIXES = new Set([
-    "Street","St","Avenue","Ave","Road","Rd","Drive","Dr","Lane","Ln",
-    "Boulevard","Blvd","Court","Ct","Way","Place","Pl","Circle","Cir","Terrace",
-    "Highway","Hwy","Parkway","Pkwy","Creek","River","Lake","Mountain","Hill",
-    "Valley","Park","Bridge","Farm","Ranch","County","Township","District",
-    "Railroad","Railway","College","University","School","Hospital","Church",
-    "Elementary","High","Junior","Senior","Middle"
-  ]);
-
-  function _looksLikeName(name) {
-    var first = name.charCodeAt(0);
-    if (first < 65 || first > 90) return false;                  // must start A-Z
-    var words = name.split(/\s+/);
-    if (words.length < 2) return false;                           // need ≥ 2 words
-    if (_NOT_NAMES.has(name) || _NOT_NAMES.has(words[0])) return false;
-    if (_GEO_SUFFIXES.has(words[words.length - 1])) return false; // street/place suffix
-    if (words.some(function (w) { return w.length < 2; })) return false;
-    return true;
-  }
-
-  /* ── People detection ───────────────────────────────────── */
-  function _detectPeople(text) {
-    var found = [];
-    var seen  = {};
-    var m;
-
-    /*
-     * Pattern 1: Relationship keyword → proper name within the same clause.
-     *
-     * BUG: using `gi` on a regex containing [A-Z] causes JavaScript to
-     * expand [A-Z] to match all letters (both cases) due to case-insensitive
-     * mode.  We therefore:
-     *   a) use `gi` ONLY to locate the relationship keyword, then
-     *   b) search the surrounding text with a separate regex that has NO
-     *      `i` flag — [A-Z] then strictly matches uppercase A–Z only.
-     *
-     * Search order: AFTER the keyword first (primary direction), then
-     * BEFORE the keyword only as a fallback.  Searching after first
-     * prevents a prior name in the window from displacing the intended
-     * one (e.g. "...sister Patricia... and his brother Robert..." — when
-     * scanning for "brother" we want "Robert", not "Patricia").
-     */
-    var kwPat   = new RegExp("\\b(" + REL_KEYWORDS.join("|") + ")\\b", "gi");
-    // Name pattern — NO `i` flag: [A-Z] = uppercase A-Z only
-    var namePat = /\b([A-Z][a-z]{1,18}(?:\s+[A-Z][a-z]{1,18}){1,2})\b/g;
-
-    function _firstNameIn(searchText, fallbackPos) {
-      namePat.lastIndex = 0;
-      var nm;
-      while ((nm = namePat.exec(searchText)) !== null) {
-        var candidate = nm[1].trim();
-        if (_looksLikeName(candidate)) return candidate;
-      }
-      return null;
-    }
-
-    while ((m = kwPat.exec(text)) !== null) {
-      var relation  = m[1].toLowerCase();
-      var kwEnd     = m.index + m[0].length;
-
-      // ── Primary: search AFTER the keyword (same clause) ────
-      var afterKw   = text.slice(kwEnd, Math.min(text.length, kwEnd + 140));
-      var sentBreak = afterKw.search(/[.!?]/);
-      var clause    = sentBreak >= 0 ? afterKw.slice(0, sentBreak) : afterKw;
-
-      var name = _firstNameIn(clause);
-
-      // ── Fallback: search BEFORE the keyword ─────────────────
-      // Handles "Margaret, his mother, was born…" constructions.
-      if (!name) {
-        var beforeKw = text.slice(Math.max(0, m.index - 60), m.index);
-        // Trim before at previous sentence boundary
-        var prevSent = beforeKw.search(/[.!?][^.!?]*$/);
-        var beforeClip = prevSent >= 0 ? beforeKw.slice(prevSent + 1) : beforeKw;
-        name = _firstNameIn(beforeClip);
-      }
-
-      if (!name) continue;
-      var key = name.toLowerCase();
-      if (seen[key]) continue;
-      seen[key] = true;
-
-      var namePos = text.indexOf(name, Math.max(0, m.index - 60));
-      found.push({
-        id:       _uid(),
-        text:     name,
-        relation: relation,
-        context:  _contextSentence(text, namePos >= 0 ? namePos : m.index, name.length),
-        added:    false
-      });
-    }
-
-    // Pattern 2: "named X" / "called X" / "known as X"  — no `i` flag needed (keywords are lowercase)
-    var namedPat = /\b(?:named|called|known as)\s+([A-Z][a-z]{1,18}(?:\s+[A-Z][a-z]{1,18}){0,2})/g;
-    while ((m = namedPat.exec(text)) !== null) {
-      var name2 = m[1].trim();
-      if (!_looksLikeName(name2)) continue;
-      var key2 = name2.toLowerCase();
-      if (seen[key2]) continue;
-      seen[key2] = true;
-      found.push({ id: _uid(), text: name2, relation: "", context: _contextSentence(text, m.index, m[0].length), added: false });
-    }
-
-    // Pattern 3: Mr. / Mrs. / Miss / Ms. / Dr. followed by a surname
-    var titlePat = /\b(Mr\.|Mrs\.|Miss|Ms\.|Dr\.)\s+([A-Z][a-z]{1,20}(?:\s+[A-Z][a-z]{1,20})?)/g;
-    while ((m = titlePat.exec(text)) !== null) {
-      var name3 = m[2].trim();
-      var full3 = m[1] + " " + name3;
-      var key3  = full3.toLowerCase();
-      if (seen[key3]) continue;
-      seen[key3] = true;
-      found.push({ id: _uid(), text: full3, relation: "", context: _contextSentence(text, m.index, m[0].length), added: false });
-    }
-
-    return found.slice(0, 20);
-  }
-
-  /* ── Date detection ─────────────────────────────────────── */
-  function _detectDates(text) {
-    var found       = [];
-    var seen        = {};
-    var seenYears   = new Set(); // years already covered by a full date
-    var m;
-
-    // Full dates first: "January 15, 1942" / "15th January 1942"
-    // (No `i` flag needed — month names are baked in.)
-    var fullDatePat = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+(\d{4})\b/g;
-    while ((m = fullDatePat.exec(text)) !== null) {
-      var ds = m[0].trim();
-      if (!seen[ds]) {
-        seen[ds] = true;
-        seenYears.add(m[2]); // mark the year so we don't emit it as a bare year too
-        found.push({ id: _uid(), text: ds, context: _contextSentence(text, m.index, m[0].length), added: false });
-      }
-    }
-
-    // Numeric dates: MM/DD/YYYY or DD/MM/YYYY
-    var numDatePat = /\b\d{1,2}[\/\-]\d{1,2}[\/\-](19|20)(\d{2})\b/g;
-    while ((m = numDatePat.exec(text)) !== null) {
-      var ds2 = m[0].trim();
-      if (!seen[ds2]) {
-        seen[ds2] = true;
-        seenYears.add(m[1] + m[2]);
-        found.push({ id: _uid(), text: ds2, context: _contextSentence(text, m.index, m[0].length), added: false });
-      }
-    }
-
-    // Standalone 4-digit year — only if not already captured inside a full date
-    var yearPat = /(?<!\d)(1[89]\d{2}|20[0-2]\d)(?!\d)/g;
-    while ((m = yearPat.exec(text)) !== null) {
-      var yr = m[0];
-      if (seenYears.has(yr)) continue; // suppress — already part of a richer date
-      if (!seen[yr]) {
-        seen[yr] = true;
-        found.push({ id: _uid(), text: yr, context: _contextSentence(text, m.index, m[0].length), added: false });
-      }
-    }
-
-    // Decade references: "the 1950s" / "the '60s"
-    var decadePat = /\bthe\s+(1\d{3}s|'\d{2}s)\b/gi;
-    while ((m = decadePat.exec(text)) !== null) {
-      var dec = m[0].trim();
-      if (!seen[dec]) {
-        seen[dec] = true;
-        found.push({ id: _uid(), text: dec, context: _contextSentence(text, m.index, m[0].length), added: false });
-      }
-    }
-
-    return found.slice(0, 24);
-  }
-
-  /* ── Place detection ────────────────────────────────────── */
-  function _detectPlaces(text) {
-    var found = [];
-    var seen  = {};
-    var m;
-
-    /*
-     * IMPORTANT: MOVEMENT_VERBS contains space-separated strings like
-     * "born in".  The combined regex must NOT use the `i` flag on the
-     * capture group, because [A-Z] would otherwise match lowercase with
-     * case-insensitive mode.  We use `gi` only for the verb keyword part
-     * and verify that the captured place starts with a real uppercase char.
-     */
-    var verbPat = new RegExp(
-      "(?:" + MOVEMENT_VERBS.map(function (v) { return _escapeRegex(v); }).join("|") + ")" +
-      // Capture: one or more Title-cased words separated by spaces/commas, max 4 words
-      // Stop at: end of clause (. ! ? newline), lowercase continuation word, or 60 chars
-      "\\s+([A-Z][a-zA-Z]{1,20}(?:[,\\s]+[A-Z][a-zA-Z]{1,20}){0,3})",
-      "gi"
-    );
-    while ((m = verbPat.exec(text)) !== null) {
-      var raw   = m[1] || "";
-      var place = raw.trim().replace(/,\s*$/, "");
-
-      // Verify captured text genuinely starts uppercase (gi flag expands [A-Z])
-      if (place.charCodeAt(0) < 65 || place.charCodeAt(0) > 90) continue;
-
-      // Strip trailing common stopwords / false-positive words
-      place = place
-        .replace(/\s+(and|the|a|an|in|on|at|of|from|to|is|was|were|he|she|they|who|where|which)$/i, "")
-        .trim();
-
-      // Drop single generic words (too ambiguous)
-      if (!place || place.length < 3 || _NOT_NAMES.has(place)) continue;
-
-      var key = place.toLowerCase();
-      if (seen[key]) continue;
-      seen[key] = true;
-      found.push({ id: _uid(), text: place, context: _contextSentence(text, m.index, m[0].length), added: false });
-    }
-
-    return found.slice(0, 16);
-  }
-
-  /* ── Memory / reminiscence detection ───────────────────── */
-  function _detectMemories(text) {
-    var found = [];
-    var sentences = _sentences(text);
-    var trigPat = new RegExp(
-      "(" + MEMORY_TRIGGERS.map(function (t) { return _escapeRegex(t); }).join("|") + ")",
-      "i"
-    );
-    sentences.forEach(function (sent) {
-      if (trigPat.test(sent) && sent.length > 20) {
-        var preview = sent.length > 180 ? sent.slice(0, 177) + "…" : sent;
-        found.push({ id: _uid(), text: preview, context: sent, added: false });
-      }
-    });
-    return found.slice(0, 16);
-  }
-
-  function _escapeRegex(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
-  /* ── Main parse entry point ─────────────────────────────── */
-  function _parseTextItems(text) {
-    if (!text || !text.trim()) {
-      return { people: [], dates: [], places: [], memories: [] };
-    }
-    return {
-      people:   _detectPeople(text),
-      dates:    _detectDates(text),
-      places:   _detectPlaces(text),
-      memories: _detectMemories(text)
-    };
-  }
-
-  /* ── File extraction orchestration ─────────────────────── */
-
-  function _readAndExtract(cardId, file) {
-    return _readFileAsText(file)
-      .then(function (text) {
-        var bb   = _bb(); if (!bb) return;
-        var card = bb.sourceCards.find(function (c) { return c.id === cardId; });
-        if (!card) return;
-        card.extractedText = text;
-        card.status        = "extracted";
-        card.detectedItems = _parseTextItems(text);
-      })
-      .catch(function () {
-        var bb   = _bb(); if (!bb) return;
-        var card = bb.sourceCards.find(function (c) { return c.id === cardId; });
-        if (card) {
-          card.status        = "failed";
-          card.detectedItems = null;
-        }
-      });
-  }
 
   /* ───────────────────────────────────────────────────────────
      ACTIVE VIEW TRACKING
@@ -1211,129 +161,18 @@
 
   var _activeSection      = null; // questionnaire section id currently open
   var _activeTab          = "capture";
-  var _activeSourceCardId = null; // source card review panel (Phase D)
+  // _activeSourceCardId — now managed inside bio-builder-sources.js (Phase 3 module split)
 
   // v6: Graph mode state — "cards" (default) or "graph"
   var _ftViewMode = "cards";
   var FT_VIEW_MODES = ["cards", "graph", "scaffold"];
   var _ltViewMode = "cards";
 
-  /* ───────────────────────────────────────────────────────────
-     CANDIDATE EXTRACTION FROM QUESTIONNAIRE (Phase C — unchanged)
+  /* ── Candidate extraction + section fill progress ────────────
+     Now in bio-builder-questionnaire.js. Imported as aliases above:
+     _extractQuestionnaireCandidates, _candidateExists,
+     _relCandidateExists, _memCandidateExists, _sectionFillCount
   ─────────────────────────────────────────────────────────── */
-
-  function _extractQuestionnaireCandidates(sectionId) {
-    var bb = _bb(); if (!bb) return;
-    var q  = bb.questionnaire[sectionId]; if (!q) return;
-
-    if (sectionId === "parents") {
-      var parents = Array.isArray(q) ? q : [q];
-      parents.forEach(function (parent) {
-        var name = [parent.firstName, parent.middleName, parent.lastName].filter(Boolean).join(" ");
-        if (!name) return;
-        if (_candidateExists(bb, "people", name, "questionnaire:parents")) return;
-        bb.candidates.people.push({
-          id: _uid(), type: "person", source: "questionnaire:parents",
-          sourceId: sectionId, sourceFilename: null,
-          data: { name: name, birthDate: parent.birthDate || "",
-                  birthPlace: parent.birthPlace || "", occupation: parent.occupation || "",
-                  maidenName: parent.maidenName || "",
-                  notes: [parent.notableLifeEvents, parent.notes].filter(Boolean).join("\n\n") },
-          status: "pending"
-        });
-        var narratorName = _currentPersonName();
-        var relLabel = parent.relation || "parent";
-        if (narratorName && name) {
-          if (!_relCandidateExists(bb, narratorName, name)) {
-            bb.candidates.relationships.push({
-              id: _uid(), type: "relationship", source: "questionnaire:parents",
-              sourceId: sectionId, sourceFilename: null,
-              data: { personA: narratorName, personB: name, relation: relLabel },
-              status: "pending"
-            });
-          }
-        }
-      });
-    }
-
-    if (sectionId === "grandparents") {
-      var gps = Array.isArray(q) ? q : [q];
-      gps.forEach(function (gp) {
-        var name = [gp.firstName, gp.lastName].filter(Boolean).join(" ");
-        if (!name) return;
-        if (_candidateExists(bb, "people", name, "questionnaire:grandparents")) return;
-        bb.candidates.people.push({
-          id: _uid(), type: "person", source: "questionnaire:grandparents",
-          sourceId: sectionId, sourceFilename: null,
-          data: { name: name, ancestry: gp.ancestry || "",
-                  culturalBackground: gp.culturalBackground || "",
-                  notes: gp.memorableStories || "" },
-          status: "pending"
-        });
-      });
-    }
-
-    if (sectionId === "siblings") {
-      var sibs = Array.isArray(q) ? q : [q];
-      sibs.forEach(function (sib) {
-        var name = [sib.firstName, sib.middleName, sib.lastName].filter(Boolean).join(" ");
-        if (!name) return;
-        if (_candidateExists(bb, "people", name, "questionnaire:siblings")) return;
-        bb.candidates.people.push({
-          id: _uid(), type: "person", source: "questionnaire:siblings",
-          sourceId: sectionId, sourceFilename: null,
-          data: { name: name, relation: sib.relation || "", birthOrder: sib.birthOrder || "",
-                  notes: [sib.uniqueCharacteristics, sib.sharedExperiences, sib.memories, sib.notes].filter(Boolean).join("\n\n") },
-          status: "pending"
-        });
-      });
-    }
-
-    if (sectionId === "earlyMemories") {
-      var memFields = [
-        { key: "firstMemory",      label: "First Memory" },
-        { key: "favoriteToy",      label: "Favorite Toy / Object" },
-        { key: "significantEvent", label: "Significant Early Event" }
-      ];
-      memFields.forEach(function (mf) {
-        if (!q[mf.key]) return;
-        if (_memCandidateExists(bb, q[mf.key])) return;
-        bb.candidates.memories.push({
-          id: _uid(), type: "memory", source: "questionnaire:earlyMemories",
-          sourceId: sectionId, sourceFilename: null,
-          data: { label: mf.label, text: q[mf.key] },
-          status: "pending"
-        });
-      });
-    }
-  }
-
-  function _candidateExists(bb, bucket, name, source) {
-    return bb.candidates[bucket].some(function (c) {
-      return c.data.name === name && c.source === source;
-    });
-  }
-  function _relCandidateExists(bb, personA, personB) {
-    return bb.candidates.relationships.some(function (c) {
-      return c.data.personA === personA && c.data.personB === personB;
-    });
-  }
-  function _memCandidateExists(bb, text) {
-    return bb.candidates.memories.some(function (c) {
-      return c.data && c.data.text === text;
-    });
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     SECTION FILL PROGRESS (Phase C — unchanged)
-  ─────────────────────────────────────────────────────────── */
-
-  function _sectionFillCount(section) {
-    var bb = _bb(); if (!bb) return 0;
-    var q  = bb.questionnaire[section.id]; if (!q) return 0;
-    if (section.repeatable) { return (Array.isArray(q) ? q : [q]).length; }
-    return section.fields.filter(function (f) { return q[f.id] && String(q[f.id]).trim(); }).length;
-  }
 
   /* ───────────────────────────────────────────────────────────
      RENDERING — MAIN POPOVER
@@ -1372,7 +211,7 @@
     content.innerHTML = "";
     var pid = _currentPersonId();
     if      (_activeTab === "capture")       _renderCaptureTab(content, pid);
-    else if (_activeTab === "questionnaire") _renderQuestionnaireTab(content, pid);
+    else if (_activeTab === "questionnaire") _renderQuestionnaireTab(content, pid, _activeSection, _renderActiveTab);
     else if (_activeTab === "sources")       _renderSourcesTab(content, pid);
     else if (_activeTab === "candidates")    _renderCandidatesTab(content, pid);
     else if (_activeTab === "familyTree")    _renderFamilyTreeTab(content, pid);
@@ -1439,327 +278,15 @@
     } catch (_) {}
   }
 
-  /* ── Questionnaire Tab ──────────────────────────────────── */
+  /* ── Questionnaire Tab — now in bio-builder-questionnaire.js ──
+     _renderQuestionnaireTab, _renderSectionDetail, _fieldHtml,
+     _onNormalizeBlur are imported as aliases above.
+  ─────────────────────────────────────────────────────────── */
 
-  function _renderQuestionnaireTab(container, pid) {
-    if (!pid) {
-      container.innerHTML = _emptyStateHtml("No narrator selected", "Select a narrator to start the structured questionnaire.", []);
-      return;
-    }
-    if (_activeSection) { _renderSectionDetail(container); return; }
-
-    var sectionCards = SECTIONS.map(function (s) {
-      var fillCount = _sectionFillCount(s);
-      var progressHtml = s.repeatable
-        ? (fillCount > 0 ? '<span class="bb-pill bb-pill--has">' + fillCount + ' entr' + (fillCount === 1 ? "y" : "ies") + '</span>' : '<span class="bb-pill bb-pill--empty">Empty</span>')
-        : (fillCount > 0 ? '<span class="bb-pill bb-pill--has">' + fillCount + " / " + s.fields.length + ' filled</span>' : '<span class="bb-pill bb-pill--empty">Not started</span>');
-      return '<div class="bb-section-card" onclick="window.LorevoxBioBuilder._openSection(\'' + s.id + '\')">'
-        + '<div class="bb-section-card-icon">' + s.icon + '</div>'
-        + '<div class="bb-section-card-body">'
-        +   '<div class="bb-section-card-title">' + _esc(s.label) + '</div>'
-        +   '<div class="bb-section-card-hint">' + _esc(s.hint) + '</div>'
-        + '</div>'
-        + '<div class="bb-section-card-progress">' + progressHtml + '</div>'
-        + '</div>';
-    }).join("");
-
-    container.innerHTML =
-      '<div class="bb-section-title">Questionnaire Sections</div>'
-      + '<p class="bb-hint-text">Fill in any section to capture biographical material. Answers become candidate items you can review.</p>'
-      + '<div class="bb-section-grid">' + sectionCards + '</div>';
-  }
-
-  function _renderSectionDetail(container) {
-    var section = SECTIONS.find(function (s) { return s.id === _activeSection; });
-    if (!section) { _activeSection = null; _renderActiveTab(); return; }
-    var bb = _bb();
-    var existing = bb.questionnaire[section.id];
-    var fieldsHtml;
-
-    if (section.repeatable) {
-      var entries = Array.isArray(existing) ? existing : (existing ? [existing] : [{}]);
-      fieldsHtml = entries.map(function (entry, idx) {
-        return '<div class="bb-repeat-entry">'
-          + '<div class="bb-repeat-label">' + _esc(section.repeatLabel || "entry") + " " + (idx + 1) + '</div>'
-          + section.fields.map(function (f) { return _fieldHtml(f, "bbQ_" + idx + "_" + f.id, entry[f.id] || ""); }).join("")
-          + '</div>';
-      }).join("")
-      + '<button class="bb-ghost-btn bb-add-entry-btn" onclick="window.LorevoxBioBuilder._addRepeatEntry(\'' + section.id + '\')">'
-      + '+ Add another ' + _esc(section.repeatLabel || "entry") + '</button>';
-    } else {
-      var q = existing || {};
-      fieldsHtml = section.fields.map(function (f) { return _fieldHtml(f, "bbQ_" + f.id, q[f.id] || ""); }).join("");
-    }
-
-    container.innerHTML =
-      '<div class="bb-section-nav"><button class="bb-ghost-btn bb-back-btn" onclick="window.LorevoxBioBuilder._closeSection()">← Back to Sections</button></div>'
-      + '<div class="bb-section-title">' + section.icon + " " + _esc(section.label) + '</div>'
-      + '<p class="bb-hint-text">' + _esc(section.hint) + '</p>'
-      + '<div class="bb-fields-list">' + fieldsHtml + '</div>'
-      + '<div class="bb-section-footer"><button class="bb-btn-primary" onclick="window.LorevoxBioBuilder._saveSection(\'' + section.id + '\')">Save ' + _esc(section.label) + '</button></div>';
-  }
-
-  function _fieldHtml(field, domId, value) {
-    var va = _esc(value);
-    var labelHtml = '<label class="bb-label" for="' + domId + '">' + _esc(field.label) + '</label>';
-
-    if (field.type === "select" && Array.isArray(field.options)) {
-      var optsHtml = field.options.map(function (opt) {
-        var ov = _esc(opt);
-        var sel = (opt === value) ? ' selected' : '';
-        return '<option value="' + ov + '"' + sel + '>' + (ov || '— select —') + '</option>';
-      }).join("");
-      return '<div class="bb-field">' + labelHtml
-        + '<select id="' + domId + '" class="bb-select">' + optsHtml + '</select></div>';
-    }
-
-    if (field.type === "textarea") {
-      return '<div class="bb-field">' + labelHtml
-        + '<textarea id="' + domId + '" class="bb-textarea" rows="3" placeholder="' + _esc(field.placeholder || "") + '">' + va + '</textarea></div>';
-    }
-
-    // Text input — with optional blur normalizer
-    var blurAttr = "";
-    if (field.inputHelper === "normalizeDob") {
-      blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'dob\')"';
-    } else if (field.inputHelper === "normalizeTime") {
-      blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'time\')"';
-    } else if (field.inputHelper === "normalizePlace") {
-      blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'place\')"';
-    }
-
-    // Auto-derive zodiac trigger on DOB blur
-    var deriveAttr = "";
-    if (field.inputHelper === "normalizeDob") {
-      deriveAttr = ' data-derive-zodiac="true"';
-    }
-
-    return '<div class="bb-field">' + labelHtml
-      + '<input id="' + domId + '" class="bb-input" type="text" value="' + va
-      + '" placeholder="' + _esc(field.placeholder || "") + '"' + blurAttr + deriveAttr + ' /></div>';
-  }
-
-  /**
-   * Inline normalization on blur — called from input onblur attributes.
-   * Also triggers zodiac auto-derive when DOB is normalized.
-   */
-  function _onNormalizeBlur(inputEl, kind) {
-    if (!inputEl) return;
-    var raw = inputEl.value;
-    var normalized;
-    if (kind === "dob") {
-      normalized = normalizeDobInput(raw);
-      inputEl.value = normalized;
-      // Auto-derive zodiac if a zodiac select exists in same form
-      _tryAutoZodiac(normalized);
-    } else if (kind === "time") {
-      normalized = normalizeTimeOfBirthInput(raw);
-      inputEl.value = normalized;
-    } else if (kind === "place") {
-      normalized = normalizePlaceInput(raw);
-      inputEl.value = normalized;
-    }
-  }
-
-  /**
-   * If there's a zodiac select in the current form context, and it's empty,
-   * derive from the DOB and set it. User can still override manually.
-   */
-  function _tryAutoZodiac(isoDob) {
-    // Look for the zodiac select — could be bbQ_zodiacSign (personal section)
-    var zodiacEl = _el("bbQ_zodiacSign");
-    if (!zodiacEl) return;
-    // Only auto-fill if empty (don't override manual choice)
-    if (zodiacEl.value) return;
-    var sign = deriveZodiacFromDob(isoDob);
-    if (sign) zodiacEl.value = sign;
-  }
-
-  /* ── Source Inbox Tab (Phase D) ─────────────────────────── */
-
-  function _renderSourcesTab(container, pid) {
-    if (!pid) {
-      container.innerHTML = _emptyStateHtml("No narrator selected", "Select a narrator to start adding documents.", []);
-      return;
-    }
-
-    // Phase D: if a source card review is active, show the review panel
-    if (_activeSourceCardId) {
-      _renderSourceReview(container);
-      return;
-    }
-
-    var bb = _bb();
-    var cardsHtml = "";
-
-    if (bb.sourceCards.length > 0) {
-      cardsHtml = '<div class="bb-source-cards-list">'
-        + bb.sourceCards.map(function (card) {
-            var statusInfo = _sourceCardStatusInfo(card);
-            var addedCount = (card.addedCandidateIds || []).length;
-            var addedBadge = addedCount > 0
-              ? '<span class="bb-source-added-badge">' + addedCount + ' added</span>'
-              : "";
-            var detectedCount = card.detectedItems
-              ? (card.detectedItems.people.length + card.detectedItems.dates.length +
-                 card.detectedItems.places.length + card.detectedItems.memories.length)
-              : 0;
-            var detectedBadge = (card.status === "extracted" || card.status === "pasted") && detectedCount > 0
-              ? '<span class="bb-source-detected-badge">' + detectedCount + ' detected</span>'
-              : "";
-
-            return '<div class="bb-source-card">'
-              + '<div class="bb-source-card-icon">' + _sourceIcon(card.sourceType) + '</div>'
-              + '<div class="bb-source-card-body">'
-              +   '<div class="bb-source-card-name">' + _esc(card.filename) + '</div>'
-              +   '<div class="bb-source-card-meta">'
-              +     _esc(card.sourceType || "Document") + ' · ' + _esc(statusInfo.label)
-              +     (card.fileSize ? ' · ' + _formatBytes(card.fileSize) : '')
-              +   '</div>'
-              +   '<div class="bb-source-card-badges">' + detectedBadge + addedBadge + '</div>'
-              + '</div>'
-              + '<div class="bb-source-card-actions">'
-              +   '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._reviewSource(\'' + card.id + '\')">'
-              +   (statusInfo.canReview ? "Review →" : "View →")
-              +   '</button>'
-              + '</div>'
-              + '</div>';
-          }).join("")
-        + '</div>';
-    }
-
-    container.innerHTML =
-      '<div class="bb-section-title">Source Inbox</div>'
-      + '<p class="bb-hint-text">Upload text files, documents, or notes. Each becomes a Source Card — Bio Builder extracts people, dates, places, and memories for you to review and add as candidates.</p>'
-      + '<div class="bb-drop-zone" onclick="document.getElementById(\'bbFileInput\').click()">'
-      +   '<div class="bb-drop-icon">📎</div>'
-      +   '<div class="bb-drop-label">Drop files here or click to browse</div>'
-      +   '<div class="bb-drop-hint">Text · Markdown · CSV · PDF (paste text) · Images (paste text) · Any document</div>'
-      +   '<input id="bbFileInput" type="file" multiple accept="*" style="display:none" onchange="window.LorevoxBioBuilder._handleFiles(this.files)" />'
-      + '</div>'
-      + (cardsHtml || '<div class="bb-empty-sub">No documents yet — add files above to begin.</div>');
-  }
-
-  function _sourceCardStatusInfo(card) {
-    var st = card.status || "pending";
-    if (st === "extracting")  return { label: "Extracting…",     canReview: false };
-    if (st === "extracted")   return { label: "Text extracted ✓", canReview: true  };
-    if (st === "pasted")      return { label: "Text pasted ✓",    canReview: true  };
-    if (st === "failed")      return { label: "Extraction failed", canReview: true  };
-    if (st === "manual-only") return { label: "Paste text to extract", canReview: true };
-    return { label: "Pending",        canReview: false };
-  }
-
-  /* ── Source Card Review Surface (Phase D) ───────────────── */
-
-  function _renderSourceReview(container) {
-    var bb   = _bb(); if (!bb) return;
-    var card = bb.sourceCards.find(function (c) { return c.id === _activeSourceCardId; });
-    if (!card) { _activeSourceCardId = null; _renderActiveTab(); return; }
-
-    var workingText = card.extractedText || card.pastedText || null;
-    var di          = card.detectedItems;
-    var statusInfo  = _sourceCardStatusInfo(card);
-
-    // ── Paste zone (for non-text files without extractedText) ──
-    var pasteZoneHtml = "";
-    if (!workingText) {
-      pasteZoneHtml =
-        '<div class="bb-review-section">'
-        + '<div class="bb-review-section-title">Paste the Document\'s Text</div>'
-        + '<p class="bb-hint-text">Bio Builder can\'t automatically extract text from ' + _esc(card.sourceType || "this file") + ' files. Paste the document\'s text below to detect candidates.</p>'
-        + '<textarea id="bbPasteArea" class="bb-textarea bb-paste-area" rows="8" placeholder="Paste text from the document here…"></textarea>'
-        + '<div class="bb-review-footer">'
-        +   '<button class="bb-btn-primary" onclick="window.LorevoxBioBuilder._savePastedText(\'' + card.id + '\')">Extract from Pasted Text</button>'
-        + '</div>'
-        + '</div>';
-    }
-
-    // ── Extracted text preview ──
-    var textPreviewHtml = "";
-    if (workingText) {
-      var previewText = workingText.length > 600 ? workingText.slice(0, 597) + "…" : workingText;
-      textPreviewHtml =
-        '<div class="bb-review-section">'
-        + '<div class="bb-review-section-title">Extracted Text <span class="bb-review-chars">(' + workingText.length.toLocaleString() + ' chars)</span></div>'
-        + '<div class="bb-review-text-preview">' + _esc(previewText) + '</div>'
-        + '</div>';
-    }
-
-    // ── Detected items ──
-    var detectedHtml = "";
-    if (di) {
-      var totalDetected = di.people.length + di.dates.length + di.places.length + di.memories.length;
-      if (totalDetected === 0) {
-        detectedHtml = '<div class="bb-review-section"><p class="bb-hint-text">No items automatically detected in this text. You can still add notes or facts using Quick Capture.</p></div>';
-      } else {
-        detectedHtml = '<div class="bb-review-section"><div class="bb-review-section-title">Detected Items — ' + totalDetected + ' found</div>'
-          + _renderDetectedBucket(card, "people",   "👤", "People",   di.people,   "person")
-          + _renderDetectedBucket(card, "dates",    "📅", "Dates",    di.dates,    "event")
-          + _renderDetectedBucket(card, "places",   "📍", "Places",   di.places,   "place")
-          + _renderDetectedBucket(card, "memories", "🌙", "Memories", di.memories, "memory")
-          + '<div class="bb-review-add-all-row">'
-          +   '<button class="bb-btn-primary" onclick="window.LorevoxBioBuilder._addAllFromCard(\'' + card.id + '\')">'
-          +   'Add All Detected Items'
-          +   '</button>'
-          +   '<button class="bb-ghost-btn" onclick="window.LorevoxBioBuilder._closeSourceReview()">Done Reviewing</button>'
-          + '</div>'
-          + '</div>';
-      }
-    }
-
-    var addedCount   = (card.addedCandidateIds || []).length;
-    var addedSummary = addedCount > 0
-      ? '<span class="bb-review-added-summary">' + addedCount + ' candidate' + (addedCount === 1 ? "" : "s") + ' added from this source</span>'
-      : "";
-
-    container.innerHTML =
-      '<div class="bb-review-nav">'
-      +   '<button class="bb-ghost-btn bb-back-btn" onclick="window.LorevoxBioBuilder._closeSourceReview()">← Back to Source Inbox</button>'
-      +   addedSummary
-      + '</div>'
-      + '<div class="bb-review-header">'
-      +   '<div class="bb-review-filename">' + _sourceIcon(card.sourceType) + ' ' + _esc(card.filename) + '</div>'
-      +   '<div class="bb-review-meta">' + _esc(card.sourceType || "Document") + ' · ' + _esc(statusInfo.label) + (card.fileSize ? ' · ' + _formatBytes(card.fileSize) : '') + '</div>'
-      + '</div>'
-      + pasteZoneHtml
-      + textPreviewHtml
-      + detectedHtml;
-  }
-
-  function _renderDetectedBucket(card, bucketKey, icon, label, items, candidateType) {
-    if (!items || items.length === 0) return "";
-    var allAdded = items.every(function (it) { return it.added; });
-    var pendingCount = items.filter(function (it) { return !it.added; }).length;
-
-    var itemRows = items.map(function (item) {
-      var addedMark = item.added ? '<span class="bb-det-added">✓ Added</span>' : "";
-      var addBtn    = !item.added
-        ? '<button class="bb-btn-sm bb-det-add-btn" onclick="window.LorevoxBioBuilder._addItemAsCandidate(\'' + card.id + '\',\'' + bucketKey + '\',\'' + item.id + '\',\'' + candidateType + '\')">'
-          + 'Add'
-          + '</button>'
-        : "";
-      var relation  = item.relation ? '<span class="bb-det-relation">' + _esc(item.relation) + '</span>' : "";
-      var context   = item.context !== item.text ? '<div class="bb-det-context">' + _esc(item.context) + '</div>' : "";
-      return '<div class="bb-det-item' + (item.added ? ' bb-det-item--added' : '') + '">'
-        + '<div class="bb-det-item-body">'
-        +   '<div class="bb-det-item-text">' + _esc(item.text) + relation + '</div>'
-        +   context
-        + '</div>'
-        + '<div class="bb-det-item-actions">' + addedMark + addBtn + '</div>'
-        + '</div>';
-    }).join("");
-
-    var addAllBtn = !allAdded && pendingCount > 1
-      ? '<button class="bb-ghost-btn bb-det-add-all" onclick="window.LorevoxBioBuilder._addAllOfType(\'' + card.id + '\',\'' + bucketKey + '\',\'' + candidateType + '\')">+ Add all ' + label.toLowerCase() + ' (' + pendingCount + ')</button>'
-      : "";
-
-    return '<div class="bb-det-bucket">'
-      + '<div class="bb-det-bucket-header">' + icon + ' ' + _esc(label) + ' <span class="bb-det-count">(' + items.length + ')</span></div>'
-      + '<div class="bb-det-items-list">' + itemRows + '</div>'
-      + addAllBtn
-      + '</div>';
-  }
+  /* ── Source Inbox Tab — now in bio-builder-sources.js ─────
+     _renderSourcesTab, _sourceCardStatusInfo, _renderSourceReview,
+     _renderDetectedBucket, _sourceIcon are imported as aliases above.
+  ─────────────────────────────────────────────────────────── */
 
   /* ── Candidates Tab (updated Phase D — provenance) ──────── */
 
@@ -1815,25 +342,8 @@
 
   /* ── Helpers ────────────────────────────────────────────── */
 
-  function _emptyStateHtml(title, message, actions) {
-    var actionsHtml = (actions || []).map(function (a) {
-      return '<button class="bb-ghost-btn" onclick="' + a.action + '">' + _esc(a.label) + '</button>';
-    }).join("");
-    return '<div class="bb-empty-state">'
-      + '<div class="bb-empty-title">' + _esc(title) + '</div>'
-      + '<div class="bb-empty-message">' + _esc(message) + '</div>'
-      + (actionsHtml ? '<div class="bb-empty-actions">' + actionsHtml + '</div>' : '')
-      + '</div>';
-  }
-
-  function _sourceIcon(type) {
-    var t = (type || "").toLowerCase();
-    if (t === "pdf")    return "📄";
-    if (t === "image")  return "🖼";
-    if (t === "text")   return "📝";
-    if (t === "word")   return "📘";
-    return "📎";
-  }
+  /* _emptyStateHtml — now in bio-builder-core.js, imported as alias above */
+  /* _sourceIcon — now in bio-builder-sources.js, imported as alias above */
 
   /* ═══════════════════════════════════════════════════════════════
      SAFE CANDIDATE ACCESSORS
@@ -3368,7 +1878,7 @@
   function _switchTab(tab) {
     _activeTab          = tab;
     _activeSection      = null;
-    _activeSourceCardId = null;
+    _srcClearSourceReviewState();
     _renderTabs();
     _renderActiveTab();
   }
@@ -3393,122 +1903,33 @@
   function _closeSection()          { _activeSection = null;      _renderActiveTab(); }
 
   function _addRepeatEntry(sectionId) {
-    var bb = _bb(); if (!bb) return;
-    if (!Array.isArray(bb.questionnaire[sectionId])) {
-      bb.questionnaire[sectionId] = bb.questionnaire[sectionId] ? [bb.questionnaire[sectionId]] : [];
-    }
-    bb.questionnaire[sectionId].push({});
-    _renderSectionDetail(_el("bbTabContent"));
+    _qqAddRepeatEntry(sectionId, function () {
+      _renderActiveTab();
+    });
   }
 
   function _saveSection(sectionId) {
-    var section = SECTIONS.find(function (s) { return s.id === sectionId; });
-    if (!section) return;
-    var bb = _bb(); if (!bb) return;
-
-    if (section.repeatable) {
-      var existing = Array.isArray(bb.questionnaire[sectionId])
-        ? bb.questionnaire[sectionId]
-        : (bb.questionnaire[sectionId] ? [bb.questionnaire[sectionId]] : [{}]);
-      bb.questionnaire[sectionId] = existing.map(function (_, idx) {
-        var obj = {};
-        section.fields.forEach(function (f) {
-          var el = _el("bbQ_" + idx + "_" + f.id);
-          if (el) obj[f.id] = el.value || "";
-        });
-        return obj;
-      });
-    } else {
-      var obj = {};
-      section.fields.forEach(function (f) {
-        var el = _el("bbQ_" + f.id);
-        if (el) obj[f.id] = el.value || "";
-      });
-      bb.questionnaire[sectionId] = obj;
-    }
-
-    _extractQuestionnaireCandidates(sectionId);
-    // v8-fix: persist questionnaire to localStorage immediately on save (WD-2 fix)
-    var pid = _currentPersonId();
-    if (pid) _persistDrafts(pid);
-    _closeSection();
+    _qqSaveSection(sectionId, _closeSection);
   }
 
-  /* ── Phase D: file handling ─────────────────────────────── */
+  /* ── Phase D: file handling — now in bio-builder-sources.js ──
+     Thin wrappers pass _renderActiveTab as callback.
+  ─────────────────────────────────────────────────────────── */
 
   function _handleFiles(files) {
-    var bb = _bb(); if (!bb) return;
-    if (!files || files.length === 0) return;
-    var pendingPromises = [];
-
-    for (var i = 0; i < files.length; i++) {
-      var file = files[i];
-      var sourceType = _guessSourceType(file.name, file.type);
-      var card = {
-        id:               _uid(),
-        filename:         file.name,
-        fileSize:         file.size,
-        sourceType:       sourceType,
-        ts:               Date.now(),
-        status:           "extracting",
-        extractedText:    null,
-        pastedText:       null,
-        detectedItems:    null,
-        addedCandidateIds: []
-      };
-      bb.sourceCards.push(card);
-
-      if (_canExtractText(file)) {
-        pendingPromises.push(_readAndExtract(card.id, file));
-      } else {
-        card.status = "manual-only";
-      }
-    }
-
-    // Show "extracting" status immediately
-    _renderActiveTab();
-
-    // Re-render after all extractions complete
-    if (pendingPromises.length > 0) {
-      Promise.all(pendingPromises).then(function () { _renderActiveTab(); });
-    }
-  }
-
-  function _guessSourceType(filename, mimeType) {
-    var name = (filename || "").toLowerCase();
-    var mime = (mimeType || "").toLowerCase();
-    if (mime.startsWith("image/") || /\.(jpg|jpeg|png|gif|heic|tiff|webp|bmp)$/.test(name)) return "Image";
-    if (mime === "application/pdf" || name.endsWith(".pdf")) return "PDF";
-    if (/\.(doc|docx)$/.test(name)) return "Word";
-    if (mime.startsWith("text/") || /\.(txt|md|markdown|csv|tsv|rtf|log)$/.test(name)) return "Text";
-    return "Document";
+    _srcHandleFiles(files, _renderActiveTab);
   }
 
   function _reviewSource(cardId) {
-    _activeSourceCardId = cardId;
-    _renderActiveTab();
+    _srcReviewSource(cardId, _renderActiveTab);
   }
 
   function _closeSourceReview() {
-    _activeSourceCardId = null;
-    _renderActiveTab();
+    _srcCloseSourceReview(_renderActiveTab);
   }
 
-  /* ── Phase D: paste text for non-extractable files ──────── */
-
   function _savePastedText(cardId) {
-    var ta   = _el("bbPasteArea"); if (!ta) return;
-    var text = (ta.value || "").trim();
-    if (!text) { ta.style.borderColor = "rgba(239,68,68,0.5)"; return; }
-
-    var bb   = _bb(); if (!bb) return;
-    var card = bb.sourceCards.find(function (c) { return c.id === cardId; });
-    if (!card) return;
-
-    card.pastedText    = text;
-    card.status        = "pasted";
-    card.detectedItems = _parseTextItems(text);
-    _renderActiveTab(); // refresh to show detected items
+    _srcSavePastedText(cardId, _renderActiveTab);
   }
 
   /* ── Phase D: add detected item as candidate ────────────── */

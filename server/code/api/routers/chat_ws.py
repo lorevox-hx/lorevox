@@ -41,6 +41,14 @@ async def ws_chat(ws: WebSocket):
     current_task: Optional[asyncio.Task] = None
 
     async def generate_and_stream(conv_id: str, user_text: str, params: Dict[str, Any]) -> None:
+      try:
+        await _generate_and_stream_inner(ws, ev, conv_id, user_text, params)
+      except Exception as exc:
+        logger.error("[chat_ws] generate_and_stream failed: %s", exc, exc_info=True)
+        await _ws_send(ws, {"type": "error", "message": f"Chat backend error: {exc}"})
+        await _ws_send(ws, {"type": "done", "final_text": ""})
+
+    async def _generate_and_stream_inner(ws: WebSocket, ev: threading.Event, conv_id: str, user_text: str, params: Dict[str, Any]) -> None:
         # Extract person_id from params (sent by UI)
         person_id: Optional[str] = params.get("person_id") or None
 

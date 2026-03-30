@@ -1622,6 +1622,14 @@ async function sendUserMessage(){
     console.log("[Lori 7.1] runtime71 → model:", JSON.stringify(_rt71, null, 2));
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
       message:payload,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71}}));
+    // Safety timeout: if no response within 30s, unstick the UI
+    setTimeout(()=>{
+      if(!currentAssistantBubble){
+        // No bubble created yet means no tokens arrived at all
+        const _errBubble = appendBubble("ai","Chat service unavailable — start or restart the Lorevox AI backend to enable responses.");
+        setLoriState("ready");
+      }
+    }, 30000);
     return;
   }
   await streamSse(payload);
@@ -1636,6 +1644,15 @@ async function sendSystemPrompt(instruction){
     console.log("[Lori 7.1] runtime71 (sys) → model:", JSON.stringify(_rt71sys, null, 2));
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
       message:instruction,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71sys}}));
+    // Safety timeout: if no response within 30s, unstick the UI
+    setTimeout(()=>{
+      if(currentAssistantBubble===bubble && _bubbleBody(bubble)?.textContent==="…"){
+        console.warn("[sendSystemPrompt] 30s timeout — no response from backend");
+        _bubbleBody(bubble).textContent="Chat service unavailable — start or restart the Lorevox AI backend to enable responses.";
+        setLoriState("ready");
+        currentAssistantBubble=null;
+      }
+    }, 30000);
     return;
   }
   await streamSse(instruction,bubble);
@@ -1913,6 +1930,14 @@ function handleWsMessage(j){
     }
     _bubbleBody(currentAssistantBubble).textContent+=(j.delta||j.token||"");
     document.getElementById("chatMessages").scrollTop=99999;
+  }
+  if(j.type==="error"){
+    // Backend sent an error (e.g. model load failure, CUDA OOM)
+    console.error("[WS] backend error:", j.message);
+    if(currentAssistantBubble){
+      _bubbleBody(currentAssistantBubble).textContent=
+        "Chat service error — the AI backend may need to be restarted. (" + (j.message||"unknown") + ")";
+    }
   }
   if(j.type==="done"){
     const text=j.final_text||(_bubbleBody(currentAssistantBubble)?.textContent||"");
