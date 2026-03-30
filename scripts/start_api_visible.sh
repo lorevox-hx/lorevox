@@ -7,6 +7,10 @@ printf '\n=== Lorevox API visible startup ===\n'
 printf 'Repo: %s\n' "$ROOT_DIR"
 printf 'Log:  %s\n\n' "$LOG_DIR/api.log"
 
+# Pre-flight: kill zombies and show VRAM before we load anything
+kill_stale_lorevox
+show_vram
+
 start_named_process "Lorevox API" "$API_CMD" "$API_PID_FILE" "$LOG_DIR/api.log"
 
 printf 'Waiting for API health...\n'

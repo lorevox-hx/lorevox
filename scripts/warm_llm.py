@@ -24,8 +24,9 @@ import urllib.error
 import urllib.request
 
 LLM_BASE = os.getenv("LLM_BASE", "http://localhost:8000").rstrip("/")
-CHAT_URL  = f"{LLM_BASE}/api/chat/stream"
-PING_URL  = f"{LLM_BASE}/api/ping"
+WARMUP_URL = f"{LLM_BASE}/api/warmup"     # lightweight endpoint (no RAG/prompt bloat)
+CHAT_URL   = f"{LLM_BASE}/api/chat/stream" # fallback if /api/warmup doesn't exist
+PING_URL   = f"{LLM_BASE}/api/ping"
 
 DUMMY_PAYLOAD = json.dumps({
     "messages": [
@@ -48,14 +49,50 @@ def _ping() -> bool:
         return False
 
 
-def _warm() -> int:
-    """
-    POST to /api/chat/stream and inspect the response.
+def _warm_lightweight() -> int:
+    """Try the lightweight /api/warmup endpoint (no RAG, no prompt bloat).
 
-    Returns:
-      0 = got real token data (model is warm)
-      1 = connection/HTTP error (model still loading, retry ok)
-      2 = CUDA OOM or fatal error (don't retry)
+    Returns: 0=warm, 1=retry, 2=OOM/fatal, -1=endpoint doesn't exist (fallback)
+    """
+    req = urllib.request.Request(
+        WARMUP_URL,
+        data=b"{}",
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            data = json.loads(body)
+            if data.get("ok"):
+                vram = data.get("vram_free_mb", "?")
+                tokens = data.get("prompt_tokens", "?")
+                print(f"[warm_llm] Warmup OK via /api/warmup "
+                      f"(prompt_tokens={tokens}, VRAM_free={vram}MB, text={data.get('text', '')!r})")
+                return 0
+            return 1
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")[:500]
+        except Exception:
+            pass
+        if e.code == 404:
+            return -1  # endpoint doesn't exist — fall back to chat/stream
+        if e.code == 507 or "CUDA_OOM" in body or "out of memory" in body.lower():
+            print(f"[warm_llm] CUDA OOM via /api/warmup: {body[:300]}", file=sys.stderr)
+            return 2
+        print(f"[warm_llm] HTTP {e.code} from {WARMUP_URL}: {body[:200]}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"[warm_llm] /api/warmup error: {e}", file=sys.stderr)
+        return 1
+
+
+def _warm_via_chat() -> int:
+    """Fallback: POST to /api/chat/stream (heavier — full prompt composition).
+
+    Returns: 0=warm, 1=retry, 2=OOM/fatal
     """
     req = urllib.request.Request(
         CHAT_URL,
@@ -65,34 +102,29 @@ def _warm() -> int:
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
-            # Read enough to see if we got real tokens or an OOM error
             data = b""
             while len(data) < 4096:
                 chunk = resp.read(1024)
                 if not chunk:
                     break
                 data += chunk
-                # Check early if we already have a done or error signal
                 text = data.decode("utf-8", errors="replace")
                 if '"CUDA_OOM"' in text or "out of memory" in text.lower():
-                    print("[warm_llm] CUDA OOM detected — GPU memory exhausted.", file=sys.stderr)
+                    print("[warm_llm] CUDA OOM detected via chat/stream.", file=sys.stderr)
                     return 2
                 if '"delta"' in text:
-                    # Got a real token — model is warm
                     return 0
                 if '"done"' in text:
                     break
 
             text = data.decode("utf-8", errors="replace")
             if '"CUDA_OOM"' in text or "out of memory" in text.lower():
-                print("[warm_llm] CUDA OOM detected — GPU memory exhausted.", file=sys.stderr)
                 return 2
             if '"error"' in text:
                 print(f"[warm_llm] Backend error: {text[:300]}", file=sys.stderr)
                 return 2
             if '"delta"' in text:
                 return 0
-            # Got a response but no tokens — ambiguous
             print(f"[warm_llm] Unexpected response: {text[:200]}", file=sys.stderr)
             return 1
 
@@ -109,6 +141,18 @@ def _warm() -> int:
     except Exception as e:
         print(f"[warm_llm] Connection error: {e}", file=sys.stderr)
         return 1
+
+
+def _warm() -> int:
+    """Try lightweight warmup first, fall back to chat/stream.
+
+    Returns: 0=warm, 1=retry, 2=OOM/fatal
+    """
+    result = _warm_lightweight()
+    if result == -1:
+        print("[warm_llm] /api/warmup not available — falling back to /api/chat/stream")
+        return _warm_via_chat()
+    return result
 
 
 def main() -> int:

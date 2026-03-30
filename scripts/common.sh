@@ -127,3 +127,43 @@ open_ui_in_windows() {
     powershell.exe -NoProfile -Command "Start-Process '$url'" >/dev/null 2>&1 || true
   fi
 }
+
+# Kill any stale Lorevox processes that may be holding GPU memory.
+# Safe to call before starting services — only kills processes matching
+# our specific patterns, not unrelated GPU work.
+kill_stale_lorevox() {
+  local killed=0
+  for pattern in "run_gpu_8000" "uvicorn.*8000" "run_tts_8001" "uvicorn.*8001" "lorevox-serve"; do
+    if pgrep -f "$pattern" >/dev/null 2>&1; then
+      printf 'Killing stale process: %s\n' "$pattern"
+      pkill -f "$pattern" 2>/dev/null || true
+      killed=1
+    fi
+  done
+  if [[ "$killed" -eq 1 ]]; then
+    sleep 2  # give GPU time to release memory
+    printf 'Stale processes cleaned up.\n'
+  fi
+  # Clear stale PID files
+  for f in "$API_PID_FILE" "$TTS_PID_FILE" "$UI_PID_FILE"; do
+    if [[ -f "$f" ]]; then
+      local pid
+      pid="$(tr -d '[:space:]' < "$f")"
+      if ! kill -0 "$pid" 2>/dev/null; then
+        rm -f "$f"
+      fi
+    fi
+  done
+}
+
+# Show GPU VRAM usage (if nvidia-smi is available).
+show_vram() {
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    printf '\n--- GPU VRAM ---\n'
+    nvidia-smi --query-gpu=name,memory.used,memory.free,memory.total --format=csv,noheader,nounits \
+      | while IFS=',' read -r name used free total; do
+          printf '  %s: %s MB used / %s MB free / %s MB total\n' \
+            "$(echo "$name" | xargs)" "$(echo "$used" | xargs)" "$(echo "$free" | xargs)" "$(echo "$total" | xargs)"
+        done
+  fi
+}

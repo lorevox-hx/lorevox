@@ -14,6 +14,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from transformers import TextIteratorStreamer, StoppingCriteriaList
 
 from ..db import export_turns, persist_turn_transaction
+import torch
 from ..api import _load_model, _apply_chat_template, StopOnEvent, _normalize_role
 from ..prompt_composer import compose_system_prompt
 from ..archive import (
@@ -43,6 +44,18 @@ async def ws_chat(ws: WebSocket):
     async def generate_and_stream(conv_id: str, user_text: str, params: Dict[str, Any]) -> None:
       try:
         await _generate_and_stream_inner(ws, ev, conv_id, user_text, params)
+      except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+        err_str = str(oom_err)
+        is_oom = "out of memory" in err_str.lower() or "CUDA" in err_str
+        if is_oom:
+            logger.error("[chat_ws] CUDA OOM: %s", err_str[:200])
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            await _ws_send(ws, {"type": "error", "message": "CUDA_OOM: GPU out of memory. VRAM freed — try again."})
+        else:
+            logger.error("[chat_ws] RuntimeError: %s", oom_err, exc_info=True)
+            await _ws_send(ws, {"type": "error", "message": f"Chat backend error: {oom_err}"})
+        await _ws_send(ws, {"type": "done", "final_text": ""})
       except Exception as exc:
         logger.error("[chat_ws] generate_and_stream failed: %s", exc, exc_info=True)
         await _ws_send(ws, {"type": "error", "message": f"Chat backend error: {exc}"})
@@ -111,7 +124,16 @@ async def ws_chat(ws: WebSocket):
         msgs.append({"role": "user", "content": user_text})
         prompt = _apply_chat_template(msgs)
 
-        # Prep generation
+        # ── Diagnostic logging ──
+        _prompt_tokens = len(tok.encode(prompt))
+        _vram_free = torch.cuda.mem_get_info()[0] / 1024**2 if torch.cuda.is_available() else -1
+        _vram_total = torch.cuda.mem_get_info()[1] / 1024**2 if torch.cuda.is_available() else -1
+        logger.info("[chat_ws] prompt_tokens=%d VRAM=%.0f/%.0f MB free max_new=%s",
+                    _prompt_tokens, _vram_free, _vram_total, params.get("max_new_tokens", 512))
+
+        # Prep generation — clear cache first for max headroom
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         inputs = tok(prompt, return_tensors="pt").to(model.device)
         streamer = TextIteratorStreamer(tok, skip_prompt=True, skip_special_tokens=True)
 

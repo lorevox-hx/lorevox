@@ -257,6 +257,65 @@ def chat(req: _ChatReq) -> Dict[str, Any]:
         add_turn(req.conv_id, "assistant", text, datetime.utcnow().isoformat(), req.anchor_id or "", {"section": req.section or ""})
     return {"ok": True, "text": text, "latency": round(time.time() - start, 2)}
 
+# ---------------- Lightweight warmup ----------------
+@router.post("/warmup")
+def warmup_endpoint():
+    """Minimal GPU warmup — generates a few tokens with a tiny prompt.
+
+    Skips compose_system_prompt, RAG, profile lookup, and DB writes.
+    Used by scripts/warm_llm.py to confirm the model can actually generate.
+    """
+    import gc
+    start = time.time()
+    model, tok = _load_model()
+
+    # Tiny prompt — just enough to exercise the GPU
+    msgs = [
+        {"role": "system", "content": "Reply with one word."},
+        {"role": "user", "content": "hi"},
+    ]
+    prompt = _apply_chat_template(msgs)
+    prompt_tokens = len(tok.encode(prompt))
+
+    vram_free = torch.cuda.mem_get_info()[0] / 1024**2 if torch.cuda.is_available() else -1
+    vram_total = torch.cuda.mem_get_info()[1] / 1024**2 if torch.cuda.is_available() else -1
+    print(f"[LLM] warmup: prompt_tokens={prompt_tokens} VRAM={vram_free:.0f}/{vram_total:.0f} MB free")
+
+    try:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            gc.collect()
+        inputs = tok(prompt, return_tensors="pt").to(model.device)
+        with torch.no_grad():
+            out = model.generate(
+                **inputs,
+                max_new_tokens=8,
+                temperature=0.7,
+                do_sample=True,
+                pad_token_id=tok.eos_token_id,
+            )
+        text = tok.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
+        del inputs, out
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        latency = round(time.time() - start, 2)
+        print(f"[LLM] warmup OK: {text!r} ({latency}s)")
+        return {"ok": True, "text": text, "latency": latency, "prompt_tokens": prompt_tokens,
+                "vram_free_mb": round(vram_free), "vram_total_mb": round(vram_total)}
+    except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            gc.collect()
+        err = str(e)[:300]
+        print(f"[LLM] warmup CUDA OOM: {err}")
+        vram_now = torch.cuda.mem_get_info()[0] / 1024**2 if torch.cuda.is_available() else -1
+        raise HTTPException(507, detail={
+            "error": "CUDA_OOM",
+            "message": "GPU out of memory during warmup",
+            "vram_free_mb": round(vram_now),
+            "vram_total_mb": round(vram_total),
+        })
+
 # ---------------- Streaming ----------------
 @router.post("/chat/stream")
 def chat_stream(req: _ChatReq):
@@ -296,6 +355,14 @@ def chat_stream(req: _ChatReq):
         if _normalize_role(m.role) != 'system'
     ]
     prompt = _apply_chat_template(msgs)
+
+    # ── Diagnostic logging ──
+    _prompt_tokens = len(tok.encode(prompt)) if tok is not None else -1
+    _vram_free = torch.cuda.mem_get_info()[0] / 1024**2 if torch.cuda.is_available() else -1
+    _vram_total = torch.cuda.mem_get_info()[1] / 1024**2 if torch.cuda.is_available() else -1
+    print(f"[LLM] chat_stream: conv_id={conv_id!r} prompt_tokens={_prompt_tokens} "
+          f"VRAM={_vram_free:.0f}/{_vram_total:.0f} MB free max_new={req.max_new}")
+
     ev = threading.Event()
     stop = StoppingCriteriaList([StopOnEvent(ev)])
     def gen():

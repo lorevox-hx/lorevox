@@ -1680,26 +1680,43 @@ IMPORTANT INTERVIEW RULES:
     if(!res.ok) throw new Error("SSE error "+res.status);
     const reader=res.body.getReader(); const dec=new TextDecoder();
     setLoriState("drafting");
+    let _sseError = null;
     while(true){
       const {done,value}=await reader.read(); if(done) break;
       for(const line of dec.decode(value,{stream:true}).split("\n")){
         if(!line.trim()) continue;
         try{
           const d=JSON.parse(line.replace(/^data:\s*/,""));
-          if(d.delta||d.text){ full+=(d.delta||d.text); _bubbleBody(bubble).textContent=full;
-            document.getElementById("chatMessages").scrollTop=99999; }
+          if(d.error){
+            // Backend sent an error (CUDA_OOM, generation_error, etc.)
+            _sseError = d;
+            console.error("[SSE] backend error:", d.error, d.message);
+          } else if(d.delta||d.text){
+            full+=(d.delta||d.text); _bubbleBody(bubble).textContent=full;
+            document.getElementById("chatMessages").scrollTop=99999;
+          }
         }catch{}
       }
     }
-    onAssistantReply(full);
-    if(full && !text.startsWith("[SYSTEM:")){
-      setv("ivAnswer",full);
-      captureState="captured";
-      renderCaptureChip();
+    if(_sseError && !full){
+      // Error with no generated text — show user-friendly message
+      if(_sseError.error==="CUDA_OOM"){
+        _bubbleBody(bubble).textContent="GPU memory was full. VRAM has been freed — try sending your message again.";
+      } else {
+        _bubbleBody(bubble).textContent="Chat error: " + (_sseError.message||"unknown backend error") + ". Try again.";
+      }
+    } else {
+      onAssistantReply(full);
+      if(full && !text.startsWith("[SYSTEM:")){
+        setv("ivAnswer",full);
+        captureState="captured";
+        renderCaptureChip();
+      }
+      if(obitDraftType==="lori_pending"){ setObitDraftType("lori"); }
     }
-    if(obitDraftType==="lori_pending"){ setObitDraftType("lori"); }
     setLoriState("ready");
   }catch(err){
+    console.error("[SSE] streamSse failed:", err);
     _bubbleBody(bubble).textContent="Chat service unavailable — start the Lorevox backend to enable AI responses.";
     setLoriState("ready");
   }
@@ -1934,9 +1951,21 @@ function handleWsMessage(j){
   if(j.type==="error"){
     // Backend sent an error (e.g. model load failure, CUDA OOM)
     console.error("[WS] backend error:", j.message);
+    const _isOOM = (j.message||"").toLowerCase().includes("out of memory") ||
+                   (j.message||"").includes("CUDA_OOM");
     if(currentAssistantBubble){
-      _bubbleBody(currentAssistantBubble).textContent=
-        "Chat service error — the AI backend may need to be restarted. (" + (j.message||"unknown") + ")";
+      if(_isOOM){
+        _bubbleBody(currentAssistantBubble).textContent=
+          "GPU memory was full. VRAM has been freed — try sending your message again.";
+      } else {
+        _bubbleBody(currentAssistantBubble).textContent=
+          "Chat error: " + (j.message||"unknown") + ". Try again.";
+      }
+    } else {
+      // No bubble yet — create one for the error
+      currentAssistantBubble = appendBubble("ai", _isOOM
+        ? "GPU memory was full. VRAM has been freed — try sending your message again."
+        : "Chat error: " + (j.message||"unknown") + ". Try again.");
     }
   }
   if(j.type==="done"){

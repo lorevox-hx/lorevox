@@ -11,6 +11,10 @@ source "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
 printf '\n=== Starting Lorevox stack ===\n\n'
 
+# Pre-flight: kill zombies and show VRAM before we load anything
+kill_stale_lorevox
+show_vram
+
 start_named_process "Lorevox API" "$API_CMD" "$API_PID_FILE" "$LOG_DIR/api.log"
 start_named_process "Lorevox TTS" "$TTS_CMD" "$TTS_PID_FILE" "$LOG_DIR/tts.log"
 start_named_process "Lorevox UI"  "$UI_CMD"  "$UI_PID_FILE"  "$LOG_DIR/ui.log"
