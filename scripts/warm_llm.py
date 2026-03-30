@@ -27,23 +27,13 @@ CHAT_URL  = f"{LLM_BASE}/api/chat/stream"
 PING_URL  = f"{LLM_BASE}/api/ping"
 
 DUMMY_PAYLOAD = json.dumps({
-    "conv_id":   "warmup-session",
-    "person_id": None,
-    "message":   "hi",
-    "history":   [],
-    "runtime71": {
-        "current_pass":       "warmup",
-        "current_era":        None,
-        "current_mode":       "chat",
-        "affect_state":       "neutral",
-        "affect_confidence":  0.0,
-        "cognitive_mode":     "active",
-        "fatigue_score":      0.0,
-        "paired":             False,
-        "paired_speaker":     None,
-        "visual_signals":     [],
-        "assistant_role":     "interviewer",
-    },
+    "messages": [
+        {"role": "system", "content": "You are a warmup test. Respond with one word."},
+        {"role": "user",   "content": "hi"},
+    ],
+    "temp":     0.7,
+    "max_new":  16,
+    "conv_id":  "warmup-session",
 }).encode()
 
 
