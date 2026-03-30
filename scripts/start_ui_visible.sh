@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'printf "\n*** Script failed. Press Enter to close. ***\n"; read' ERR
 source "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
 printf '\n=== Lorevox UI visible startup ===\n'
