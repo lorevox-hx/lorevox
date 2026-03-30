@@ -394,6 +394,50 @@ def init_db() -> None:
         "CREATE INDEX IF NOT EXISTS idx_attachments_person ON media_attachments(person_id);"
     )
 
+    # -----------------------------
+    # Migrate people: add soft-delete columns if missing (Phase 2 — narrator delete)
+    # -----------------------------
+    people_cols = {
+        row[1] for row in cur.execute("PRAGMA table_info(people);").fetchall()
+    }
+    people_delete_cols = {
+        "is_deleted":     "ALTER TABLE people ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;",
+        "deleted_at":     "ALTER TABLE people ADD COLUMN deleted_at TEXT DEFAULT NULL;",
+        "deleted_by":     "ALTER TABLE people ADD COLUMN deleted_by TEXT DEFAULT NULL;",
+        "delete_reason":  "ALTER TABLE people ADD COLUMN delete_reason TEXT DEFAULT '';",
+        "undo_expires_at":"ALTER TABLE people ADD COLUMN undo_expires_at TEXT DEFAULT NULL;",
+    }
+    for col_name, alter_sql in people_delete_cols.items():
+        if col_name not in people_cols:
+            cur.execute(alter_sql)
+
+    # Index for fast active-narrator queries (exclude soft-deleted)
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_people_active ON people(is_deleted, updated_at);"
+    )
+
+    # -----------------------------
+    # Narrator delete audit log (Phase 2 — append-only)
+    # -----------------------------
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS narrator_delete_audit (
+          id TEXT PRIMARY KEY,
+          action TEXT NOT NULL,
+          person_id TEXT NOT NULL,
+          display_name TEXT NOT NULL DEFAULT '',
+          requested_by TEXT DEFAULT NULL,
+          dependency_counts_json TEXT NOT NULL DEFAULT '{}',
+          result TEXT NOT NULL DEFAULT 'success',
+          error_detail TEXT DEFAULT NULL,
+          ts TEXT NOT NULL
+        );
+        """
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_narrator_audit_ts ON narrator_delete_audit(ts);"
+    )
+
     # Default plan (safe even if empty)
     now = _now_iso()
     cur.execute(
@@ -738,18 +782,31 @@ def update_person(
     return get_person(person_id)
 
 
-def list_people(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+def list_people(limit: int = 50, offset: int = 0, include_deleted: bool = False) -> List[Dict[str, Any]]:
     init_db()
     con = _connect()
-    rows = con.execute(
-        """
-        SELECT id,display_name,role,date_of_birth,place_of_birth,created_at,updated_at
-        FROM people
-        ORDER BY updated_at DESC
-        LIMIT ? OFFSET ?;
-        """,
-        (int(limit), int(offset)),
-    ).fetchall()
+    if include_deleted:
+        rows = con.execute(
+            """
+            SELECT id,display_name,role,date_of_birth,place_of_birth,created_at,updated_at,
+                   is_deleted,deleted_at,undo_expires_at
+            FROM people
+            ORDER BY updated_at DESC
+            LIMIT ? OFFSET ?;
+            """,
+            (int(limit), int(offset)),
+        ).fetchall()
+    else:
+        rows = con.execute(
+            """
+            SELECT id,display_name,role,date_of_birth,place_of_birth,created_at,updated_at
+            FROM people
+            WHERE is_deleted = 0
+            ORDER BY updated_at DESC
+            LIMIT ? OFFSET ?;
+            """,
+            (int(limit), int(offset)),
+        ).fetchall()
     con.close()
     return [dict(r) for r in rows]
 
@@ -1953,3 +2010,289 @@ def list_affect_events(session_id: str, limit: int = 50) -> List[Dict]:
     ).fetchall()
     con.close()
     return [dict(r) for r in rows]
+
+
+# -----------------------------------------------------------------------------
+# Narrator Delete — Phase 2 (dependency inventory, soft/hard delete, restore, audit)
+# -----------------------------------------------------------------------------
+
+def person_delete_inventory(person_id: str) -> Optional[Dict[str, Any]]:
+    """Return dependency counts for a person, used before deletion confirmation."""
+    init_db()
+    con = _connect()
+    person = con.execute(
+        "SELECT id, display_name, is_deleted FROM people WHERE id=?;",
+        (person_id,),
+    ).fetchone()
+    if not person:
+        con.close()
+        return None
+
+    counts = {}
+    tables = [
+        ("profiles", "person_id"),
+        ("timeline_events", "person_id"),
+        ("interview_sessions", "person_id"),
+        ("interview_answers", "person_id"),
+        ("facts", "person_id"),
+        ("life_phases", "person_id"),
+    ]
+    for table, col in tables:
+        row = con.execute(
+            f"SELECT COUNT(*) AS cnt FROM {table} WHERE {col}=?;",  # noqa: S608
+            (person_id,),
+        ).fetchone()
+        counts[table] = row["cnt"] if row else 0
+
+    # Media: count rows where person_id matches (ON DELETE SET NULL)
+    media_row = con.execute(
+        "SELECT COUNT(*) AS cnt FROM media WHERE person_id=?;",
+        (person_id,),
+    ).fetchone()
+    counts["media_owned"] = media_row["cnt"] if media_row else 0
+
+    attach_row = con.execute(
+        "SELECT COUNT(*) AS cnt FROM media_attachments WHERE person_id=?;",
+        (person_id,),
+    ).fetchone()
+    counts["media_attachments"] = attach_row["cnt"] if attach_row else 0
+
+    con.close()
+    return {
+        "person_id": person["id"],
+        "display_name": person["display_name"],
+        "counts": counts,
+        "has_soft_delete": True,
+        "is_deleted": bool(person["is_deleted"]),
+    }
+
+
+def _log_delete_audit(
+    con: sqlite3.Connection,
+    action: str,
+    person_id: str,
+    display_name: str,
+    counts: Dict[str, Any],
+    result: str = "success",
+    error_detail: Optional[str] = None,
+    requested_by: Optional[str] = None,
+) -> None:
+    """Append a row to the narrator_delete_audit table (within caller's transaction)."""
+    con.execute(
+        """
+        INSERT INTO narrator_delete_audit
+            (id, action, person_id, display_name, requested_by, dependency_counts_json, result, error_detail, ts)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """,
+        (
+            _uuid(),
+            action,
+            person_id,
+            display_name,
+            requested_by,
+            _json_dump(counts),
+            result,
+            error_detail,
+            _now_iso(),
+        ),
+    )
+
+
+def soft_delete_person(
+    person_id: str,
+    undo_minutes: int = 10,
+    requested_by: Optional[str] = None,
+    reason: str = "",
+) -> Optional[Dict[str, Any]]:
+    """Mark a person as soft-deleted. Reversible within undo_minutes."""
+    init_db()
+    con = _connect()
+    person = con.execute(
+        "SELECT id, display_name, is_deleted FROM people WHERE id=?;",
+        (person_id,),
+    ).fetchone()
+    if not person:
+        con.close()
+        return None
+    if person["is_deleted"]:
+        con.close()
+        return {"error": "already_deleted", "person_id": person_id}
+
+    now = _now_iso()
+    from datetime import timedelta
+    undo_expires = (datetime.utcnow() + timedelta(minutes=undo_minutes)).isoformat()
+
+    # Get inventory counts before marking deleted
+    inv = person_delete_inventory(person_id)
+    counts = inv["counts"] if inv else {}
+
+    con.execute(
+        """
+        UPDATE people
+        SET is_deleted = 1,
+            deleted_at = ?,
+            deleted_by = ?,
+            delete_reason = ?,
+            undo_expires_at = ?,
+            updated_at = ?
+        WHERE id = ?;
+        """,
+        (now, requested_by, reason or "", undo_expires, now, person_id),
+    )
+
+    _log_delete_audit(con, "soft_delete", person_id, person["display_name"], counts,
+                       result="success", requested_by=requested_by)
+
+    con.commit()
+    con.close()
+
+    logger.info("soft_delete_person: id=%s name=%r undo_expires=%s", person_id, person["display_name"], undo_expires)
+
+    return {
+        "status": "soft_deleted",
+        "person_id": person_id,
+        "display_name": person["display_name"],
+        "undo_expires_at": undo_expires,
+        "counts": counts,
+    }
+
+
+def restore_person(person_id: str, requested_by: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Restore a soft-deleted person if within the undo window."""
+    init_db()
+    con = _connect()
+    person = con.execute(
+        "SELECT id, display_name, is_deleted, undo_expires_at FROM people WHERE id=?;",
+        (person_id,),
+    ).fetchone()
+    if not person:
+        con.close()
+        return None
+    if not person["is_deleted"]:
+        con.close()
+        return {"error": "not_deleted", "person_id": person_id}
+
+    # Check undo window
+    undo_exp = person["undo_expires_at"]
+    if undo_exp:
+        try:
+            exp_dt = datetime.fromisoformat(undo_exp)
+            if datetime.utcnow() > exp_dt:
+                con.close()
+                return {"error": "undo_expired", "person_id": person_id, "undo_expires_at": undo_exp}
+        except ValueError:
+            pass  # If parse fails, allow restore anyway
+
+    now = _now_iso()
+    con.execute(
+        """
+        UPDATE people
+        SET is_deleted = 0,
+            deleted_at = NULL,
+            deleted_by = NULL,
+            delete_reason = '',
+            undo_expires_at = NULL,
+            updated_at = ?
+        WHERE id = ?;
+        """,
+        (now, person_id),
+    )
+
+    _log_delete_audit(con, "restore", person_id, person["display_name"], {},
+                       result="success", requested_by=requested_by)
+
+    con.commit()
+    con.close()
+
+    logger.info("restore_person: id=%s name=%r", person_id, person["display_name"])
+
+    return {
+        "status": "restored",
+        "person_id": person_id,
+        "display_name": person["display_name"],
+    }
+
+
+def hard_delete_person(person_id: str, requested_by: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Permanently and transactionally delete a person and all dependent records.
+
+    The SQLite FK cascade handles most deletions automatically:
+    - profiles, timeline_events, interview_sessions, interview_answers, facts, life_phases → CASCADE
+    - media, media_attachments → SET NULL (person_id nulled, records preserved)
+
+    This function wraps the delete in a transaction for all-or-nothing safety.
+    """
+    init_db()
+
+    # Get inventory before deletion
+    inv = person_delete_inventory(person_id)
+    if not inv:
+        return None
+
+    con = _connect()
+    person = con.execute(
+        "SELECT id, display_name, is_deleted FROM people WHERE id=?;",
+        (person_id,),
+    ).fetchone()
+    if not person:
+        con.close()
+        return None
+
+    display_name = person["display_name"]
+    counts = inv["counts"]
+
+    try:
+        # FK CASCADE handles dependent rows automatically when we delete the people row.
+        # media.person_id and media_attachments.person_id get SET NULL.
+        con.execute("DELETE FROM people WHERE id = ?;", (person_id,))
+
+        _log_delete_audit(con, "hard_delete", person_id, display_name, counts,
+                           result="success", requested_by=requested_by)
+
+        con.commit()
+        logger.info("hard_delete_person: id=%s name=%r counts=%s", person_id, display_name, counts)
+
+    except Exception as exc:
+        con.rollback()
+        # Log the failure
+        try:
+            _log_delete_audit(con, "hard_delete", person_id, display_name, counts,
+                               result="rollback", error_detail=str(exc), requested_by=requested_by)
+            con.commit()
+        except Exception:
+            pass
+        con.close()
+        logger.error("hard_delete_person ROLLBACK: id=%s error=%s", person_id, exc)
+        return {"error": "rollback", "person_id": person_id, "detail": str(exc)}
+
+    con.close()
+
+    return {
+        "status": "hard_deleted",
+        "person_id": person_id,
+        "display_name": display_name,
+        "counts_removed": counts,
+    }
+
+
+def list_delete_audit(limit: int = 50) -> List[Dict[str, Any]]:
+    """Return recent narrator delete audit log entries."""
+    init_db()
+    con = _connect()
+    rows = con.execute(
+        """
+        SELECT id, action, person_id, display_name, requested_by,
+               dependency_counts_json, result, error_detail, ts
+        FROM narrator_delete_audit
+        ORDER BY ts DESC
+        LIMIT ?;
+        """,
+        (int(limit),),
+    ).fetchall()
+    con.close()
+    results = []
+    for r in rows:
+        d = dict(r)
+        d["dependency_counts"] = _json_load(d.pop("dependency_counts_json", "{}"), {})
+        results.append(d)
+    return results

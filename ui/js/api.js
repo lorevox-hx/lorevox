@@ -36,4 +36,7 @@ const API = {
   // v7.4D — Phase 7: facts
   FACTS_ADD:       ORIGIN + "/api/facts/add",
   FACTS_LIST:      (pid) => `${ORIGIN}/api/facts/list?person_id=${encodeURIComponent(pid)}`,
+  // v8 — Phase 2: narrator delete cascade
+  PERSON_INVENTORY: (id) => `${ORIGIN}/api/people/${id}/delete-inventory`,
+  PERSON_RESTORE:   (id) => `${ORIGIN}/api/people/${id}/restore`,
 };

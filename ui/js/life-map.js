@@ -50,6 +50,37 @@
       .replace(/\b\w/g, function (m) { return m.toUpperCase(); });
   }
 
+  /* ── Default 6-period life-arc scaffold ──────────────────── */
+  /* Used when a narrator is selected but no spine periods exist yet.
+     Keeps Life Map from ever appearing empty — the user always sees
+     a meaningful narrative structure they can click into.
+
+     If DOB is available the scaffold computes approximate year ranges;
+     otherwise the periods render with labels only (no dates).          */
+  var _DEFAULT_ERA_DEFS = [
+    { label: "early_childhood",  title: "Early Childhood",  offsetStart: 0,  offsetEnd: 5   },
+    { label: "school_years",     title: "School Years",     offsetStart: 6,  offsetEnd: 12  },
+    { label: "adolescence",      title: "Adolescence",      offsetStart: 13, offsetEnd: 17  },
+    { label: "early_adulthood",  title: "Early Adulthood",  offsetStart: 18, offsetEnd: 30  },
+    { label: "midlife",          title: "Midlife",          offsetStart: 31, offsetEnd: 59  },
+    { label: "later_life",       title: "Later Life",       offsetStart: 60, offsetEnd: null }
+  ];
+
+  function _buildDefaultLifePeriods() {
+    var birthYear = _getBirthYear();
+    return _DEFAULT_ERA_DEFS.map(function (def) {
+      var p = {
+        label:      def.label,
+        start_year: birthYear ? (birthYear + def.offsetStart) : null,
+        end_year:   (birthYear && def.offsetEnd != null) ? (birthYear + def.offsetEnd) : null,
+        places:     [],
+        notes:      [],
+        isScaffold: true           // marks this as a fallback period, not real spine data
+      };
+      return p;
+    });
+  }
+
   /* ── State accessors (defensive) ─────────────────────────── */
   function _personName() {
     return (
@@ -62,13 +93,24 @@
 
   function _getPeriods() {
     if (typeof state === "undefined") return [];
-    if (!state.timeline || !state.timeline.spine) return [];
-    var periods = state.timeline.spine.periods;
-    if (!Array.isArray(periods)) return [];
-    // Guard: only return periods that have a usable label
-    return periods.filter(function (p) {
-      return p && typeof p.label === "string" && p.label.trim() !== "";
-    });
+
+    // Try real spine periods first
+    var hasSpine = state.timeline && state.timeline.spine;
+    if (hasSpine) {
+      var periods = state.timeline.spine.periods;
+      if (Array.isArray(periods)) {
+        var real = periods.filter(function (p) {
+          return p && typeof p.label === "string" && p.label.trim() !== "";
+        });
+        if (real.length > 0) return real;
+      }
+    }
+
+    // Fallback: narrator selected but no spine periods → scaffold
+    var pid = state.person_id || null;
+    if (pid) return _buildDefaultLifePeriods();
+
+    return [];
   }
 
   function _getLocalMemories() {
@@ -231,13 +273,21 @@
     // Status mirrors memoir chapter list: active / has-memories / not-started
     var periodNodes = periods.map(function (period) {
       var isActive     = (activeEra === period.label);
+      var isScaffold   = !!period.isScaffold;
       var memChildren  = _buildMemoryChildren(period);
       var memCount     = memChildren.length;
       var hasMemories  = memCount > 0;
 
-      var start    = period.start_year != null ? period.start_year : "—";
-      var end      = period.end_year   != null ? period.end_year   : null;
-      var subtitle = start + (end != null ? ("–" + end) : "+");
+      // Subtitle: year range when available, plain label otherwise
+      var subtitle;
+      if (period.start_year != null) {
+        var start = period.start_year;
+        var end   = period.end_year != null ? period.end_year : null;
+        subtitle  = start + (end != null ? ("–" + end) : "+");
+      } else {
+        subtitle = isScaffold ? "awaiting story" : "—";
+      }
+
       // Memory count suffix mirrors chapter-status badges in memoir preview
       var countSuffix = memCount > 0 ? (" · " + memCount + " memor" + (memCount === 1 ? "y" : "ies")) : "";
 
@@ -257,23 +307,27 @@
       var topicStr = _prettyEra(period.label) + " · " + subtitle + countSuffix + draftSuffix;
 
       // Style tiers:
-      //  active      → indigo (current working period)
-      //  has content → teal-tinted (In progress equivalent)
-      //  empty       → dim (Not started equivalent)
+      //  active          → indigo solid       (current working period)
+      //  has content     → teal solid         (in-progress equivalent)
+      //  scaffold/empty  → dim dashed         (awaiting story)
+      //  real empty      → dim solid          (mapped but no memories yet)
       var style = isActive
         ? { background: "rgba(99,102,241,.22)", color: "#e2e8f0", border: "1px solid rgba(99,102,241,.55)" }
         : hasMemories
           ? { background: "rgba(20,184,166,.10)", color: "#cbd5e1", border: "1px solid rgba(20,184,166,.28)" }
-          : { background: "rgba(255,255,255,.04)", color: "#94a3b8", border: "1px solid rgba(255,255,255,.10)" };
+          : isScaffold
+            ? { background: "rgba(255,255,255,.02)", color: "#64748b", border: "1px dashed rgba(255,255,255,.12)" }
+            : { background: "rgba(255,255,255,.04)", color: "#94a3b8", border: "1px solid rgba(255,255,255,.10)" };
 
       return {
         id:    "era:" + period.label,
         topic: topicStr,
         style: style,
-        tags:  ["life-period"],
+        tags:  isScaffold ? ["life-period", "scaffold"] : ["life-period"],
         data: {
           kind:       "era",
           era:        period.label,
+          isScaffold: isScaffold,
           start_year: period.start_year != null ? period.start_year : null,
           end_year:   period.end_year   != null ? period.end_year   : null,
           places:     Array.isArray(period.places) ? period.places.filter(Boolean) : [],
@@ -355,29 +409,16 @@
     if (!host || !empty) return;
 
     var pid     = (typeof state !== "undefined" && state.person_id) || null;
-    var spine   = (typeof state !== "undefined" && state.timeline && state.timeline.spine) || null;
-    var periods = _getPeriods();
+    var periods = _getPeriods();   // now returns scaffold when pid exists but spine is empty
     var ready   = !!(pid && periods.length > 0);
 
     host.classList.toggle("hidden", !ready);
     empty.classList.toggle("hidden", ready);
 
     if (!ready) {
-      var msg, hint;
-      if (!pid) {
-        msg  = "No narrator selected.";
-        hint = "Choose a person from the selector above to view their Life Map.";
-      } else if (!spine) {
-        msg  = "The life map is building.";
-        hint = "Share a name, date of birth, and birthplace with Lori in the interview — life periods will appear here as she maps the story.";
-      } else if (periods.length === 0) {
-        msg  = "No life periods yet.";
-        hint = "Continue the interview — Lori will plot life periods here as the story develops.";
-      } else {
-        // Should not reach here, but guard anyway
-        msg  = "Preparing map…";
-        hint = "";
-      }
+      // Only reachable when no narrator is selected (scaffold covers the rest)
+      var msg  = "No narrator selected.";
+      var hint = "Choose a person from the selector above to view their Life Map.";
       var target =
         '<div style="text-align:center; padding: 32px 16px;">' +
           '<div style="font-size:14px; color:#64748b; font-weight:500; margin-bottom:8px;">' + msg + "</div>" +
@@ -577,7 +618,7 @@
     var popover = _el("lifeMapPopover");      // 8.0 popover panel (may be null in 7.4c)
     var isHidden =
       (pane    && pane.classList.contains("hidden")) ||
-      (popover && !popover.hasAttribute("open"));
+      (popover && !popover.hasAttribute("open") && !popover.matches(":popover-open"));
     if (isHidden) {
       _lastSig = null;  // force fresh build next time the panel opens
       return;
@@ -670,6 +711,8 @@
 
   /* ── Register global ──────────────────────────────────────── */
   NS.buildLifeMapFromLorevoxState = buildLifeMapFromLorevoxState;
+  NS._buildDefaultLifePeriods     = _buildDefaultLifePeriods;
+  NS._DEFAULT_ERA_DEFS            = _DEFAULT_ERA_DEFS;
   NS.render                       = render;
   NS.refresh                      = refresh;
   NS.destroy                      = destroy;

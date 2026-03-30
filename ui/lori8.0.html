@@ -1158,6 +1158,60 @@
       border-color: rgba(99,102,241,0.7);
       color: #c7d2fe;
     }
+
+    /* ── v8 Narrator Card Switcher ── */
+    .lv80-active-narrator{
+      display:flex;align-items:center;gap:10px;min-width:280px;max-width:420px;
+      padding:8px 12px;border-radius:12px;cursor:pointer;
+      background:rgba(30,41,59,0.55);border:1px solid rgba(99,102,241,0.22);
+    }
+    .lv80-active-narrator:hover{border-color:rgba(99,102,241,0.45);}
+    .lv80-narrator-avatar{
+      width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+      background:#312e81;color:#c7d2fe;font-weight:700;font-size:12px;flex-shrink:0;
+    }
+    .lv80-narrator-meta{min-width:0;display:flex;flex-direction:column;}
+    .lv80-narrator-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;}
+    .lv80-narrator-name{font-size:14px;color:#e2e8f0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .lv80-narrator-sub{font-size:12px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .lv80-narrator-caret{color:#94a3b8;font-size:13px;flex-shrink:0;}
+
+    .lv80-narrator-switcher{
+      background:#0f172a;border:1px solid rgba(99,102,241,0.28);border-radius:14px;
+      box-shadow:0 24px 64px rgba(0,0,0,.6);padding:16px;width:min(92vw,680px);color:#e2e8f0;
+    }
+    .lv80-narrator-switcher:popover-open{display:block;}
+    .lv80-narrator-switcher::backdrop{background:rgba(0,0,0,.45);backdrop-filter:blur(2px);}
+    .lv80-switcher-head{margin-bottom:14px;}
+    .lv80-switcher-sub{display:block;font-size:12px;color:#94a3b8;margin-top:4px;line-height:1.5;}
+    .lv80-narrator-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+    .lv80-narrator-card{
+      padding:12px;border-radius:12px;background:rgba(30,41,59,.45);border:1px solid rgba(255,255,255,.06);
+      display:flex;gap:10px;align-items:flex-start;
+    }
+    .lv80-narrator-card.active{border-color:rgba(20,184,166,.5);box-shadow:0 0 0 1px rgba(20,184,166,.2) inset;}
+    .lv80-narrator-card-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+    .lv80-narrator-badge{
+      display:inline-flex;font-size:10px;padding:2px 7px;border-radius:999px;
+      background:rgba(99,102,241,.14);color:#c7d2fe;margin-right:6px;
+    }
+    .lv80-narrator-badge.real{background:rgba(20,184,166,.14);color:#5eead4;}
+    .lv80-narrator-badge.test{background:rgba(251,191,36,.14);color:#fcd34d;}
+
+    .lv80-delete-dialog{
+      background:#111827;border:1px solid rgba(239,68,68,.28);border-radius:14px;
+      box-shadow:0 24px 64px rgba(0,0,0,.6);padding:20px;width:min(92vw,520px);color:#e5e7eb;
+    }
+    .lv80-delete-shell h3{margin:0 0 8px;}
+    .lv80-delete-steps{font-size:13px;color:#94a3b8;line-height:1.6;padding-left:20px;}
+    .lv80-delete-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+
+    .lv80-undo-toast{
+      position:fixed;right:20px;bottom:24px;z-index:100;
+      display:flex;align-items:center;gap:10px;
+      background:rgba(15,23,42,.96);border:1px solid rgba(99,102,241,.28);
+      padding:12px 14px;border-radius:12px;color:#e2e8f0;box-shadow:0 12px 30px rgba(0,0,0,.45);
+    }
   </style>
 </head>
 <body>
@@ -1167,11 +1221,23 @@
   <!-- ── HEADER ─────────────────────────────────────────────── -->
   <header id="lv80Header">
 
-    <div>
+    <div style="display:flex;align-items:center;gap:16px;min-width:0;">
       <div class="brand-serif">Lorevox <span class="brand-ver">8.0</span></div>
-      <select id="lv80PersonSelect" onchange="lv80SwitchPerson(this.value)">
+
+      <div id="lv80ActiveNarratorCard" class="lv80-active-narrator" onclick="lv80ToggleNarratorSwitcher()">
+        <div class="lv80-narrator-avatar" id="lv80NarratorAvatar">MT</div>
+        <div class="lv80-narrator-meta">
+          <div class="lv80-narrator-label">Active Narrator</div>
+          <div class="lv80-narrator-name" id="lv80ActiveNarratorName">Loading…</div>
+          <div class="lv80-narrator-sub" id="lv80ActiveNarratorSub">Choose a narrator</div>
+        </div>
+        <div class="lv80-narrator-caret">▾</div>
+      </div>
+
+      <select id="lv80PersonSelect" onchange="lv80SwitchPerson(this.value)" style="display:none">
         <option value="">Loading…</option>
       </select>
+
       <button id="lv80NewBtn" onclick="lv80NewPerson()" title="Start a new narrator">+ New</button>
     </div>
 
@@ -1541,6 +1607,43 @@
     Your story is beginning to take shape.
   </div>
 
+<!-- ── v8 Narrator Switcher Popover ── -->
+<div id="lv80NarratorSwitcher" popover="auto" class="lv80-narrator-switcher">
+  <div class="lv80-switcher-head">
+    <strong>Narrators</strong>
+    <span class="lv80-switcher-sub">Choose carefully — narrator identity controls questionnaire, family tree, life map, and Lori grounding.</span>
+  </div>
+  <div id="lv80NarratorList" class="lv80-narrator-list"></div>
+</div>
+
+<!-- ── v8 Delete Narrator Dialog ── -->
+<div id="lv80DeleteNarratorDialog" popover="manual" class="lv80-delete-dialog">
+  <div class="lv80-delete-shell">
+    <h3>Delete narrator and all associated draft data</h3>
+    <p id="lv80DeleteNarratorText">This is a multi-step delete.</p>
+    <div id="lv80DeleteInventoryCounts" style="margin:8px 0;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:0.85em;display:none;">
+      <strong style="color:#f0c060;">Data that will be affected:</strong>
+      <div id="lv80InventoryList" style="margin-top:4px;line-height:1.6;"></div>
+    </div>
+    <ol class="lv80-delete-steps">
+      <li>Review the narrator you are deleting</li>
+      <li>Type <code>DELETE</code> to confirm</li>
+      <li>Use Undo immediately if you deleted the wrong one</li>
+    </ol>
+    <input id="lv80DeleteNarratorInput" class="bb-input" placeholder="Type DELETE to confirm" oninput="state.narratorDelete.confirmText=this.value">
+    <div class="lv80-delete-actions">
+      <button class="bb-ghost-btn" onclick="lv80CloseDeleteDialog()">Cancel</button>
+      <button class="bb-btn-primary" onclick="lvxDeleteNarratorConfirmed()">Delete Narrator</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── v8 Undo Delete Toast ── -->
+<div id="lv80UndoDeleteToast" class="lv80-undo-toast" hidden>
+  <span>Narrator deleted.</span>
+  <button class="bb-btn-sm" onclick="lvxUndoDeleteNarrator()">Undo</button>
+</div>
+
 </div><!-- /lv80Shell -->
 
 <!-- ── SCRIPTS ────────────────────────────────────────────────
@@ -1765,38 +1868,57 @@ function lv80ShowThinking(visible) {
 /* ── 3. PERSON SELECTOR ──────────────────────────────────────── */
 
 async function lv80LoadPeople() {
+  let people = [];
   try {
     const r = await fetch(API.PEOPLE + "?limit=200");
     const data = await r.json();
-    const people = data?.items || data?.people || data || [];
-    const sel = document.getElementById("lv80PersonSelect");
-    if (!sel || !Array.isArray(people)) return;
-
-    sel.innerHTML = "";
-    if (people.length === 0) {
-      sel.innerHTML = '<option value="">No narrators yet</option>';
-      return;
-    }
-
-    people.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p.person_id || p.id || "";
-      opt.textContent = p.display_name || p.name || p.preferred || p.fullname || "Unknown";
-      sel.appendChild(opt);
-    });
-
-    // Restore previously selected person if available
-    const lastId = state?.person_id;
-    if (lastId && sel.querySelector(`option[value="${lastId}"]`)) {
-      sel.value = lastId;
-    } else if (sel.options.length > 0) {
-      sel.value = sel.options[0].value;
-    }
-
-    console.log("[Lori 8.0] Loaded", people.length, "people.");
+    people = data?.items || data?.people || data || [];
+    // Cache for offline fallback
+    try { localStorage.setItem("lorevox_offline_people", JSON.stringify(people)); } catch {}
   } catch (e) {
-    console.warn("[lv80] Failed to load people:", e);
+    // Offline fallback — read from localStorage cache
+    console.warn("[lv80] API failed, trying localStorage fallback:", e);
+    try {
+      const cached = localStorage.getItem("lorevox_offline_people");
+      if (cached) people = JSON.parse(cached);
+    } catch {}
   }
+
+  // v8: cache for narrator card UI
+  if (state?.narratorUi) {
+    state.narratorUi.peopleCache = Array.isArray(people) ? people : [];
+  }
+
+  const sel = document.getElementById("lv80PersonSelect");
+  if (!sel || !Array.isArray(people)) return;
+
+  sel.innerHTML = "";
+  if (people.length === 0) {
+    sel.innerHTML = '<option value="">No narrators yet</option>';
+    lv80UpdateActiveNarratorCard();
+    return;
+  }
+
+  people.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.person_id || p.id || "";
+    opt.textContent = p.display_name || p.name || p.preferred || p.fullname || "Unknown";
+    sel.appendChild(opt);
+  });
+
+  // Restore previously selected person if available
+  const lastId = state?.person_id || localStorage.getItem(LS_ACTIVE);
+  if (lastId && sel.querySelector(`option[value="${lastId}"]`)) {
+    sel.value = lastId;
+  } else if (sel.options.length > 0) {
+    sel.value = sel.options[0].value;
+  }
+
+  // v8: render narrator cards and update active card
+  lv80RenderNarratorCards();
+  lv80UpdateActiveNarratorCard();
+
+  console.log("[Lori 8.0] Loaded", people.length, "people.");
 }
 
 async function lv80SwitchPerson(personId) {
@@ -1812,12 +1934,12 @@ async function lv80SwitchPerson(personId) {
   }
   lv80UpdatePostureBadge();
 
-  closeMemoirUi();
-  _memoirClearContent();
-
-  await loadPerson(personId);
-  document.getElementById("chatMessages").innerHTML = "";
+  // v8: route through safe narrator switch (hard reset + hydration)
+  await lvxSwitchNarratorSafe(personId);
   _memoirLoadStoredFacts(personId);
+
+  // v8: update narrator card UI
+  lv80UpdateActiveNarratorCard();
 
   const basics = state.profile?.basics || {};
   const hasName = !!(basics.preferred || basics.fullname);
@@ -1883,7 +2005,140 @@ function lv80NewPerson() {
   document.getElementById("chatMessages").innerHTML = "";
   lv80ResetCaptureBar();
   startIdentityOnboarding();
+  lv80UpdateActiveNarratorCard();
 }
+
+/* ── 3b. NARRATOR CARD SWITCHER (v8) ──────────────────────────── */
+
+function lv80NarratorInitials(name){
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  return (parts.slice(0,2).map(p => p[0]?.toUpperCase() || "").join("") || "LV");
+}
+
+function lv80NarratorKind(person){
+  const label = String(person?.display_name || person?.name || "").toLowerCase();
+  if (label.includes("mark twain") || label.includes("chuck norris") || label.includes("test")) return "test";
+  return "real";
+}
+
+function lv80UpdateActiveNarratorCard(){
+  const basics = state?.profile?.basics || {};
+  const name = basics.preferred || basics.preferredName || basics.fullname || basics.fullName || "Choose a narrator";
+  const full = basics.fullname || basics.fullName || name;
+  const dob  = basics.dob || "";
+  const pob  = basics.pob || "";
+  const nameEl = document.getElementById("lv80ActiveNarratorName");
+  const subEl  = document.getElementById("lv80ActiveNarratorSub");
+  const avEl   = document.getElementById("lv80NarratorAvatar");
+  if (nameEl) nameEl.textContent = name;
+  if (subEl)  subEl.textContent  =
+    [full !== name ? full : "", dob, pob].filter(Boolean).join(" · ") || "Choose a narrator";
+  if (avEl)   avEl.textContent = lv80NarratorInitials(name);
+}
+
+function lv80RenderNarratorCards(){
+  const list = document.getElementById("lv80NarratorList");
+  if (!list) return;
+  const people = state?.narratorUi?.peopleCache || [];
+  list.innerHTML = "";
+
+  people.forEach(person => {
+    const pid = person.person_id || person.id || person.uuid;
+    const name = person.display_name || person.name || pid;
+    const kind = lv80NarratorKind(person);
+    const card = document.createElement("div");
+    card.className = "lv80-narrator-card" + (pid === state.person_id ? " active" : "");
+    card.innerHTML = `
+      <div class="lv80-narrator-avatar">${lv80NarratorInitials(name)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <strong style="font-size:14px;color:#e2e8f0;">${esc(name)}</strong>
+          <span class="lv80-narrator-badge ${kind}">${kind === "real" ? "REAL" : "TEST"}</span>
+        </div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:3px;">
+          ${esc((person.date_of_birth || "").toString()) || "DOB unknown"}${person.place_of_birth ? " · " + esc(person.place_of_birth) : ""}
+        </div>
+        <div class="lv80-narrator-card-actions">
+          <button class="bb-btn-sm" onclick="lv80ConfirmNarratorSwitch('${pid}')">Open</button>
+          <button class="bb-ghost-btn" onclick="lvxStageDeleteNarrator('${pid}')">Delete</button>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function lv80ToggleNarratorSwitcher(){
+  const pop = document.getElementById("lv80NarratorSwitcher");
+  if (!pop) return;
+  lv80RenderNarratorCards();
+  try{
+    if (pop.matches(":popover-open")) pop.hidePopover();
+    else pop.showPopover();
+  }catch(_){}
+}
+
+function lv80ConfirmNarratorSwitch(pid){
+  const pop = document.getElementById("lv80NarratorSwitcher");
+  try{ if (pop?.matches(":popover-open")) pop.hidePopover(); }catch(_){}
+  lv80SwitchPerson(pid);
+}
+
+function lv80OpenDeleteDialog(){
+  const label = state?.narratorDelete?.targetLabel || "this narrator";
+  const textEl = document.getElementById("lv80DeleteNarratorText");
+  if (textEl) textEl.textContent =
+    `You are deleting ${label}. This should be used for false test data or narrators you intentionally want removed.`;
+  const inputEl = document.getElementById("lv80DeleteNarratorInput");
+  if (inputEl) inputEl.value = "";
+
+  // v8 Phase 2: render dependency inventory counts
+  const invPanel = document.getElementById("lv80DeleteInventoryCounts");
+  const invList  = document.getElementById("lv80InventoryList");
+  const counts = state?.narratorDelete?.inventory;
+  if (invPanel && invList && counts) {
+    const labels = {
+      profiles: "Profile records",
+      timeline_events: "Timeline events",
+      interview_sessions: "Interview sessions",
+      interview_answers: "Interview answers",
+      facts: "Facts",
+      life_phases: "Life phases",
+      media_owned: "Media files (will be unlinked)",
+      media_attachments: "Media attachments (will be unlinked)"
+    };
+    let html = "";
+    for (const [k, v] of Object.entries(counts)) {
+      if (v > 0) html += `<div>${labels[k] || k}: <strong>${v}</strong></div>`;
+    }
+    if (html) {
+      invList.innerHTML = html;
+      invPanel.style.display = "block";
+    } else {
+      invPanel.style.display = "none";
+    }
+  } else if (invPanel) {
+    invPanel.style.display = "none";
+  }
+
+  try{ document.getElementById("lv80DeleteNarratorDialog").showPopover(); }catch(_){}
+}
+
+function lv80CloseDeleteDialog(){
+  try{ document.getElementById("lv80DeleteNarratorDialog").hidePopover(); }catch(_){}
+}
+
+function lv80ShowUndoDelete(){
+  const toast = document.getElementById("lv80UndoDeleteToast");
+  if (!toast) return;
+  toast.hidden = false;
+  setTimeout(() => { toast.hidden = true; }, 10000);
+}
+
+/* Expose to window for app.js delete flow callbacks */
+window.lv80OpenDeleteDialog  = lv80OpenDeleteDialog;
+window.lv80CloseDeleteDialog = lv80CloseDeleteDialog;
+window.lv80ShowUndoDelete    = lv80ShowUndoDelete;
 
 /* ── 4. CAPTURE BAR ──────────────────────────────────────────── */
 
@@ -3618,6 +3873,7 @@ async function lv80Init() {
       // Fire once profile is ready and chat is still empty
       if (_name && _dob && _chat && _chat.children.length === 0) {
         clearInterval(_pollWelcome);
+        lv80UpdateActiveNarratorCard(); // v8: update card after profile loads
         const _pob = _basics.pob || null;
         sendSystemPrompt(
           `[SYSTEM: You are resuming a life-archive session with ${_name}, ` +

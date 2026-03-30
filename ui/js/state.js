@@ -9,6 +9,30 @@ let state = {
   person_id: null,
   profile: {basics:{}, kinship:[], pets:[]},
   chat: {conv_id: null},
+
+  /* ── v8 Narrator UI state ─────────────────────────────────── */
+  narratorUi: {
+    switcherOpen: false,
+    pendingSwitchTo: null,
+    activeLabel: null,
+    peopleCache: [],
+    grouped: {
+      real: [],
+      test: [],
+      archived: []
+    }
+  },
+
+  /* ── v8 Narrator delete workflow ──────────────────────────── */
+  narratorDelete: {
+    targetId: null,
+    targetLabel: null,
+    confirmText: "",
+    step: 0,
+    backup: null,
+    undoExpiresAt: null
+  },
+
   interview: {
     session_id:    null,
     question_id:   null,

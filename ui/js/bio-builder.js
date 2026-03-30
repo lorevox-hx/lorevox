@@ -230,6 +230,36 @@
 
   function _bb() { return _ensureState(); }
 
+  /* ── v8 Narrator-switch hard reset ─────────────────────────
+     Called from app.js lvxSwitchNarratorSafe() BEFORE profile
+     hydration.  Runs even when Bio Builder popover is closed.
+  ─────────────────────────────────────────────────────────── */
+  function _resetNarratorScopedState(newId) {
+    var bb = _bb(); if (!bb) return;
+
+    bb.personId      = newId || null;
+    bb.quickItems    = [];
+    bb.questionnaire = {};
+    bb.sourceCards   = [];
+    bb.candidates    = {
+      people: [], relationships: [], events: [], memories: [], places: [], documents: []
+    };
+
+    if (!bb.familyTreeDraftsByPerson)  bb.familyTreeDraftsByPerson  = {};
+    if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
+  }
+
+  /* ── v8 Explicit narrator-switch entry point ───────────────
+     Called from app.js after loadPerson() completes.
+     Resets narrator-scoped state, then re-hydrates from the
+     newly loaded profile.
+  ─────────────────────────────────────────────────────────── */
+  function _onNarratorSwitch(newId) {
+    var bb = _bb(); if (!bb) return;
+    _resetNarratorScopedState(newId);
+    _hydrateQuestionnaireFromProfile(bb);
+  }
+
   /* ───────────────────────────────────────────────────────────
      PERSISTENCE (v4)
      Persist FT/LT drafts to localStorage per narrator.
@@ -272,15 +302,17 @@
       var ftRaw = localStorage.getItem(_LS_FT_PREFIX + pid);
       if (ftRaw) {
         var ftObj = JSON.parse(ftRaw);
-        if (ftObj && ftObj.d && Array.isArray(ftObj.d.nodes)) {
-          bb.familyTreeDraftsByPerson[pid] = ftObj.d;
+        var ftD = ftObj && (ftObj.d || ftObj.data);
+        if (ftD && Array.isArray(ftD.nodes)) {
+          bb.familyTreeDraftsByPerson[pid] = ftD;
         }
       }
       var ltRaw = localStorage.getItem(_LS_LT_PREFIX + pid);
       if (ltRaw) {
         var ltObj = JSON.parse(ltRaw);
-        if (ltObj && ltObj.d && Array.isArray(ltObj.d.nodes)) {
-          bb.lifeThreadsDraftsByPerson[pid] = ltObj.d;
+        var ltD = ltObj && (ltObj.d || ltObj.data);
+        if (ltD && Array.isArray(ltD.nodes)) {
+          bb.lifeThreadsDraftsByPerson[pid] = ltD;
         }
       }
     } catch (e) {
@@ -322,6 +354,102 @@
     if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
     // v4: restore persisted drafts for this narrator
     _loadDrafts(newId);
+    // v6-fix: hydrate questionnaire from active profile if empty
+    _hydrateQuestionnaireFromProfile(bb);
+  }
+
+  /* ── v6-fix: Reverse hydration (profile → questionnaire) ── */
+  /* One-way: only fills empty questionnaire sections from profile.
+     NEVER overwrites existing Bio Builder questionnaire data.
+     This fixes the bug where opening Bio Builder for an existing
+     person shows a blank questionnaire even though profile has data. */
+  function _hydrateQuestionnaireFromProfile(bb) {
+    if (!bb) return;
+    try {
+      if (typeof state === "undefined" || !state.profile || !state.profile.basics) return;
+    } catch (_) { return; }
+    var basics = state.profile.basics;
+
+    // ── Personal section hydration ──
+    var q = bb.questionnaire.personal;
+    var personalEmpty = !q || !_hasAnyValue(q);
+    if (personalEmpty) {
+      bb.questionnaire.personal = {
+        fullName:      basics.fullname              || basics.legalFirstName
+                         ? [basics.legalFirstName || "", basics.legalMiddleName || "", basics.legalLastName || ""].filter(Boolean).join(" ").trim()
+                         : "",
+        preferredName: basics.preferred             || "",
+        birthOrder:    basics.birthOrder            || "",
+        dateOfBirth:   basics.dob                   || "",
+        timeOfBirth:   basics.timeOfBirth           || basics.timeOfBirthDisplay || "",
+        placeOfBirth:  basics.placeOfBirthNormalized || basics.pob || basics.placeOfBirthRaw || "",
+        zodiacSign:    basics.zodiacSign            || ""
+      };
+      // Prefer existing fullname if it exists as a single field
+      if (basics.fullname && basics.fullname.trim()) {
+        bb.questionnaire.personal.fullName = basics.fullname.trim();
+      }
+      // Auto-derive zodiac from DOB if not already set
+      if (bb.questionnaire.personal.dateOfBirth && !bb.questionnaire.personal.zodiacSign) {
+        var derived = deriveZodiacFromDob(bb.questionnaire.personal.dateOfBirth);
+        if (derived) bb.questionnaire.personal.zodiacSign = derived;
+      }
+    }
+
+    // ── Parents section hydration from profile kinship ──
+    if (state.profile.kinship && Array.isArray(state.profile.kinship.parents)) {
+      var existingParents = bb.questionnaire.parents;
+      var parentsEmpty = !existingParents || (Array.isArray(existingParents) && existingParents.length === 0)
+        || (!Array.isArray(existingParents) && !_hasAnyValue(existingParents));
+      if (parentsEmpty && state.profile.kinship.parents.length > 0) {
+        bb.questionnaire.parents = state.profile.kinship.parents.map(function (p) {
+          return {
+            relation:          p.relation           || "",
+            firstName:         p.firstName           || "",
+            middleName:        p.middleName          || "",
+            lastName:          p.lastName             || "",
+            maidenName:        p.maidenName           || "",
+            birthDate:         p.birthDate            || "",
+            birthPlace:        p.birthPlace           || "",
+            occupation:        p.occupation           || "",
+            notableLifeEvents: p.notableLifeEvents   || "",
+            notes:             p.notes                || ""
+          };
+        });
+      }
+    }
+
+    // ── Siblings section hydration from profile kinship ──
+    if (state.profile.kinship && Array.isArray(state.profile.kinship.siblings)) {
+      var existingSiblings = bb.questionnaire.siblings;
+      var siblingsEmpty = !existingSiblings || (Array.isArray(existingSiblings) && existingSiblings.length === 0)
+        || (!Array.isArray(existingSiblings) && !_hasAnyValue(existingSiblings));
+      if (siblingsEmpty && state.profile.kinship.siblings.length > 0) {
+        bb.questionnaire.siblings = state.profile.kinship.siblings.map(function (s) {
+          return {
+            relation:              s.relation              || "",
+            firstName:             s.firstName              || "",
+            middleName:            s.middleName             || "",
+            lastName:              s.lastName                || "",
+            birthOrder:            s.birthOrder              || "",
+            uniqueCharacteristics: s.uniqueCharacteristics   || "",
+            sharedExperiences:     s.sharedExperiences       || "",
+            memories:              s.memories                || "",
+            notes:                 s.notes                   || ""
+          };
+        });
+      }
+    }
+  }
+
+  /* Check if an object has any non-empty string values */
+  function _hasAnyValue(obj) {
+    if (!obj || typeof obj !== "object") return false;
+    if (Array.isArray(obj)) return obj.length > 0;
+    return Object.keys(obj).some(function (k) {
+      var v = obj[k];
+      return v && String(v).trim() !== "";
+    });
   }
 
   /* ───────────────────────────────────────────────────────────
@@ -329,6 +457,29 @@
   ─────────────────────────────────────────────────────────── */
 
   function _el(id) { return document.getElementById(id); }
+
+  /* ── v7: Inline confirmation dialog (replaces native confirm()) ── */
+  function _showInlineConfirm(message, onConfirm) {
+    var existing = document.getElementById("bbInlineConfirm");
+    if (existing) existing.remove();
+    var overlay = document.createElement("div");
+    overlay.id = "bbInlineConfirm";
+    overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:99999;display:flex;align-items:center;justify-content:center;";
+    var box = document.createElement("div");
+    box.style.cssText = "background:#fff;border-radius:8px;padding:20px 24px;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.2);text-align:center;font-family:inherit;";
+    box.innerHTML = '<p style="margin:0 0 16px;font-size:14px;color:#1e293b;">' + message + '</p>'
+      + '<div style="display:flex;gap:8px;justify-content:center;">'
+      + '<button id="bbConfirmCancel" style="padding:6px 16px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;cursor:pointer;font-size:13px;">Cancel</button>'
+      + '<button id="bbConfirmOk" style="padding:6px 16px;border:none;border-radius:4px;background:#ef4444;color:#fff;cursor:pointer;font-size:13px;">Delete</button>'
+      + '</div>';
+    overlay.appendChild(box);
+    // Append inside the popover (top layer) so overlay is visible above it
+    var popover = document.getElementById("bioBuilderPopover");
+    (popover || document.body).appendChild(overlay);
+    document.getElementById("bbConfirmCancel").onclick = function () { overlay.remove(); };
+    document.getElementById("bbConfirmOk").onclick = function () { overlay.remove(); onConfirm(); };
+    overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+  }
 
   function _uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -1025,6 +1176,7 @@
 
   // v6: Graph mode state — "cards" (default) or "graph"
   var _ftViewMode = "cards";
+  var FT_VIEW_MODES = ["cards", "graph", "scaffold"];
   var _ltViewMode = "cards";
 
   /* ───────────────────────────────────────────────────────────
@@ -1150,7 +1302,7 @@
 
   function render() {
     var host = _el("bioBuilderPopover");
-    if (!host || !host.hasAttribute("open")) return;
+    if (!host || (!host.hasAttribute("open") && !host.matches(":popover-open"))) return;
     var pid = _currentPersonId();
     _personChanged(pid);
     _renderHeader();
@@ -1222,7 +1374,7 @@
       '<div class="bb-section-title">Quick Capture</div>'
       + '<div class="bb-quick-entry">'
       +   '<div class="bb-entry-row">'
-      +     '<input id="bbFactInput" class="bb-input" type="text" placeholder="Add a quick fact — e.g. Janice was born in Spokane, WA in 1939" />'
+      +     '<input id="bbFactInput" class="bb-input" type="text" placeholder="Add a quick fact about the narrator" />'
       +     '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._addFact()">Add Fact</button>'
       +   '</div>'
       +   '<textarea id="bbNoteInput" class="bb-textarea" placeholder="Paste text, type notes, or add anything biographical — no structure required…" rows="4"></textarea>'
@@ -1236,6 +1388,16 @@
       +   '<button class="bb-ghost-btn" onclick="window.LorevoxBioBuilder._switchTab(\'questionnaire\')">📋 Open Questionnaire</button>'
       +   '<button class="bb-ghost-btn" onclick="window.LorevoxBioBuilder._switchTab(\'sources\')">📁 Add Documents</button>'
       + '</div>';
+    // Dynamically set placeholder using current narrator profile
+    var factInput = _el("bbFactInput");
+    try {
+      if (factInput && typeof state !== "undefined" && state.profile && state.profile.basics) {
+        var name = state.profile.basics.preferred || "the narrator";
+        var pob  = state.profile.basics.pob || "their hometown";
+        var year = (state.profile.basics.dob || "").substring(0, 4) || "YYYY";
+        factInput.placeholder = "Add a quick fact \u2014 e.g. " + name + " was born in " + pob + " in " + year;
+      }
+    } catch (_) {}
   }
 
   /* ── Questionnaire Tab ──────────────────────────────────── */
@@ -1814,13 +1976,20 @@
     _ftEditNode(node.id);
   }
 
-  function _ftDeleteNode(nodeId) {
+  function _ftDeleteNode(nodeId, confirmed) {
     var pid = _currentPersonId(); if (!pid) return;
     var draft = _ftDraft(pid);
-    // v4: confirm delete if node has edges
+    // v7 fix: inline confirmation instead of native confirm() dialog
     var edgeCount = draft.edges.filter(function (e) { return e.from === nodeId || e.to === nodeId; }).length;
-    if (edgeCount > 0 && !confirm("This person has " + edgeCount + " connection(s). Delete anyway?")) return;
+    if (edgeCount > 0 && !confirmed) {
+      _showInlineConfirm(
+        "This person has " + edgeCount + " connection(s). Delete anyway?",
+        function () { _ftDeleteNode(nodeId, true); }
+      );
+      return;
+    }
     draft.nodes = draft.nodes.filter(function (n) { return n.id !== nodeId; });
+    // v7 fix: auto-clean orphan edges when node is deleted (V2-F04)
     draft.edges = draft.edges.filter(function (e) { return e.from !== nodeId && e.to !== nodeId; });
     _persistDrafts(pid);
     _renderActiveTab();
@@ -1949,26 +2118,40 @@
     var bb = _bb(); if (!bb) return;
     var draft = _ftDraft(pid);
 
-    // Ensure narrator root exists
-    var hasNarrator = draft.nodes.some(function (n) { return n.role === "narrator"; });
+    // Ensure narrator root exists — v7 fix: also match by display name to avoid duplicates
+    var q = bb.questionnaire.personal || {};
+    var narratorFullName = (q.fullName || "").trim();
+    var narratorPrefName = (q.preferredName || "").trim();
+    var hasNarrator = draft.nodes.some(function (n) {
+      if (n.role === "narrator") return true;
+      // Also check if any existing node matches the narrator's name (prevents duplicate on re-seed)
+      var dn = _ftNodeDisplayName(n);
+      if (narratorFullName && dn === narratorFullName) return true;
+      if (narratorPrefName && dn === narratorPrefName) return true;
+      return false;
+    });
     if (!hasNarrator) {
-      var q = bb.questionnaire.personal || {};
       var narratorNode = _ftMakeNode("narrator", {
-        firstName: q.fullName ? q.fullName.split(/\s+/)[0] : "",
-        lastName: q.fullName ? q.fullName.split(/\s+/).slice(-1)[0] : "",
-        preferredName: q.preferredName || "",
+        firstName: narratorFullName ? narratorFullName.split(/\s+/)[0] : "",
+        lastName: narratorFullName ? narratorFullName.split(/\s+/).slice(-1)[0] : "",
+        preferredName: narratorPrefName,
         source: "questionnaire"
       });
       draft.nodes.push(narratorNode);
     }
-    var narratorId = draft.nodes.find(function (n) { return n.role === "narrator"; }).id;
+    // v7 fix: find narrator by role OR type OR display name (handles dual-schema)
+    var _narr = draft.nodes.find(function (n) { return n.role === "narrator" || n.type === "narrator"; });
+    if (!_narr && narratorFullName) _narr = draft.nodes.find(function (n) { return _ftNodeDisplayName(n) === narratorFullName; });
+    if (!_narr && narratorPrefName) _narr = draft.nodes.find(function (n) { return _ftNodeDisplayName(n) === narratorPrefName; });
+    if (!_narr) return; // safety
+    var narratorId = _narr.id;
 
     // Seed parents
     var parents = Array.isArray(bb.questionnaire.parents) ? bb.questionnaire.parents : (bb.questionnaire.parents ? [bb.questionnaire.parents] : []);
     parents.forEach(function (p) {
       var name = [p.firstName, p.middleName, p.lastName].filter(Boolean).join(" ");
       if (!name) return;
-      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "parent"); });
+      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "parent" || n.type === "parent"); });
       if (exists) return;
       var node = _ftMakeNode("parent", {
         firstName: p.firstName || "", middleName: p.middleName || "", lastName: p.lastName || "",
@@ -1987,7 +2170,7 @@
     sibs.forEach(function (s) {
       var name = [s.firstName, s.middleName, s.lastName].filter(Boolean).join(" ");
       if (!name) return;
-      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && n.role === "sibling"; });
+      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "sibling" || n.type === "sibling"); });
       if (exists) return;
       var node = _ftMakeNode("sibling", {
         firstName: s.firstName || "", middleName: s.middleName || "", lastName: s.lastName || "",
@@ -2005,7 +2188,7 @@
     gps.forEach(function (g) {
       var name = [g.firstName, g.lastName].filter(Boolean).join(" ");
       if (!name) return;
-      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && n.role === "grandparent"; });
+      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "grandparent" || n.type === "grandparent"); });
       if (exists) return;
       var node = _ftMakeNode("grandparent", {
         firstName: g.firstName || "", lastName: g.lastName || "",
@@ -2015,6 +2198,8 @@
       draft.edges.push(_ftMakeEdge(narratorId, node.id, "biological", "grandparent", ""));
     });
 
+    // v7: auto-clean any orphan edges after seeding
+    _ftCleanOrphanEdges(pid);
     _persistDrafts(pid);
     _renderActiveTab();
   }
@@ -2050,8 +2235,8 @@
       return "biological";
     };
 
-    // Ensure narrator root
-    var hasNarrator = draft.nodes.some(function (n) { return n.role === "narrator"; });
+    // Ensure narrator root — v7 fix: check both role and type
+    var hasNarrator = draft.nodes.some(function (n) { return n.role === "narrator" || n.type === "narrator"; });
     if (!hasNarrator) {
       var pName = _currentPersonName() || "";
       draft.nodes.push(_ftMakeNode("narrator", {
@@ -2059,7 +2244,9 @@
         preferredName: pName, source: "candidate"
       }));
     }
-    var narratorId = draft.nodes.find(function (n) { return n.role === "narrator"; }).id;
+    var _narrC = draft.nodes.find(function (n) { return n.role === "narrator" || n.type === "narrator"; });
+    if (!_narrC) return;
+    var narratorId = _narrC.id;
 
     var people = (bb.candidates.people || []);
     people.forEach(function (c) {
@@ -2250,6 +2437,13 @@
       return;
     }
 
+    // v7: Scaffold mode — 4-generation ancestor tree layout
+    if (_ftViewMode === "scaffold") {
+      html += _renderFTScaffold(pid);
+      container.innerHTML = html;
+      return;
+    }
+
     FT_ROLES.forEach(function (role) {
       var nodes = groups[role];
       if (!nodes.length) return;
@@ -2352,11 +2546,17 @@
     _ltEditNode(node.id);
   }
 
-  function _ltDeleteNode(nodeId) {
+  function _ltDeleteNode(nodeId, confirmed) {
     var pid = _currentPersonId(); if (!pid) return;
     var draft = _ltDraft(pid);
     var edgeCount = draft.edges.filter(function (e) { return e.from === nodeId || e.to === nodeId; }).length;
-    if (edgeCount > 0 && !confirm("This thread node has " + edgeCount + " link(s). Delete anyway?")) return;
+    if (edgeCount > 0 && !confirmed) {
+      _showInlineConfirm(
+        "This thread node has " + edgeCount + " link(s). Delete anyway?",
+        function () { _ltDeleteNode(nodeId, true); }
+      );
+      return;
+    }
     draft.nodes = draft.nodes.filter(function (n) { return n.id !== nodeId; });
     draft.edges = draft.edges.filter(function (e) { return e.from !== nodeId && e.to !== nodeId; });
     _persistDrafts(pid);
@@ -2607,7 +2807,7 @@
       html += '<div class="lt-group' + (collapsed ? ' lt-group-collapsed' : '') + '">';
       html += '<div class="lt-group-label" onclick="window.LorevoxBioBuilder._toggleGroupCollapse(\'lt\',\'' + type + '\')" style="cursor:pointer">'
         + '<span class="ft-collapse-arrow">' + (collapsed ? '▸' : '▾') + '</span> '
-        + (typeIcons[type] || '') + ' ' + type + 's <span class="ft-group-count">(' + nodes.length + ')</span></div>';
+        + (typeIcons[type] || '') + ' ' + (type === "memory" ? "memories" : type + 's') + ' <span class="ft-group-count">(' + nodes.length + ')</span></div>';
       if (collapsed) { html += '</div>'; return; }
       html += '<div class="lt-cards">';
       nodes.forEach(function (n) {
@@ -2835,9 +3035,273 @@
     return svg;
   }
 
+  /* ── v7: 4-Generation Scaffold Renderer ───────────────── */
+
+  var _SCAFFOLD_GEN_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b"];
+  var _SCAFFOLD_GEN_LABELS = ["Narrator","Parents","Grandparents","Great-Grandparents"];
+
+  function _scaffoldFindNodeByRoleAndName(draft, role, name) {
+    return draft.nodes.find(function (n) {
+      return n.role === role && _ftNodeDisplayName(n) === name;
+    });
+  }
+
+  function _scaffoldFindParentsOf(draft, nodeId) {
+    // Find nodes connected to nodeId via parent_of or biological/step/adoptive edge where nodeId is the child
+    var parentIds = [];
+    draft.edges.forEach(function (e) {
+      if (e.to === nodeId || e.from === nodeId) {
+        var otherNodeId = e.from === nodeId ? e.to : e.from;
+        var otherNode = draft.nodes.find(function (n) { return n.id === otherNodeId; });
+        if (otherNode && (otherNode.role === "parent" || otherNode.role === "grandparent")) {
+          parentIds.push(otherNodeId);
+        }
+      }
+    });
+    return parentIds;
+  }
+
+  // v7: helper to get effective role from either .role or .type field
+  function _scaffoldEffectiveRole(n) {
+    if (!n) return "other";
+    // Prefer .role if it's a known FT role; fall back to .type
+    var r = n.role || n.type || "other";
+    if (r === "person") r = n.role || "other"; // "person" is generic, use role if available
+    return r;
+  }
+
+  function _scaffoldBuildTree(draft) {
+    // Build a 4-generation ancestor tree: narrator at center, parents, grandparents, great-grandparents
+    var narrator = draft.nodes.find(function (n) { return _scaffoldEffectiveRole(n) === "narrator"; });
+    if (!narrator) {
+      narrator = draft.nodes[0]; // fallback to first node
+    }
+    if (!narrator) return null;
+
+    // Generation 1: narrator
+    var tree = {
+      node: narrator,
+      gen: 0,
+      children: []
+    };
+
+    // Find parent-role nodes — first try via edges, then fall back to role matching
+    var parentNodes = [];
+
+    // Method 1: find via edges (if edges have valid from/to)
+    draft.edges.forEach(function (e) {
+      if (!e.from || !e.to) return; // skip orphan edges
+      var parentId = null;
+      if (e.from === narrator.id) parentId = e.to;
+      else if (e.to === narrator.id) parentId = e.from;
+      if (parentId) {
+        var pn = draft.nodes.find(function (n) { return n.id === parentId && _scaffoldEffectiveRole(n) === "parent"; });
+        if (pn && parentNodes.indexOf(pn) < 0) parentNodes.push(pn);
+      }
+    });
+
+    // Method 2: if no parents found via edges, find all parent-role nodes directly
+    if (parentNodes.length === 0) {
+      draft.nodes.forEach(function (n) {
+        if (n.id !== narrator.id && _scaffoldEffectiveRole(n) === "parent") {
+          parentNodes.push(n);
+        }
+      });
+    }
+
+    // Pad to 2 parent slots
+    while (parentNodes.length < 2) parentNodes.push(null);
+
+    var _emptyGen2 = function () {
+      return { node: null, gen: 2, children: [{ node: null, gen: 3, children: [] }, { node: null, gen: 3, children: [] }] };
+    };
+
+    // v7 fix: track grandparent IDs already assigned to prevent duplicate placement
+    var _usedGpIds = {};
+    parentNodes.forEach(function (p) { if (p) _usedGpIds[p.id] = true; });
+    _usedGpIds[narrator.id] = true;
+
+    tree.children = parentNodes.slice(0, 2).map(function (pn) {
+      if (!pn) return { node: null, gen: 1, children: [_emptyGen2(), _emptyGen2()] };
+
+      // Find grandparent-role nodes connected to this parent
+      var gpNodes = [];
+      draft.edges.forEach(function (e) {
+        if (!e.from || !e.to) return;
+        var gpId = null;
+        if (e.from === pn.id) gpId = e.to;
+        else if (e.to === pn.id) gpId = e.from;
+        if (gpId && gpId !== narrator.id && !_usedGpIds[gpId]) {
+          var gn = draft.nodes.find(function (n) { return n.id === gpId && _scaffoldEffectiveRole(n) === "grandparent"; });
+          if (gn && gpNodes.indexOf(gn) < 0) gpNodes.push(gn);
+        }
+      });
+
+      // Fallback: find grandparent-role nodes not yet placed
+      if (gpNodes.length === 0) {
+        draft.nodes.forEach(function (n) {
+          if (!_usedGpIds[n.id] && _scaffoldEffectiveRole(n) === "grandparent" && gpNodes.length < 2) {
+            gpNodes.push(n);
+          }
+        });
+      }
+
+      // Mark these grandparents as used so the next parent gets different ones
+      gpNodes.forEach(function (gn) { if (gn) _usedGpIds[gn.id] = true; });
+
+      while (gpNodes.length < 2) gpNodes.push(null);
+
+      return {
+        node: pn, gen: 1,
+        children: gpNodes.slice(0, 2).map(function (gn) {
+          return {
+            node: gn, gen: 2,
+            children: [{ node: null, gen: 3, children: [] }, { node: null, gen: 3, children: [] }]
+          };
+        })
+      };
+    });
+
+    return tree;
+  }
+
+  function _scaffoldNodeHtml(nodeOrNull, gen) {
+    var color = _SCAFFOLD_GEN_COLORS[gen] || "#94a3b8";
+    if (!nodeOrNull) {
+      return '<div class="scaffold-node scaffold-empty" style="border-color:' + color + ';">'
+        + '<div class="scaffold-node-name">Add Ancestor</div>'
+        + '<div class="scaffold-node-meta">' + _SCAFFOLD_GEN_LABELS[gen] + '</div>'
+        + '</div>';
+    }
+    var n = nodeOrNull;
+    var name = _ftNodeDisplayName(n);
+    var meta = [];
+    if (n.birthDate) meta.push("b. " + n.birthDate);
+    if (n.deceased) meta.push("deceased");
+    if (n.uncertainty) meta.push(n.uncertainty);
+    var badges = '';
+    if (n.source) badges += '<span class="scaffold-badge">' + _esc(n.source) + '</span>';
+    if (n.deceased) badges += '<span class="scaffold-badge scaffold-badge-dec">deceased</span>';
+
+    return '<div class="scaffold-node" style="border-color:' + color + ';" onclick="window.LorevoxBioBuilder._ftEditNode(\'' + n.id + '\')">'
+      + '<div class="scaffold-node-name">' + _esc(name) + '</div>'
+      + (meta.length ? '<div class="scaffold-node-meta">' + _esc(meta.join(" · ")) + '</div>' : '')
+      + badges
+      + '</div>';
+  }
+
+  function _renderFTScaffold(pid) {
+    var draft = _ftDraft(pid);
+    var tree = _scaffoldBuildTree(draft);
+    if (!tree) {
+      return '<div class="scaffold-empty-state">No nodes yet. Add a narrator to see the 4-generation scaffold.</div>';
+    }
+
+    // Collect additional nodes not in the scaffold (siblings, spouses, children, chosen_family)
+    var scaffoldIds = {};
+    function _collectIds(t) {
+      if (t.node) scaffoldIds[t.node.id] = true;
+      (t.children || []).forEach(_collectIds);
+    }
+    _collectIds(tree);
+    var otherNodes = draft.nodes.filter(function (n) { return !scaffoldIds[n.id]; });
+
+    // Use effective role for grouping other nodes
+    var _eRole = _scaffoldEffectiveRole;
+
+    // Render CSS + HTML
+    var css = '<style>'
+      + '.scaffold-wrap { font-family:inherit; }'
+      + '.scaffold-gen { display:flex; justify-content:center; gap:12px; margin-bottom:4px; flex-wrap:wrap; }'
+      + '.scaffold-connector { text-align:center; color:#cbd5e1; font-size:18px; margin:2px 0; }'
+      + '.scaffold-node { width:140px; padding:10px; border-radius:8px; background:#fff; border-top:4px solid #ccc;'
+      + '  text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; transition:transform 0.15s; }'
+      + '.scaffold-node:hover { transform:translateY(-3px); box-shadow:0 4px 12px rgba(0,0,0,0.12); }'
+      + '.scaffold-empty { border-style:dashed; border-width:2px; opacity:0.5; background:transparent; cursor:default; }'
+      + '.scaffold-node-name { font-size:0.85rem; font-weight:600; margin-bottom:2px; }'
+      + '.scaffold-node-meta { font-size:0.7rem; color:#64748b; }'
+      + '.scaffold-badge { display:inline-block; font-size:0.6rem; padding:1px 5px; border-radius:8px; background:#e2e8f0; color:#475569; margin-top:4px; }'
+      + '.scaffold-badge-dec { background:#fecaca; color:#991b1b; }'
+      + '.scaffold-gen-label { text-align:center; font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }'
+      + '.scaffold-others { margin-top:16px; padding-top:12px; border-top:1px dashed #e2e8f0; }'
+      + '.scaffold-others-label { font-size:0.75rem; color:#94a3b8; margin-bottom:8px; text-transform:uppercase; }'
+      + '.scaffold-others-row { display:flex; flex-wrap:wrap; gap:8px; }'
+      + '</style>';
+
+    var html = css + '<div class="scaffold-wrap">';
+
+    // Gen 4: Great-grandparents (8 slots)
+    html += '<div class="scaffold-gen-label">' + _SCAFFOLD_GEN_LABELS[3] + '</div>';
+    html += '<div class="scaffold-gen">';
+    tree.children.forEach(function (p) {
+      (p.children || []).forEach(function (gp) {
+        (gp.children || []).forEach(function (ggp) {
+          html += _scaffoldNodeHtml(ggp.node, 3);
+        });
+      });
+    });
+    html += '</div>';
+    html += '<div class="scaffold-connector">│</div>';
+
+    // Gen 3: Grandparents (4 slots)
+    html += '<div class="scaffold-gen-label">' + _SCAFFOLD_GEN_LABELS[2] + '</div>';
+    html += '<div class="scaffold-gen">';
+    tree.children.forEach(function (p) {
+      (p.children || []).forEach(function (gp) {
+        html += _scaffoldNodeHtml(gp.node, 2);
+      });
+    });
+    html += '</div>';
+    html += '<div class="scaffold-connector">│</div>';
+
+    // Gen 2: Parents (2 slots)
+    html += '<div class="scaffold-gen-label">' + _SCAFFOLD_GEN_LABELS[1] + '</div>';
+    html += '<div class="scaffold-gen">';
+    tree.children.forEach(function (p) {
+      html += _scaffoldNodeHtml(p.node, 1);
+    });
+    html += '</div>';
+    html += '<div class="scaffold-connector">│</div>';
+
+    // Gen 1: Narrator
+    html += '<div class="scaffold-gen-label">' + _SCAFFOLD_GEN_LABELS[0] + '</div>';
+    html += '<div class="scaffold-gen">';
+    html += _scaffoldNodeHtml(tree.node, 0);
+    html += '</div>';
+
+    // Other nodes (siblings, spouses, children, chosen family) below scaffold
+    if (otherNodes.length > 0) {
+      var otherGroups = {};
+      otherNodes.forEach(function (n) {
+        var r = _eRole(n);
+        if (!otherGroups[r]) otherGroups[r] = [];
+        otherGroups[r].push(n);
+      });
+      html += '<div class="scaffold-others">';
+      html += '<div class="scaffold-others-label">Other family members</div>';
+      Object.keys(otherGroups).forEach(function (role) {
+        html += '<div style="margin-bottom:4px;font-size:0.7rem;color:#64748b;text-transform:uppercase;">' + role.replace(/_/g, ' ') + '</div>';
+        html += '<div class="scaffold-others-row">';
+        otherGroups[role].forEach(function (n) {
+          var name = _ftNodeDisplayName(n);
+          html += '<div class="scaffold-node" style="width:120px;border-color:#94a3b8;" onclick="window.LorevoxBioBuilder._ftEditNode(\'' + n.id + '\')">'
+            + '<div class="scaffold-node-name">' + _esc(name) + '</div>'
+            + (n.birthDate ? '<div class="scaffold-node-meta">b. ' + _esc(n.birthDate) + '</div>' : '')
+            + '</div>';
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
   /* View mode toggle */
   function _toggleFTViewMode() {
-    _ftViewMode = _ftViewMode === "cards" ? "graph" : "cards";
+    var idx = FT_VIEW_MODES.indexOf(_ftViewMode);
+    _ftViewMode = FT_VIEW_MODES[(idx + 1) % FT_VIEW_MODES.length];
     _renderActiveTab();
   }
   function _toggleLTViewMode() {
@@ -2847,11 +3311,14 @@
 
   /* ── v6: Build toggle button HTML ─────────────────────── */
   function _viewModeToggle(mode, toggleFn) {
+    var modes = mode === _ftViewMode
+      ? [["cards","📋 Cards"],["graph","🔗 Graph"],["scaffold","🌳 Scaffold"]]
+      : [["cards","📋 Cards"],["graph","🔗 Graph"]];
     return '<div class="ft-view-toggle">'
-      + '<button class="bb-btn-sm' + (mode === "cards" ? ' bb-btn-active' : '') + '" onclick="' + toggleFn + '"'
-      + (mode === "cards" ? ' disabled' : '') + '>📋 Cards</button>'
-      + '<button class="bb-btn-sm' + (mode === "graph" ? ' bb-btn-active' : '') + '" onclick="' + toggleFn + '"'
-      + (mode === "graph" ? ' disabled' : '') + '>🔗 Graph</button>'
+      + modes.map(function (m) {
+          return '<button class="bb-btn-sm' + (mode === m[0] ? ' bb-btn-active' : '') + '" onclick="' + toggleFn + '"'
+            + (mode === m[0] ? ' disabled' : '') + '>' + m[1] + '</button>';
+        }).join("")
       + '</div>';
   }
 
@@ -3099,13 +3566,14 @@
   function refresh() {
     _ensureState();
     var host = _el("bioBuilderPopover");
-    if (!host || !host.hasAttribute("open")) return;
+    if (!host || (!host.hasAttribute("open") && !host.matches(":popover-open"))) return;
     render();
   }
 
   var NS = {};
   NS.render              = render;
   NS.refresh             = refresh;
+  NS.onNarratorSwitch    = _onNarratorSwitch;
   NS.SECTIONS            = SECTIONS;
 
   // Tab navigation

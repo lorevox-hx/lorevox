@@ -264,12 +264,29 @@ async function refreshPeople(){
   try{
     const r=await fetch(API.PEOPLE+"?limit=200");
     const j=await r.json();
-    renderPeople(j.items||j.people||j||[]);
-  }catch{ renderPeople([]); }
+    const items=j.items||j.people||j||[];
+    renderPeople(items);
+    // v8: cache for narrator card UI
+    if (state?.narratorUi) {
+      state.narratorUi.peopleCache = items;
+    }
+    // Cache for offline fallback
+    try{ localStorage.setItem("lorevox_offline_people",JSON.stringify(items)); }catch{}
+  }catch{
+    // Offline fallback — read from localStorage cache
+    try{
+      const cached=localStorage.getItem("lorevox_offline_people");
+      if(cached){ renderPeople(JSON.parse(cached)); return; }
+    }catch{}
+    renderPeople([]);
+  }
 }
 function renderPeople(items){
   const w=document.getElementById("peopleList"); w.innerHTML="";
-  (items||[]).forEach(p=>{
+  // Filter to active narrators if lorevox_draft_pids is set
+  const _aPids=JSON.parse(localStorage.getItem("lorevox_draft_pids")||"[]");
+  const _items=_aPids.length>0?(items||[]).filter(p=>_aPids.includes(p.id||p.person_id)):items;
+  (_items||[]).forEach(p=>{
     const pid=p.id||p.person_id||p.uuid; if(!pid) return;
     const name=p.display_name||p.name||pid;
     const d=document.createElement("div");
@@ -295,7 +312,9 @@ async function createPersonFromForm(){
     await refreshPeople(); await loadPerson(pid);
   }catch{ sysBubble("⚠ Create failed — is the server running?"); }
 }
+let _loadGeneration=0;
 async function loadPerson(pid){
+  const gen=++_loadGeneration;
   state.person_id=pid;
   document.getElementById("activePerson").textContent=`person_id: ${pid}`;
   localStorage.setItem(LS_ACTIVE,pid);
@@ -305,11 +324,24 @@ async function loadPerson(pid){
   try{
     const r=await fetch(API.PROFILE(pid)); if(!r.ok) throw new Error();
     const j=await r.json();
+    // Guard: only assign if this is still the active load (prevents race on rapid switch)
+    if(gen!==_loadGeneration) return;
     state.profile=normalizeProfile(j.profile||j||{});
     profileSaved=true;
+    // Cache for offline fallback
+    try{ localStorage.setItem("lorevox_offline_profile_"+pid,JSON.stringify(state.profile)); }catch{}
   }catch{
-    state.profile={basics:{},kinship:[],pets:[]};
-    profileSaved=false;
+    // Guard: bail if superseded
+    if(gen!==_loadGeneration) return;
+    // Offline fallback — read from localStorage cache
+    try{
+      const cached=localStorage.getItem("lorevox_offline_profile_"+pid);
+      if(cached){ state.profile=normalizeProfile(JSON.parse(cached)); profileSaved=true; }
+      else{ state.profile={basics:{},kinship:[],pets:[]}; profileSaved=false; }
+    }catch{
+      state.profile={basics:{},kinship:[],pets:[]};
+      profileSaved=false;
+    }
   }
   // Load persisted section progress
   const saved=localStorage.getItem(LS_DONE(pid));
@@ -350,6 +382,134 @@ async function loadPerson(pid){
   // Bio Builder — refresh per-narrator state when person switches
   window.LorevoxBioBuilder?.refresh();
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v8 NARRATOR SWITCH SAFETY
+   Central narrator switch with hard reset + hydration.
+   Works even when Bio Builder popover is closed.
+═══════════════════════════════════════════════════════════════ */
+async function lvxSwitchNarratorSafe(pid){
+  if (!pid) return;
+  if (pid === state.person_id) return;
+
+  // hard clear narrator-scoped UI before profile hydration
+  if (window.LorevoxBioBuilder?.onNarratorSwitch) {
+    window.LorevoxBioBuilder.onNarratorSwitch(pid);
+  }
+
+  // clear narrator-scoped visible UI
+  try {
+    document.getElementById("chatMessages").innerHTML = "";
+  } catch (_) {}
+
+  if (typeof _memoirClearContent === "function") _memoirClearContent();
+
+  await loadPerson(pid);
+
+  // run a second hydration after profile is loaded
+  if (window.LorevoxBioBuilder?.onNarratorSwitch) {
+    window.LorevoxBioBuilder.onNarratorSwitch(pid);
+  }
+
+  if (window.LorevoxBioBuilder?.refresh) window.LorevoxBioBuilder.refresh();
+  if (window.LorevoxLifeMap?.render)     window.LorevoxLifeMap.render(true);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   v8 NARRATOR DELETE FLOW
+   Multi-step delete with backup + undo window.
+═══════════════════════════════════════════════════════════════ */
+function lvxBuildNarratorBackup(person){
+  return {
+    person,
+    profile: JSON.parse(JSON.stringify(state.profile || {})),
+    bioBuilder: JSON.parse(JSON.stringify(state.bioBuilder || {})),
+    timestamp: Date.now()
+  };
+}
+
+async function lvxGetDeleteInventory(pid){
+  try{
+    const r = await fetch(API.PERSON_INVENTORY(pid));
+    if (!r.ok) return null;
+    return await r.json();
+  }catch(e){
+    console.warn("[Lorevox] inventory fetch failed", e);
+    return null;
+  }
+}
+
+async function lvxStageDeleteNarrator(pid){
+  const people = state?.narratorUi?.peopleCache || [];
+  const person = people.find(p => (p.id||p.person_id||p.uuid) === pid);
+  if (!person) return;
+
+  // Fetch dependency inventory from backend
+  const inv = await lvxGetDeleteInventory(pid);
+
+  state.narratorDelete.targetId = pid;
+  state.narratorDelete.targetLabel = person.display_name || person.name || pid;
+  state.narratorDelete.confirmText = "";
+  state.narratorDelete.step = 1;
+  state.narratorDelete.backup = lvxBuildNarratorBackup(person);
+  state.narratorDelete.inventory = inv ? inv.counts : null;
+  window.lv80OpenDeleteDialog?.();
+}
+
+async function lvxDeleteNarratorConfirmed(){
+  const pid = state?.narratorDelete?.targetId;
+  if (!pid) return;
+  if (state.narratorDelete.confirmText !== "DELETE") return;
+
+  // Phase 2: use backend soft delete (preserves data, allows restore)
+  try{
+    const r = await fetch(API.PERSON(pid) + "?mode=soft", { method:"DELETE" });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      console.warn("[Lorevox] soft delete failed:", r.status, err);
+    }
+  }catch(e){
+    console.warn("[Lorevox] delete narrator failed", e);
+  }
+
+  // Store deleted person_id for undo (backend restore uses original ID)
+  state.narratorDelete.deletedPid = pid;
+
+  // clear active pointer if needed
+  if (state.person_id === pid) {
+    state.person_id = null;
+    localStorage.removeItem(LS_ACTIVE);
+  }
+
+  await refreshPeople();
+  window.lv80CloseDeleteDialog?.();
+  window.lv80ShowUndoDelete?.();
+}
+
+async function lvxUndoDeleteNarrator(){
+  // Phase 2: use backend restore endpoint (no duplicate creation)
+  const pid = state?.narratorDelete?.deletedPid;
+  if (!pid) return;
+
+  try{
+    const r = await fetch(API.PERSON_RESTORE(pid), { method:"POST" });
+    if (r.ok) {
+      await refreshPeople();
+      // Narrator is back — switch to it if nothing else is active
+      if (!state.person_id) await lvxSwitchNarratorSafe(pid);
+    } else {
+      const err = await r.json().catch(() => ({}));
+      console.warn("[Lorevox] restore failed:", r.status, err);
+      // If undo_expired or other error, notify user
+      if (err.detail) alert("Restore failed: " + err.detail);
+    }
+  }catch(e){
+    console.warn("[Lorevox] undo narrator restore failed", e);
+  }
+
+  state.narratorDelete.deletedPid = null;
+}
+
 function normalizeProfile(p){
   const b=p.basics||p.basic||p.identity||{};
   return {
@@ -594,12 +754,12 @@ function onDobChange(){
   const dob=getv("bio_dob")||state.profile?.basics?.dob||"";
   const gb=document.getElementById("genBadge");
   const ad=document.getElementById("ageDisplay");
-  if(!dob){ gb.classList.add("hidden"); ad.classList.add("hidden"); return; }
+  if(!dob){ if(gb) gb.classList.add("hidden"); if(ad) ad.classList.add("hidden"); return; }
   const y=parseInt(dob.split("-")[0]); if(isNaN(y)) return;
   const age=new Date().getFullYear()-y;
   const gen=detectGeneration(y);
-  if(gen){ gb.textContent=gen.name; gb.classList.remove("hidden"); }
-  ad.textContent=`~${age} years old`; ad.classList.remove("hidden");
+  if(gen && gb){ gb.textContent=gen.name; gb.classList.remove("hidden"); }
+  if(ad){ ad.textContent=`~${age} years old`; ad.classList.remove("hidden"); }
   renderEventsGrid(); updateContextTriggers(); updateSidebar();
   updateArchiveReadiness();
 }
