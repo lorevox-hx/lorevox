@@ -237,6 +237,12 @@
   function _resetNarratorScopedState(newId) {
     var bb = _bb(); if (!bb) return;
 
+    // v8-fix: persist outgoing narrator's questionnaire before clearing (WD-1 fix)
+    var outgoingPid = bb.personId;
+    if (outgoingPid && bb.questionnaire && Object.keys(bb.questionnaire).length > 0) {
+      _persistDrafts(outgoingPid);
+    }
+
     bb.personId      = newId || null;
     bb.quickItems    = [];
     bb.questionnaire = {};
@@ -247,6 +253,9 @@
 
     if (!bb.familyTreeDraftsByPerson)  bb.familyTreeDraftsByPerson  = {};
     if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
+
+    // v8-fix: restore incoming narrator's questionnaire from localStorage (WD-1 fix)
+    _loadDrafts(newId);
   }
 
   /* ── v8 Explicit narrator-switch entry point ───────────────
@@ -270,6 +279,7 @@
   var DRAFT_SCHEMA_VERSION = 1;
   var _LS_FT_PREFIX = "lorevox_ft_draft_";
   var _LS_LT_PREFIX = "lorevox_lt_draft_";
+  var _LS_QQ_PREFIX = "lorevox_qq_draft_";
   var _LS_DRAFT_INDEX = "lorevox_draft_pids";
 
   function _persistDrafts(pid) {
@@ -280,6 +290,16 @@
       var lt = bb.lifeThreadsDraftsByPerson && bb.lifeThreadsDraftsByPerson[pid];
       if (ft) localStorage.setItem(_LS_FT_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: ft }));
       if (lt) localStorage.setItem(_LS_LT_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: lt }));
+      // v8-fix: persist questionnaire data per narrator (WD-1/WD-2 fix)
+      // GUARD: bb.questionnaire belongs to the CURRENT narrator only.
+      // FT/LT use per-person containers so any pid is safe, but qq is shared.
+      // Only persist qq when pid matches the active narrator to prevent cross-write.
+      if (pid === bb.personId) {
+        var qq = bb.questionnaire;
+        if (qq && Object.keys(qq).length > 0) {
+          localStorage.setItem(_LS_QQ_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: qq }));
+        }
+      }
       // Track which pids have drafts
       var idx = _getDraftIndex();
       if (idx.indexOf(pid) < 0) {
@@ -296,7 +316,20 @@
     var bb = _bb(); if (!bb) return;
     if (!bb.familyTreeDraftsByPerson) bb.familyTreeDraftsByPerson = {};
     if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
-    // Don't overwrite if already in memory
+    // v8-fix: load questionnaire BEFORE the FT early-return guard (WD-1/WD-2 fix)
+    // FT/LT use per-person containers so the early return is safe for them,
+    // but questionnaire uses a single bb.questionnaire object and MUST always load.
+    try {
+      var qqRaw = localStorage.getItem(_LS_QQ_PREFIX + pid);
+      if (qqRaw) {
+        var qqObj = JSON.parse(qqRaw);
+        var qqD = qqObj && (qqObj.d || qqObj.data);
+        if (qqD && typeof qqD === "object") {
+          bb.questionnaire = qqD;
+        }
+      }
+    } catch (e) { /* malformed — ignore */ }
+    // Don't overwrite FT/LT if already in memory
     if (bb.familyTreeDraftsByPerson[pid] && bb.familyTreeDraftsByPerson[pid].nodes && bb.familyTreeDraftsByPerson[pid].nodes.length) return;
     try {
       var ftRaw = localStorage.getItem(_LS_FT_PREFIX + pid);
@@ -333,6 +366,7 @@
     try {
       localStorage.removeItem(_LS_FT_PREFIX + pid);
       localStorage.removeItem(_LS_LT_PREFIX + pid);
+      localStorage.removeItem(_LS_QQ_PREFIX + pid);
       var idx = _getDraftIndex().filter(function (p) { return p !== pid; });
       localStorage.setItem(_LS_DRAFT_INDEX, JSON.stringify(idx));
     } catch (e) {}
@@ -341,6 +375,11 @@
   function _personChanged(newId) {
     var bb = _bb(); if (!bb) return;
     if (bb.personId !== newId) {
+      // v8-fix: persist outgoing narrator's questionnaire before clearing
+      var outgoingPid = bb.personId;
+      if (outgoingPid && bb.questionnaire && Object.keys(bb.questionnaire).length > 0) {
+        _persistDrafts(outgoingPid);
+      }
       bb.personId      = newId;
       bb.quickItems    = [];
       bb.questionnaire = {};
@@ -3389,6 +3428,9 @@
     }
 
     _extractQuestionnaireCandidates(sectionId);
+    // v8-fix: persist questionnaire to localStorage immediately on save (WD-2 fix)
+    var pid = _currentPersonId();
+    if (pid) _persistDrafts(pid);
     _closeSection();
   }
 
