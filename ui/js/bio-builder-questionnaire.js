@@ -395,35 +395,51 @@
       }
     }
 
-    if (state.profile.kinship && Array.isArray(state.profile.kinship.parents)) {
-      var existingParents = bb.questionnaire.parents;
-      var parentsEmpty = !existingParents || (Array.isArray(existingParents) && existingParents.length === 0)
-        || (!Array.isArray(existingParents) && !_hasAnyValue(existingParents));
-      if (parentsEmpty && state.profile.kinship.parents.length > 0) {
-        bb.questionnaire.parents = state.profile.kinship.parents.map(function (p) {
-          return {
-            relation: p.relation || "", firstName: p.firstName || "", middleName: p.middleName || "",
-            lastName: p.lastName || "", maidenName: p.maidenName || "", birthDate: p.birthDate || "",
-            birthPlace: p.birthPlace || "", occupation: p.occupation || "",
-            notableLifeEvents: p.notableLifeEvents || "", notes: p.notes || ""
-          };
-        });
-      }
-    }
+    // v8-fix LV-009: profile.kinship is a flat array [{name, relation, ...}],
+    // not an object with .parents/.siblings sub-arrays.  Filter by relation.
+    var kinArr = Array.isArray(state.profile.kinship) ? state.profile.kinship : [];
+    var _PARENT_RELS = /^(father|mother|parent|dad|mom|step.?father|step.?mother|adoptive.?father|adoptive.?mother)$/i;
+    var _SIBLING_RELS = /^(brother|sister|sibling|half.?brother|half.?sister|step.?brother|step.?sister)$/i;
 
-    if (state.profile.kinship && Array.isArray(state.profile.kinship.siblings)) {
-      var existingSiblings = bb.questionnaire.siblings;
-      var siblingsEmpty = !existingSiblings || (Array.isArray(existingSiblings) && existingSiblings.length === 0)
-        || (!Array.isArray(existingSiblings) && !_hasAnyValue(existingSiblings));
-      if (siblingsEmpty && state.profile.kinship.siblings.length > 0) {
-        bb.questionnaire.siblings = state.profile.kinship.siblings.map(function (s) {
-          return {
-            relation: s.relation || "", firstName: s.firstName || "", middleName: s.middleName || "",
-            lastName: s.lastName || "", birthOrder: s.birthOrder || "",
-            uniqueCharacteristics: s.uniqueCharacteristics || "", sharedExperiences: s.sharedExperiences || "",
-            memories: s.memories || "", notes: s.notes || ""
-          };
-        });
+    if (kinArr.length) {
+      // --- Parents from flat kinship ---
+      var kinParents = kinArr.filter(function (k) { return _PARENT_RELS.test(k.relation || ""); });
+      if (kinParents.length) {
+        var existingParents = bb.questionnaire.parents;
+        var parentsEmpty = !existingParents || (Array.isArray(existingParents) && existingParents.length === 0)
+          || (!Array.isArray(existingParents) && !_hasAnyValue(existingParents));
+        if (parentsEmpty) {
+          bb.questionnaire.parents = kinParents.map(function (p) {
+            var parts = (p.name || "").split(/\s+/);
+            return {
+              relation: p.relation || "", firstName: parts[0] || "",
+              middleName: parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
+              lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+              maidenName: "", birthDate: p.dob || "", birthPlace: p.pob || "",
+              occupation: p.occupation || "", notableLifeEvents: "", notes: ""
+            };
+          });
+        }
+      }
+
+      // --- Siblings from flat kinship ---
+      var kinSiblings = kinArr.filter(function (k) { return _SIBLING_RELS.test(k.relation || ""); });
+      if (kinSiblings.length) {
+        var existingSiblings = bb.questionnaire.siblings;
+        var siblingsEmpty = !existingSiblings || (Array.isArray(existingSiblings) && existingSiblings.length === 0)
+          || (!Array.isArray(existingSiblings) && !_hasAnyValue(existingSiblings));
+        if (siblingsEmpty) {
+          bb.questionnaire.siblings = kinSiblings.map(function (s) {
+            var parts = (s.name || "").split(/\s+/);
+            return {
+              relation: s.relation || "", firstName: parts[0] || "",
+              middleName: parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
+              lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+              birthOrder: "", uniqueCharacteristics: "", sharedExperiences: "",
+              memories: "", notes: ""
+            };
+          });
+        }
       }
     }
   }

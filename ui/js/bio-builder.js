@@ -717,6 +717,95 @@
     _renderActiveTab();
   }
 
+  /* ── LV-005 fix: Seed Family Tree from server-side profile.kinship ── */
+  function _ftSeedFromProfile() {
+    var pid = _currentPersonId(); if (!pid) return;
+    var kinArr = (typeof state !== "undefined" && state.profile && Array.isArray(state.profile.kinship)) ? state.profile.kinship : [];
+    if (!kinArr.length) {
+      _showInlineConfirm && _showInlineConfirm("No kinship data found in the server profile for this narrator.");
+      return;
+    }
+    var draft = _ftDraft(pid);
+    var bb = _bb(); if (!bb) return;
+
+    // Ensure narrator root node
+    var basics = (state.profile && state.profile.basics) || {};
+    var narratorName = basics.preferred || basics.preferredName || basics.fullname || basics.fullName || "";
+    var hasNarrator = draft.nodes.some(function (n) {
+      if (n.role === "narrator") return true;
+      var dn = _ftNodeDisplayName(n);
+      return narratorName && dn === narratorName;
+    });
+    if (!hasNarrator && narratorName) {
+      var parts = (basics.fullname || basics.fullName || narratorName).split(/\s+/);
+      var narratorNode = _ftMakeNode("narrator", {
+        firstName: parts[0] || "",
+        lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+        preferredName: basics.preferred || basics.preferredName || "",
+        birthDate: basics.dob || "",
+        deceased: !!basics.deceased,
+        deathDate: basics.dod || "",
+        source: "profile"
+      });
+      draft.nodes.push(narratorNode);
+    }
+    var _narr = draft.nodes.find(function (n) { return n.role === "narrator"; });
+    if (!_narr && narratorName) _narr = draft.nodes.find(function (n) { return _ftNodeDisplayName(n) === narratorName; });
+    if (!_narr) return;
+    var narratorId = _narr.id;
+
+    // Role inference from relation string
+    var _inferRole = function (rel) {
+      rel = (rel || "").toLowerCase();
+      if (/mother|father|mom|dad|parent/.test(rel)) return "parent";
+      if (/brother|sister|sibling/.test(rel)) return "sibling";
+      if (/son|daughter|child/.test(rel)) return "child";
+      if (/wife|husband|spouse|partner/.test(rel)) return "spouse";
+      if (/grand(mother|father|parent)/.test(rel)) return "grandparent";
+      if (/grand(son|daughter|child)/.test(rel)) return "grandchild";
+      if (/uncle|aunt|cousin|nephew|niece/.test(rel)) return "extended";
+      return "other";
+    };
+
+    var added = 0;
+    kinArr.forEach(function (k) {
+      var name = (k.name || "").trim();
+      if (!name) return;
+      // Skip if already in draft (by name + role)
+      var role = _inferRole(k.relation);
+      var exists = draft.nodes.some(function (n) {
+        return _ftNodeDisplayName(n) === name && (n.role === role || n.role === "other");
+      });
+      if (exists) return;
+
+      var parts = name.split(/\s+/);
+      var node = _ftMakeNode(role, {
+        firstName: parts[0] || "",
+        middleName: parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
+        lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+        displayName: name,
+        deceased: !!k.deceased,
+        birthDate: k.dob || "",
+        deathDate: k.dod || "",
+        source: "profile"
+      });
+      draft.nodes.push(node);
+
+      var relType = /step/i.test(k.relation) ? "step" :
+                    /adopt/i.test(k.relation) ? "adoptive" :
+                    /half/i.test(k.relation) ? "half" : "biological";
+      draft.edges.push(_ftMakeEdge(narratorId, node.id, relType, k.relation || role, ""));
+      added++;
+    });
+
+    _ftCleanOrphanEdges(pid);
+    _persistDrafts(pid);
+    _renderActiveTab();
+    if (added > 0 && _showInlineConfirm) {
+      _showInlineConfirm("Seeded " + added + " family member" + (added > 1 ? "s" : "") + " from profile kinship data.");
+    }
+  }
+
   function _ftSeedFromCandidates() {
     var pid = _currentPersonId(); if (!pid) return;
     var bb = _bb(); if (!bb) return;
@@ -906,6 +995,7 @@
         "Family Tree",
         "Build the family structure here as you gather biography details. Add parents, siblings, spouses, children, and chosen family. This is a draft workspace — nothing is promoted automatically.",
         [
+          { label: "📋 Seed from Profile", action: "window.LorevoxBioBuilder._ftSeedFromProfile()" },
           { label: "🌱 Seed from Questionnaire", action: "window.LorevoxBioBuilder._ftSeedFromQuestionnaire()" },
           { label: "👥 Seed from Candidates", action: "window.LorevoxBioBuilder._ftSeedFromCandidates()" },
           { label: "+ Add Person", action: "window.LorevoxBioBuilder._ftAddNode('other')" }
@@ -938,6 +1028,7 @@
     var html = utilHtml + fuzzyBar
       + '<div class="ft-toolbar">'
       + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftAddNode(\'other\')">+ Add Person</button>'
+      + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromProfile()">📋 Seed Profile</button>'
       + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromQuestionnaire()">🌱 Seed Questionnaire</button>'
       + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromCandidates()">👥 Seed Candidates</button>'
       + _viewModeToggle(_ftViewMode, "window.LorevoxBioBuilder._toggleFTViewMode()")
@@ -1963,6 +2054,7 @@
   NS._ftAddEdge              = _ftAddEdge;
   NS._ftSaveEdge             = _ftSaveEdge;
   NS._ftDeleteEdge           = _ftDeleteEdge;
+  NS._ftSeedFromProfile       = _ftSeedFromProfile;
   NS._ftSeedFromQuestionnaire = _ftSeedFromQuestionnaire;
   NS._ftSeedFromCandidates   = _ftSeedFromCandidates;
 

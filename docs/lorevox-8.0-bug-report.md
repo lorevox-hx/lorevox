@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Eight celebrity narrators were created and tested across seven phases: Bio Builder verification, chronology normalization, relationship handling, Lori grounding, peek panels (Life Map and Memoir), and delete/restore safety. **10 bugs identified: 3 High, 4 Medium, 3 Low.**
+Eight celebrity narrators were created and tested across seven phases: Bio Builder verification, chronology normalization, relationship handling, Lori grounding, peek panels (Life Map and Memoir), and delete/restore safety. **9 bugs confirmed: 2 High, 4 Medium, 3 Low.** (LV-001 was a false positive — see note below.)
 
 **Test narrators:** Walt Disney (d. 1966), Donald Trump, Martha Stewart, William Shatner, Billie Jean King, Maggie Smith (d. 2024), James Baldwin (d. 1987), Bayard Rustin (d. 1987). Existing narrator Walter retained.
 
@@ -18,7 +18,7 @@ Eight celebrity narrators were created and tested across seven phases: Bio Build
 
 | ID | Title | Severity | Phase |
 |---|---|---|---|
-| LV-001 | Dual profile endpoints return different data | **HIGH** | Phase 2 |
+| ~~LV-001~~ | ~~Dual profile endpoints return different data~~ | ~~HIGH~~ | ~~FALSE POSITIVE~~ |
 | LV-002 | Lori greets deceased narrators in present tense | **HIGH** | Phase 3 |
 | LV-003 | All narrators show REAL badge — no TEST/REAL distinction | MEDIUM | Phase 2 |
 | LV-004 | Idle prompt system fires ghost greetings during automation | MEDIUM | Phase 5 |
@@ -33,19 +33,9 @@ Eight celebrity narrators were created and tested across seven phases: Bio Build
 
 ## Detailed Bug Reports
 
-### LV-001 — Dual profile endpoints return different data [HIGH]
+### ~~LV-001 — Dual profile endpoints return different data~~ [FALSE POSITIVE]
 
-**Phase:** 2 — Bio Builder Verification
-
-**Description:** Two profile endpoints exist: `/api/profiles/{id}` (plural, correct) and `/api/profile/{id}` (singular, stale). The singular endpoint returns empty/default data while the plural returns the actual profile. Code referencing the wrong endpoint silently gets empty profiles.
-
-**Steps to Reproduce:**
-1. Seed profile data via `PUT /api/profiles/{id}`
-2. Query `GET /api/profile/{id}` (singular) — observe empty response
-3. Query `GET /api/profiles/{id}` (plural) — observe correct data
-
-**Expected:** Single canonical endpoint, or singular redirects to plural.
-**Actual:** Both endpoints exist. Singular returns empty data silently.
+**Status:** Closed — false positive. On re-investigation, `/api/profile/{id}` (singular) returns 404 Not Found, not stale data. Only `/api/profiles/{id}` (plural) exists. No frontend code references the singular form. The original observation was a testing artifact from the earlier session.
 
 ---
 
