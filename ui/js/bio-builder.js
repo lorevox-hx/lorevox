@@ -184,12 +184,121 @@
   var _addAllOfType                      = _cand._addAllOfType;
   var _addAllFromCard                    = _cand._addAllFromCard;
 
+  /* ───────────────────────────────────────────────────────────
+     FAMILY TREE MODULE DELEGATION (Phase 5 module split)
+     All Family Tree draft management, CRUD, seeding, quality
+     utilities, rendering, graph/scaffold views, and fuzzy name
+     matching now live in bio-builder-family-tree.js.  We pull
+     them in as local aliases so existing code continues to work
+     unchanged.
+  ─────────────────────────────────────────────────────────── */
+
+  var _ft = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.familyTree;
+  if (!_ft) throw new Error("bio-builder-family-tree.js must load before bio-builder.js");
+
+  // Constants
+  var FT_ROLES                         = _ft.FT_ROLES;
+  var FT_REL_TYPES                     = _ft.FT_REL_TYPES;
+  var FT_VIEW_MODES                    = _ft.FT_VIEW_MODES;
+  var ERA_ROLE_RELEVANCE               = _ft.ERA_ROLE_RELEVANCE;
+  var ERA_THEME_KEYWORDS               = _ft.ERA_THEME_KEYWORDS;
+
+  // Fuzzy matching
+  var _normalizeName                   = _ft._normalizeName;
+  var _fuzzyNameScore                  = _ft._fuzzyNameScore;
+  var _fuzzyDuplicateTier              = _ft._fuzzyDuplicateTier;
+
+  // Draft management
+  var _ftDraft                         = _ft._ftDraft;
+  var _ftMakeNode                      = _ft._ftMakeNode;
+  var _ftMakeEdge                      = _ft._ftMakeEdge;
+  var _ftNodeDisplayName               = _ft._ftNodeDisplayName;
+
+  // CRUD
+  var _ftAddNode                       = _ft._ftAddNode;
+  var _ftDeleteNode                    = _ft._ftDeleteNode;
+  var _ftEditNode                      = _ft._ftEditNode;
+  var _ftSaveNode                      = _ft._ftSaveNode;
+  var _ftAddEdge                       = _ft._ftAddEdge;
+  var _ftSaveEdge                      = _ft._ftSaveEdge;
+  var _ftDeleteEdge                    = _ft._ftDeleteEdge;
+
+  // Seeding
+  var _ftSeedFromProfile               = _ft._ftSeedFromProfile;
+  var _ftSeedFromQuestionnaire         = _ft._ftSeedFromQuestionnaire;
+  var _ftSeedFromCandidates            = _ft._ftSeedFromCandidates;
+
+  // Quality
+  var _ftFindDuplicates                = _ft._ftFindDuplicates;
+  var _ftFindUnconnected               = _ft._ftFindUnconnected;
+  var _ftFindWeakNodes                 = _ft._ftFindWeakNodes;
+  var _ftFindUnsourced                 = _ft._ftFindUnsourced;
+  var _ftCleanOrphanEdges              = _ft._ftCleanOrphanEdges;
+  var _ftFindFuzzyDuplicates           = _ft._ftFindFuzzyDuplicates;
+
+  // Rendering
+  var _renderFamilyTreeTab             = _ft._renderFamilyTreeTab;
+  var _toggleFTViewMode                = _ft._toggleFTViewMode;
+
+  // Draft context
+  var _getDraftFTContext                = _ft._getDraftFTContext;
+  var _getDraftFTContextForEra         = _ft._getDraftFTContextForEra;
+
+  /* ───────────────────────────────────────────────────────────
+     LIFE THREADS MODULE DELEGATION (Phase 6 module split)
+     All Life Threads draft management, CRUD, seeding, graph
+     rendering, and era-aware context scoring now live in
+     bio-builder-life-threads.js.  We pull them in as local
+     aliases so existing code continues to work unchanged.
+  ─────────────────────────────────────────────────────────── */
+
+  var _lt2 = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.lifeThreads;
+  if (!_lt2) throw new Error("bio-builder-life-threads.js must load before bio-builder.js");
+
+  // Constants
+  var LT_NODE_TYPES                    = _lt2.LT_NODE_TYPES;
+  var LT_EDGE_TYPES                    = _lt2.LT_EDGE_TYPES;
+
+  // View mode
+  var _toggleLTViewMode               = _lt2._toggleLTViewMode;
+
+  // Draft management
+  var _ltDraft                         = _lt2._ltDraft;
+  var _ltMakeNode                      = _lt2._ltMakeNode;
+  var _ltMakeEdge                      = _lt2._ltMakeEdge;
+
+  // CRUD
+  var _ltAddNode                       = _lt2._ltAddNode;
+  var _ltDeleteNode                    = _lt2._ltDeleteNode;
+  var _ltEditNode                      = _lt2._ltEditNode;
+  var _ltSaveNode                      = _lt2._ltSaveNode;
+  var _ltAddEdge                       = _lt2._ltAddEdge;
+  var _ltSaveEdge                      = _lt2._ltSaveEdge;
+  var _ltDeleteEdge                    = _lt2._ltDeleteEdge;
+
+  // Seeding
+  var _ltSeedFromCandidates            = _lt2._ltSeedFromCandidates;
+  var _ltSeedThemes                    = _lt2._ltSeedThemes;
+
+  // Rendering
+  var _renderLifeThreadsTab            = _lt2._renderLifeThreadsTab;
+
+  // Graph helpers (kept as aliases for shared use)
+  var _clusterSpread                   = _lt2._clusterSpread;
+  var _GRAPH_MAX_NODES                 = _lt2._GRAPH_MAX_NODES;
+
+  // Draft context
+  var _getDraftLTContext                = _lt2._getDraftLTContext;
+  var _getDraftLTContextForEra         = _lt2._getDraftLTContextForEra;
+
+
   /* ── Previously extracted modules ──────────────────────────
      STATE MODEL — now in bio-builder-core.js
      UTILITIES — now in bio-builder-core.js
      QUESTIONNAIRE — now in bio-builder-questionnaire.js
      SOURCE INTAKE + EXTRACTION — now in bio-builder-sources.js
      CANDIDATE DISPLAY + ACTIONS — now in bio-builder-candidates.js
+     FAMILY TREE — now in bio-builder-family-tree.js
   ─────────────────────────────────────────────────────────── */
 
   /* ───────────────────────────────────────────────────────────
@@ -200,10 +309,8 @@
   var _activeTab          = "capture";
   // _activeSourceCardId — now managed inside bio-builder-sources.js (Phase 3 module split)
 
-  // v6: Graph mode state — "cards" (default) or "graph"
-  var _ftViewMode = "cards";
-  var FT_VIEW_MODES = ["cards", "graph", "scaffold"];
-  var _ltViewMode = "cards";
+  // v6: Graph mode state — FT view mode now in bio-builder-family-tree.js
+  // v6: Graph mode state — LT view mode now in bio-builder-life-threads.js
 
   /* ── Candidate extraction + section fill progress ────────────
      Now in bio-builder-questionnaire.js. Imported as aliases above:
@@ -337,604 +444,18 @@
   /* _sourceIcon — now in bio-builder-sources.js, imported as alias above */
   /* _getCandidateTitle, _getCandidateText, _getCandidateSnippet, _getCandidateType — now in bio-builder-candidates.js */
 
-  /* ═══════════════════════════════════════════════════════════════
-     FAMILY TREE — Draft staging surface (v3)
-     Per-person draft stores under state.bioBuilder.familyTreeDraftsByPerson
-     Uses state.person_id for narrator scoping.
-     Writes ONLY to Bio Builder state — never to truth layers.
-  ═══════════════════════════════════════════════════════════════ */
-
-  var FT_ROLES = ["narrator","parent","sibling","spouse","child","grandparent","grandchild","guardian","chosen_family","other"];
-  var FT_REL_TYPES = ["biological","adoptive","step","marriage","partnership","former_marriage","guardian","chosen_family","half","foster","other"];
-
-  // v6: Era-role relevance map — which roles are most relevant to which eras
-  var ERA_ROLE_RELEVANCE = {
-    early_childhood:  { parent: 1.0, sibling: 0.8, grandparent: 0.9, guardian: 0.9, chosen_family: 0.3, spouse: 0.0, child: 0.0 },
-    school_years:     { parent: 0.8, sibling: 0.9, grandparent: 0.6, guardian: 0.7, chosen_family: 0.4, spouse: 0.0, child: 0.0 },
-    adolescence:      { parent: 0.6, sibling: 0.8, grandparent: 0.4, guardian: 0.5, chosen_family: 0.5, spouse: 0.1, child: 0.0 },
-    early_adulthood:  { parent: 0.4, sibling: 0.5, grandparent: 0.3, guardian: 0.2, chosen_family: 0.6, spouse: 0.9, child: 0.5 },
-    midlife:          { parent: 0.3, sibling: 0.4, grandparent: 0.1, guardian: 0.1, chosen_family: 0.5, spouse: 0.9, child: 0.9 },
-    later_life:       { parent: 0.2, sibling: 0.3, grandparent: 0.0, guardian: 0.0, chosen_family: 0.5, spouse: 0.7, child: 0.8, grandchild: 0.9 }
-  };
-
-  // v6: Era-theme relevance keywords
-  var ERA_THEME_KEYWORDS = {
-    early_childhood:  ["home","family","childhood","birth","beginning","first","mother","father","house","yard","kitchen","play"],
-    school_years:     ["school","education","teacher","class","learn","friend","grade","study","read","sport"],
-    adolescence:      ["teen","independence","identity","rebel","music","friendship","dating","high school","growth"],
-    early_adulthood:  ["career","college","marriage","wedding","move","job","apartment","independence","travel","ambition"],
-    midlife:          ["career","work","responsibility","children","mortgage","promotion","stability","routine","caregiving","community"],
-    later_life:       ["retire","legacy","loss","grandchild","health","reflection","wisdom","downsize","memory","faith","grief","gratitude"]
-  };
-
-  // v6: Fuzzy name normalization helper
-  function _normalizeName(s) {
-    if (!s) return "";
-    return String(s).toLowerCase()
-      .replace(/[''`\u2018\u2019]/g, "'")    // normalize apostrophes
-      .replace(/["""\u201C\u201D]/g, '"')    // normalize quotes
-      .replace(/\./g, "")                     // strip periods (J.R. → JR)
-      .replace(/,/g, "")                      // strip commas
-      .replace(/\s+/g, " ")                   // collapse whitespace
-      .replace(/\b(jr|sr|ii|iii|iv|dr|mr|mrs|ms|miss)\b/gi, "")  // strip titles/suffixes
-      .trim();
-  }
-
-  // v6: Token-based fuzzy score (0.0–1.0)
-  function _fuzzyNameScore(a, b) {
-    var na = _normalizeName(a);
-    var nb = _normalizeName(b);
-    if (!na || !nb) return 0;
-    if (na === nb) return 1.0;
-
-    var tokA = na.split(/\s+/).filter(Boolean);
-    var tokB = nb.split(/\s+/).filter(Boolean);
-    if (!tokA.length || !tokB.length) return 0;
-
-    // Check first/last name agreement
-    var firstMatch = tokA[0] === tokB[0] ? 1 : 0;
-    var lastA = tokA[tokA.length - 1], lastB = tokB[tokB.length - 1];
-    var lastMatch = lastA === lastB ? 1 : 0;
-
-    // Token overlap (handles middle name presence/absence)
-    var setA = {};
-    tokA.forEach(function (t) { setA[t] = true; });
-    var overlap = 0;
-    tokB.forEach(function (t) { if (setA[t]) overlap++; });
-    var tokenScore = overlap / Math.max(tokA.length, tokB.length);
-
-    // Initial matching (handles "J" vs "James")
-    var initialBonus = 0;
-    if (tokA.length !== tokB.length) {
-      var shorter = tokA.length < tokB.length ? tokA : tokB;
-      var longer  = tokA.length < tokB.length ? tokB : tokA;
-      shorter.forEach(function (t) {
-        if (t.length === 1) {
-          var match = longer.find(function (l) { return l.charAt(0) === t; });
-          if (match) initialBonus += 0.15;
-        }
-      });
-    }
-
-    // Weighted composite
-    var score = (firstMatch * 0.3) + (lastMatch * 0.35) + (tokenScore * 0.25) + Math.min(initialBonus, 0.1);
-    return Math.min(score, 1.0);
-  }
-
-  // v6: Fuzzy duplicate confidence tier
-  function _fuzzyDuplicateTier(score) {
-    if (score >= 1.0)  return "exact";
-    if (score >= 0.8)  return "likely";
-    if (score >= 0.5)  return "possible";
-    return "distinct";
-  }
-
-  function _ftDraft(pid) {
-    var bb = _bb(); if (!bb) return null;
-    if (!bb.familyTreeDraftsByPerson) bb.familyTreeDraftsByPerson = {};
-    var id = pid || _currentPersonId() || "default";
-    if (!bb.familyTreeDraftsByPerson[id]) {
-      bb.familyTreeDraftsByPerson[id] = { nodes: [], edges: [], meta: {} };
-    }
-    return bb.familyTreeDraftsByPerson[id];
-  }
-
-  function _ftMakeNode(role, data) {
-    return {
-      id: "ftn_" + _uid(),
-      type: "person",
-      role: role || "other",
-      firstName: (data && data.firstName) || "",
-      middleName: (data && data.middleName) || "",
-      lastName: (data && data.lastName) || "",
-      displayName: (data && data.displayName) || "",
-      preferredName: (data && data.preferredName) || "",
-      deceased: !!(data && data.deceased),
-      birthDate: (data && data.birthDate) || "",
-      deathDate: (data && data.deathDate) || "",
-      deathContext: (data && data.deathContext) || "",
-      notes: (data && data.notes) || "",
-      uncertainty: (data && data.uncertainty) || "",
-      source: (data && data.source) || "manual"
-    };
-  }
-
-  function _ftMakeEdge(fromId, toId, relType, label, notes) {
-    return {
-      id: "fte_" + _uid(),
-      from: fromId,
-      to: toId,
-      relationshipType: relType || "other",
-      label: label || "",
-      notes: notes || ""
-    };
-  }
-
-  function _ftNodeDisplayName(node) {
-    if (node.displayName) return node.displayName;
-    if (node.preferredName) return node.preferredName;
-    var parts = [node.firstName, node.middleName, node.lastName].filter(Boolean);
-    if (parts.length) return parts.join(" ");
-    if (node.label) return node.label;
-    return node.uncertainty || "Unknown";
-  }
-
-  /* ── Family Tree: Add / Edit / Delete ───────────────────── */
-
-  function _ftAddNode(role) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ftDraft(pid);
-    var node = _ftMakeNode(role || "other", {});
-    draft.nodes.push(node);
-    _ftEditNode(node.id);
-  }
-
-  function _ftDeleteNode(nodeId, confirmed) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ftDraft(pid);
-    // v7 fix: inline confirmation instead of native confirm() dialog
-    var edgeCount = draft.edges.filter(function (e) { return e.from === nodeId || e.to === nodeId; }).length;
-    if (edgeCount > 0 && !confirmed) {
-      _showInlineConfirm(
-        "This person has " + edgeCount + " connection(s). Delete anyway?",
-        function () { _ftDeleteNode(nodeId, true); }
-      );
-      return;
-    }
-    draft.nodes = draft.nodes.filter(function (n) { return n.id !== nodeId; });
-    // v7 fix: auto-clean orphan edges when node is deleted (V2-F04)
-    draft.edges = draft.edges.filter(function (e) { return e.from !== nodeId && e.to !== nodeId; });
-    _persistDrafts(pid);
-    _renderActiveTab();
-  }
-
-  function _ftEditNode(nodeId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ftDraft(pid);
-    var node = draft.nodes.find(function (n) { return n.id === nodeId; });
-    if (!node) return;
-    var content = _el("bbTabContent"); if (!content) return;
-
-    var roleOpts = FT_ROLES.map(function (r) {
-      return '<option value="' + r + '"' + (r === node.role ? ' selected' : '') + '>' + r.replace(/_/g, ' ') + '</option>';
-    }).join("");
-
-    var uncOpts = ["","Unknown","Approximate","Partially known","Not applicable","Can't remember","Fill in later","Family story / unverified"].map(function (u) {
-      return '<option value="' + u + '"' + (u === (node.uncertainty || "") ? ' selected' : '') + '>' + (u || '— none —') + '</option>';
-    }).join("");
-
-    content.innerHTML =
-      '<div class="bb-section-nav"><button class="bb-ghost-btn bb-back-btn" onclick="window.LorevoxBioBuilder._switchTab(\'familyTree\')">← Back to Family Tree</button></div>'
-      + '<div class="bb-section-title">Edit Family Member</div>'
-      + '<div class="bb-fields-list">'
-      + '<div class="bb-field"><label class="bb-label">Role</label><select id="ftEditRole" class="bb-select">' + roleOpts + '</select></div>'
-      + '<div class="bb-field"><label class="bb-label">First Name</label><input id="ftEditFirst" class="bb-input" type="text" value="' + _esc(node.firstName) + '" placeholder="First name or leave blank if unknown" /></div>'
-      + '<div class="bb-field"><label class="bb-label">Middle Name</label><input id="ftEditMiddle" class="bb-input" type="text" value="' + _esc(node.middleName) + '" /></div>'
-      + '<div class="bb-field"><label class="bb-label">Last Name</label><input id="ftEditLast" class="bb-input" type="text" value="' + _esc(node.lastName) + '" /></div>'
-      + '<div class="bb-field"><label class="bb-label">Preferred / Display Name</label><input id="ftEditPreferred" class="bb-input" type="text" value="' + _esc(node.preferredName) + '" placeholder="How they were known" /></div>'
-      + '<div class="bb-field"><label class="bb-label">Birth Date</label><input id="ftEditBirth" class="bb-input" type="text" value="' + _esc(node.birthDate) + '" placeholder="YYYY-MM-DD or approximate" /></div>'
-      + '<div class="bb-field"><label class="bb-label">Deceased</label><select id="ftEditDeceased" class="bb-select"><option value="false"' + (!node.deceased ? ' selected' : '') + '>No</option><option value="true"' + (node.deceased ? ' selected' : '') + '>Yes</option></select></div>'
-      + '<div class="bb-field"><label class="bb-label">Death Date</label><input id="ftEditDeath" class="bb-input" type="text" value="' + _esc(node.deathDate) + '" placeholder="YYYY-MM-DD or approximate" /></div>'
-      + '<div class="bb-field"><label class="bb-label">Death Context</label><textarea id="ftEditDeathCtx" class="bb-textarea" rows="2" placeholder="Died shortly after birth, Died by suicide, Cause unknown — use the person\'s own words when possible">' + _esc(node.deathContext) + '</textarea></div>'
-      + '<div class="bb-field"><label class="bb-label">Uncertainty</label><select id="ftEditUncertain" class="bb-select">' + uncOpts + '</select></div>'
-      + '<div class="bb-field"><label class="bb-label">Notes</label><textarea id="ftEditNotes" class="bb-textarea" rows="3" placeholder="Anything the narrator wants to capture">' + _esc(node.notes) + '</textarea></div>'
-      + '</div>'
-      + '<div class="bb-section-footer">'
-      + '<button class="bb-btn-primary" onclick="window.LorevoxBioBuilder._ftSaveNode(\'' + node.id + '\')">Save</button>'
-      + '<button class="bb-ghost-btn" style="color:#f87171" onclick="window.LorevoxBioBuilder._ftDeleteNode(\'' + node.id + '\')">Delete</button>'
-      + '</div>';
-  }
-
-  function _ftSaveNode(nodeId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ftDraft(pid);
-    var node = draft.nodes.find(function (n) { return n.id === nodeId; });
-    if (!node) return;
-    node.role = (_el("ftEditRole") || {}).value || node.role;
-    node.firstName = (_el("ftEditFirst") || {}).value || "";
-    node.middleName = (_el("ftEditMiddle") || {}).value || "";
-    node.lastName = (_el("ftEditLast") || {}).value || "";
-    node.preferredName = (_el("ftEditPreferred") || {}).value || "";
-    node.birthDate = (_el("ftEditBirth") || {}).value || "";
-    node.deceased = (_el("ftEditDeceased") || {}).value === "true";
-    node.deathDate = (_el("ftEditDeath") || {}).value || "";
-    node.deathContext = (_el("ftEditDeathCtx") || {}).value || "";
-    node.uncertainty = (_el("ftEditUncertain") || {}).value || "";
-    node.notes = (_el("ftEditNotes") || {}).value || "";
-    node.displayName = ""; // recompute from parts
-    _persistDrafts(pid);
-    _switchTab("familyTree");
-  }
-
-  /* ── Family Tree: Add Edge ──────────────────────────────── */
-
-  function _ftAddEdge(fromId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ftDraft(pid);
-    var content = _el("bbTabContent"); if (!content) return;
-    var fromNode = draft.nodes.find(function (n) { return n.id === fromId; });
-    if (!fromNode) return;
-
-    var otherNodes = draft.nodes.filter(function (n) { return n.id !== fromId; });
-    if (!otherNodes.length) {
-      content.innerHTML = _emptyStateHtml("Need more people", "Add at least two family members before connecting them.", [
-        { label: "← Back", action: "window.LorevoxBioBuilder._switchTab('familyTree')" }
-      ]);
-      return;
-    }
-
-    var toOpts = otherNodes.map(function (n) {
-      return '<option value="' + n.id + '">' + _esc(_ftNodeDisplayName(n)) + '</option>';
-    }).join("");
-    var relOpts = FT_REL_TYPES.map(function (r) {
-      return '<option value="' + r + '">' + r.replace(/_/g, ' ') + '</option>';
-    }).join("");
-
-    content.innerHTML =
-      '<div class="bb-section-nav"><button class="bb-ghost-btn bb-back-btn" onclick="window.LorevoxBioBuilder._switchTab(\'familyTree\')">← Back</button></div>'
-      + '<div class="bb-section-title">Connect ' + _esc(_ftNodeDisplayName(fromNode)) + '</div>'
-      + '<div class="bb-fields-list">'
-      + '<div class="bb-field"><label class="bb-label">To</label><select id="ftEdgeTo" class="bb-select">' + toOpts + '</select></div>'
-      + '<div class="bb-field"><label class="bb-label">Relationship Type</label><select id="ftEdgeRel" class="bb-select">' + relOpts + '</select></div>'
-      + '<div class="bb-field"><label class="bb-label">Label</label><input id="ftEdgeLabel" class="bb-input" type="text" placeholder="e.g. biological mother, stepfather" /></div>'
-      + '<div class="bb-field"><label class="bb-label">Notes</label><textarea id="ftEdgeNotes" class="bb-textarea" rows="2"></textarea></div>'
-      + '</div>'
-      + '<div class="bb-section-footer"><button class="bb-btn-primary" onclick="window.LorevoxBioBuilder._ftSaveEdge(\'' + fromId + '\')">Save Connection</button></div>';
-  }
-
-  function _ftSaveEdge(fromId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ftDraft(pid);
-    var toId = (_el("ftEdgeTo") || {}).value;
-    var relType = (_el("ftEdgeRel") || {}).value || "other";
-    var label = (_el("ftEdgeLabel") || {}).value || "";
-    var notes = (_el("ftEdgeNotes") || {}).value || "";
-    if (toId) {
-      draft.edges.push(_ftMakeEdge(fromId, toId, relType, label, notes));
-    }
-    _persistDrafts(pid);
-    _switchTab("familyTree");
-  }
-
-  function _ftDeleteEdge(edgeId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ftDraft(pid);
-    draft.edges = draft.edges.filter(function (e) { return e.id !== edgeId; });
-    _persistDrafts(pid);
-    _renderActiveTab();
-  }
-
-  /* ── Family Tree: Seeding ───────────────────────────────── */
-
-  function _ftSeedFromQuestionnaire() {
-    var pid = _currentPersonId(); if (!pid) return;
-    var bb = _bb(); if (!bb) return;
-    var draft = _ftDraft(pid);
-
-    // Ensure narrator root exists — v7 fix: also match by display name to avoid duplicates
-    var q = bb.questionnaire.personal || {};
-    var narratorFullName = (q.fullName || "").trim();
-    var narratorPrefName = (q.preferredName || "").trim();
-    var hasNarrator = draft.nodes.some(function (n) {
-      if (n.role === "narrator") return true;
-      // Also check if any existing node matches the narrator's name (prevents duplicate on re-seed)
-      var dn = _ftNodeDisplayName(n);
-      if (narratorFullName && dn === narratorFullName) return true;
-      if (narratorPrefName && dn === narratorPrefName) return true;
-      return false;
-    });
-    if (!hasNarrator) {
-      var narratorNode = _ftMakeNode("narrator", {
-        firstName: narratorFullName ? narratorFullName.split(/\s+/)[0] : "",
-        lastName: narratorFullName ? narratorFullName.split(/\s+/).slice(-1)[0] : "",
-        preferredName: narratorPrefName,
-        source: "questionnaire"
-      });
-      draft.nodes.push(narratorNode);
-    }
-    // v7 fix: find narrator by role OR type OR display name (handles dual-schema)
-    var _narr = draft.nodes.find(function (n) { return n.role === "narrator" || n.type === "narrator"; });
-    if (!_narr && narratorFullName) _narr = draft.nodes.find(function (n) { return _ftNodeDisplayName(n) === narratorFullName; });
-    if (!_narr && narratorPrefName) _narr = draft.nodes.find(function (n) { return _ftNodeDisplayName(n) === narratorPrefName; });
-    if (!_narr) return; // safety
-    var narratorId = _narr.id;
-
-    // Seed parents
-    var parents = Array.isArray(bb.questionnaire.parents) ? bb.questionnaire.parents : (bb.questionnaire.parents ? [bb.questionnaire.parents] : []);
-    parents.forEach(function (p) {
-      var name = [p.firstName, p.middleName, p.lastName].filter(Boolean).join(" ");
-      if (!name) return;
-      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "parent" || n.type === "parent"); });
-      if (exists) return;
-      var node = _ftMakeNode("parent", {
-        firstName: p.firstName || "", middleName: p.middleName || "", lastName: p.lastName || "",
-        birthDate: p.birthDate || "", notes: [p.notableLifeEvents, p.notes].filter(Boolean).join("\n"),
-        source: "questionnaire"
-      });
-      draft.nodes.push(node);
-      var relType = (p.relation || "").toLowerCase().indexOf("step") >= 0 ? "step" :
-                    (p.relation || "").toLowerCase().indexOf("adopt") >= 0 ? "adoptive" : "biological";
-      var label = p.relation || "parent";
-      draft.edges.push(_ftMakeEdge(narratorId, node.id, relType, label, ""));
-    });
-
-    // Seed siblings
-    var sibs = Array.isArray(bb.questionnaire.siblings) ? bb.questionnaire.siblings : (bb.questionnaire.siblings ? [bb.questionnaire.siblings] : []);
-    sibs.forEach(function (s) {
-      var name = [s.firstName, s.middleName, s.lastName].filter(Boolean).join(" ");
-      if (!name) return;
-      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "sibling" || n.type === "sibling"); });
-      if (exists) return;
-      var node = _ftMakeNode("sibling", {
-        firstName: s.firstName || "", middleName: s.middleName || "", lastName: s.lastName || "",
-        notes: [s.uniqueCharacteristics, s.sharedExperiences, s.memories, s.notes].filter(Boolean).join("\n"),
-        source: "questionnaire"
-      });
-      draft.nodes.push(node);
-      var relType = (s.relation || "").toLowerCase().indexOf("step") >= 0 ? "step" :
-                    (s.relation || "").toLowerCase().indexOf("half") >= 0 ? "half" : "biological";
-      draft.edges.push(_ftMakeEdge(narratorId, node.id, relType, s.relation || "sibling", ""));
-    });
-
-    // Seed grandparents
-    var gps = Array.isArray(bb.questionnaire.grandparents) ? bb.questionnaire.grandparents : (bb.questionnaire.grandparents ? [bb.questionnaire.grandparents] : []);
-    gps.forEach(function (g) {
-      var name = [g.firstName, g.lastName].filter(Boolean).join(" ");
-      if (!name) return;
-      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "grandparent" || n.type === "grandparent"); });
-      if (exists) return;
-      var node = _ftMakeNode("grandparent", {
-        firstName: g.firstName || "", lastName: g.lastName || "",
-        notes: g.memorableStories || "", source: "questionnaire"
-      });
-      draft.nodes.push(node);
-      draft.edges.push(_ftMakeEdge(narratorId, node.id, "biological", "grandparent", ""));
-    });
-
-    // v7: auto-clean any orphan edges after seeding
-    _ftCleanOrphanEdges(pid);
-    _persistDrafts(pid);
-    _renderActiveTab();
-  }
-
-  /* ── LV-005 fix: Seed Family Tree from server-side profile.kinship ── */
-  function _ftSeedFromProfile() {
-    var pid = _currentPersonId(); if (!pid) return;
-    var kinArr = (typeof state !== "undefined" && state.profile && Array.isArray(state.profile.kinship)) ? state.profile.kinship : [];
-    if (!kinArr.length) {
-      _showInlineConfirm && _showInlineConfirm("No kinship data found in the server profile for this narrator.");
-      return;
-    }
-    var draft = _ftDraft(pid);
-    var bb = _bb(); if (!bb) return;
-
-    // Ensure narrator root node
-    var basics = (state.profile && state.profile.basics) || {};
-    var narratorName = basics.preferred || basics.preferredName || basics.fullname || basics.fullName || "";
-    var hasNarrator = draft.nodes.some(function (n) {
-      if (n.role === "narrator") return true;
-      var dn = _ftNodeDisplayName(n);
-      return narratorName && dn === narratorName;
-    });
-    if (!hasNarrator && narratorName) {
-      var parts = (basics.fullname || basics.fullName || narratorName).split(/\s+/);
-      var narratorNode = _ftMakeNode("narrator", {
-        firstName: parts[0] || "",
-        lastName: parts.length > 1 ? parts[parts.length - 1] : "",
-        preferredName: basics.preferred || basics.preferredName || "",
-        birthDate: basics.dob || "",
-        deceased: !!basics.deceased,
-        deathDate: basics.dod || "",
-        source: "profile"
-      });
-      draft.nodes.push(narratorNode);
-    }
-    var _narr = draft.nodes.find(function (n) { return n.role === "narrator"; });
-    if (!_narr && narratorName) _narr = draft.nodes.find(function (n) { return _ftNodeDisplayName(n) === narratorName; });
-    if (!_narr) return;
-    var narratorId = _narr.id;
-
-    // Role inference from relation string
-    var _inferRole = function (rel) {
-      rel = (rel || "").toLowerCase();
-      if (/mother|father|mom|dad|parent/.test(rel)) return "parent";
-      if (/brother|sister|sibling/.test(rel)) return "sibling";
-      if (/son|daughter|child/.test(rel)) return "child";
-      if (/wife|husband|spouse|partner/.test(rel)) return "spouse";
-      if (/grand(mother|father|parent)/.test(rel)) return "grandparent";
-      if (/grand(son|daughter|child)/.test(rel)) return "grandchild";
-      if (/uncle|aunt|cousin|nephew|niece/.test(rel)) return "extended";
-      return "other";
-    };
-
-    var added = 0;
-    kinArr.forEach(function (k) {
-      var name = (k.name || "").trim();
-      if (!name) return;
-      // Skip if already in draft (by name + role)
-      var role = _inferRole(k.relation);
-      var exists = draft.nodes.some(function (n) {
-        return _ftNodeDisplayName(n) === name && (n.role === role || n.role === "other");
-      });
-      if (exists) return;
-
-      var parts = name.split(/\s+/);
-      var node = _ftMakeNode(role, {
-        firstName: parts[0] || "",
-        middleName: parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
-        lastName: parts.length > 1 ? parts[parts.length - 1] : "",
-        displayName: name,
-        deceased: !!k.deceased,
-        birthDate: k.dob || "",
-        deathDate: k.dod || "",
-        source: "profile"
-      });
-      draft.nodes.push(node);
-
-      var relType = /step/i.test(k.relation) ? "step" :
-                    /adopt/i.test(k.relation) ? "adoptive" :
-                    /half/i.test(k.relation) ? "half" : "biological";
-      draft.edges.push(_ftMakeEdge(narratorId, node.id, relType, k.relation || role, ""));
-      added++;
-    });
-
-    _ftCleanOrphanEdges(pid);
-    _persistDrafts(pid);
-    _renderActiveTab();
-    if (added > 0 && _showInlineConfirm) {
-      _showInlineConfirm("Seeded " + added + " family member" + (added > 1 ? "s" : "") + " from profile kinship data.");
-    }
-  }
-
-  function _ftSeedFromCandidates() {
-    var pid = _currentPersonId(); if (!pid) return;
-    var bb = _bb(); if (!bb) return;
-    var draft = _ftDraft(pid);
-
-    // v4: infer role from candidate relation field
-    var _inferRole = function (c) {
-      var d = c.data || {};
-      var rel = (d.relation || c.relation || "").toLowerCase();
-      if (/mother|father|mom|dad|parent/.test(rel)) return "parent";
-      if (/sister|brother|sibling/.test(rel)) return "sibling";
-      if (/wife|husband|spouse|partner/.test(rel)) return "spouse";
-      if (/son|daughter|child/.test(rel)) return "child";
-      if (/grand/.test(rel)) return "grandparent";
-      if (/guardian/.test(rel)) return "guardian";
-      if (/aunt|uncle|cousin|chosen/.test(rel)) return "chosen_family";
-      return "other";
-    };
-    var _inferRelType = function (c) {
-      var d = c.data || {};
-      var rel = (d.relation || c.relation || "").toLowerCase();
-      if (/step/.test(rel)) return "step";
-      if (/adopt/.test(rel)) return "adoptive";
-      if (/half/.test(rel)) return "half";
-      if (/foster/.test(rel)) return "foster";
-      if (/chosen|aunt|uncle|cousin/.test(rel)) return "chosen_family";
-      if (/former|ex/.test(rel)) return "former_marriage";
-      if (/wife|husband|spouse|partner|marri/.test(rel)) return "marriage";
-      return "biological";
-    };
-
-    // Ensure narrator root — v7 fix: check both role and type
-    var hasNarrator = draft.nodes.some(function (n) { return n.role === "narrator" || n.type === "narrator"; });
-    if (!hasNarrator) {
-      var pName = _currentPersonName() || "";
-      draft.nodes.push(_ftMakeNode("narrator", {
-        firstName: pName.split(/\s+/)[0] || "", lastName: pName.split(/\s+/).slice(-1)[0] || "",
-        preferredName: pName, source: "candidate"
-      }));
-    }
-    var _narrC = draft.nodes.find(function (n) { return n.role === "narrator" || n.type === "narrator"; });
-    if (!_narrC) return;
-    var narratorId = _narrC.id;
-
-    var people = (bb.candidates.people || []);
-    people.forEach(function (c) {
-      var title = _getCandidateTitle(c);
-      if (!title || title === "Untitled") return;
-      var role = _inferRole(c);
-      var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === title && n.role === role; });
-      if (exists) return;
-      var d = c.data || {};
-      var node = _ftMakeNode(role, {
-        firstName: d.name ? d.name.split(/\s+/)[0] : title,
-        lastName: d.name ? d.name.split(/\s+/).slice(-1)[0] : "",
-        birthDate: d.birthDate || "", notes: d.notes || _getCandidateText(c),
-        source: "candidate"
-      });
-      draft.nodes.push(node);
-      // v4: auto-create edge to narrator
-      var relType = _inferRelType(c);
-      draft.edges.push(_ftMakeEdge(narratorId, node.id, relType, d.relation || role, ""));
-    });
-
-    // v4: also seed from relationship candidates
-    var rels = (bb.candidates.relationships || []);
-    rels.forEach(function (c) {
-      var d = c.data || {};
-      var personNames = [d.personA, d.personB].filter(Boolean);
-      personNames.forEach(function (pn) {
-        if (!pn) return;
-        var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === pn; });
-        if (exists) return;
-        draft.nodes.push(_ftMakeNode("other", {
-          firstName: pn.split(/\s+/)[0], lastName: pn.split(/\s+/).slice(-1)[0] || "",
-          notes: d.relation || "", source: "candidate"
-        }));
-      });
-    });
-
-    _persistDrafts(pid);
-    _renderActiveTab();
-  }
-
-  /* ── v4: Draft Quality Utilities ─────────────────────────── */
-
-  function _ftFindDuplicates(pid) {
-    var draft = _ftDraft(pid); if (!draft) return [];
-    var seen = {};
-    var dupes = [];
-    draft.nodes.forEach(function (n) {
-      var key = _ftNodeDisplayName(n).toLowerCase().trim();
-      if (!key || key === "unknown") return;
-      if (seen[key]) dupes.push({ existing: seen[key], duplicate: n });
-      else seen[key] = n;
-    });
-    return dupes;
-  }
-
-  function _ftFindUnconnected(pid) {
-    var draft = _ftDraft(pid); if (!draft) return [];
-    var connected = {};
-    draft.edges.forEach(function (e) { connected[e.from] = true; connected[e.to] = true; });
-    return draft.nodes.filter(function (n) { return n.role !== "narrator" && !connected[n.id]; });
-  }
-
-  function _ftFindWeakNodes(pid) {
-    var draft = _ftDraft(pid); if (!draft) return [];
-    return draft.nodes.filter(function (n) {
-      var name = _ftNodeDisplayName(n);
-      return !name || name === "Unknown" || name === "Unnamed" || n.uncertainty;
-    });
-  }
-
-  function _ftFindUnsourced(pid) {
-    var draft = _ftDraft(pid); if (!draft) return [];
-    return draft.nodes.filter(function (n) { return !n.source || n.source === "manual"; });
-  }
-
-  function _ftCleanOrphanEdges(pid) {
-    var draft = _ftDraft(pid); if (!draft) return 0;
-    var nodeIds = {};
-    draft.nodes.forEach(function (n) { nodeIds[n.id] = true; });
-    var before = draft.edges.length;
-    draft.edges = draft.edges.filter(function (e) { return nodeIds[e.from] && nodeIds[e.to]; });
-    var removed = before - draft.edges.length;
-    if (removed > 0) { _persistDrafts(pid); _renderActiveTab(); }
-    return removed;
-  }
+  /* ── Family Tree — now in bio-builder-family-tree.js ───────
+     FT_ROLES, FT_REL_TYPES, ERA_ROLE_RELEVANCE, ERA_THEME_KEYWORDS,
+     _normalizeName, _fuzzyNameScore, _fuzzyDuplicateTier,
+     _ftDraft, _ftMakeNode, _ftMakeEdge, _ftNodeDisplayName,
+     _ftAddNode, _ftDeleteNode, _ftEditNode, _ftSaveNode,
+     _ftAddEdge, _ftSaveEdge, _ftDeleteEdge,
+     _ftSeedFromProfile, _ftSeedFromQuestionnaire, _ftSeedFromCandidates,
+     _ftFindDuplicates, _ftFindUnconnected, _ftFindWeakNodes,
+     _ftFindUnsourced, _ftCleanOrphanEdges, _ftFindFuzzyDuplicates,
+     _renderFamilyTreeTab, _renderFTGraph, _renderFTScaffold,
+     _toggleFTViewMode are imported as aliases above.
+  ─────────────────────────────────────────────────────────── */
 
   // Collapsed group state (v4 — per-session, not persisted)
   var _collapsedGroups = {};
@@ -982,940 +503,26 @@
     return '<div class="ft-utilities-bar">' + issues.join(" ") + '</div>';
   }
 
-  /* ── Family Tree: Tab Renderer ──────────────────────────── */
 
-  function _renderFamilyTreeTab(container, pid) {
-    if (!pid) {
-      container.innerHTML = _emptyStateHtml("No narrator selected", "Select a narrator to start building their family tree.", []);
-      return;
-    }
-    var draft = _ftDraft(pid);
-    if (!draft.nodes.length) {
-      container.innerHTML = _emptyStateHtml(
-        "Family Tree",
-        "Build the family structure here as you gather biography details. Add parents, siblings, spouses, children, and chosen family. This is a draft workspace — nothing is promoted automatically.",
-        [
-          { label: "📋 Seed from Profile", action: "window.LorevoxBioBuilder._ftSeedFromProfile()" },
-          { label: "🌱 Seed from Questionnaire", action: "window.LorevoxBioBuilder._ftSeedFromQuestionnaire()" },
-          { label: "👥 Seed from Candidates", action: "window.LorevoxBioBuilder._ftSeedFromCandidates()" },
-          { label: "+ Add Person", action: "window.LorevoxBioBuilder._ftAddNode('other')" }
-        ]
-      );
-      return;
-    }
+  /* ── Life Threads — now in bio-builder-life-threads.js ────
+     LT_NODE_TYPES, LT_EDGE_TYPES,
+     _ltDraft, _ltMakeNode, _ltMakeEdge,
+     _ltAddNode, _ltDeleteNode, _ltEditNode, _ltSaveNode,
+     _ltAddEdge, _ltSaveEdge, _ltDeleteEdge,
+     _ltSeedFromCandidates, _ltSeedThemes,
+     _renderLifeThreadsTab, _renderLTGraph,
+     _toggleLTViewMode, _clusterSpread,
+     _LT_TYPE_POSITIONS, _LT_TYPE_COLORS,
+     _GRAPH_MAX_NODES are imported as aliases above.
+  ─────────────────────────────────────────────────────────── */
 
-    // Group nodes by role
-    var groups = {};
-    FT_ROLES.forEach(function (r) { groups[r] = []; });
-    draft.nodes.forEach(function (n) {
-      var g = groups[n.role] || groups.other;
-      g.push(n);
-    });
-
-    // v4: draft quality utilities bar
-    var utilHtml = _renderDraftUtilities(container, pid, "familyTree");
-
-    // v6: fuzzy duplicate bar (augments v4 exact duplicates)
-    var fuzzyDupes = NS._ftFindFuzzyDuplicates ? NS._ftFindFuzzyDuplicates(pid) : [];
-    var fuzzyNonExact = fuzzyDupes.filter(function (d) { return d.tier !== "exact"; });
-    var fuzzyBar = fuzzyNonExact.length > 0
-      ? '<div class="ft-utilities-bar"><span class="ft-util-badge ft-util-info">' + fuzzyNonExact.length
-        + ' fuzzy match' + (fuzzyNonExact.length > 1 ? 'es' : '') + ': '
-        + fuzzyNonExact.slice(0, 3).map(function (d) { return '"' + _esc(d.nameA) + '" ≈ "' + _esc(d.nameB) + '" (' + Math.round(d.score * 100) + '%)'; }).join(', ')
-        + (fuzzyNonExact.length > 3 ? '…' : '') + '</span></div>'
-      : '';
-
-    var html = utilHtml + fuzzyBar
-      + '<div class="ft-toolbar">'
-      + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftAddNode(\'other\')">+ Add Person</button>'
-      + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromProfile()">📋 Seed Profile</button>'
-      + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromQuestionnaire()">🌱 Seed Questionnaire</button>'
-      + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromCandidates()">👥 Seed Candidates</button>'
-      + _viewModeToggle(_ftViewMode, "window.LorevoxBioBuilder._toggleFTViewMode()")
-      + '</div>';
-
-    // v6: Graph mode render
-    if (_ftViewMode === "graph") {
-      html += _renderFTGraph(pid);
-      container.innerHTML = html;
-      return;
-    }
-
-    // v7: Scaffold mode — 4-generation ancestor tree layout
-    if (_ftViewMode === "scaffold") {
-      html += _renderFTScaffold(pid);
-      container.innerHTML = html;
-      return;
-    }
-
-    FT_ROLES.forEach(function (role) {
-      var nodes = groups[role];
-      if (!nodes.length) return;
-      var collapsed = _isGroupCollapsed("ft", role);
-      html += '<div class="ft-group' + (collapsed ? ' ft-group-collapsed' : '') + '">';
-      html += '<div class="ft-group-label" onclick="window.LorevoxBioBuilder._toggleGroupCollapse(\'ft\',\'' + role + '\')" style="cursor:pointer">'
-        + '<span class="ft-collapse-arrow">' + (collapsed ? '▸' : '▾') + '</span> '
-        + role.replace(/_/g, ' ') + ' <span class="ft-group-count">(' + nodes.length + ')</span></div>';
-      if (collapsed) { html += '</div>'; return; }
-      html += '<div class="ft-cards">';
-      nodes.forEach(function (n) {
-        var name = _ftNodeDisplayName(n);
-        var decLabel = n.deceased ? '<span class="ft-deceased-badge">deceased</span>' : '';
-        var uncLabel = n.uncertainty ? '<span class="ft-uncertain-badge">' + _esc(n.uncertainty) + '</span>' : '';
-        var deathNote = n.deathContext ? '<div class="ft-card-death">' + _esc(n.deathContext) + '</div>' : '';
-        var notesLine = n.notes ? '<div class="ft-card-notes">' + _esc(n.notes.slice(0, 80)) + (n.notes.length > 80 ? '…' : '') + '</div>' : '';
-
-        // Find edges from this node
-        var edges = draft.edges.filter(function (e) { return e.from === n.id || e.to === n.id; });
-        var edgeHtml = edges.map(function (e) {
-          var otherNodeId = e.from === n.id ? e.to : e.from;
-          var otherNode = draft.nodes.find(function (on) { return on.id === otherNodeId; });
-          var otherName = otherNode ? _ftNodeDisplayName(otherNode) : "?";
-          var dir = e.from === n.id ? "→" : "←";
-          return '<div class="ft-edge-line">' + dir + ' <span class="ft-edge-label">' + _esc(e.label || e.relationshipType.replace(/_/g, ' ')) + '</span> '
-            + _esc(otherName) + ' <button class="ft-edge-del" onclick="window.LorevoxBioBuilder._ftDeleteEdge(\'' + e.id + '\')">✕</button></div>';
-        }).join("");
-
-        var srcBadge = n.source ? '<span class="ft-source-badge">' + _esc(n.source) + '</span>' : '';
-
-        html += '<div class="ft-card' + (n.deceased ? ' ft-card-deceased' : '') + '">'
-          + '<div class="ft-card-header">'
-          + '<strong>' + _esc(name) + '</strong> ' + decLabel + uncLabel + srcBadge
-          + '</div>'
-          + (n.birthDate ? '<div class="ft-card-detail">b. ' + _esc(n.birthDate) + '</div>' : '')
-          + (n.deathDate ? '<div class="ft-card-detail">d. ' + _esc(n.deathDate) + '</div>' : '')
-          + deathNote + notesLine
-          + (edgeHtml ? '<div class="ft-card-edges">' + edgeHtml + '</div>' : '')
-          + '<div class="ft-card-actions">'
-          + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftEditNode(\'' + n.id + '\')">Edit</button>'
-          + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftAddEdge(\'' + n.id + '\')">Connect</button>'
-          + '<button class="bb-btn-sm" style="color:#f87171" onclick="window.LorevoxBioBuilder._ftDeleteNode(\'' + n.id + '\')">Delete</button>'
-          + '</div></div>';
-      });
-      html += '</div></div>';
-    });
-
-    container.innerHTML = html;
-  }
-
-  /* ═══════════════════════════════════════════════════════════════
-     LIFE THREADS — Draft staging surface (v3)
-     Per-person draft stores under state.bioBuilder.lifeThreadsDraftsByPerson
-     Uses state.person_id for narrator scoping.
-     Writes ONLY to Bio Builder state — never to truth layers.
-  ═══════════════════════════════════════════════════════════════ */
-
-  var LT_NODE_TYPES = ["person","place","memory","event","theme"];
-  var LT_EDGE_TYPES = ["family_of","happened_in","remembered_with","connected_to","influenced_by","theme_of","other"];
-
-  function _ltDraft(pid) {
-    var bb = _bb(); if (!bb) return null;
-    if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
-    var id = pid || _currentPersonId() || "default";
-    if (!bb.lifeThreadsDraftsByPerson[id]) {
-      bb.lifeThreadsDraftsByPerson[id] = { nodes: [], edges: [], meta: {} };
-    }
-    return bb.lifeThreadsDraftsByPerson[id];
-  }
-
-  function _ltMakeNode(type, data) {
-    return {
-      id: "ltn_" + _uid(),
-      type: type || "memory",
-      label: (data && data.label) || "",
-      text: (data && data.text) || "",
-      notes: (data && data.notes) || "",
-      source: (data && data.source) || "manual",
-      sourceRef: (data && data.sourceRef) || null
-    };
-  }
-
-  function _ltMakeEdge(fromId, toId, relationship, notes) {
-    return {
-      id: "lte_" + _uid(),
-      from: fromId,
-      to: toId,
-      relationship: relationship || "connected_to",
-      notes: notes || ""
-    };
-  }
-
-  /* ── Life Threads: Add / Edit / Delete ──────────────────── */
-
-  function _ltAddNode(type) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ltDraft(pid);
-    var node = _ltMakeNode(type || "memory", {});
-    draft.nodes.push(node);
-    _ltEditNode(node.id);
-  }
-
-  function _ltDeleteNode(nodeId, confirmed) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ltDraft(pid);
-    var edgeCount = draft.edges.filter(function (e) { return e.from === nodeId || e.to === nodeId; }).length;
-    if (edgeCount > 0 && !confirmed) {
-      _showInlineConfirm(
-        "This thread node has " + edgeCount + " link(s). Delete anyway?",
-        function () { _ltDeleteNode(nodeId, true); }
-      );
-      return;
-    }
-    draft.nodes = draft.nodes.filter(function (n) { return n.id !== nodeId; });
-    draft.edges = draft.edges.filter(function (e) { return e.from !== nodeId && e.to !== nodeId; });
-    _persistDrafts(pid);
-    _renderActiveTab();
-  }
-
-  function _ltEditNode(nodeId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ltDraft(pid);
-    var node = draft.nodes.find(function (n) { return n.id === nodeId; });
-    if (!node) return;
-    var content = _el("bbTabContent"); if (!content) return;
-
-    var typeOpts = LT_NODE_TYPES.map(function (t) {
-      return '<option value="' + t + '"' + (t === node.type ? ' selected' : '') + '>' + t + '</option>';
-    }).join("");
-
-    content.innerHTML =
-      '<div class="bb-section-nav"><button class="bb-ghost-btn bb-back-btn" onclick="window.LorevoxBioBuilder._switchTab(\'lifeThreads\')">← Back to Life Threads</button></div>'
-      + '<div class="bb-section-title">Edit Thread Node</div>'
-      + '<div class="bb-fields-list">'
-      + '<div class="bb-field"><label class="bb-label">Type</label><select id="ltEditType" class="bb-select">' + typeOpts + '</select></div>'
-      + '<div class="bb-field"><label class="bb-label">Label</label><input id="ltEditLabel" class="bb-input" type="text" value="' + _esc(node.label) + '" placeholder="Short name: \'Austin years\', \'left church\', \'Shakey\'s Pizza\'" /></div>'
-      + '<div class="bb-field"><label class="bb-label">Details</label><textarea id="ltEditText" class="bb-textarea" rows="3" placeholder="What happened, what it meant, or what you want to remember">' + _esc(node.text) + '</textarea></div>'
-      + '<div class="bb-field"><label class="bb-label">Notes</label><textarea id="ltEditNotes" class="bb-textarea" rows="2" placeholder="Approximate dates, uncertainty, things to fill in later">' + _esc(node.notes) + '</textarea></div>'
-      + '</div>'
-      + '<div class="bb-section-footer">'
-      + '<button class="bb-btn-primary" onclick="window.LorevoxBioBuilder._ltSaveNode(\'' + node.id + '\')">Save</button>'
-      + '<button class="bb-ghost-btn" style="color:#f87171" onclick="window.LorevoxBioBuilder._ltDeleteNode(\'' + node.id + '\')">Delete</button>'
-      + '</div>';
-  }
-
-  function _ltSaveNode(nodeId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ltDraft(pid);
-    var node = draft.nodes.find(function (n) { return n.id === nodeId; });
-    if (!node) return;
-    node.type = (_el("ltEditType") || {}).value || node.type;
-    node.label = (_el("ltEditLabel") || {}).value || "";
-    node.text = (_el("ltEditText") || {}).value || "";
-    node.notes = (_el("ltEditNotes") || {}).value || "";
-    _persistDrafts(pid);
-    _switchTab("lifeThreads");
-  }
-
-  /* ── Life Threads: Add Edge ─────────────────────────────── */
-
-  function _ltAddEdge(fromId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ltDraft(pid);
-    var content = _el("bbTabContent"); if (!content) return;
-    var fromNode = draft.nodes.find(function (n) { return n.id === fromId; });
-    if (!fromNode) return;
-
-    var otherNodes = draft.nodes.filter(function (n) { return n.id !== fromId; });
-    if (!otherNodes.length) {
-      content.innerHTML = _emptyStateHtml("Need more nodes", "Add at least two thread nodes before connecting them.", [
-        { label: "← Back", action: "window.LorevoxBioBuilder._switchTab('lifeThreads')" }
-      ]);
-      return;
-    }
-
-    var toOpts = otherNodes.map(function (n) {
-      return '<option value="' + n.id + '">' + _esc(n.label || n.type) + '</option>';
-    }).join("");
-    var relOpts = LT_EDGE_TYPES.map(function (r) {
-      return '<option value="' + r + '">' + r.replace(/_/g, ' ') + '</option>';
-    }).join("");
-
-    content.innerHTML =
-      '<div class="bb-section-nav"><button class="bb-ghost-btn bb-back-btn" onclick="window.LorevoxBioBuilder._switchTab(\'lifeThreads\')">← Back</button></div>'
-      + '<div class="bb-section-title">Connect: ' + _esc(fromNode.label || fromNode.type) + '</div>'
-      + '<div class="bb-fields-list">'
-      + '<div class="bb-field"><label class="bb-label">To</label><select id="ltEdgeTo" class="bb-select">' + toOpts + '</select></div>'
-      + '<div class="bb-field"><label class="bb-label">Relationship</label><select id="ltEdgeRel" class="bb-select">' + relOpts + '</select></div>'
-      + '<div class="bb-field"><label class="bb-label">Notes</label><textarea id="ltEdgeNotes" class="bb-textarea" rows="2"></textarea></div>'
-      + '</div>'
-      + '<div class="bb-section-footer"><button class="bb-btn-primary" onclick="window.LorevoxBioBuilder._ltSaveEdge(\'' + fromId + '\')">Save Link</button></div>';
-  }
-
-  function _ltSaveEdge(fromId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ltDraft(pid);
-    var toId = (_el("ltEdgeTo") || {}).value;
-    var rel = (_el("ltEdgeRel") || {}).value || "connected_to";
-    var notes = (_el("ltEdgeNotes") || {}).value || "";
-    if (toId) {
-      draft.edges.push(_ltMakeEdge(fromId, toId, rel, notes));
-    }
-    _persistDrafts(pid);
-    _switchTab("lifeThreads");
-  }
-
-  function _ltDeleteEdge(edgeId) {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ltDraft(pid);
-    draft.edges = draft.edges.filter(function (e) { return e.id !== edgeId; });
-    _persistDrafts(pid);
-    _renderActiveTab();
-  }
-
-  /* ── Life Threads: Seeding ──────────────────────────────── */
-
-  function _ltSeedFromCandidates() {
-    var pid = _currentPersonId(); if (!pid) return;
-    var bb = _bb(); if (!bb) return;
-    var draft = _ltDraft(pid);
-
-    // Narrator anchor
-    var hasNarrator = draft.nodes.some(function (n) { return n.type === "person" && n.label && n.label.indexOf("narrator") >= 0; });
-    if (!hasNarrator) {
-      var narratorName = _currentPersonName() || "Narrator";
-      draft.nodes.push(_ltMakeNode("person", { label: narratorName + " (narrator)", source: "questionnaire" }));
-    }
-
-    var buckets = [
-      { key: "people",        type: "person" },
-      { key: "places",        type: "place" },
-      { key: "memories",      type: "memory" },
-      { key: "events",        type: "event" }
-    ];
-    buckets.forEach(function (bucket) {
-      var items = bb.candidates[bucket.key] || [];
-      items.forEach(function (c) {
-        var title = _getCandidateTitle(c);
-        if (!title || title === "Untitled") return;
-        var exists = draft.nodes.some(function (n) { return n.label === title; });
-        if (exists) return;
-        draft.nodes.push(_ltMakeNode(bucket.type, {
-          label: title,
-          text: _getCandidateText(c),
-          source: "candidate",
-          sourceRef: c.id || null
-        }));
-      });
-    });
-    _persistDrafts(pid);
-    _renderActiveTab();
-  }
-
-  function _ltSeedThemes() {
-    var pid = _currentPersonId(); if (!pid) return;
-    var draft = _ltDraft(pid);
-    var bb = _bb(); if (!bb) return;
-
-    var themeSeeds = [];
-    var placeSeeds = [];
-    var eventSeeds = [];
-    var q = bb.questionnaire;
-
-    // v4: expanded theme seeding from all questionnaire sections
-    if (q.earlyMemories) {
-      if (q.earlyMemories.firstMemory) themeSeeds.push({ label: "First Memory", text: q.earlyMemories.firstMemory });
-      if (q.earlyMemories.favoriteToy) themeSeeds.push({ label: "Favorite Childhood Object", text: q.earlyMemories.favoriteToy });
-      if (q.earlyMemories.significantEvent) eventSeeds.push({ label: "Significant Early Event", text: q.earlyMemories.significantEvent });
-    }
-    if (q.education) {
-      if (q.education.schooling) placeSeeds.push({ label: "School Years", text: q.education.schooling });
-      if (q.education.higherEducation) placeSeeds.push({ label: "Higher Education", text: q.education.higherEducation });
-      if (q.education.earlyCareer) themeSeeds.push({ label: "Early Career", text: q.education.earlyCareer });
-      if (q.education.careerProgression) themeSeeds.push({ label: "Career Progression", text: q.education.careerProgression });
-      if (q.education.communityInvolvement) themeSeeds.push({ label: "Community Involvement", text: q.education.communityInvolvement });
-      if (q.education.mentorship) themeSeeds.push({ label: "Mentorship", text: q.education.mentorship });
-    }
-    if (q.laterYears) {
-      if (q.laterYears.lifeLessons) themeSeeds.push({ label: "Life Lessons", text: q.laterYears.lifeLessons });
-      if (q.laterYears.retirement) themeSeeds.push({ label: "Retirement", text: q.laterYears.retirement });
-      if (q.laterYears.adviceForFutureGenerations) themeSeeds.push({ label: "Advice for Future Generations", text: q.laterYears.adviceForFutureGenerations });
-    }
-    if (q.hobbies) {
-      if (q.hobbies.hobbies) themeSeeds.push({ label: "Hobbies & Interests", text: q.hobbies.hobbies });
-      if (q.hobbies.worldEvents) eventSeeds.push({ label: "World Events", text: q.hobbies.worldEvents });
-      if (q.hobbies.personalChallenges) themeSeeds.push({ label: "Personal Challenges", text: q.hobbies.personalChallenges });
-      if (q.hobbies.travel) placeSeeds.push({ label: "Travel", text: q.hobbies.travel });
-    }
-    if (q.additionalNotes) {
-      if (q.additionalNotes.unfinishedDreams) themeSeeds.push({ label: "Unfinished Dreams", text: q.additionalNotes.unfinishedDreams });
-      if (q.additionalNotes.messagesForFutureGenerations) themeSeeds.push({ label: "Messages for Future Generations", text: q.additionalNotes.messagesForFutureGenerations });
-    }
-
-    var _seedNode = function (type, t) {
-      var exists = draft.nodes.some(function (n) { return n.label === t.label; });
-      if (exists) return;
-      draft.nodes.push(_ltMakeNode(type, { label: t.label, text: t.text, source: "questionnaire" }));
-    };
-    themeSeeds.forEach(function (t) { _seedNode("theme", t); });
-    placeSeeds.forEach(function (t) { _seedNode("place", t); });
-    eventSeeds.forEach(function (t) { _seedNode("event", t); });
-    _persistDrafts(pid);
-    _renderActiveTab();
-  }
-
-  /* ── Life Threads: Tab Renderer ─────────────────────────── */
-
-  function _renderLifeThreadsTab(container, pid) {
-    if (!pid) {
-      container.innerHTML = _emptyStateHtml("No narrator selected", "Select a narrator to start organizing their story threads.", []);
-      return;
-    }
-    var draft = _ltDraft(pid);
-    if (!draft.nodes.length) {
-      container.innerHTML = _emptyStateHtml(
-        "Life Threads",
-        "Use Life Threads to connect memories, people, places, and life themes. This helps reveal story structure before review and memoir drafting. This is a draft workspace — not a final truth layer.",
-        [
-          { label: "👥 Seed from Candidates", action: "window.LorevoxBioBuilder._ltSeedFromCandidates()" },
-          { label: "🎯 Seed Themes", action: "window.LorevoxBioBuilder._ltSeedThemes()" },
-          { label: "+ Add Node", action: "window.LorevoxBioBuilder._ltAddNode('memory')" }
-        ]
-      );
-      return;
-    }
-
-    // Group by type
-    var groups = {};
-    LT_NODE_TYPES.forEach(function (t) { groups[t] = []; });
-    draft.nodes.forEach(function (n) {
-      var g = groups[n.type] || groups.memory;
-      g.push(n);
-    });
-
-    var typeIcons = { person: "👤", place: "📍", memory: "💭", event: "📅", theme: "🎯" };
-
-    var html = '<div class="lt-toolbar">'
-      + LT_NODE_TYPES.map(function (t) {
-          return '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ltAddNode(\'' + t + '\')">'
-            + typeIcons[t] + ' + ' + t + '</button>';
-        }).join("")
-      + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ltSeedFromCandidates()">🌱 Seed</button>'
-      + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ltSeedThemes()">🎯 Themes</button>'
-      + _viewModeToggle(_ltViewMode, "window.LorevoxBioBuilder._toggleLTViewMode()")
-      + '</div>';
-
-    // v4: utilities bar
-    html += _renderDraftUtilities(container, pid, "lifeThreads");
-
-    // v6: Graph mode render
-    if (_ltViewMode === "graph") {
-      html += _renderLTGraph(pid);
-      container.innerHTML = html;
-      return;
-    }
-
-    LT_NODE_TYPES.forEach(function (type) {
-      var nodes = groups[type];
-      if (!nodes.length) return;
-      var collapsed = _isGroupCollapsed("lt", type);
-      html += '<div class="lt-group' + (collapsed ? ' lt-group-collapsed' : '') + '">';
-      html += '<div class="lt-group-label" onclick="window.LorevoxBioBuilder._toggleGroupCollapse(\'lt\',\'' + type + '\')" style="cursor:pointer">'
-        + '<span class="ft-collapse-arrow">' + (collapsed ? '▸' : '▾') + '</span> '
-        + (typeIcons[type] || '') + ' ' + (type === "memory" ? "memories" : type + 's') + ' <span class="ft-group-count">(' + nodes.length + ')</span></div>';
-      if (collapsed) { html += '</div>'; return; }
-      html += '<div class="lt-cards">';
-      nodes.forEach(function (n) {
-        var edges = draft.edges.filter(function (e) { return e.from === n.id || e.to === n.id; });
-        var edgeHtml = edges.map(function (e) {
-          var otherId = e.from === n.id ? e.to : e.from;
-          var otherNode = draft.nodes.find(function (on) { return on.id === otherId; });
-          var otherLabel = otherNode ? (otherNode.label || otherNode.type) : "?";
-          return '<div class="lt-edge-line">'
-            + '<span class="lt-edge-rel">' + _esc(e.relationship.replace(/_/g, ' ')) + '</span> → '
-            + _esc(otherLabel)
-            + ' <button class="lt-edge-del" onclick="window.LorevoxBioBuilder._ltDeleteEdge(\'' + e.id + '\')">✕</button></div>';
-        }).join("");
-
-        html += '<div class="lt-card lt-card-' + type + '">'
-          + '<div class="lt-card-header"><strong>' + _esc(n.label || "Untitled") + '</strong></div>'
-          + (n.text ? '<div class="lt-card-text">' + _esc(n.text.slice(0, 120)) + (n.text.length > 120 ? '…' : '') + '</div>' : '')
-          + (n.notes ? '<div class="lt-card-notes">' + _esc(n.notes.slice(0, 80)) + '</div>' : '')
-          + (edgeHtml ? '<div class="lt-card-edges">' + edgeHtml + '</div>' : '')
-          + '<div class="lt-card-actions">'
-          + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ltEditNode(\'' + n.id + '\')">Edit</button>'
-          + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ltAddEdge(\'' + n.id + '\')">Link</button>'
-          + '<button class="bb-btn-sm" style="color:#f87171" onclick="window.LorevoxBioBuilder._ltDeleteNode(\'' + n.id + '\')">Delete</button>'
-          + '</div></div>';
-      });
-      html += '</div></div>';
-    });
-
-    container.innerHTML = html;
-  }
-
-  /* ── v6: Graph Mode — SVG-based relationship graph ──────── */
-
-  var _GRAPH_MAX_NODES = 80; // cap for performance on large profiles
-
-  /* Role cluster positions for FT graph (relative, 0-1 coordinate space) */
-  var _FT_ROLE_POSITIONS = {
-    narrator:      { cx: 0.50, cy: 0.50 },
-    parent:        { cx: 0.50, cy: 0.15 },
-    grandparent:   { cx: 0.50, cy: 0.02 },
-    sibling:       { cx: 0.15, cy: 0.40 },
-    spouse:        { cx: 0.85, cy: 0.50 },
-    child:         { cx: 0.50, cy: 0.85 },
-    grandchild:    { cx: 0.50, cy: 0.98 },
-    guardian:      { cx: 0.20, cy: 0.18 },
-    chosen_family: { cx: 0.85, cy: 0.25 },
-    other:         { cx: 0.15, cy: 0.75 }
-  };
-
-  /* LT type cluster positions */
-  var _LT_TYPE_POSITIONS = {
-    person: { cx: 0.30, cy: 0.30 },
-    place:  { cx: 0.70, cy: 0.30 },
-    memory: { cx: 0.30, cy: 0.70 },
-    event:  { cx: 0.70, cy: 0.70 },
-    theme:  { cx: 0.50, cy: 0.10 }
-  };
-
-  /* Color palette for graph nodes */
-  var _FT_ROLE_COLORS = {
-    narrator: "#818cf8", parent: "#f97316", grandparent: "#fb923c",
-    sibling: "#34d399", spouse: "#f472b6", child: "#38bdf8",
-    grandchild: "#67e8f9", guardian: "#fbbf24", chosen_family: "#a78bfa", other: "#94a3b8"
-  };
-  var _LT_TYPE_COLORS = {
-    person: "#818cf8", place: "#34d399", memory: "#f97316", event: "#38bdf8", theme: "#a78bfa"
-  };
-
-  /* Spread nodes within a cluster to avoid overlap */
-  function _clusterSpread(nodes, center, w, h, spread) {
-    spread = spread || 0.12;
-    var count = nodes.length;
-    if (count === 0) return [];
-    if (count === 1) return [{ x: center.cx * w, y: center.cy * h }];
-    var positions = [];
-    var angleStep = (2 * Math.PI) / count;
-    var radius = Math.min(w, h) * spread * Math.min(1, count / 4);
-    for (var i = 0; i < count; i++) {
-      var angle = angleStep * i - Math.PI / 2;
-      positions.push({
-        x: center.cx * w + Math.cos(angle) * radius,
-        y: center.cy * h + Math.sin(angle) * radius
-      });
-    }
-    return positions;
-  }
-
-  /* Render FT graph as SVG string */
-  function _renderFTGraph(pid) {
-    var draft = _ftDraft(pid);
-    if (!draft || !draft.nodes.length) return '<div class="ft-graph-empty">No nodes to graph.</div>';
-
-    var nodes = draft.nodes;
-    var edges = draft.edges;
-    var capped = nodes.length > _GRAPH_MAX_NODES;
-    if (capped) nodes = nodes.slice(0, _GRAPH_MAX_NODES);
-
-    var w = 720, h = 480;
-    var nodeRadius = 18;
-
-    // Position nodes by role cluster
-    var grouped = {};
-    FT_ROLES.forEach(function (r) { grouped[r] = []; });
-    nodes.forEach(function (n) { (grouped[n.role] || grouped.other).push(n); });
-
-    var posMap = {}; // nodeId → { x, y }
-    FT_ROLES.forEach(function (role) {
-      var group = grouped[role];
-      if (!group.length) return;
-      var center = _FT_ROLE_POSITIONS[role] || _FT_ROLE_POSITIONS.other;
-      var positions = _clusterSpread(group, center, w, h, 0.10);
-      group.forEach(function (n, i) { posMap[n.id] = positions[i]; });
-    });
-
-    // Build SVG
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" class="ft-graph-svg" style="width:100%;height:auto;max-height:480px;">';
-
-    // Edges
-    edges.forEach(function (e) {
-      var from = posMap[e.from], to = posMap[e.to];
-      if (!from || !to) return;
-      var label = e.label || e.relationshipType || "";
-      var mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
-      svg += '<line x1="' + from.x + '" y1="' + from.y + '" x2="' + to.x + '" y2="' + to.y + '" stroke="rgba(148,163,184,0.3)" stroke-width="1.5"/>';
-      if (label) {
-        svg += '<text x="' + mx + '" y="' + (my - 3) + '" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">' + _esc(label.replace(/_/g, ' ').slice(0, 16)) + '</text>';
-      }
-    });
-
-    // Nodes
-    nodes.forEach(function (n) {
-      var pos = posMap[n.id]; if (!pos) return;
-      var color = _FT_ROLE_COLORS[n.role] || _FT_ROLE_COLORS.other;
-      var name = _ftNodeDisplayName(n);
-      var short = name.length > 12 ? name.slice(0, 11) + '…' : name;
-      var opacity = n.deceased ? '0.5' : '1';
-      var dnp = n.notes && /do\s*not\s*prompt/i.test(n.notes);
-      var stroke = dnp ? '#ef4444' : color;
-      svg += '<g style="opacity:' + opacity + '">'
-        + '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="' + nodeRadius + '" fill="rgba(30,41,59,0.9)" stroke="' + stroke + '" stroke-width="' + (dnp ? 2.5 : 1.5) + '"/>'
-        + '<text x="' + pos.x + '" y="' + (pos.y + 4) + '" text-anchor="middle" fill="' + color + '" font-size="9" font-weight="500" font-family="sans-serif">' + _esc(short) + '</text>'
-        + '</g>';
-    });
-
-    // Role cluster labels (background)
-    FT_ROLES.forEach(function (role) {
-      if (!grouped[role].length) return;
-      var center = _FT_ROLE_POSITIONS[role] || _FT_ROLE_POSITIONS.other;
-      svg += '<text x="' + (center.cx * w) + '" y="' + Math.max(center.cy * h - 28, 10) + '" text-anchor="middle" fill="rgba(148,163,184,0.3)" font-size="10" font-family="sans-serif" font-weight="600">'
-        + role.replace(/_/g, ' ').toUpperCase() + '</text>';
-    });
-
-    svg += '</svg>';
-
-    if (capped) {
-      svg += '<div class="ft-graph-cap-notice">Showing first ' + _GRAPH_MAX_NODES + ' of ' + draft.nodes.length + ' nodes for performance.</div>';
-    }
-    return svg;
-  }
-
-  /* Render LT graph as SVG string */
-  function _renderLTGraph(pid) {
-    var draft = _ltDraft(pid);
-    if (!draft || !draft.nodes.length) return '<div class="lt-graph-empty">No nodes to graph.</div>';
-
-    var nodes = draft.nodes;
-    var edges = draft.edges;
-    var capped = nodes.length > _GRAPH_MAX_NODES;
-    if (capped) nodes = nodes.slice(0, _GRAPH_MAX_NODES);
-
-    var w = 720, h = 480;
-    var nodeRadius = 16;
-
-    // Position nodes by type cluster
-    var grouped = {};
-    LT_NODE_TYPES.forEach(function (t) { grouped[t] = []; });
-    nodes.forEach(function (n) { (grouped[n.type] || grouped.memory).push(n); });
-
-    var posMap = {};
-    LT_NODE_TYPES.forEach(function (type) {
-      var group = grouped[type];
-      if (!group.length) return;
-      var center = _LT_TYPE_POSITIONS[type] || _LT_TYPE_POSITIONS.memory;
-      var positions = _clusterSpread(group, center, w, h, 0.12);
-      group.forEach(function (n, i) { posMap[n.id] = positions[i]; });
-    });
-
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" class="lt-graph-svg" style="width:100%;height:auto;max-height:480px;">';
-
-    // Edges
-    edges.forEach(function (e) {
-      var from = posMap[e.from], to = posMap[e.to];
-      if (!from || !to) return;
-      var label = e.relationship || "";
-      var mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
-      svg += '<line x1="' + from.x + '" y1="' + from.y + '" x2="' + to.x + '" y2="' + to.y + '" stroke="rgba(148,163,184,0.25)" stroke-width="1" stroke-dasharray="4,3"/>';
-      if (label) {
-        svg += '<text x="' + mx + '" y="' + (my - 3) + '" text-anchor="middle" fill="#475569" font-size="7" font-family="sans-serif">' + _esc(label.replace(/_/g, ' ').slice(0, 18)) + '</text>';
-      }
-    });
-
-    // Nodes
-    var typeIcons = { person: "👤", place: "📍", memory: "💭", event: "📅", theme: "🎯" };
-    nodes.forEach(function (n) {
-      var pos = posMap[n.id]; if (!pos) return;
-      var color = _LT_TYPE_COLORS[n.type] || _LT_TYPE_COLORS.memory;
-      var label = (n.label || "Untitled");
-      var short = label.length > 14 ? label.slice(0, 13) + '…' : label;
-      svg += '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="' + nodeRadius + '" fill="rgba(30,41,59,0.85)" stroke="' + color + '" stroke-width="1.5"/>'
-        + '<text x="' + pos.x + '" y="' + (pos.y + 3) + '" text-anchor="middle" fill="' + color + '" font-size="8" font-weight="500" font-family="sans-serif">' + _esc(short) + '</text>';
-    });
-
-    // Type cluster labels
-    LT_NODE_TYPES.forEach(function (type) {
-      if (!grouped[type].length) return;
-      var center = _LT_TYPE_POSITIONS[type] || _LT_TYPE_POSITIONS.memory;
-      svg += '<text x="' + (center.cx * w) + '" y="' + Math.max(center.cy * h - 24, 10) + '" text-anchor="middle" fill="rgba(148,163,184,0.3)" font-size="10" font-family="sans-serif" font-weight="600">'
-        + (typeIcons[type] || '') + ' ' + type.toUpperCase() + 'S</text>';
-    });
-
-    svg += '</svg>';
-    if (capped) {
-      svg += '<div class="lt-graph-cap-notice">Showing first ' + _GRAPH_MAX_NODES + ' of ' + draft.nodes.length + ' nodes for performance.</div>';
-    }
-    return svg;
-  }
-
-  /* ── v7: 4-Generation Scaffold Renderer ───────────────── */
-
-  var _SCAFFOLD_GEN_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b"];
-  var _SCAFFOLD_GEN_LABELS = ["Narrator","Parents","Grandparents","Great-Grandparents"];
-
-  function _scaffoldFindNodeByRoleAndName(draft, role, name) {
-    return draft.nodes.find(function (n) {
-      return n.role === role && _ftNodeDisplayName(n) === name;
-    });
-  }
-
-  function _scaffoldFindParentsOf(draft, nodeId) {
-    // Find nodes connected to nodeId via parent_of or biological/step/adoptive edge where nodeId is the child
-    var parentIds = [];
-    draft.edges.forEach(function (e) {
-      if (e.to === nodeId || e.from === nodeId) {
-        var otherNodeId = e.from === nodeId ? e.to : e.from;
-        var otherNode = draft.nodes.find(function (n) { return n.id === otherNodeId; });
-        if (otherNode && (otherNode.role === "parent" || otherNode.role === "grandparent")) {
-          parentIds.push(otherNodeId);
-        }
-      }
-    });
-    return parentIds;
-  }
-
-  // v7: helper to get effective role from either .role or .type field
-  function _scaffoldEffectiveRole(n) {
-    if (!n) return "other";
-    // Prefer .role if it's a known FT role; fall back to .type
-    var r = n.role || n.type || "other";
-    if (r === "person") r = n.role || "other"; // "person" is generic, use role if available
-    return r;
-  }
-
-  function _scaffoldBuildTree(draft) {
-    // Build a 4-generation ancestor tree: narrator at center, parents, grandparents, great-grandparents
-    var narrator = draft.nodes.find(function (n) { return _scaffoldEffectiveRole(n) === "narrator"; });
-    if (!narrator) {
-      narrator = draft.nodes[0]; // fallback to first node
-    }
-    if (!narrator) return null;
-
-    // Generation 1: narrator
-    var tree = {
-      node: narrator,
-      gen: 0,
-      children: []
-    };
-
-    // Find parent-role nodes — first try via edges, then fall back to role matching
-    var parentNodes = [];
-
-    // Method 1: find via edges (if edges have valid from/to)
-    draft.edges.forEach(function (e) {
-      if (!e.from || !e.to) return; // skip orphan edges
-      var parentId = null;
-      if (e.from === narrator.id) parentId = e.to;
-      else if (e.to === narrator.id) parentId = e.from;
-      if (parentId) {
-        var pn = draft.nodes.find(function (n) { return n.id === parentId && _scaffoldEffectiveRole(n) === "parent"; });
-        if (pn && parentNodes.indexOf(pn) < 0) parentNodes.push(pn);
-      }
-    });
-
-    // Method 2: if no parents found via edges, find all parent-role nodes directly
-    if (parentNodes.length === 0) {
-      draft.nodes.forEach(function (n) {
-        if (n.id !== narrator.id && _scaffoldEffectiveRole(n) === "parent") {
-          parentNodes.push(n);
-        }
-      });
-    }
-
-    // Pad to 2 parent slots
-    while (parentNodes.length < 2) parentNodes.push(null);
-
-    var _emptyGen2 = function () {
-      return { node: null, gen: 2, children: [{ node: null, gen: 3, children: [] }, { node: null, gen: 3, children: [] }] };
-    };
-
-    // v7 fix: track grandparent IDs already assigned to prevent duplicate placement
-    var _usedGpIds = {};
-    parentNodes.forEach(function (p) { if (p) _usedGpIds[p.id] = true; });
-    _usedGpIds[narrator.id] = true;
-
-    tree.children = parentNodes.slice(0, 2).map(function (pn) {
-      if (!pn) return { node: null, gen: 1, children: [_emptyGen2(), _emptyGen2()] };
-
-      // Find grandparent-role nodes connected to this parent
-      var gpNodes = [];
-      draft.edges.forEach(function (e) {
-        if (!e.from || !e.to) return;
-        var gpId = null;
-        if (e.from === pn.id) gpId = e.to;
-        else if (e.to === pn.id) gpId = e.from;
-        if (gpId && gpId !== narrator.id && !_usedGpIds[gpId]) {
-          var gn = draft.nodes.find(function (n) { return n.id === gpId && _scaffoldEffectiveRole(n) === "grandparent"; });
-          if (gn && gpNodes.indexOf(gn) < 0) gpNodes.push(gn);
-        }
-      });
-
-      // Fallback: find grandparent-role nodes not yet placed
-      if (gpNodes.length === 0) {
-        draft.nodes.forEach(function (n) {
-          if (!_usedGpIds[n.id] && _scaffoldEffectiveRole(n) === "grandparent" && gpNodes.length < 2) {
-            gpNodes.push(n);
-          }
-        });
-      }
-
-      // Mark these grandparents as used so the next parent gets different ones
-      gpNodes.forEach(function (gn) { if (gn) _usedGpIds[gn.id] = true; });
-
-      while (gpNodes.length < 2) gpNodes.push(null);
-
-      return {
-        node: pn, gen: 1,
-        children: gpNodes.slice(0, 2).map(function (gn) {
-          return {
-            node: gn, gen: 2,
-            children: [{ node: null, gen: 3, children: [] }, { node: null, gen: 3, children: [] }]
-          };
-        })
-      };
-    });
-
-    return tree;
-  }
-
-  function _scaffoldNodeHtml(nodeOrNull, gen) {
-    var color = _SCAFFOLD_GEN_COLORS[gen] || "#94a3b8";
-    if (!nodeOrNull) {
-      return '<div class="scaffold-node scaffold-empty" style="border-color:' + color + ';">'
-        + '<div class="scaffold-node-name">Add Ancestor</div>'
-        + '<div class="scaffold-node-meta">' + _SCAFFOLD_GEN_LABELS[gen] + '</div>'
-        + '</div>';
-    }
-    var n = nodeOrNull;
-    var name = _ftNodeDisplayName(n);
-    var meta = [];
-    if (n.birthDate) meta.push("b. " + n.birthDate);
-    if (n.deceased) meta.push("deceased");
-    if (n.uncertainty) meta.push(n.uncertainty);
-    var badges = '';
-    if (n.source) badges += '<span class="scaffold-badge">' + _esc(n.source) + '</span>';
-    if (n.deceased) badges += '<span class="scaffold-badge scaffold-badge-dec">deceased</span>';
-
-    return '<div class="scaffold-node" style="border-color:' + color + ';" onclick="window.LorevoxBioBuilder._ftEditNode(\'' + n.id + '\')">'
-      + '<div class="scaffold-node-name">' + _esc(name) + '</div>'
-      + (meta.length ? '<div class="scaffold-node-meta">' + _esc(meta.join(" · ")) + '</div>' : '')
-      + badges
-      + '</div>';
-  }
-
-  function _renderFTScaffold(pid) {
-    var draft = _ftDraft(pid);
-    var tree = _scaffoldBuildTree(draft);
-    if (!tree) {
-      return '<div class="scaffold-empty-state">No nodes yet. Add a narrator to see the 4-generation scaffold.</div>';
-    }
-
-    // Collect additional nodes not in the scaffold (siblings, spouses, children, chosen_family)
-    var scaffoldIds = {};
-    function _collectIds(t) {
-      if (t.node) scaffoldIds[t.node.id] = true;
-      (t.children || []).forEach(_collectIds);
-    }
-    _collectIds(tree);
-    var otherNodes = draft.nodes.filter(function (n) { return !scaffoldIds[n.id]; });
-
-    // Use effective role for grouping other nodes
-    var _eRole = _scaffoldEffectiveRole;
-
-    // Render CSS + HTML
-    var css = '<style>'
-      + '.scaffold-wrap { font-family:inherit; }'
-      + '.scaffold-gen { display:flex; justify-content:center; gap:12px; margin-bottom:4px; flex-wrap:wrap; }'
-      + '.scaffold-connector { text-align:center; color:#cbd5e1; font-size:18px; margin:2px 0; }'
-      + '.scaffold-node { width:140px; padding:10px; border-radius:8px; background:#fff; border-top:4px solid #ccc;'
-      + '  text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; transition:transform 0.15s; }'
-      + '.scaffold-node:hover { transform:translateY(-3px); box-shadow:0 4px 12px rgba(0,0,0,0.12); }'
-      + '.scaffold-empty { border-style:dashed; border-width:2px; opacity:0.5; background:transparent; cursor:default; }'
-      + '.scaffold-node-name { font-size:0.85rem; font-weight:600; margin-bottom:2px; }'
-      + '.scaffold-node-meta { font-size:0.7rem; color:#64748b; }'
-      + '.scaffold-badge { display:inline-block; font-size:0.6rem; padding:1px 5px; border-radius:8px; background:#e2e8f0; color:#475569; margin-top:4px; }'
-      + '.scaffold-badge-dec { background:#fecaca; color:#991b1b; }'
-      + '.scaffold-gen-label { text-align:center; font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }'
-      + '.scaffold-others { margin-top:16px; padding-top:12px; border-top:1px dashed #e2e8f0; }'
-      + '.scaffold-others-label { font-size:0.75rem; color:#94a3b8; margin-bottom:8px; text-transform:uppercase; }'
-      + '.scaffold-others-row { display:flex; flex-wrap:wrap; gap:8px; }'
-      + '</style>';
-
-    var html = css + '<div class="scaffold-wrap">';
-
-    // Gen 4: Great-grandparents (8 slots)
-    html += '<div class="scaffold-gen-label">' + _SCAFFOLD_GEN_LABELS[3] + '</div>';
-    html += '<div class="scaffold-gen">';
-    tree.children.forEach(function (p) {
-      (p.children || []).forEach(function (gp) {
-        (gp.children || []).forEach(function (ggp) {
-          html += _scaffoldNodeHtml(ggp.node, 3);
-        });
-      });
-    });
-    html += '</div>';
-    html += '<div class="scaffold-connector">│</div>';
-
-    // Gen 3: Grandparents (4 slots)
-    html += '<div class="scaffold-gen-label">' + _SCAFFOLD_GEN_LABELS[2] + '</div>';
-    html += '<div class="scaffold-gen">';
-    tree.children.forEach(function (p) {
-      (p.children || []).forEach(function (gp) {
-        html += _scaffoldNodeHtml(gp.node, 2);
-      });
-    });
-    html += '</div>';
-    html += '<div class="scaffold-connector">│</div>';
-
-    // Gen 2: Parents (2 slots)
-    html += '<div class="scaffold-gen-label">' + _SCAFFOLD_GEN_LABELS[1] + '</div>';
-    html += '<div class="scaffold-gen">';
-    tree.children.forEach(function (p) {
-      html += _scaffoldNodeHtml(p.node, 1);
-    });
-    html += '</div>';
-    html += '<div class="scaffold-connector">│</div>';
-
-    // Gen 1: Narrator
-    html += '<div class="scaffold-gen-label">' + _SCAFFOLD_GEN_LABELS[0] + '</div>';
-    html += '<div class="scaffold-gen">';
-    html += _scaffoldNodeHtml(tree.node, 0);
-    html += '</div>';
-
-    // Other nodes (siblings, spouses, children, chosen family) below scaffold
-    if (otherNodes.length > 0) {
-      var otherGroups = {};
-      otherNodes.forEach(function (n) {
-        var r = _eRole(n);
-        if (!otherGroups[r]) otherGroups[r] = [];
-        otherGroups[r].push(n);
-      });
-      html += '<div class="scaffold-others">';
-      html += '<div class="scaffold-others-label">Other family members</div>';
-      Object.keys(otherGroups).forEach(function (role) {
-        html += '<div style="margin-bottom:4px;font-size:0.7rem;color:#64748b;text-transform:uppercase;">' + role.replace(/_/g, ' ') + '</div>';
-        html += '<div class="scaffold-others-row">';
-        otherGroups[role].forEach(function (n) {
-          var name = _ftNodeDisplayName(n);
-          html += '<div class="scaffold-node" style="width:120px;border-color:#94a3b8;" onclick="window.LorevoxBioBuilder._ftEditNode(\'' + n.id + '\')">'
-            + '<div class="scaffold-node-name">' + _esc(name) + '</div>'
-            + (n.birthDate ? '<div class="scaffold-node-meta">b. ' + _esc(n.birthDate) + '</div>' : '')
-            + '</div>';
-        });
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-
-    html += '</div>';
-    return html;
-  }
-
-  /* View mode toggle */
-  function _toggleFTViewMode() {
-    var idx = FT_VIEW_MODES.indexOf(_ftViewMode);
-    _ftViewMode = FT_VIEW_MODES[(idx + 1) % FT_VIEW_MODES.length];
-    _renderActiveTab();
-  }
-  function _toggleLTViewMode() {
-    _ltViewMode = _ltViewMode === "cards" ? "graph" : "cards";
-    _renderActiveTab();
-  }
 
   /* ── v6: Build toggle button HTML ─────────────────────── */
   function _viewModeToggle(mode, toggleFn) {
-    var modes = mode === _ftViewMode
+    var ftMode = _ft._getFTViewMode ? _ft._getFTViewMode() : "cards";
+    var ltMode = _lt2._getLTViewMode ? _lt2._getLTViewMode() : "cards";
+    var isFT = (mode === ftMode && mode !== ltMode) || (mode === ftMode && toggleFn.indexOf("FT") >= 0);
+    var modes = isFT
       ? [["cards","📋 Cards"],["graph","🔗 Graph"],["scaffold","🌳 Scaffold"]]
       : [["cards","📋 Cards"],["graph","🔗 Graph"]];
     return '<div class="ft-view-toggle">'
@@ -2002,6 +609,25 @@
     if (!host || (!host.hasAttribute("open") && !host.matches(":popover-open"))) return;
     render();
   }
+
+  /* ── Wire up Family Tree module callbacks ────────────────── */
+  _ft._setRenderCallback(_renderActiveTab);
+  _ft._setSharedRenderers({
+    renderDraftUtilities: _renderDraftUtilities,
+    viewModeToggle:       _viewModeToggle,
+    isGroupCollapsed:     _isGroupCollapsed,
+    toggleGroupCollapse:  _toggleGroupCollapse
+  });
+
+  /* ── Wire up Life Threads module callbacks ──────────────── */
+  _lt2._setRenderCallback(_renderActiveTab);
+  _lt2._setSwitchTabCallback(_switchTab);
+  _lt2._setSharedRenderers({
+    renderDraftUtilities: _renderDraftUtilities,
+    viewModeToggle:       _viewModeToggle,
+    isGroupCollapsed:     _isGroupCollapsed,
+    toggleGroupCollapse:  _toggleGroupCollapse
+  });
 
   var NS = {};
   NS.render              = render;
@@ -2094,130 +720,52 @@
   NS._toggleLTViewMode       = _toggleLTViewMode;
 
   // v4: Draft context accessors (for integration — Passes 4-6)
+  // Combines FT context (from family-tree module) with LT context (local)
   NS._getDraftFamilyContext   = function (pid) {
     pid = pid || _currentPersonId();
     if (!pid) return null;
-    var ft = _ftDraft(pid);
-    var lt = _ltDraft(pid);
+    var ftCtx = _getDraftFTContext(pid);
+    var ltCtx = _getDraftLTContext(pid);
     return {
-      familyTree: ft ? { nodes: ft.nodes, edges: ft.edges } : null,
-      lifeThreads: lt ? { nodes: lt.nodes, edges: lt.edges } : null
+      familyTree: ftCtx,
+      lifeThreads: ltCtx
     };
   };
 
-  // v6: Era-aware draft context accessor
+  // v6: Era-aware draft context accessor — delegates FT + LT era scoring to modules
   NS._getDraftFamilyContextForEra = function (pid, era) {
     pid = pid || _currentPersonId();
     if (!pid) return null;
-    var base = NS._getDraftFamilyContext(pid);
-    if (!base) return null;
 
-    // If no era specified, fall back to global (same as v5)
-    if (!era) return { primary: [], secondary: [], global: _flattenContext(base), era: null };
+    // FT era scoring — delegate to FT module
+    var ftEra = _getDraftFTContextForEra(pid, era);
+    var primary   = ftEra ? (ftEra.primary || [])   : [];
+    var secondary = ftEra ? (ftEra.secondary || []) : [];
+    var global    = ftEra ? (ftEra.global || [])    : [];
 
-    var primary = [];
-    var secondary = [];
-    var global = [];
-    var roleWeights = ERA_ROLE_RELEVANCE[era] || {};
-    var themeKeywords = ERA_THEME_KEYWORDS[era] || [];
-
-    // Score and rank FT nodes
-    if (base.familyTree && base.familyTree.nodes) {
-      base.familyTree.nodes.forEach(function (n) {
-        if (n.role === "narrator") return;
-        var item = { type: "ft_person", node: n, label: n.displayName || n.preferredName || n.label || "", role: n.role || "other" };
-
-        // Check explicit era metadata first
-        if (n.eraRelevance && n.eraRelevance.length > 0) {
-          if (n.eraRelevance.indexOf(era) >= 0) { item.score = n.eraWeight || 0.9; primary.push(item); return; }
-        }
-
-        // Infer from role-era map
-        var roleScore = roleWeights[n.role] != null ? roleWeights[n.role] : 0.3;
-        item.score = roleScore;
-        if (roleScore >= 0.7) primary.push(item);
-        else if (roleScore >= 0.3) secondary.push(item);
-        else global.push(item);
-      });
+    // LT era scoring — delegate to LT module
+    var ltEra = _getDraftLTContextForEra(pid, era);
+    if (ltEra) {
+      primary   = primary.concat(ltEra.primary || []);
+      secondary = secondary.concat(ltEra.secondary || []);
+      global    = global.concat(ltEra.global || []);
     }
 
-    // Score and rank LT nodes
-    if (base.lifeThreads && base.lifeThreads.nodes) {
-      base.lifeThreads.nodes.forEach(function (n) {
-        var label = n.label || n.displayName || "";
-        var item = { type: "lt_" + (n.type || "other"), node: n, label: label, nodeType: n.type || "other" };
-
-        // Check explicit era metadata
-        if (n.eraRelevance && n.eraRelevance.length > 0) {
-          if (n.eraRelevance.indexOf(era) >= 0) { item.score = n.eraWeight || 0.9; primary.push(item); return; }
-        }
-
-        // Infer from keyword overlap
-        var lower = label.toLowerCase();
-        var keywordHits = 0;
-        themeKeywords.forEach(function (kw) { if (lower.indexOf(kw) >= 0) keywordHits++; });
-        var kwScore = Math.min(keywordHits * 0.25, 0.9);
-
-        // Themes with keyword hits rank higher
-        if (n.type === "theme" && kwScore >= 0.25) { item.score = kwScore; primary.push(item); }
-        else if (n.type === "place" && kwScore >= 0.25) { item.score = kwScore; primary.push(item); }
-        else if (kwScore > 0) { item.score = kwScore; secondary.push(item); }
-        else { item.score = 0.1; global.push(item); }
-      });
-    }
-
-    // Sort each tier by score descending
     var byScore = function (a, b) { return (b.score || 0) - (a.score || 0); };
     primary.sort(byScore);
     secondary.sort(byScore);
 
-    // Safety: never return completely empty if draft has data
-    if (primary.length === 0 && secondary.length === 0 && global.length === 0) {
-      return { primary: [], secondary: [], global: _flattenContext(base), era: era };
+    if (!era) {
+      return { primary: [], secondary: [], global: global, era: null };
     }
-
     return { primary: primary, secondary: secondary, global: global, era: era };
   };
 
-  function _flattenContext(base) {
-    var items = [];
-    if (base.familyTree && base.familyTree.nodes) {
-      base.familyTree.nodes.forEach(function (n) {
-        if (n.role === "narrator") return;
-        items.push({ type: "ft_person", node: n, label: n.displayName || n.preferredName || n.label || "", role: n.role || "other", score: 0.5 });
-      });
-    }
-    if (base.lifeThreads && base.lifeThreads.nodes) {
-      base.lifeThreads.nodes.forEach(function (n) {
-        items.push({ type: "lt_" + (n.type || "other"), node: n, label: n.label || n.displayName || "", nodeType: n.type || "other", score: 0.5 });
-      });
-    }
-    return items;
-  }
-
-  // v6: Fuzzy matching — exposed for review, dedupe, and seeding
-  NS._normalizeName     = _normalizeName;
-  NS._fuzzyNameScore    = _fuzzyNameScore;
+  // v6: Fuzzy matching — exposed for review, dedupe, and seeding (delegated from FT module)
+  NS._normalizeName      = _normalizeName;
+  NS._fuzzyNameScore     = _fuzzyNameScore;
   NS._fuzzyDuplicateTier = _fuzzyDuplicateTier;
-
-  // v6: Fuzzy duplicate finder (returns { node, match, score, tier } pairs)
-  NS._ftFindFuzzyDuplicates = function (pid) {
-    pid = pid || _currentPersonId();
-    var draft = _ftDraft(pid); if (!draft) return [];
-    var results = [];
-    for (var i = 0; i < draft.nodes.length; i++) {
-      for (var j = i + 1; j < draft.nodes.length; j++) {
-        var a = draft.nodes[i], b = draft.nodes[j];
-        var nameA = _ftNodeDisplayName(a), nameB = _ftNodeDisplayName(b);
-        var score = _fuzzyNameScore(nameA, nameB);
-        var tier = _fuzzyDuplicateTier(score);
-        if (tier !== "distinct") {
-          results.push({ nodeA: a, nodeB: b, nameA: nameA, nameB: nameB, score: score, tier: tier });
-        }
-      }
-    }
-    return results;
-  };
+  NS._ftFindFuzzyDuplicates = _ftFindFuzzyDuplicates;
 
   // Exposed for tests
   NS._parseTextItems     = _parseTextItems;
