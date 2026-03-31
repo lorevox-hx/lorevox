@@ -13,13 +13,14 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/common.sh"
+set +e  # common.sh enables -e; disable it so test assertions don't abort the script
 
 PASS=0; FAIL=0; SKIP=0; TOTAL=0
 RESULTS=()
 
-pass()  { ((PASS++)); ((TOTAL++)); RESULTS+=("PASS  | $1"); echo "  ✓ PASS  $1"; }
-fail()  { ((FAIL++)); ((TOTAL++)); RESULTS+=("FAIL  | $1 — $2"); echo "  ✗ FAIL  $1 — $2"; }
-skip()  { ((SKIP++)); ((TOTAL++)); RESULTS+=("SKIP  | $1 — $2"); echo "  ⊘ SKIP  $1 — $2"; }
+pass()  { (( ++PASS )); (( ++TOTAL )); RESULTS+=("PASS  | $1"); echo "  ✓ PASS  $1"; }
+fail()  { (( ++FAIL )); (( ++TOTAL )); RESULTS+=("FAIL  | $1 — $2"); echo "  ✗ FAIL  $1 — $2"; }
+skip()  { (( ++SKIP )); (( ++TOTAL )); RESULTS+=("SKIP  | $1 — $2"); echo "  ⊘ SKIP  $1 — $2"; }
 
 port_free() { ! ss -tlnp 2>/dev/null | grep -q ":${1} " ; }
 port_open() { ss -tlnp 2>/dev/null | grep -q ":${1} " ; }
@@ -187,11 +188,18 @@ echo "── SM-06: API Restart Isolation ──"
 # This is the KEY test for the kill_stale_lorevox scope fix.
 # Restarting API must NOT kill TTS or UI.
 
-# Record TTS and UI PIDs before API restart
+# Record TTS and UI PIDs before API restart — but only if they're actually alive.
+# SM-05 kills TTS and doesn't restart it, so the PID file may contain a dead PID.
 TTS_PID_BEFORE=""
 UI_PID_BEFORE2=""
-[[ -f "$TTS_PID_FILE" ]] && TTS_PID_BEFORE=$(cat "$TTS_PID_FILE")
-[[ -f "$UI_PID_FILE" ]] && UI_PID_BEFORE2=$(cat "$UI_PID_FILE")
+if [[ -f "$TTS_PID_FILE" ]]; then
+  _tts_pid=$(cat "$TTS_PID_FILE")
+  kill -0 "$_tts_pid" 2>/dev/null && TTS_PID_BEFORE="$_tts_pid"
+fi
+if [[ -f "$UI_PID_FILE" ]]; then
+  _ui_pid=$(cat "$UI_PID_FILE")
+  kill -0 "$_ui_pid" 2>/dev/null && UI_PID_BEFORE2="$_ui_pid"
+fi
 
 # Use the scoped kill function
 kill_stale_lorevox 2>/dev/null || true

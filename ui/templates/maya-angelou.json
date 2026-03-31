@@ -1,0 +1,209 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "Maya Angelou — bio narrator",
+  "personal": {
+    "fullName": "Maya Angelou",
+    "preferredName": "Maya",
+    "legalFirstName": "Marguerite",
+    "legalMiddleName": "Ann",
+    "legalLastName": "Johnson",
+    "dateOfBirth": "1928-04-04",
+    "timeOfBirth": "",
+    "placeOfBirth": "St. Louis, Missouri, USA",
+    "birthOrder": "Youngest of two children",
+    "zodiacSign": "Aries",
+    "pronouns": "she/her",
+    "culture": "African American",
+    "country": "United States",
+    "language": "English, French, Italian, Spanish, Serbo-Croatian, Arabic, Fanti"
+  },
+  "parents": [
+    {
+      "relation": "Father",
+      "firstName": "Bailey",
+      "middleName": "",
+      "lastName": "Johnson",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Naval dietitian, doorman",
+      "deceased": true,
+      "notableLifeEvents": "Divorced from Vivian Baxter Johnson when Maya was three years old",
+      "notes": "Sent Maya and her brother Bailey Jr. to live with their paternal grandmother Annie Henderson in Stamps, Arkansas"
+    },
+    {
+      "relation": "Mother",
+      "firstName": "Vivian",
+      "middleName": "",
+      "lastName": "Baxter",
+      "maidenName": "Baxter",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Nurse, card dealer",
+      "deceased": true,
+      "notableLifeEvents": "Reunited with Maya during adolescence; disapproved of Maya's first marriage to Tosh Angelos due to interracial relationship concerns",
+      "notes": "Died in 1991; was an important figure in Maya's life and writing"
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "Annie",
+      "lastName": "Henderson",
+      "ancestry": "African American",
+      "culturalBackground": "Southern African American, Christian",
+      "memorableStories": "Raised Maya and Bailey Jr. in Stamps, Arkansas after their parents' separation; owned a grocery store in the Black section of town; instilled strict Christian values; provided stability and love during Maya's formative years"
+    },
+    {
+      "firstName": "William",
+      "lastName": "Johnson",
+      "ancestry": "African American",
+      "culturalBackground": "Southern African American",
+      "memorableStories": "Paternal grandfather; son of Simon Johnson and Emaline Lankford; born in Arkansas"
+    },
+    {
+      "firstName": "Thomas",
+      "lastName": "Baxter",
+      "ancestry": "African American",
+      "culturalBackground": "Southern African American",
+      "memorableStories": "Maternal grandfather; born in Georgia"
+    },
+    {
+      "firstName": "Marguerite",
+      "lastName": "Savin",
+      "ancestry": "African American and Irish",
+      "culturalBackground": "African American and Irish descent",
+      "memorableStories": "Maternal grandmother; possibly of Irish descent; contributed to Maya's diverse cultural heritage"
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "Older brother",
+      "firstName": "Bailey",
+      "middleName": "",
+      "lastName": "Johnson",
+      "birthOrder": "One year older than Maya",
+      "uniqueCharacteristics": "Protective, loving, gave Maya her nickname 'Maya' (his version of 'my sister')",
+      "sharedExperiences": "Lived with Maya in Stamps, Arkansas; moved back and forth between grandmother's home, mother's home in California, and father's home in St. Louis",
+      "memories": "Bailey was the most important person in Maya's life throughout childhood; he made her feel loved and beautiful even when others teased her appearance; they depended on each other for stability and continuity as they moved from place to place; experienced racist incidents and teasing together",
+      "notes": "Died in 2000 after a series of strokes; was an important figure in Maya's autobiographies"
+    }
+  ],
+  "spouse": [
+    {
+      "firstName": "Tosh",
+      "middleName": "",
+      "lastName": "Angelos",
+      "birthPlace": "",
+      "occupation": "Electrician, sailor, aspiring musician",
+      "narrative": "Greek electrician whom Maya married in 1951 despite widespread disapproval of interracial relationships. Maya's mother disapproved of the union. Tosh was an atheist, creating a spiritual rift with deeply religious Maya. They divorced in 1954. Maya adopted the surname 'Angelou' as a variation of Angelos' last name combined with her nickname.",
+      "deceased": false
+    },
+    {
+      "firstName": "Vusumzi",
+      "middleName": "Linda",
+      "lastName": "Make",
+      "birthPlace": "South Africa",
+      "occupation": "South African lawyer, academic, and anti-apartheid activist",
+      "narrative": "South African activist whom Maya met at a Harlem Writers Guild party in late 1960. They moved to Cairo, Egypt together in 1961 where Vusumzi worked with the African Association. Though never legally married, Maya lived with him as his wife and considered him her husband. She worked as Africa editor at the Arab Observer and wrote for Radio Cairo to support his activism. Their relationship ended in 1962, and Maya moved to Ghana with her son Guy.",
+      "deceased": true
+    },
+    {
+      "firstName": "Paul",
+      "middleName": "Bernard",
+      "lastName": "du Feu",
+      "birthPlace": "Wales",
+      "occupation": "Carpenter, builder, painter, author, model",
+      "narrative": "Welsh carpenter and author whom Maya met in Soho in 1971 at a literary event for I Know Why the Caged Bird Sings. They married on December 29, 1973, at Glide Memorial Church in San Francisco, with her son Guy as witness. Their union was marked by eccentricity and mutual support; they renewed their vows twice more in England and California. They divorced in 1981 but remained friends. Maya helped Paul financially during his later years.",
+      "deceased": true
+    }
+  ],
+  "children": [
+    {
+      "firstName": "Guy",
+      "middleName": "",
+      "lastName": "Johnson",
+      "birthDate": "1944-06-01",
+      "narrative": "Maya's only child, born as Clyde Bailey Johnson when Maya was 16 years old in 1944, three weeks after her high school graduation. Guy became a poet and author like his mother, continuing her literary legacy. He traveled with Maya to Cairo and Ghana during her African years. Guy served as a witness at his mother's wedding to Paul du Feu in 1973. He was an author, public servant, and adventurer who helped choose the image for his mother's U.S. quarter. Guy died peacefully on February 16, 2022."
+    }
+  ],
+  "marriage": [
+    {
+      "proposalStory": "No detailed proposal story is documented for Tosh Angelos, but they shared a strong romantic connection that led to marriage despite social disapproval.",
+      "weddingDetails": "Married in 1951 in a beautiful ceremony surrounded by friends, family, and loved ones despite widespread disapproval of interracial relationships."
+    },
+    {
+      "proposalStory": "Vusumzi Make and Maya met at a Harlem Writers Guild party in late 1960 and formed an immediate romantic connection, moving together to Cairo to support his anti-apartheid activism.",
+      "weddingDetails": "Never legally married, but lived as husband and wife. Maya considered him her husband and embraced the role of a political wife and activist."
+    },
+    {
+      "proposalStory": "Paul du Feu called Maya 'the most beautiful woman in the world' when they first met in Soho in 1971 at a literary event for her memoir.",
+      "weddingDetails": "Married on December 29, 1973, at Glide Memorial Church in San Francisco. Her son Guy Johnson served as a witness. They renewed their vows twice more—once in England and again in California."
+    }
+  ],
+  "familyTraditions": [
+    {
+      "description": "Reading and learning languages in every country visited; Maya made it a practice to learn the language of every place she traveled to",
+      "occasion": "Throughout her life during travels to Europe, Africa, and beyond"
+    },
+    {
+      "description": "Strong emphasis on education, literature, and the power of words passed from grandmother Annie Henderson through Maya to her son Guy",
+      "occasion": "Ongoing family value"
+    },
+    {
+      "description": "Active involvement in civil rights and social activism, with participation in March on Washington and other demonstrations",
+      "occasion": "1960s civil rights era"
+    },
+    {
+      "description": "Celebration of artistic expression through writing, poetry, dance, and theater",
+      "occasion": "Lifetime commitment"
+    }
+  ],
+  "pets": [
+    {
+      "name": "",
+      "species": "",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+  "earlyMemories": {
+    "firstMemory": "Living in Stamps, Arkansas with grandmother Annie Henderson after being sent there by train with her brother Bailey Jr. when she was three years old",
+    "favoriteToy": "",
+    "significantEvent": "The traumatic assault at age seven by her mother's boyfriend, which led to six years of selective mutism and profoundly shaped her character and literary voice"
+  },
+  "education": {
+    "schooling": "Attended Lafayette County Training School in Stamps, Arkansas (a Rosenwald School); graduated from Mission High School in San Francisco in summer 1944; later attended George Washington High School where she earned her diploma in 1945",
+    "higherEducation": "No formal college degree. Instead, pursued self-education through voracious reading and learning from mentors like Bertha Flowers who encouraged her to speak and introduced her to Charles Dickens, William Shakespeare, Edgar Allan Poe, and other literary masters",
+    "earlyCareer": "San Francisco's first Black streetcar conductor (1943); Purple Onion nightclub dancer and calypso singer; recorded first and only album 'Miss Calypso' (1957); dancer in touring production of Porgy and Bess; actress in film and television",
+    "careerProgression": "Streetcar conductor (1943) > Nightclub dancer and singer (1950s) > Recording artist (1957) > Civil rights activist and Northern Coordinator for SCLC (1960) > Africa editor at Arab Observer and writer for Radio Cairo (1961-1962) > Administrator at University of Ghana (1962-1965) > Feature editor for The African Review > Freelance writer for Ghanaian Times > Radio Ghana broadcaster > National Theatre performer in Ghana > Actress in film and television productions > Renowned author and poet (1969 onwards) > Reynolds Professor of American Studies at Wake Forest University (1982-2014)",
+    "communityInvolvement": "Co-founder of Cultural Association for Women of African Heritage; Northern Coordinator for SCLC (1960); helped stage 'Cabaret for Freedom' fundraiser for SCLC; met and worked with Martin Luther King Jr.; worked with Malcolm X to establish the Organization of Afro-American Unity (1964); participated in March on Washington (1963); active in African American expatriate community in Ghana",
+    "mentorship": "Mentored by Bertha Flowers who helped her recover her voice and introduced her to classic literature; mentored countless students at Wake Forest University; emphasized that students learn each other's names and value human dignity; taught courses in philosophy, ethics, theology, science, theater, and writing"
+  },
+  "laterYears": {
+    "retirement": "Taught at Wake Forest University for 32 years (1982-2014) as the first Reynolds Professor of American Studies, though she limited herself to teaching one class per semester to maintain her writing practice. Officially retired from teaching but continued writing. She wrote four books during the last ten years of her life despite declining health.",
+    "lifeLessons": "Love liberates; people should have courage, travel the world, meet all kinds of people, and say yes to opportunities so that they might have something meaningful to say; the power of voice and language to overcome trauma; resilience in the face of racism and personal trauma; the importance of human dignity and remembering people's names; that she was a teacher who writes, not a writer who teaches",
+    "adviceForFutureGenerations": "Emphasized the importance of education and self-education through reading; encouraged people to embrace their voice and speak truthfully; promoted the value of travel and experiencing different cultures; taught that adversity can be transformed into wisdom and art; stressed the importance of love, dignity, and respect for all people; believed in the power of literature and language to heal and transform"
+  },
+  "hobbies": {
+    "hobbies": "Writing essays, poetry, and journaling from early childhood; reading extensively; dancing; singing; performing; travel; learning languages; writing for publications; theater and performance arts; speaking and giving lectures",
+    "worldEvents": "Witnessed the Jim Crow South and racial segregation of 1930s-1950s Arkansas and California; experienced the Civil Rights Movement of the 1960s; witnessed anti-apartheid activism in South Africa through Vusumzi Make; observed post-colonial African nations in Ghana and Egypt during 1960s; lived through the Vietnam War era and Black Power movements; witnessed women's liberation and changing gender roles throughout her lifetime",
+    "personalChallenges": "Childhood sexual assault and trauma leading to six years of selective mutism; overcoming racism and discrimination throughout life; navigating multiple failed marriages; raising a son as a single mother; health challenges in later life including heart ailments and respiratory failure; being subjected to book banning and censorship of I Know Why the Caged Bird Sings for its frank depiction of sexual abuse",
+    "travel": "Visited Europe with touring production of Porgy and Bess; traveled to Cairo, Egypt (1961-1962); lived in Ghana, West Africa (1962-1965) with visits to Accra; traveled throughout Europe and multiple countries while learning their languages; traveled the world as a celebrated author and speaker in later years"
+  },
+  "health": {
+    "healthMilestones": "Survived childhood sexual assault (age 7); overcame six years of selective mutism (ages 7-13); experienced various physical ailments related to her intensive dance career; developed heart conditions in later life; experienced respiratory failure; was hospitalized in 2014 for unexpected ailments",
+    "lifestyleChanges": "Transitioned from intense physical dance career to writing and speaking roles that were less physically demanding; adapted her lifestyle to accommodate declining health in later years while maintaining mental acuity and continuing to write",
+    "wellnessTips": "Maintained mental and spiritual health through reading, writing, and reflection; used literature and language as healing mechanisms; practiced resilience and emotional strength; maintained social connections and mentored others; continued creative pursuits despite physical limitations; found purpose in teaching and sharing her wisdom with students"
+  },
+  "technology": {
+    "firstTechExperience": "Worked with Radio Cairo and Radio Ghana broadcasting technology in early 1960s; wrote for and read scripts on radio broadcasts",
+    "favoriteGadgets": "Radio broadcasting equipment; typewriter for writing; recording equipment for her music album 'Miss Calypso' (1957)",
+    "culturalPractices": "Bridged traditional oral storytelling and African American cultural practices with modern literary forms and media; used radio and broadcasting to share her voice across continents; adapted to television and film as newer media emerged; embraced the power of recorded voice through albums and broadcasts"
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "Was working on another autobiography about her experiences with national and world leaders at the time of her death; continued to express creative ambitions through writing even as her health declined; sought to document more of her historical observations and wisdom",
+    "messagesForFutureGenerations": "Remember that you have the power to rise above your circumstances no matter how traumatic or difficult; use your voice to speak truth and fight for justice; education and reading are pathways to freedom; love liberates; be courageous and embrace experiences and people different from yourself; never underestimate the power of a single person's determination to change the world; celebrate your identity and heritage; practice dignity and respect toward all people; your story matters and should be told; the pen is mightier than the sword; resilience, courage, and grace can transform pain into purpose"
+  }
+}

@@ -8,8 +8,8 @@ const isCI     = !!process.env.CI;
  * is easy to tweak without touching this file.
  *
  * Override environment variables as needed:
- *   export LOREVOX_REPO=/mnt/c/lorevox
- *   export LOREVOX_VENV=/mnt/c/lorevox/.venv-gpu
+ *   export LOREVOX_REPO=/mnt/c/Users/chris/lorevox
+ *   export LOREVOX_VENV=/mnt/c/Users/chris/lorevox/.venv-gpu
  *   export DATA_DIR=/home/chris/lorevox_data
  *   export USE_TTS=0
  *
@@ -52,8 +52,8 @@ export default defineConfig({
       PYTHONUNBUFFERED: "1",
       DATA_DIR:      process.env.DATA_DIR      || "/home/chris/lorevox_data",
       USE_TTS:       process.env.USE_TTS       || "0",
-      LOREVOX_REPO:  process.env.LOREVOX_REPO  || "/mnt/c/lorevox",
-      LOREVOX_VENV:  process.env.LOREVOX_VENV  || "/mnt/c/lorevox/.venv-gpu",
+      LOREVOX_REPO:  process.env.LOREVOX_REPO  || "/mnt/c/Users/chris/lorevox",
+      LOREVOX_VENV:  process.env.LOREVOX_VENV  || "/mnt/c/Users/chris/lorevox/.venv-gpu",
     },
   },
 });

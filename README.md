@@ -586,9 +586,9 @@ npx playwright test tests/e2e/
 
 | Service | Log location |
 |---|---|
-| API | `logs/api.log` (also visible in terminal when using `start_api_visible.sh`) |
-| TTS | `logs/tts.log` |
-| UI | `logs/ui.log` |
+| API | `.runtime/logs/api.log` (also visible in terminal when using `start_api_visible.sh`) |
+| TTS | `.runtime/logs/tts.log` |
+| UI | `.runtime/logs/ui.log` |
 | Combined | `bash scripts/logs_visible.sh` tails all three |
 
 Set `LV_DEV_MODE=1` in `.env` to see full system prompts in the API log.

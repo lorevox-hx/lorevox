@@ -1,0 +1,300 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "Wilma Mankiller — bio narrator",
+  "personal": {
+    "fullName": "Wilma Pearl Mankiller",
+    "preferredName": "Wilma",
+    "legalFirstName": "Wilma",
+    "legalMiddleName": "Pearl",
+    "legalLastName": "Mankiller",
+    "dateOfBirth": "1945-11-18",
+    "timeOfBirth": "",
+    "placeOfBirth": "W.W. Hastings Indian Hospital, Tahlequah, Oklahoma",
+    "birthOrder": "sixth of eleven children",
+    "zodiacSign": "Scorpio",
+    "pronouns": "she/her",
+    "culture": "Cherokee Nation",
+    "country": "United States",
+    "language": "English and Cherokee"
+  },
+  "parents": [
+    {
+      "relation": "father",
+      "firstName": "Charley",
+      "middleName": "",
+      "lastName": "Mankiller",
+      "maidenName": "",
+      "birthDate": "approximately 1914",
+      "birthPlace": "Oklahoma",
+      "occupation": "Full-blood Cherokee, warehouse worker, union organizer, longshoreman",
+      "deceased": true,
+      "notableLifeEvents": "Received family allotment at Mankiller Flats; relocated family to San Francisco under Indian Relocation Act; active in labor movements",
+      "notes": "Passed away February 20, 1971 in San Francisco, California"
+    },
+    {
+      "relation": "mother",
+      "firstName": "Clara",
+      "middleName": "Irene",
+      "lastName": "Mankiller",
+      "maidenName": "Sitton",
+      "birthDate": "1921",
+      "birthPlace": "Georgia or Arkansas",
+      "occupation": "Homemaker, traditional culture keeper",
+      "deceased": true,
+      "notableLifeEvents": "Immersed children in Cherokee heritage and traditions; married Charley Mankiller in 1937; raised eleven children on Mankiller Flats",
+      "notes": "Of Dutch-Irish descent; passed away January 12, 2016 in Rocky Mountain, Adair, Oklahoma"
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "John",
+      "lastName": "Mankiller",
+      "ancestry": "Cherokee, survivor of the Trail of Tears",
+      "culturalBackground": "Full-blood Cherokee with traditional knowledge and heritage",
+      "memorableStories": "John Mankiller received a 160-acre allotment in 1907 when Oklahoma became a state as settlement for Cherokee forced relocation; the land became known as Mankiller Flats"
+    },
+    {
+      "firstName": "Unknown",
+      "lastName": "Sitton",
+      "ancestry": "Dutch-Irish",
+      "culturalBackground": "European American settlers who migrated to Oklahoma in early 1900s",
+      "memorableStories": "Traveled from Georgia or Arkansas to Oklahoma, integrating into the regional community"
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "older brother",
+      "firstName": "Louis",
+      "middleName": "Donald",
+      "lastName": "Mankiller",
+      "birthOrder": "older sibling, contributed kidney for transplant in 1990",
+      "uniqueCharacteristics": "Served as organ donor to support Wilma's kidney transplant",
+      "sharedExperiences": "Lived on Mankiller Flats during childhood; relocated to San Francisco with family",
+      "memories": "Shared traditional Cherokee upbringing in isolated community",
+      "notes": "Known as 'Don'"
+    },
+    {
+      "relation": "older sister",
+      "firstName": "Frieda",
+      "middleName": "Marie",
+      "lastName": "Mankiller",
+      "birthOrder": "older sibling",
+      "uniqueCharacteristics": "Part of large close-knit family",
+      "sharedExperiences": "Participated in family life on Mankiller Flats and later in San Francisco",
+      "memories": "Shared childhood games like hide-and-seek and kick the can",
+      "notes": "Married name Mullins"
+    },
+    {
+      "relation": "older brother",
+      "firstName": "Robert",
+      "middleName": "Charles",
+      "lastName": "Mankiller",
+      "birthOrder": "older sibling",
+      "uniqueCharacteristics": "Part of Cherokee cultural transmission within family",
+      "sharedExperiences": "Grew up on family allotment and experienced relocation",
+      "memories": "Shared traditional education from family elders",
+      "notes": ""
+    },
+    {
+      "relation": "older sister",
+      "firstName": "Frances",
+      "middleName": "Kay",
+      "lastName": "Mankiller",
+      "birthOrder": "older sibling",
+      "uniqueCharacteristics": "Part of eleven-child family structure",
+      "sharedExperiences": "Lived through family relocation and adaptation to urban life",
+      "memories": "Shared stories of Aunt Maggie about old days with gunmen and bank robbers",
+      "notes": "Married name Willingham"
+    },
+    {
+      "relation": "older brother",
+      "firstName": "John",
+      "middleName": "David",
+      "lastName": "Mankiller",
+      "birthOrder": "older sibling",
+      "uniqueCharacteristics": "Close relationship with Wilma; shared love of adventure stories",
+      "sharedExperiences": "Listened to Aunt Maggie's stories of the old days with Wilma",
+      "memories": "Wilma and brother Johnny loved listening to stories about gunmen, bank robbers, and hidden treasures",
+      "notes": "Wilma referred to him as 'brother Johnny'"
+    },
+    {
+      "relation": "younger sister",
+      "firstName": "Linda",
+      "middleName": "Jean",
+      "lastName": "Mankiller",
+      "birthOrder": "younger sibling",
+      "uniqueCharacteristics": "Younger in large family structure",
+      "sharedExperiences": "Relocation to San Francisco and return to Oklahoma",
+      "memories": "Shared family traditions and Cherokee cultural practices",
+      "notes": "Married name Sanchez"
+    },
+    {
+      "relation": "younger brother",
+      "firstName": "Richard",
+      "middleName": "Colson",
+      "lastName": "Mankiller",
+      "birthOrder": "younger sibling",
+      "uniqueCharacteristics": "Part of post-Wilma generation in the sibling group",
+      "sharedExperiences": "Family relocation and Cherokee upbringing",
+      "memories": "Childhood games and traditions on the family property",
+      "notes": ""
+    },
+    {
+      "relation": "younger sister",
+      "firstName": "Vanessa",
+      "middleName": "Lou",
+      "lastName": "Mankiller",
+      "birthOrder": "younger sibling",
+      "uniqueCharacteristics": "Member of large family unit",
+      "sharedExperiences": "Experienced both rural Oklahoma and urban California life",
+      "memories": "Shared family dynamics of eleven children household",
+      "notes": ""
+    },
+    {
+      "relation": "younger brother",
+      "firstName": "James",
+      "middleName": "Ray",
+      "lastName": "Mankiller",
+      "birthOrder": "youngest or near-youngest",
+      "uniqueCharacteristics": "Youngest siblings in the family group",
+      "sharedExperiences": "San Francisco relocation and later return to Oklahoma",
+      "memories": "Experienced cultural transition between two communities",
+      "notes": ""
+    },
+    {
+      "relation": "younger brother",
+      "firstName": "William",
+      "middleName": "Edward",
+      "lastName": "Mankiller",
+      "birthOrder": "youngest or near-youngest",
+      "uniqueCharacteristics": "Part of large extended family network",
+      "sharedExperiences": "Relocation to California and possible return to Oklahoma",
+      "memories": "Shared family traditions despite geographic separation",
+      "notes": ""
+    }
+  ],
+  "spouse": [
+    {
+      "firstName": "Hector",
+      "middleName": "Hugo",
+      "lastName": "Olaya",
+      "birthPlace": "Ecuador",
+      "occupation": "Accountant",
+      "narrative": "Met Hector Hugo Olaya de Bardi in San Francisco, California. Married on November 13, 1963 in Reno, Nevada at age 17-18. He was an Ecuadorian immigrant accountant. Their marriage faced challenges due to his expectation of a traditional marriage conflicting with Wilma's growing involvement in political movements and her desire to improve her education. He protested her activism and involvement in social causes. They had two daughters together, Felicia and Gina. Divorced in 1974 after about 11 years of marriage as Wilma refused to stop her political activities.",
+      "deceased": false
+    },
+    {
+      "firstName": "Charles",
+      "middleName": "L.",
+      "lastName": "Soap",
+      "birthPlace": "Oklahoma",
+      "occupation": "Full-blood Cherokee, community revitalization organizer",
+      "narrative": "Met Charlie Soap in the late 1970s/early 1980s while working on the Bell community revitalization project. He was a full-blood Cherokee who taught Wilma about traditional Cherokee medicine practices and cultural knowledge. Charlie was instrumental in the Bell Water Project, serving as co-organizer with Wilma to bring a 16-mile waterline to Bell, Oklahoma. Married in October 1986. Charlie was deeply supportive of Wilma's leadership aspirations and encouraged her to run for Principal Chief in the 1987 election. Their partnership was characterized by shared commitment to Cherokee Nation and community development. They remained married until Wilma's death in 2010.",
+      "deceased": false
+    }
+  ],
+  "children": [
+    {
+      "firstName": "Felicia",
+      "middleName": "",
+      "lastName": "Olaya",
+      "birthDate": "early 1960s",
+      "narrative": "First daughter with Hector Hugo Olaya de Bardi. Born in San Francisco in an apartment in the Mission District during their early years together. Raised to draw upon Cherokee culture, history and tribal identity by Wilma. Though Felicia did not hold political office, she has worked for and supported the Cherokee Nation throughout her life, continuing her mother's legacy of service to the tribe."
+    },
+    {
+      "firstName": "Gina",
+      "middleName": "",
+      "lastName": "Olaya",
+      "birthDate": "1966",
+      "narrative": "Second daughter with Hector Hugo Olaya de Bardi. Born in 1966 while Wilma and Hector were living in California. Raised in San Francisco before family moved to Oakland. Like her sister Felicia, Gina was instilled with Cherokee cultural values and tribal identity by Wilma. She has supported the Cherokee Nation's work throughout her life. Her kidney donation enabled Wilma to receive a second transplant in 1998 when her niece Virlee Williamson donated a kidney."
+    }
+  ],
+  "marriage": [
+    {
+      "proposalStory": "Marriage to Hector Hugo Olaya: Met in San Francisco and had a brief courtship before deciding to marry. Proposed marriage occurred in California; they married in Reno, Nevada to formalize the union at a young age.",
+      "weddingDetails": "Married November 13, 1963 in Reno, Nevada. Wilma was 17-18 years old. Hector was an Ecuadorian immigrant accountant seeking traditional family structure."
+    },
+    {
+      "proposalStory": "Marriage to Charlie Soap: Developed relationship through community work on the Bell revitalization project. Mutual commitment to Cherokee Nation and community development. Charlie was encouraging and supportive of Wilma's political ambitions.",
+      "weddingDetails": "Married in October 1986 in Oklahoma. Charlie Soap, a full-blood Cherokee and traditional medicine practitioner, represented Wilma's return to Cherokee culture and values. Marriage was supportive of her subsequent election as Principal Chief in 1987."
+    }
+  ],
+  "familyTraditions": [
+    {
+      "description": "Listening to stories from Aunt Maggie about the old days, including tales of gunmen, bank robbers, and hidden treasures. Wilma and her brother Johnny particularly enjoyed these narratives.",
+      "occasion": "Evenings and family gatherings in Mankiller Flats during childhood"
+    },
+    {
+      "description": "Playing traditional games such as hide-and-seek, kick the can, and marbles with siblings and neighborhood children in the Cherokee community.",
+      "occasion": "After school and during leisure time on Mankiller Flats"
+    },
+    {
+      "description": "Community reciprocity and mutual aid traditions observed in isolated Cherokee community, where family and neighbors traded goods like eggs for milk and farm goods for store-bought items.",
+      "occasion": "Daily life in Mankiller Flats community"
+    },
+    {
+      "description": "Mother immersing children in Cherokee heritage through language instruction in both English and Cherokee, storytelling from family elders, and cultural practices.",
+      "occasion": "Throughout childhood as core family tradition"
+    },
+    {
+      "description": "Family card games and social gatherings among adults in the community during evening hours, observed by children.",
+      "occasion": "Evenings and social occasions in Mankiller Flats"
+    },
+    {
+      "description": "Building of family home: Father, uncle, and brother built a small house for the family in 1948 with no electricity or running water as a family effort.",
+      "occasion": "1948 construction project that demonstrated family collaboration"
+    },
+    {
+      "description": "Mother making clothes from flour sacks for the eleven children, demonstrating resourcefulness and care during material poverty.",
+      "occasion": "Regular practice during childhood years"
+    }
+  ],
+  "pets": [
+    {
+      "name": "",
+      "species": "",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+  "earlyMemories": {
+    "firstMemory": "Specific first memory not documented in available sources. However, early childhood was spent on Mankiller Flats in isolated Cherokee community with strong cultural immersion.",
+    "favoriteToy": "Favorite childhood toy not specifically documented in available sources. Childhood play involved traditional games like hide-and-seek, kick the can, and marbles.",
+    "significantEvent": "Being part of a large eleven-child family in material poverty on Mankiller Flats; learning about community reciprocity by observing extended family and neighbors; living in a house built by father, uncle, and brother in 1948 with no electricity or running water; immersion in Cherokee language and cultural traditions by parents and elders."
+  },
+  "education": {
+    "schooling": "Attended public schools while living in Mankiller Flats until age 11. At age 11 (approximately 1956), relocated to San Francisco, California as part of the federal Indian Relocation Act, which paid moving expenses and provided job training to relocate Native Americans to urban areas with goal of assimilation.",
+    "higherEducation": "Attended Skyline College and San Francisco State University while living in California. Later earned Bachelor of Science degree in social sciences with emphasis on Indian Affairs from Flaming Rainbow University in Stilwell, Oklahoma, completed through correspondence courses. Pursued graduate studies in community development at University of Arkansas in Fayetteville while working for Cherokee Nation.",
+    "earlyCareer": "While living in San Francisco, participated in activism inspired by 1960s social and political movements. Became involved in Indigenous rights work, though could not participate directly in the 1969-1971 Alcatraz Island occupation (her husband requested she stay home with children), she raised money and support for the occupiers. This event catalyzed her lifelong commitment to Indigenous rights.",
+    "careerProgression": "1977: Hired by Cherokee Nation with primary responsibility to enroll Indigenous people in college programs for environmental sciences and health care. Promoted to Cherokee Nation's economic stimulus coordinator. 1981: Helped found Cherokee Nation Community Development Department and served as its first director. Organized and implemented the Bell Community Revitalization Project (Bell Water Project), providing 16-mile waterline, running water, new housing and jobs to Bell, Oklahoma community. Project success led to similar self-help projects across Cherokee Nation and Indian country. 1985: Elected Principal Chief of Cherokee Nation; served as first woman to hold this position. 1985-1995: Led Cherokee Nation for 10 years during which tribal population grew from 68,000 to 170,000. Opened three rural health centers and expanded Head Start program. 1995: Retired from political office. 1996: Became visiting professor and Montgomery Fellow at Dartmouth College teaching in Native American Studies program. Subsequently began national lecture tour speaking on health care, tribal sovereignty, women's rights and cancer awareness.",
+    "communityInvolvement": "Extensive community involvement throughout career. Led community revitalization efforts in Bell, Oklahoma. Served as Principal Chief overseeing Cherokee Nation with focus on health care, education, and economic development. Founded and led Cherokee Nation Community Development Department. Worked with pit River Tribe on land and compensation struggles. Continued community education and advocacy work after retirement through lectures and teaching.",
+    "mentorship": "Taught at Dartmouth College as visiting professor and Montgomery Fellow in Native American Studies. Delivered national lectures on tribal sovereignty, women's rights, and Indigenous issues. Authored autobiography that became national bestseller, serving as mentoring document for future generations. Influenced numerous Indigenous activists and leaders through her example and writings."
+  },
+  "laterYears": {
+    "retirement": "Retired from political office in 1995 after serving as Principal Chief for 10 years. After retirement, became visiting professor at Dartmouth College in 1996, then transitioned to national lecture tour speaking on health care, tribal sovereignty, women's rights and cancer awareness. Continued writing, public speaking, and advocacy for Indigenous rights and health causes.",
+    "lifeLessons": "In her autobiography Mankiller: A Chief and Her People (1993, national bestseller), Wilma reflected on lessons of community reciprocity, cultural preservation, importance of education, persistence through personal hardship and health challenges, power of grassroots community organizing, maintaining connection to tribal identity and heritage, courage to lead despite opposition, and responsibility to future generations. Emphasis on viewing challenges as opportunities for growth and community strengthening. Demonstrated that leadership comes from service to community rather than individual ambition.",
+    "adviceForFutureGenerations": "Wilma's legacy communicates that young people should maintain connection to cultural heritage and tribal identity; engage in community service and reciprocal support; pursue education while honoring traditional knowledge; persist through personal and health challenges with dignity; work toward tribal sovereignty and self-determination; support Indigenous rights and dignity; view leadership as responsibility to serve community; work for justice and equity; and remember that transformation begins with individual commitment to community improvement. Her life demonstrates the power of one person to change an entire nation through determination, vision, and grassroots organizing."
+  },
+  "hobbies": {
+    "hobbies": "Favorite childhood pastime was playing in the woods near Mankiller Flats. Enjoyed listening to adventure stories from Aunt Maggie about gunmen, bank robbers, and hidden treasures. Later in life, reading, writing, and public speaking on Indigenous issues became primary intellectual pursuits. Engaged in community organizing and grassroots activism.",
+    "worldEvents": "Influenced by 1960s civil rights and social movements. Catalyzed by Alcatraz Island occupation (1969-1971) which inspired her Indigenous rights activism despite not being able to participate directly. Witnessed Indian Relocation Act's impacts on her own family. Observed federal policies affecting tribal sovereignty and Indigenous health. Engaged with broader movements for Indigenous self-determination and environmental justice.",
+    "personalChallenges": "1979: Severe car accident on blind curve driving home from graduate school at University of Arkansas; colleague Sherry Morris died in crash; Wilma suffered broken ribs, breaks in left leg and ankle, crushed face and right leg. Underwent 17 operations and plastic surgery to reconstruct face; learned to walk with crutches. 1979 (three months post-accident): Diagnosed with myasthenia gravis (autoimmune muscle disorder), causing muscle coordination loss, difficulty gripping items, and voice fatigue. Persisted through recovery and continued education and career. 1990: Kidney disease worsened; left kidney failed; received kidney transplant from her brother Don in July 1990. 1998: Received Presidential Medal of Freedom from President Clinton; later that year experienced second kidney failure and received second transplant from niece Virlee Williamson. Also battled polycystic kidney disease, lymphoma, and breast cancer throughout later years. 2010: Died April 6, 2010 from pancreatic cancer at age 64. Despite these severe health challenges, maintained active career in tribal leadership and advocacy until final years.",
+    "travel": "1956 at age 11: Relocated to San Francisco, California under Indian Relocation Act with family—described this move as 'my own Trail of Tears.' Lived in Mission District apartment and later Oakland after 1974 divorce. Mid-1970s: Returned to Oklahoma, reclaiming Mankiller Flats and returning to Cherokee community roots. Post-1995 retirement: Conducted national lecture tour speaking across United States on health care, tribal sovereignty, women's rights and cancer awareness. 1996: Taught at Dartmouth College in New Hampshire as visiting professor and Montgomery Fellow. Overall travel characterized by return to roots and advocacy work rather than leisure tourism."
+  },
+  "health": {
+    "healthMilestones": "Born November 18, 1945 in good health. Age 11 (1956): Relocated to San Francisco as part of Indian Relocation Act; adapted to new urban environment and climate. Age 33 (1979): Serious multi-system car accident on blind curve; experienced near-fatal collision; suffered extensive trauma. Age 33 (1979, three months post-accident): Diagnosed with myasthenia gravis, chronic autoimmune muscle disorder requiring ongoing management. Age 44 (1990): Kidney disease progressed to failure; underwent kidney transplant from brother Don in July 1990. Age 52 (1998): Received Presidential Medal of Freedom; experienced second kidney failure requiring second transplant from niece Virlee Williamson. Age 54-64 (2000-2010): Managed polycystic kidney disease, lymphoma, breast cancer alongside ongoing myasthenia gravis and kidney disease management. Age 64 (April 6, 2010): Died from pancreatic cancer.",
+    "lifestyleChanges": "Post-1979 accident: Adapted to physical limitations following car accident; underwent extensive rehabilitation with crutches; learned to manage myasthenia gravis symptoms including muscle fatigue and coordination challenges through lifestyle adaptation and medical management. Post-1990 transplant: Adjusted to immunosuppressive medication regime required after kidney transplant; managed dietary restrictions and lifestyle adjustments necessary for transplant success; continued work and activism despite transplant requirements. Post-health challenges: Shifted from intensive physical fieldwork to increased focus on writing, speaking, and teaching roles that accommodated physical limitations. Maintained active public presence and advocacy work despite accumulating health challenges. Adopted health-conscious lifestyle focused on cancer awareness and advocacy for improved health care access in Cherokee Nation and Indigenous communities.",
+    "wellnessTips": "Based on Wilma's life experience and her later health advocacy: Importance of regular medical monitoring and health maintenance for early detection of serious conditions; value of family support through health crises (brother's kidney donation, niece's kidney donation); persistence and determination in managing chronic illness; importance of mental health and spiritual practices in coping with serious health challenges; advocacy for improved health care access in underserved Indigenous communities; awareness of environmental and lifestyle factors affecting health; emphasis on community-based health solutions; maintaining active engagement and purpose despite health limitations; regular health education and cancer awareness campaigns for community benefit."
+  },
+  "technology": {
+    "firstTechExperience": "Grew up without electricity or running water on Mankiller Flats until age 11. Family home built in 1948 had no modern utilities. First exposure to modern technology came with relocation to San Francisco in 1956 at age 11, where urban infrastructure provided electricity, running water, and modern conveniences. Adapted to mid-20th century urban technology including automobiles (later involved in serious car accident in 1979), telephones, and electric appliances.",
+    "favoriteGadgets": "Automobile: Central to her later life and career, though also source of serious 1979 accident. Reliance on vehicle transportation for community development work and later for national lecture tours and speaking engagements. Not extensively documented specific technology preferences or favorite gadgets, but adapted to necessary tools for her work including recording equipment for interviews, communication technology for tribal administration during her tenure as Principal Chief.",
+    "culturalPractices": "Wilma maintained strong connection to traditional Cherokee practices throughout her life despite early exposure to modern urban technology. Mother immersed her in Cherokee language and cultural traditions on Mankiller Flats. Married Charlie Soap, full-blood Cherokee who taught her traditional medicine practices and deepened her connection to Cherokee spiritual knowledge. Integrated traditional Cherokee worldview emphasizing community reciprocity, environmental stewardship, and cultural preservation. Used modern communication and writing technology (autobiography, lectures, teaching) to advance Indigenous cultural knowledge and tribal sovereignty. Technology served as tool for preserving and promoting Cherokee culture rather than replacing traditional knowledge systems."
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "Though Wilma accomplished historic achievements as first female Principal Chief of Cherokee Nation and major community development leader, some continuing work includes: full realization of complete water and infrastructure access across all Cherokee Nation communities; continued advancement of tribal sovereignty and self-determination; expansion of health care services to underserved Indigenous communities; ongoing preservation and revitalization of Cherokee language and cultural practices; addressing disparities in Indigenous health outcomes including cancer rates; complete historical recognition of contributions by Indigenous women leaders.",
+    "messagesForFutureGenerations": "Wilma's legacy through her autobiography, speeches, and example conveys: 'Choose to be a bridge-builder between communities and cultures. Maintain deep connection to your cultural roots and heritage—they are sources of strength and wisdom. Never underestimate the power of grassroots community organizing and mutual aid. Lead with compassion and service to your community rather than personal ambition. Persist through personal hardship and health challenges—they do not define your worth or capacity to serve. Pursue education while honoring traditional knowledge systems. Believe that one person committed to community improvement can transform an entire nation. Work for tribal sovereignty, self-determination, and Indigenous rights with understanding that this work spans generations. Remember that true wealth consists of strong communities where people care for one another. Use your voice and platform to advocate for those without voice. Pass on cultural knowledge and traditions to younger generations as sacred responsibility. Face life's challenges with dignity, humor, and determination. Know that your life has value and your contribution matters to your community and the world.'"
+  }
+}

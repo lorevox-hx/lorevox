@@ -1,0 +1,138 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "Harvey Milk — bio narrator",
+  "personal": {
+    "fullName": "Harvey Bernard Milk",
+    "preferredName": "Harvey",
+    "legalFirstName": "Harvey",
+    "legalMiddleName": "Bernard",
+    "legalLastName": "Milk",
+    "dateOfBirth": "1930-05-22",
+    "timeOfBirth": "",
+    "placeOfBirth": "Woodmere, New York",
+    "birthOrder": "Younger of two sons",
+    "zodiacSign": "Gemini",
+    "pronouns": "he/him",
+    "culture": "Jewish Lithuanian-American",
+    "country": "United States",
+    "language": "English"
+  },
+  "parents": [
+    {
+      "relation": "Father",
+      "firstName": "William",
+      "middleName": "",
+      "lastName": "Milk",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "Lithuania",
+      "occupation": "Department store owner (Milk's Dry Goods), U.S. Navy veteran",
+      "deceased": true,
+      "notableLifeEvents": "Immigrated from Lithuania, served in U.S. Navy, owned and operated Milk's Dry Goods retail store on Long Island",
+      "notes": "Of Lithuanian Litvak heritage; helped manage family retail business"
+    },
+    {
+      "relation": "Mother",
+      "firstName": "Minerva",
+      "middleName": "",
+      "lastName": "Karns",
+      "maidenName": "Karns",
+      "birthDate": "",
+      "birthPlace": "Lithuania",
+      "occupation": "U.S. Navy Yeomanette (WWI), department store owner",
+      "deceased": true,
+      "notableLifeEvents": "Served as Yeomanette in U.S. Navy during World War I, immigrated from Lithuania, worked in family retail business",
+      "notes": "Of Lithuanian heritage; described as spirited and independent; active in Jewish community on Long Island"
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "Morris",
+      "lastName": "Milk",
+      "ancestry": "Lithuanian",
+      "culturalBackground": "Jewish Lithuanian",
+      "memorableStories": "Department store owner who helped organize the first synagogue in the Woodmere, Long Island area"
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "Robert",
+      "middleName": "",
+      "lastName": "Milk",
+      "birthOrder": "Older of two sons",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "Worked in family department store with Harvey",
+      "memories": "",
+      "notes": "Brother of Harvey Milk"
+    }
+  ],
+  "spouse": {
+    "firstName": "",
+    "middleName": "",
+    "lastName": "",
+    "birthPlace": "",
+    "occupation": "",
+    "narrative": "Harvey Milk was never legally married. His significant long-term partners included Joe Campbell (1956-1961), Jack Galen McKinley (1964-1969), and Scott Smith (1972 onward), who was his partner when he moved to San Francisco and opened Castro Camera. Scott Smith served as Harvey's campaign manager and was instrumental in his political career.",
+    "deceased": false
+  },
+  "children": [],
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": ""
+  },
+  "familyTraditions": [
+    {
+      "description": "Working in the family Milk's Dry Goods department store during childhood",
+      "occasion": "Family business operation"
+    },
+    {
+      "description": "Participation in Jewish community life on Long Island",
+      "occasion": "Religious and cultural observance"
+    },
+    {
+      "description": "Strong emphasis on education and civic engagement",
+      "occasion": "Family values"
+    }
+  ],
+  "pets": [],
+  "earlyMemories": {
+    "firstMemory": "",
+    "favoriteToy": "",
+    "significantEvent": "Acknowledging his homosexuality during adolescence while attending Bay Shore High School"
+  },
+  "education": {
+    "schooling": "Bay Shore High School, graduated 1947; attended New York State College for Teachers (now University at Albany) studying mathematics and history, graduated 1951; wrote popular weekly student newspaper column questioning issues of diversity",
+    "higherEducation": "New York State College for Teachers, Albany (1947-1951), degree in mathematics and history",
+    "earlyCareer": "Returned to Long Island after Navy service to work as a public school teacher; later moved to New York City where he worked in off-Broadway theater production. Employed at Bache and Company investment firm on Wall Street starting 1963; worked in theater while with Jack Galen McKinley; moved to San Francisco 1968 with McKinley who was staging original production of Hair; worked briefly as a financial analyst in San Francisco before burning his BankAmericard in protest of Cambodia invasion in 1970 and being terminated.",
+    "careerProgression": "From teacher to Wall Street analyst (1963-1968) to theater production involvement to financial analyst to political activist and community organizer (1970s); eventually became Castro Camera shop owner (1972) and San Francisco Board of Supervisors member (1978)",
+    "communityInvolvement": "Organized the Castro Village Association (first predominantly LGBT business organization in the nation); served as its president; appointed to San Francisco Board of Permit Appeals making him the first openly gay city commissioner in the United States; elected San Francisco City-County Supervisor on 1977, inaugurated January 9, 1978",
+    "mentorship": "Mentored numerous LGBTQ youth and community members; provided guidance to business owners in Castro District; influenced younger activists through his political campaigns and community organizing work"
+  },
+  "laterYears": {
+    "retirement": "Never had opportunity to retire; assassinated on November 27, 1978, after serving nearly 11 months as San Francisco Supervisor",
+    "lifeLessons": "The recorded 'Hope Speech' and political will tape conveyed that visibility and coming out were essential to LGBTQ liberation; that hope and visibility could inspire change; that activism requires courage and conviction; that systemic discrimination in housing, employment, and public accommodations must be legally challenged and prohibited",
+    "adviceForFutureGenerations": "From his 'Hope Speech' and political testament: encouraged gay and lesbian people to come out and be visible; advocated that the more open and visible the gay community became, the more difficult it would be to deny them rights; called for courage in the face of opposition; emphasized hope as a driving force for social change"
+  },
+  "hobbies": {
+    "hobbies": "Photography (professional expertise); theater and performing arts; opera singing in high school",
+    "worldEvents": "Lived through and witnessed: Great Depression era economic impacts on Long Island retail; World War II and post-war American society; Korean War military service; Cold War era; Civil Rights Movement of 1960s; Vietnam War and anti-war protests (particularly Cambodia invasion 1970); rise of modern gay liberation movement following Stonewall 1969; California's political shift and San Francisco's emergence as major gay cultural center",
+    "personalChallenges": "Struggled for decades to live openly as a gay man while maintaining family and professional relationships; suffered from the psychological burden of hiding his sexuality; experienced loss through suicide attempts by romantic partners (Joe Campbell and Jack Galen McKinley); dealt with forced resignation from Navy with other-than-honorable discharge based on homosexuality in 1955; faced ongoing discrimination and societal homophobia; lost his job with financial firm for activist principles",
+    "travel": "Moved from Woodmere, Long Island to Bay Shore (high school); to Albany (college); military service with Navy (1951-1955, stationed aboard submarine rescue ships); relocated to Dallas, Texas with Joe Campbell 1957; returned to New York; Greenwich Village residence with Jack Galen McKinley 1963-1969; brief move to San Francisco 1968 with McKinley before returning to New York; finally relocated permanently to San Francisco Castro District 1972"
+  },
+  "health": {
+    "healthMilestones": "Served in U.S. Navy during Korean War era despite being gay; maintained physical fitness; confronted by Navy authorities regarding homosexual conduct in 1954 leading to discharge in 1955 with other-than-honorable characterization",
+    "lifestyleChanges": "Transitioned from corporate finance worker to hippie-influenced activist in late 1960s-early 1970s; publicly burned credit card in Cambodia War protest (1970); transformed from closeted gay man living double life to openly gay political figure by 1970s",
+    "wellnessTips": ""
+  },
+  "technology": {
+    "firstTechExperience": "Photography technology and camera equipment expertise from Castro Camera shop experience",
+    "favoriteGadgets": "Photography equipment and cameras; the tape recording device used to create his political will and 'Hope Speech'",
+    "culturalPractices": "Used modern media and communication to advance political message; recorded speeches and political testament for posterity; utilized camera store as community gathering space and political headquarters; pioneered use of visible gay business ownership and community organization as political and social strategy"
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "Intended to continue expanding gay rights protections beyond his initial ordinance; envisioned continued visibility and political empowerment of LGBTQ community; aimed to create systemic legal and social change within the political system; sought to normalize LGBTQ life in mainstream American society",
+    "messagesForFutureGenerations": "His recorded political testament stated: 'If a bullet should enter my brain, let that bullet destroy every closet door'; encouraged future generations to continue coming out and being visible; emphasized that hope is a powerful tool for social change; demonstrated that electoral politics and visible presence in mainstream institutions could advance LGBTQ rights; his assassination and the subsequent reaction of the community (White Night riots and continued activism) became a rallying point for LGBTQ movement; awarded Presidential Medal of Freedom posthumously in 2009, recognizing his lasting legacy in civil rights struggle"
+  }
+}

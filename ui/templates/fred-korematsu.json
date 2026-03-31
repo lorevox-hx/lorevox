@@ -1,0 +1,186 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "Fred Korematsu — bio narrator",
+  "personal": {
+    "fullName": "Fred Toyosaburo Korematsu",
+    "preferredName": "Fred",
+    "legalFirstName": "Toyosaburo",
+    "legalMiddleName": "",
+    "legalLastName": "Korematsu",
+    "dateOfBirth": "1919-01-30",
+    "timeOfBirth": "",
+    "placeOfBirth": "Oakland, California, United States",
+    "birthOrder": 3,
+    "zodiacSign": "Aquarius",
+    "pronouns": "he/him",
+    "culture": "Nisei (Japanese American, second-generation)",
+    "country": "United States",
+    "language": "English, Japanese"
+  },
+  "parents": [
+    {
+      "relation": "father",
+      "firstName": "Kakusaburo",
+      "middleName": "",
+      "lastName": "Korematsu",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "Japan",
+      "occupation": "Flower nursery owner",
+      "deceased": true,
+      "notableLifeEvents": "Immigrated to United States in 1905; established flower nursery business in San Leandro, California",
+      "notes": "Japanese immigrant who founded family flower nursery business"
+    },
+    {
+      "relation": "mother",
+      "firstName": "Kotsui",
+      "middleName": "",
+      "lastName": "Aoki",
+      "maidenName": "Aoki",
+      "birthDate": "",
+      "birthPlace": "Japan",
+      "occupation": "Flower nursery co-owner",
+      "deceased": true,
+      "notableLifeEvents": "Immigrated to United States in 1914 through Angel Island; operated family flower nursery",
+      "notes": "Japanese immigrant who arrived via Angel Island Immigration Station"
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "",
+      "lastName": "Korematsu",
+      "ancestry": "Japanese",
+      "culturalBackground": "Japanese",
+      "memorableStories": ""
+    },
+    {
+      "firstName": "",
+      "lastName": "Aoki",
+      "ancestry": "Japanese",
+      "culturalBackground": "Japanese",
+      "memorableStories": ""
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "older brother",
+      "firstName": "Hi",
+      "middleName": "Hiroshi",
+      "lastName": "Korematsu",
+      "birthOrder": 1,
+      "uniqueCharacteristics": "Worked in family flower nursery",
+      "sharedExperiences": "Affected by Japanese American internment during World War II; helped in family flower nursery",
+      "memories": "Family business operations in San Leandro",
+      "notes": "Eldest of four brothers"
+    },
+    {
+      "relation": "older brother",
+      "firstName": "Joe",
+      "middleName": "Junichi",
+      "lastName": "Korematsu",
+      "birthOrder": 2,
+      "uniqueCharacteristics": "Worked in family flower nursery",
+      "sharedExperiences": "Affected by Japanese American internment during World War II; helped in family flower nursery",
+      "memories": "Family business operations in San Leandro",
+      "notes": "Second of four brothers"
+    },
+    {
+      "relation": "younger brother",
+      "firstName": "Harry",
+      "middleName": "Takashi",
+      "lastName": "Korematsu",
+      "birthOrder": 4,
+      "uniqueCharacteristics": "Worked in family flower nursery; younger brother lived in Detroit, Michigan",
+      "sharedExperiences": "Affected by Japanese American internment during World War II; helped in family flower nursery",
+      "memories": "Family business operations in San Leandro",
+      "notes": "Youngest of four brothers; lived in Detroit during later years"
+    }
+  ],
+  "spouse": {
+    "firstName": "Frances",
+    "middleName": "",
+    "lastName": "Pearson",
+    "birthPlace": "Greenville, South Carolina, United States",
+    "occupation": "Medical technologist, nurse educator",
+    "narrative": "Met Fred in Detroit, Michigan where she was studying at Wayne State University. Had degrees in science from Winthrop College and a master's degree in medical technology from Wayne University. Worked at Henry Ford Hospital lab and later taught nurses at Mount Carmel College of Nursing in East Lansing, Michigan. Married October 12, 1946 in Detroit; moved to San Francisco Bay Area in 1949.",
+    "deceased": true
+  },
+  "children": [
+    {
+      "firstName": "Karen",
+      "middleName": "",
+      "lastName": "Korematsu",
+      "birthDate": "1950",
+      "narrative": "Daughter born in 1950. Became executive director of the Fred T. Korematsu Institute. Like her brother Ken, learned about her father's case in school rather than hearing it directly from Fred, as he found the experience too painful to discuss with his children."
+    },
+    {
+      "firstName": "Kenneth",
+      "middleName": "",
+      "lastName": "Korematsu",
+      "birthDate": "1954",
+      "narrative": "Son born in 1954. Learned about his father's internment case and civil rights legacy in school. Grew up in San Francisco Bay Area after family relocated from Detroit in 1949."
+    }
+  ],
+  "marriage": {
+    "proposalStory": "Met Kathryn Pearson in Detroit, Michigan where she was a student at Wayne State University. They developed a relationship during his time working in Detroit after internment ended.",
+    "weddingDetails": "Married on October 12, 1946, in Detroit, Michigan. Later relocated to San Francisco Bay Area in 1949 to raise their family."
+  },
+  "familyTraditions": [
+    {
+      "description": "Family flower nursery operations in San Leandro providing employment and livelihood",
+      "occasion": "Year-round family business operations pre-internment"
+    },
+    {
+      "description": "Participation in community and civil rights activism",
+      "occasion": "Throughout adult life, particularly during internment case and later coram nobis petition"
+    }
+  ],
+  "pets": [
+    {
+      "name": "",
+      "species": "",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+  "earlyMemories": {
+    "firstMemory": "",
+    "favoriteToy": "",
+    "significantEvent": "Growing up in Oakland, California as son of Japanese immigrant parents; working in family flower nursery in San Leandro; attending Castlemont High School; participating in tennis and swim teams"
+  },
+  "education": {
+    "schooling": "Public schools in Oakland, California; Castlemont High School (Oakland) — participated in tennis and swim teams",
+    "higherEducation": "",
+    "earlyCareer": "Worked in family flower nursery in San Leandro, California before World War II; trained as a welder",
+    "careerProgression": "Worked as shipyard welder in Oakland rising to foreman position; prevented from continuing shipyard work due to Japanese American discrimination; worked as welder in Salt Lake City, Utah (1944-1946) under restriction not to return to West Coast; worked as draftsman in Detroit, Michigan (1946-1949); relocated to San Francisco Bay Area in 1949 and continued working as draftsman; civil rights and internment resistance became primary life focus after conviction conviction and later vindication",
+    "communityInvolvement": "Central figure in Japanese American civil rights movement; subject of landmark Supreme Court case Korematsu v. United States (1944); plaintiff in coram nobis petition that vacated conviction in 1983; recipient of Presidential Medal of Freedom (1998); subject of Fred Korematsu Day designation in California",
+    "mentorship": "Worked with pro bono legal team of young Japanese American lawyers on coram nobis petition in 1980s; became symbol and educator for Japanese American internment history and civil liberties"
+  },
+  "laterYears": {
+    "retirement": "Transitioned from technical work to full-time civil rights advocacy and education in later decades; continued speaking engagements and appearances related to internment history and constitutional rights",
+    "lifeLessons": "Importance of standing up for constitutional rights even when facing overwhelming odds; necessity of questioning government actions; power of persistence and seeking justice decades after original injustice; courage required to resist unjust orders; how evidence of government misconduct can vindicate those wrongly convicted",
+    "adviceForFutureGenerations": "Stand up for what is right regardless of personal cost; challenge injustice in all forms; protect constitutional liberties for all Americans; remember lessons of Japanese American internment to prevent similar atrocities; the name Fred Korematsu became synonymous with civil courage and resistance to unlawful detention"
+  },
+  "hobbies": {
+    "hobbies": "Tennis, swimming (participated in high school teams); quiet personal life despite public role",
+    "worldEvents": "Witnessed and experienced consequences of Pearl Harbor attack (December 7, 1941) leading to Executive Order 9066 and Japanese American internment; lived through World War II era; witnessed evolution of civil rights movement; saw eventual overturning of Supreme Court precedent in Trump v. Hawaii (2018)",
+    "personalChallenges": "Arrested for refusing to report to internment camp (May 1942); convicted under Exclusion Order Number 34; served internment; felony conviction limited employment opportunities throughout career; emotional difficulty discussing internment case with his own children; struggle for legal vindication lasting 40 years until coram nobis petition in 1983",
+    "travel": "Relocated to Salt Lake City, Utah (1944-1946) under government internment restrictions; moved to Detroit, Michigan (1946-1949) where he met his wife; relocated to San Francisco Bay Area (1949 onward); extensive travel for civil rights speaking engagements and advocacy work in later years"
+  },
+  "health": {
+    "healthMilestones": "Died of respiratory failure on March 30, 2005, at daughter's home in Marin County, California; lived to age 86",
+    "lifestyleChanges": "Transitioned from manual labor (welding) and technical work (drafting) to civil rights advocacy and education; increased public speaking and advocacy activities in later decades",
+    "wellnessTips": ""
+  },
+  "technology": {
+    "firstTechExperience": "Trained as welder using industrial welding equipment during World War II era; worked as draftsman using technical drawing tools",
+    "favoriteGadgets": "",
+    "culturalPractices": "Japanese American Nisei culture; maintained connection to Japanese heritage while fully integrated into American society; participated in Japanese American community activism and memorial activities"
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "While vindicated through coram nobis case in 1983, the Supreme Court decision in Korematsu v. United States remained as precedent (though discredited) until overturned in Trump v. Hawaii (2018); continued advocacy for civil liberties and prevention of similar injustices",
+    "messagesForFutureGenerations": "The case of Fred Korematsu demonstrates that ordinary citizens can challenge government overreach; even when initial legal efforts fail, persistence and new evidence can lead to vindication; constitutional rights must be protected for all Americans regardless of race or ethnicity; the internment of Japanese Americans represents a dark chapter that must be remembered to ensure such injustices are never repeated; courage to resist unjust orders, even alone and against overwhelming odds, is the foundation of constitutional freedom; Korematsu's name became synonymous with civil courage and became annual recognition through Fred Korematsu Day in California and beyond"
+  }
+}

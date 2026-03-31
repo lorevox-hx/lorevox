@@ -13,8 +13,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO_DIR="${LOREVOX_REPO:-/mnt/c/lorevox}"
-VENV_DIR="${LOREVOX_VENV:-/mnt/c/lorevox/.venv-gpu}"
+REPO_DIR="${LOREVOX_REPO:-/mnt/c/Users/chris/lorevox}"
+VENV_DIR="${LOREVOX_VENV:-/mnt/c/Users/chris/lorevox/.venv-gpu}"
 DATA_DIR="${DATA_DIR:-/home/chris/lorevox_data}"
 USE_TTS="${USE_TTS:-0}"
 
@@ -34,6 +34,10 @@ export DATA_DIR
 
 # Ensure runtime directories exist
 mkdir -p "$DATA_DIR"/{db,voices,cache_audio,memory,projects,interview,logs}
+
+# Must cd into server/ so that Python resolves "code.api" as the local package
+# (not the stdlib "code" module)
+cd server
 
 # exec replaces this shell so Playwright can track the process cleanly
 exec python -m uvicorn code.api.main:app --host 0.0.0.0 --port 8000

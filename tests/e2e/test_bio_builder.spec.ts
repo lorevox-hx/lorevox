@@ -60,13 +60,14 @@ test.describe("Bio Builder — Backend Contracts", () => {
     });
     expect(r.ok()).toBeTruthy();
     const body = await r.json();
-    expect(body.fact_id || body.id).toBeTruthy();
+    expect(body.fact?.id || body.fact_id || body.id).toBeTruthy();
   });
 
   test("BB-02: Facts list includes meaning engine fields", async ({ request }) => {
     const r = await request.get(`${API_URL}/api/facts/list?person_id=${personId}`);
     expect(r.ok()).toBeTruthy();
-    const items = (await r.json()).items || (await r.json()).facts || [];
+    const factsBody = await r.json();
+    const items = factsBody.items || factsBody.facts || [];
     const meaningFact = items.find((f: any) =>
       f.statement?.includes("Sacramento") && f.meaning_tags
     );
@@ -131,7 +132,8 @@ test.describe("Bio Builder — Backend Contracts", () => {
         status: "extracted"
       }
     });
-    const factId = (await addResp.json()).fact_id || (await addResp.json()).id;
+    const addBody = await addResp.json();
+    const factId = addBody.fact?.id || addBody.fact_id || addBody.id;
 
     // Promote to reviewed
     const reviewResp = await request.patch(`${API_URL}/api/facts/status`, {
@@ -141,8 +143,9 @@ test.describe("Bio Builder — Backend Contracts", () => {
 
     // Verify status changed
     const listResp = await request.get(`${API_URL}/api/facts/list?person_id=${personId}&status=reviewed`);
-    const reviewed = ((await listResp.json()).items || []).find((f: any) =>
-      (f.fact_id || f.id) === factId
+    const listBody = await listResp.json();
+    const reviewed = (listBody.items || listBody.facts || []).find((f: any) =>
+      (f.fact?.id || f.fact_id || f.id) === factId
     );
     expect(reviewed).toBeTruthy();
     expect(reviewed.status).toBe("reviewed");

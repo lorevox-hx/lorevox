@@ -1,0 +1,229 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "Katherine Johnson — bio narrator",
+
+  "personal": {
+    "fullName": "Creola Katherine Coleman Johnson",
+    "preferredName": "Katherine Johnson",
+    "legalFirstName": "Creola",
+    "legalMiddleName": "Katherine",
+    "legalLastName": "Johnson",
+    "dateOfBirth": "1918-08-26",
+    "timeOfBirth": "",
+    "placeOfBirth": "White Sulphur Springs, West Virginia",
+    "birthOrder": "Youngest of 4 children",
+    "zodiacSign": "Virgo",
+    "pronouns": "she/her",
+    "culture": "African American",
+    "country": "US",
+    "language": "English, French"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Joylette",
+      "middleName": "Roberta",
+      "lastName": "Coleman",
+      "maidenName": "Lowe",
+      "birthDate": "1887",
+      "birthPlace": "Caswell County, North Carolina",
+      "occupation": "Teacher",
+      "deceased": true,
+      "notableLifeEvents": "Married Joshua McKinley Coleman on September 29, 1909 in Danville, Virginia. Raised four children including Katherine, the mathematician.",
+      "notes": "Joylette was an educated woman who valued education for her children. She was instrumental in supporting Katherine's early intellectual development."
+    },
+    {
+      "relation": "Father",
+      "firstName": "Joshua",
+      "middleName": "McKinley",
+      "lastName": "Coleman",
+      "maidenName": "",
+      "birthDate": "1881-12-18",
+      "birthPlace": "",
+      "occupation": "Farmer, Lumberman, Handyman",
+      "deceased": true,
+      "notableLifeEvents": "Worked at the Greenbrier Hotel in White Sulphur Springs. Made the decision to move the family to Institute, West Virginia so his children could attend high school. This move was crucial to Katherine's education.",
+      "notes": "Joshua was deeply committed to his children's education. He worked multiple jobs to support the family and arranged for them to attend high school in Institute despite segregation laws that did not provide public schooling for African American students beyond eighth grade in Greenbrier County."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "firstName": "",
+      "lastName": "",
+      "ancestry": "African American",
+      "culturalBackground": "African American, West Virginia roots",
+      "memorableStories": ""
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Sister",
+      "firstName": "Margaret",
+      "middleName": "",
+      "lastName": "Coleman",
+      "birthOrder": "3rd (born 1913)",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "Attended high school in Institute, West Virginia along with Katherine and her brothers. Part of the close-knit Coleman family that valued education.",
+      "memories": "",
+      "notes": "Margaret was one of Katherine's three older siblings. The Coleman children were all required to attend high school in Institute due to segregation laws."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Charles",
+      "middleName": "",
+      "lastName": "Coleman",
+      "birthOrder": "2nd (born 1915)",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "Attended high school in Institute, West Virginia. Part of the pioneering family that pursued education despite systemic barriers.",
+      "memories": "",
+      "notes": "Charles was Katherine's second older brother. The Coleman family spent school years in Institute and summers in White Sulphur Springs."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Horace",
+      "middleName": "",
+      "lastName": "Coleman",
+      "birthOrder": "1st (born 1912)",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "Attended high school in Institute, West Virginia. The eldest of the Coleman children, helping set an example for his younger siblings.",
+      "memories": "",
+      "notes": "Horace was Katherine's eldest sibling. The Coleman family was closely bonded and shared the experience of segregation and the pursuit of education."
+    }
+  ],
+
+  "spouse": [
+    {
+      "firstName": "James",
+      "middleName": "Francis",
+      "lastName": "Goble",
+      "birthPlace": "",
+      "occupation": "Veteran",
+      "narrative": "Katherine met James Francis Goble while they were both students at West Virginia State College. They married in 1939 and had three daughters together: Constance, Joylette, and Katherine. James was a devoted husband and father. He died of cancer in 1956, leaving Katherine a widow at age 37. His death was a profound loss that Katherine navigated while continuing to care for her three young daughters.",
+      "deceased": true
+    },
+    {
+      "firstName": "James",
+      "middleName": "A.",
+      "lastName": "Johnson",
+      "birthPlace": "",
+      "occupation": "United States Army Officer, Korean War Veteran, Lieutenant Colonel",
+      "narrative": "Katherine met her second husband, Captain James A. 'Jim' Johnson, at choir practice. They married in 1959 in a small ceremony at her home. Jim was a decorated military officer who served during the Korean War and later in the US military. They were married for 60 years, a partnership that provided stability and companionship through Katherine's remarkable NASA career and beyond. Their marriage lasted until his death in March 2019 at age 93, just over a year before Katherine's own death.",
+      "deceased": true
+    }
+  ],
+
+  "children": [
+    {
+      "firstName": "Joylette",
+      "middleName": "",
+      "lastName": "Goble",
+      "birthDate": "1940-1941",
+      "narrative": "The eldest of Katherine's three daughters with James Francis Goble. Joylette became a mathematician and teacher, following in her mother's intellectual footsteps. She and her twin sisters were very close and often treated as twins due to their similar ages."
+    },
+    {
+      "firstName": "Constance",
+      "middleName": "",
+      "lastName": "Goble",
+      "birthDate": "1941",
+      "narrative": "Constance was one of Katherine's three daughters with James Francis Goble. She became a mathematician and teacher. Constance and her sister Katherine were born approximately 10 days apart and were treated as twins throughout their childhood, even attending the same class from first grade. Constance passed away in 2010 at age 67."
+    },
+    {
+      "firstName": "Katherine",
+      "middleName": "",
+      "lastName": "Goble Moore",
+      "birthDate": "1941",
+      "narrative": "Named after her mother, Katherine was the third daughter born to Katherine Johnson and James Francis Goble. Born just 10 days after her sister Constance, the two were incredibly close and treated as twins. Like her mother and sisters, Katherine became a mathematician and teacher, continuing the family's intellectual legacy. She has spoken publicly about her mother's strength and the privilege of calling Katherine Johnson her mom."
+    }
+  ],
+
+  "marriage": [
+    {
+      "spouseName": "James Francis Goble",
+      "proposalStory": "Katherine met James at West Virginia State College, where they were fellow students. Their relationship developed during their college years.",
+      "weddingDetails": "Katherine and James married in 1939, launching a partnership that produced three daughters and spanned 17 years until his death in 1956."
+    },
+    {
+      "spouseName": "James A. Johnson",
+      "proposalStory": "Katherine met Jim Johnson at choir practice years after the death of her first husband. Their meeting and connection happened in a church setting, reflecting Katherine's deep faith and community involvement.",
+      "weddingDetails": "Katherine and Jim married in 1959 in a small ceremony held at her home. This marriage lasted 60 years until Jim's death in 2019, providing decades of partnership and stability through Katherine's historic NASA career."
+    }
+  ],
+
+  "familyTraditions": [
+    {
+      "description": "Education and intellectual achievement were paramount in the Coleman family. Parents Joshua and Joylette emphasized learning and ensured all four children received schooling despite the barriers of segregation.",
+      "occasion": "Family value, ongoing throughout life"
+    },
+    {
+      "description": "Church and faith were central to the Coleman/Johnson family life. Katherine was a member of Carver Memorial Presbyterian Church in Hampton, Virginia for 50 years and participated in the church choir.",
+      "occasion": "Weekly religious practice and worship"
+    },
+    {
+      "description": "Family gatherings and time together were important to Katherine. After her NASA retirement, she valued spending time with her family, including six grandchildren and eleven great-grandchildren.",
+      "occasion": "Family occasions and celebrations"
+    },
+    {
+      "description": "Hard work and perseverance were modeled by parents who worked multiple jobs and made sacrifices to ensure their children's education. This work ethic was passed down to Katherine and her siblings.",
+      "occasion": "Family value, exemplified throughout life"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "",
+      "species": "",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "",
+    "favoriteToy": "",
+    "significantEvent": "At age 5, Katherine entered school and quickly demonstrated advanced mathematical ability, skipping grades. She was placed in the second grade at age 5, then the sixth grade by age 8. At age 10, despite living in White Sulphur Springs where segregation laws prohibited African American public education beyond eighth grade, her parents enrolled her in high school at West Virginia State College in Institute. The family split their time between Institute during school and White Sulphur Springs during summers. This move proved pivotal to her educational trajectory."
+  },
+
+  "education": {
+    "schooling": "Elementary and secondary education in West Virginia. Began high school at age 10 at the high school on the West Virginia State College campus in Institute, West Virginia due to segregation laws that did not provide public secondary education for African American students in Greenbrier County.",
+    "higherEducation": "Graduated from West Virginia State College (now West Virginia State University) in 1937 at age 18 summa cum laude with Bachelor of Science degrees in both Mathematics and French. In 1939, selected as one of the first three African American students to enroll in a graduate program at West Virginia University in Morgantown—a historic integration milestone. Enrolled in graduate mathematics program but left after the first session to focus on family. Mentor: W. W. Schieffelin Claytor, the third African American to receive a doctorate in mathematics, who created new courses specifically for Katherine.",
+    "earlyCareer": "After leaving graduate school, Katherine worked as a teacher. She taught mathematics and French, continuing her intellectual contributions to education.",
+    "careerProgression": "Joined NACA (National Advisory Committee for Aeronautics) at Langley Research Center in Hampton, Virginia in June 1953. During her 33-year career at NACA/NASA (1953-1986), she earned a reputation for mastering complex manual calculations and calculating trajectories for spacecraft. Key contributions: Project Mercury (calculated trajectories, launch windows, and emergency return paths for Alan Shepard and John Glenn); Project Gemini (rendezvous calculations); Apollo missions (calculated paths for the Lunar Module and command module). Authored or co-authored 26 research reports. Retired in 1986 after 33 years of service.",
+    "communityInvolvement": "Active member of Carver Memorial Presbyterian Church in Hampton, Virginia for 50 years, singing in the choir. Mentored and encouraged students to pursue STEM careers. Participated in NASA conferences and panels, including the NASA Trailblazers and Legends STEM Conference in Cape Canaveral, Florida in 2010. Spoke publicly about her career and encouraged all students, especially young Black scientists, to pursue science and technology.",
+    "mentorship": "Mentored by W. W. Schieffelin Claytor at West Virginia State College, who recognized her exceptional mathematical talent and created additional mathematics courses specifically for her. Later became a mentor herself, encouraging the next generation of scientists and particularly young Black women to pursue careers in STEM."
+  },
+
+  "laterYears": {
+    "retirement": "Retired from NASA/NACA in 1986 after 33 years of service. Remained active in education and community engagement. Traveled, played bridge, watched sports, and spent time with family. Lived in Hampton, Virginia with her husband James Johnson. Continued public speaking and participation in educational panels and conferences.",
+    "lifeLessons": "Katherine embodied perseverance in the face of discrimination and systemic barriers. She believed that education and excellence were the paths to overcoming prejudice. She learned that precision and accuracy were paramount in her work—lives depended on her calculations being perfect. She valued faith, family, and community as essential to a full life. She discovered that her gifts could contribute to humanity's greatest achievements, reaching for the Moon.",
+    "adviceForFutureGenerations": "Katherine encouraged all young people, especially Black students and women, to pursue careers in science, technology, engineering, and mathematics. She advised students not to be discouraged by obstacles or discrimination, but to focus on excellence and hard work. She spoke about the importance of education as a path to opportunity. She encouraged people to use their talents to contribute meaningfully to the world and to never underestimate what they could achieve. Her message was one of determination, faith, and belief in the power of human capability."
+  },
+
+  "hobbies": {
+    "hobbies": "Playing bridge with friends and family. Watching sports. Reading. Traveling domestically and internationally.",
+    "worldEvents": "Lived through the Great Depression during her childhood and early adulthood. Experienced Jim Crow segregation throughout the South and West Virginia. Witnessed World War II and the post-war period as a young woman teaching and raising a family. Lived through the Civil Rights Movement of the 1950s and 1960s while working at NASA. Experienced the Space Race and the Moon Landing (Apollo 11, 1969). Saw the end of the Cold War. Witnessed the Civil Rights Act of 1964 and the Voting Rights Act of 1965.",
+    "personalChallenges": "Faced racial discrimination and segregation throughout her life. Overcame the loss of her first husband to cancer in 1956 while raising three daughters. Navigated working as one of the few Black women in technical fields at NASA during the segregation era. Challenged discriminatory policies and attitudes through her excellence and professionalism. Persevered in a male-dominated field of mathematics and aerospace.",
+    "travel": "Traveled to various NASA facilities and conferences, including Cape Canaveral, Florida. Traveled domestically to speak at educational events and universities. Known to enjoy travel and explored new places during retirement with her husband Jim."
+  },
+
+  "health": {
+    "healthMilestones": "Lived to age 101, passing away on February 24, 2020. Maintained her mental acuity throughout her long life, continuing to speak publicly and engage with students and researchers well into old age. Died at a Newport News retirement home in Virginia.",
+    "lifestyleChanges": "Balanced a demanding 33-year NASA career with raising three daughters and two marriages. Transitioned from full-time work to retirement in 1986, shifting her focus to family and mentoring activities. Remained physically active and socially engaged throughout retirement, participating in church, family gatherings, and educational outreach.",
+    "wellnessTips": "Katherine embodied the benefits of intellectual engagement throughout life—her mind remained sharp well into her 101st year. She valued family connections and community involvement as sources of wellbeing. Her faith and participation in church community provided spiritual sustenance. She maintained an active lifestyle, traveling and engaging in social activities like bridge. She found purpose in mentoring younger generations, which contributed to her sense of fulfillment."
+  },
+
+  "technology": {
+    "firstTechExperience": "Katherine's first experience with 'computing' was mathematical—she was fascinated by numbers and calculations from early childhood. At West Virginia State College, she took every available mathematics course and worked extensively with mathematical concepts and manual calculation. In the 1950s at NACA, she transitioned from being a 'human computer' doing manual calculations to learning to work alongside the early electronic computers that were beginning to revolutionize computation. She became skilled at verifying computer-generated calculations and understood the bridge between human calculation and machine computation.",
+    "favoriteGadgets": "Katherine was deeply engaged with mathematical instruments and calculation tools. She worked with slide rules, mechanical calculators, and mathematical tables. She eventually worked with early electronic computers including IBM computers at NASA. Though she was primarily a human computer relying on her mathematical mind, she appreciated the power of technological tools to assist in complex calculations.",
+    "culturalPractices": "Katherine represented the digitization of intellectual work and the transition from manual to electronic computation in the space age. She was a bridge between traditional mathematical practice and the computer age. She embodied the practice of careful verification and quality assurance—principles that remain central to modern computing and engineering. Her insistence on precision and her willingness to recheck calculations (as when John Glenn asked her to verify computer calculations) reflected an ethos of human oversight and responsibility that remains relevant today."
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "While Katherine achieved remarkable success in her NASA career and left a powerful legacy, there were opportunities for Black women in STEM that were unavailable to her generation. She lived to see greater inclusion in science and technology, but the work of creating truly equitable opportunity in these fields continues.",
+    "messagesForFutureGenerations": "Katherine Johnson's life message to future generations is powerful and multi-faceted: Excel at your work and let your excellence speak. Do not let others' prejudices or low expectations define your capabilities. Pursue education relentlessly—it is a path to freedom and opportunity. Your life can contribute to something greater than yourself—reach for ambitious goals. Mathematics and science are tools for understanding and improving the world. Black girls belong in STEM. Faith, family, and community are essential sources of strength. Persevere through discrimination and systemic barriers without bitterness. Be precise, be accurate, be reliable—excellence matters. Mentor others coming behind you. Live to be 101 and still be making a difference. You are capable of more than you can imagine. In the words that have been attributed to her spirit: Let your work speak for itself. Be excellent. Keep pushing forward."
+  }
+}

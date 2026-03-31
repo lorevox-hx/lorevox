@@ -1,0 +1,235 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "Dolores Huerta — bio narrator",
+  "personal": {
+    "fullName": "Dolores Clara Fernández Huerta",
+    "preferredName": "Dolores Huerta",
+    "legalFirstName": "Dolores",
+    "legalMiddleName": "Clara",
+    "legalLastName": "Huerta",
+    "dateOfBirth": "1930-04-10",
+    "timeOfBirth": "",
+    "placeOfBirth": "Dawson, New Mexico",
+    "birthOrder": "2nd of 3 children",
+    "zodiacSign": "Aries",
+    "pronouns": "she/her",
+    "culture": "Mexican-American, Chicana",
+    "country": "United States",
+    "language": "English, Spanish"
+  },
+  "parents": [
+    {
+      "relation": "Father",
+      "firstName": "Juan",
+      "middleName": "",
+      "lastName": "Fernández",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "Dawson, New Mexico",
+      "occupation": "Coal miner, beet farmer, union activist, New Mexico state legislator (elected 1938)",
+      "deceased": true,
+      "notableLifeEvents": "Worked as coal miner in Dawson; migrated throughout Western US as beet farmer in Colorado, Nebraska, and Wyoming; elected to New Mexico state legislature in 1938 as 'fiery union leader'; union organizer with United Mine Workers",
+      "notes": "Juan Fernández was described as fiery union leader by Los Angeles Times. He progressed from coal miner to union activist to elected representative. Dolores maintained contact with him and took pride in his development."
+    },
+    {
+      "relation": "Mother",
+      "firstName": "Alicia",
+      "middleName": "St. John",
+      "lastName": "Chavez",
+      "maidenName": "Chavez",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Businesswoman, hotel and restaurant owner, community activist",
+      "deceased": true,
+      "notableLifeEvents": "Moved to Stockton, California with three children after divorce; worked as waitress and cannery worker; purchased and operated 70-room hotel; provided affordable housing to low-wage workers; active in community affairs and civic organizations; involved in charity work through church",
+      "notes": "Alicia was known for kindness, compassion, and independence. She often waived hotel fees for customers who could not afford them. Her entrepreneurial spirit and activism directly inspired Dolores to become a feminist and social justice advocate."
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "",
+      "lastName": "Fernández",
+      "ancestry": "Mexican",
+      "culturalBackground": "Mexican-American mining community",
+      "memorableStories": ""
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "Older Brother",
+      "firstName": "John",
+      "middleName": "",
+      "lastName": "Fernández",
+      "birthOrder": "1st of 3 children",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "Moved to Stockton, California with mother and sister Dolores after parents' divorce; raised in Stockton",
+      "memories": "",
+      "notes": ""
+    },
+    {
+      "relation": "Younger Brother",
+      "firstName": "Marshall",
+      "middleName": "",
+      "lastName": "Fernández",
+      "birthOrder": "3rd of 3 children",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "Moved to Stockton, California with mother and sister Dolores after parents' divorce; raised in Stockton",
+      "memories": "",
+      "notes": ""
+    }
+  ],
+  "spouse": {
+    "firstName": "Richard",
+    "middleName": "Estrada",
+    "lastName": "Chavez",
+    "birthPlace": "",
+    "occupation": "Labor leader, co-founder of National Farm Workers Association, UFW Vice President (1972-1983), designed UFW Aztec eagle symbol",
+    "narrative": "Dolores Huerta entered a long-term committed partnership with Richard Chavez, the younger brother of Cesar Chavez, in the late 1960s after her second divorce. Though never legally married, they built a home together and remained partners for over 40 years. Richard was instrumental in the UFW movement, designing the iconic black Aztec eagle symbol and helping construct the Forty Acres headquarters in Delano. Their relationship was deep and enduring, producing four children together: Juanita, María Elena, Ricky, and Camila.",
+    "deceased": true
+  },
+  "children": [
+    {
+      "firstName": "Celeste",
+      "middleName": "",
+      "lastName": "Head",
+      "birthDate": "",
+      "narrative": "First child from marriage to Ralph Head"
+    },
+    {
+      "firstName": "Lori",
+      "middleName": "",
+      "lastName": "Head",
+      "birthDate": "",
+      "narrative": "Second child from marriage to Ralph Head"
+    },
+    {
+      "firstName": "Fidel",
+      "middleName": "",
+      "lastName": "Huerta",
+      "birthDate": "",
+      "narrative": "First child from marriage to Ventura Huerta"
+    },
+    {
+      "firstName": "Emilio",
+      "middleName": "",
+      "lastName": "Huerta",
+      "birthDate": "",
+      "narrative": "Second child from marriage to Ventura Huerta"
+    },
+    {
+      "firstName": "Vincent",
+      "middleName": "",
+      "lastName": "Huerta",
+      "birthDate": "",
+      "narrative": "Third child from marriage to Ventura Huerta"
+    },
+    {
+      "firstName": "Alicia",
+      "middleName": "",
+      "lastName": "Huerta",
+      "birthDate": "",
+      "narrative": "Fourth child from marriage to Ventura Huerta, named after Dolores' mother"
+    },
+    {
+      "firstName": "Angela",
+      "middleName": "",
+      "lastName": "Huerta",
+      "birthDate": "",
+      "narrative": "Fifth child from marriage to Ventura Huerta"
+    },
+    {
+      "firstName": "Juanita",
+      "middleName": "",
+      "lastName": "Chavez",
+      "birthDate": "",
+      "narrative": "First child from partnership with Richard Chavez"
+    },
+    {
+      "firstName": "María Elena",
+      "middleName": "",
+      "lastName": "Chavez",
+      "birthDate": "",
+      "narrative": "Second child from partnership with Richard Chavez"
+    },
+    {
+      "firstName": "Ricky",
+      "middleName": "Ricardo",
+      "lastName": "Chavez",
+      "birthDate": "",
+      "narrative": "Third child from partnership with Richard Chavez"
+    },
+    {
+      "firstName": "Camila",
+      "middleName": "",
+      "lastName": "Chavez",
+      "birthDate": "",
+      "narrative": "Fourth child from partnership with Richard Chavez"
+    }
+  ],
+  "marriage": {
+    "proposalStory": "Limited details available on specific proposal stories. Dolores married high school sweetheart Ralph Head after graduating from high school.",
+    "weddingDetails": "First marriage to Ralph Head ended in divorce after three years. Second marriage to fellow Community Service Organization (CSO) organizer Ventura Huerta lasted roughly a decade before ending in divorce around 1964. Long-term partnership with Richard Chavez lasted over 40 years until his death in 2011, though they were never legally married."
+  },
+  "familyTraditions": [
+    {
+      "description": "Community activism and civic engagement inspired by mother's example of serving low-wage workers and charity work",
+      "occasion": "Everyday practice throughout life"
+    },
+    {
+      "description": "Labor organizing and worker advocacy passed through generations with children actively involved in social justice movements",
+      "occasion": "Career legacy and family values"
+    },
+    {
+      "description": "Celebration of Mexican-American culture and bilingual education within family",
+      "occasion": "Family and cultural events"
+    }
+  ],
+  "pets": [
+    {
+      "name": "",
+      "species": "",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+  "earlyMemories": {
+    "firstMemory": "",
+    "favoriteToy": "",
+    "significantEvent": "Parents' divorce when she was approximately three years old; moving to Stockton, California with mother and brothers; witnessing her mother's kindness to low-wage customers at the hotel"
+  },
+  "education": {
+    "schooling": "Attended Stockton High School, graduating in 1947. Active in school clubs, was a majorette, and dedicated Girl Scout member until age 18. Described her high school as segregated by both class and race.",
+    "higherEducation": "Attended University of the Pacific's Stockton College (later known as San Joaquin Delta College), graduating in 1953 with a provisional teaching credential.",
+    "earlyCareer": "Became a teacher in rural California in 1954, one of three bilingual teachers in the area. Taught for one year before quitting. Witnessed students arriving hungry and without adequate clothing, which motivated her to shift toward organizing farm workers instead of teaching their hungry children.",
+    "careerProgression": "Joined leadership of Stockton Community Service Organization (CSO) and founded the Agricultural Workers Association. Set up voter registration drives and pressed local governments for barrio improvements. Met Cesar Chavez through CSO in 1955. Co-founded the National Farm Workers Association (NFWA) with Cesar Chavez in spring 1962. Served as UFW Vice President. Led negotiations for worker contracts in the Delano grape strike (1965-1970). Organized nationwide grape boycotts in late 1960s that resulted in union victory in July 1970 with increased wages and hiring halls. Expanded UFW organizing efforts to New York and New Jersey. Coined the phrase 'Si, se puede!' in 1972 during Cesar Chavez's 25-day hunger strike in Arizona when she responded to leaders saying 'no, it cannot be done' with 'Yes, it can be done!'",
+    "communityInvolvement": "Lifelong activist for farm workers' rights, pesticide elimination, healthcare benefits, unemployment benefits, and worker safety. Fought for barrio improvements and voter registration. Presidential Medal of Freedom recipient (2012). Eleanor Roosevelt Human Rights Award recipient (1998). Founded the Dolores Huerta Foundation in 2002, serving as founder and president. Foundation broke ground on Peace and Justice Cultural Center in Kern County, California in 2025.",
+    "mentorship": "Mentored countless farm workers and social justice activists throughout her career. Inspired multiple generations through her leadership in the UFW and labor movement."
+  },
+  "laterYears": {
+    "retirement": "Never fully retired. Continues activism in her 90s through the Dolores Huerta Foundation, traveling across the country engaging in campaigns and influencing legislation that supports equality and defends civil rights.",
+    "lifeLessons": "The importance of fighting for the voiceless and marginalized. The power of nonviolent resistance and grassroots organizing. The value of compassion and service to community, lessons learned from her mother. The necessity of persistent advocacy even when facing personal hardship and violence. The strength found in collective action and boycotts.",
+    "adviceForFutureGenerations": "Continue the fight for workers' rights, immigrant rights, and civil rights. Stand up against injustice even when it is difficult or dangerous. Organize communities and leverage collective power. Remember that individual acts of kindness and service matter. Maintain faith in social change and keep pushing forward."
+  },
+  "hobbies": {
+    "hobbies": "Community organizing, advocacy work, public speaking, legislative advocacy",
+    "worldEvents": "Active participant in Civil Rights Movement of 1960s-1970s. Witnessed and participated in major labor movements and the Chicano movement. Responded to police brutality and worker exploitation throughout her career.",
+    "personalChallenges": "Survived severe police beating in San Francisco on September 14, 1988, during peaceful protest at St. Francis Hotel. Beaten by police officer while distributing press release criticizing George H.W. Bush regarding pesticide dangers. Suffered ruptured spleen, broken ribs, and life-threatening internal bleeding requiring emergency surgery. San Francisco Police Department eventually settled with her for $825,000. The assault led to police policy changes but did not deter her activism.",
+    "travel": "Traveled extensively throughout United States as UFW organizer and union leader. Led grape boycott efforts in New York and New Jersey. Traveled nationally and internationally as labor advocate and speaker with Dolores Huerta Foundation. Frequented Delano, California as UFW headquarters location and site of grape strike."
+  },
+  "health": {
+    "healthMilestones": "September 14, 1988: Severe police beating resulting in ruptured spleen, broken ribs, life-threatening internal bleeding requiring emergency surgery and recovery. Survived and continued activism. Age 95 in 2026, still actively engaged in advocacy and traveling.",
+    "lifestyleChanges": "Adapted lifestyle following 1988 police beating but continued advocacy work. Maintained active schedule into her 90s despite aging.",
+    "wellnessTips": "Sustained energy and purpose through decades of activism driven by commitment to social justice. Maintained family relationships and community connections as sources of strength. Continued engagement in meaningful work and advocacy."
+  },
+  "technology": {
+    "firstTechExperience": "",
+    "favoriteGadgets": "",
+    "culturalPractices": "Bilingual communication in English and Spanish. Use of traditional organizing methods combined with modern advocacy tools through Dolores Huerta Foundation. Media engagement and public speaking to reach broader audiences about farm workers' rights and civil rights issues."
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "Complete elimination of pesticide use in agriculture. Full economic justice and dignity for all farm workers. Comprehensive immigration reform. Continued expansion of worker protections and healthcare benefits. Equal rights and justice for all marginalized communities.",
+    "messagesForFutureGenerations": "Never stop fighting for what is right, no matter how difficult or how long it takes. 'Si, se puede!' - Yes, we can! The power is in community and collective action. Remember those who came before and honor their sacrifice. Your voice and actions matter. Stand with the voiceless and vulnerable. Organize, educate, and activate your community. The work of justice is never finished - each generation must take up the mantle and continue the struggle for equality, dignity, and rights for all people, especially the most marginalized and exploited."
+  }
+}

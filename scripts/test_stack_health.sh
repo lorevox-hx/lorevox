@@ -13,9 +13,9 @@ PASS=0; FAIL=0; SKIP=0; TOTAL=0
 RESULTS=()
 
 # ── Helpers ──────────────────────────────────────────────────────
-pass()  { ((PASS++)); ((TOTAL++)); RESULTS+=("PASS  | $1"); echo "  ✓ PASS  $1"; }
-fail()  { ((FAIL++)); ((TOTAL++)); RESULTS+=("FAIL  | $1 — $2"); echo "  ✗ FAIL  $1 — $2"; }
-skip()  { ((SKIP++)); ((TOTAL++)); RESULTS+=("SKIP  | $1 — $2"); echo "  ⊘ SKIP  $1 — $2"; }
+pass()  { (( ++PASS )); (( ++TOTAL )); RESULTS+=("PASS  | $1"); echo "  ✓ PASS  $1"; }
+fail()  { (( ++FAIL )); (( ++TOTAL )); RESULTS+=("FAIL  | $1 — $2"); echo "  ✗ FAIL  $1 — $2"; }
+skip()  { (( ++SKIP )); (( ++TOTAL )); RESULTS+=("SKIP  | $1 — $2"); echo "  ⊘ SKIP  $1 — $2"; }
 
 port_free() { ! ss -tlnp 2>/dev/null | grep -q ":${1} " ; }
 port_open() { ss -tlnp 2>/dev/null | grep -q ":${1} " ; }
@@ -131,10 +131,10 @@ else
 fi
 
 PEOPLE_BODY=$(curl -sf http://127.0.0.1:8000/api/people 2>/dev/null || echo '{}')
-if echo "$PEOPLE_BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); assert isinstance(d.get('items'), list)" 2>/dev/null; then
-  pass "SH-11: /api/people returns items array"
+if echo "$PEOPLE_BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); assert isinstance(d.get('items') or d.get('people'), list)" 2>/dev/null; then
+  pass "SH-11: /api/people returns list"
 else
-  fail "SH-11: /api/people returns items array" "unexpected response"
+  fail "SH-11: /api/people returns list" "unexpected response"
 fi
 
 echo ""

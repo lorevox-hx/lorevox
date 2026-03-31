@@ -28,17 +28,14 @@ def api_add(req: TimelineAddRequest):
         raise HTTPException(status_code=404, detail="person_id not found")
     eid = add_timeline_event(
         person_id=req.person_id,
-        ts=req.ts,
+        date=req.ts,
         title=req.title,
-        description=req.description,
+        body=req.description,
         kind=req.kind,
-        location_name=req.location_name,
-        latitude=req.latitude,
-        longitude=req.longitude,
-        media_ids=req.media_ids,
         meta=req.meta,
     )
-    return {"ok": True, "id": eid}
+    event_id = eid["id"] if isinstance(eid, dict) else eid
+    return {"ok": True, "id": event_id, "event": eid}
 
 
 @router.get("/list")

@@ -1,0 +1,160 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "Grace Hopper — bio narrator",
+  "personal": {
+    "fullName": "Grace Brewster Murray Hopper",
+    "preferredName": "Grace Hopper",
+    "legalFirstName": "Grace",
+    "legalMiddleName": "Brewster",
+    "legalLastName": "Murray",
+    "dateOfBirth": "1906-12-09",
+    "timeOfBirth": "",
+    "placeOfBirth": "New York City, New York, USA",
+    "birthOrder": "eldest of three children",
+    "zodiacSign": "Sagittarius",
+    "pronouns": "she/her",
+    "culture": "American, Scottish and Dutch descent",
+    "country": "United States of America",
+    "language": "English"
+  },
+  "parents": [
+    {
+      "relation": "father",
+      "firstName": "Walter",
+      "middleName": "Fletcher",
+      "lastName": "Murray",
+      "maidenName": "",
+      "birthDate": "1873",
+      "birthPlace": "United States",
+      "occupation": "Insurance broker",
+      "deceased": true,
+      "notableLifeEvents": "Yale B.A. graduate 1894, Phi Beta Kappa; his father was also an insurance broker",
+      "notes": "Walter believed his daughters deserved the same quality education as his son"
+    },
+    {
+      "relation": "mother",
+      "firstName": "Mary",
+      "middleName": "Campbell",
+      "lastName": "Murray",
+      "maidenName": "Van Horne",
+      "birthDate": "1883",
+      "birthPlace": "United States",
+      "occupation": "Homemaker, mathematics enthusiast",
+      "deceased": true,
+      "notableLifeEvents": "Her father John Van Horne was a senior civil engineer for the city of New York; had a love for mathematics and instilled this passion in Grace",
+      "notes": "Mary Campbell had studied geometry; encouraged Grace's early interest in mathematics and problem-solving"
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "John",
+      "lastName": "Van Horne",
+      "ancestry": "Dutch descent",
+      "culturalBackground": "American-Dutch",
+      "memorableStories": "Senior civil engineer for the city of New York; influenced Grace through her mother's mathematical passion"
+    },
+    {
+      "firstName": "Alexander",
+      "lastName": "Wilson Russell",
+      "ancestry": "Scottish descent",
+      "culturalBackground": "American-Scottish",
+      "memorableStories": "Great-grandfather who was an admiral in the U.S. Navy; fought in the Battle of Mobile Bay during the Civil War; this connection to naval service may have influenced Grace's later Navy career"
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "sister",
+      "firstName": "Mary",
+      "middleName": "Campbell",
+      "lastName": "Murray",
+      "birthOrder": "second of three (born 1909)",
+      "uniqueCharacteristics": "Three years younger than Grace",
+      "sharedExperiences": "Played childhood games like kick-the-can, hide-and-seek, and cops-and-robbers with Grace and cousins",
+      "memories": "Learned needlepoint and cross-stitch together at their mother's request during childhood; spent summers at cottage on Lake Wentworth in Wolfeboro, New Hampshire",
+      "notes": "Mary Campbell Murray (1909-2000); close relationship with Grace during formative years"
+    },
+    {
+      "relation": "brother",
+      "firstName": "Roger",
+      "middleName": "Franklin",
+      "lastName": "Murray",
+      "birthOrder": "third of three (born 1911)",
+      "uniqueCharacteristics": "Two years younger than Mary, five years younger than Grace",
+      "sharedExperiences": "Participated in the same childhood outdoor activities and lakeside summer games",
+      "memories": "Grew up with Grace during the early 1900s in New York; experienced the same family atmosphere of intellectual curiosity and educational opportunity",
+      "notes": "Roger Franklin Murray (1911-1998); benefited from parents' commitment to education for all children"
+    }
+  ],
+  "spouse": {
+    "firstName": "Vincent",
+    "middleName": "Foster",
+    "lastName": "Hopper",
+    "birthPlace": "United States",
+    "occupation": "New York University professor; instructor of English at NYU School of Commerce; earned doctorate in comparative literature from Columbia University",
+    "narrative": "Grace Murray married Vincent Foster Hopper in 1930. Vincent was a Princeton honors graduate and scholar of comparative literature. The couple separated in the early 1940s during World War II when Grace was deeply involved with the Navy's computing program at Harvard. They divorced in 1945. Grace did not remarry and retained his surname for the rest of her life, becoming known professionally as Grace Hopper.",
+    "deceased": true
+  },
+  "children": [],
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "Married Vincent Foster Hopper in 1930; couple separated in early 1940s; divorced in 1945"
+  },
+  "familyTraditions": [
+    {
+      "description": "Summer cottage retreats at Lake Wentworth in Wolfeboro, New Hampshire",
+      "occasion": "Annual family summer vacations; included extended family cousins; featured outdoor games like kick-the-can and hide-and-seek"
+    },
+    {
+      "description": "Needlepoint and cross-stitch instruction",
+      "occasion": "Year-round; taught by mother Mary Campbell to Grace and sister Mary"
+    },
+    {
+      "description": "Emphasis on education and intellectual curiosity",
+      "occasion": "Daily family life; parents believed daughters deserved same quality education as sons, progressive for the era"
+    },
+    {
+      "description": "Active outdoor recreation",
+      "occasion": "Childhood and young adulthood; included climbing trees, hiking, sailing, basketball, hockey, and water polo"
+    }
+  ],
+  "pets": [],
+  "earlyMemories": {
+    "firstMemory": "",
+    "favoriteToy": "",
+    "significantEvent": "At age seven, took apart an alarm clock to understand how it worked. Determined to solve the puzzle, she proceeded to dismantle all seven alarm clocks found throughout the family house, earning her a reputation as an inquisitive and persistent problem-solver"
+  },
+  "education": {
+    "schooling": "Attended school in New York City area; initially rejected for early admission to Vassar College at age 16 due to low Latin test scores, but admitted the following year",
+    "higherEducation": "Vassar College: B.A. in Mathematics and Physics, 1928, graduated Phi Beta Kappa. Yale University: M.A. in Mathematics, 1930. Yale University: Ph.D. in Mathematics, 1934, under direction of Øystein Ore; dissertation title: 'New Types of Irreducibility Criteria.' First woman to earn a Ph.D. in mathematics from Yale University.",
+    "earlyCareer": "Began teaching mathematics at Vassar College in 1931; promoted to Associate Professor in 1941. Resigned from Vassar in 1943 to join the Navy WAVES (Women Accepted for Voluntary Emergency Service) during World War II.",
+    "careerProgression": "Joined Navy WAVES in 1943 as a lieutenant (junior grade). Became member of Harvard Mark I computing team in 1944, led by Howard H. Aiken. Moved to Harvard Mark II in 1947 where the famous 'computer bug' moth incident occurred on September 9, 1947. Developed FLOW-MATIC programming language in the 1950s. Participated in CODASYL consortium in 1959 helping create COBOL, a machine-independent programming language based on English words. Inventor of the first computer compiler, enabling machine-independent programming. Developed and advocated for COBOL throughout her career. Created famous 'nanosecond' wire demonstrations starting in the late 1960s to visualize computing speed to general audiences. Continued Navy service, eventually achieving rank of Rear Admiral. Became one of the Navy's few female admirals. Was the oldest active-duty commissioned officer in the U.S. Navy at time of retirement (79 years, 8 months, 5 days).",
+    "communityInvolvement": "Mentored numerous young programmers and computer scientists throughout her career. Advocated for standardized, high-level programming languages to make computing more accessible. Traveled extensively giving lectures and demonstrations. Emphasized the importance of training young people as her most significant legacy beyond the compiler itself.",
+    "mentorship": "Grace viewed mentorship as critical to her legacy, stating 'The most important thing I've accomplished, other than building the compiler, is training young people.' Encouraged students and young professionals in computer science. Spoke frequently at universities and industry events. Promoted women in technology and demonstrated that women could excel in advanced scientific and military roles."
+  },
+  "laterYears": {
+    "retirement": "Retired from the U.S. Navy on August 14, 1986, after more than 42 years of service. At retirement, held the rank of Rear Admiral (lower half), a distinction achieved when the rank of Commodore was renamed in 1985. Was the oldest active-duty commissioned officer in the Navy at the time of her retirement.",
+    "lifeLessons": "Grace believed in challenging the status quo and resisting complacency. She famously stated: 'Humans are allergic to change. They love to say, We've always done it this way. I try to fight that.' She emphasized the importance of being future-oriented: 'I've always been more interested in the future than in the past.' On leadership, she believed in mutual respect: 'Don't try to manage people. You manage things; you lead people.' She valued action and initiative: 'If you've got a good idea, and it's a contribution, go ahead and DO IT' and 'It's easier to ask forgiveness than it is to get permission.' She believed in the democratization of technology and making computing accessible to non-specialists through high-level programming languages.",
+    "adviceForFutureGenerations": "Pursue innovation and don't be constrained by tradition. Challenge the way things have always been done. Be future-focused rather than dwelling on the past. Take initiative and action on good ideas without waiting for perfect permission. Mentor and invest in young people, especially women in technology. Believe that the most important work is enabling others through education and training. Maintain curiosity about how things work and seek to understand complex systems. Recognize that leadership requires care for those you lead—loyalty flows both up and down. Technology should be a tool to serve human needs, not the other way around. Embrace the rapid pace of technological change and help others adapt to it."
+  },
+  "hobbies": {
+    "hobbies": "Reading; playing piano; needlepoint and cross-stitch; climbing trees; hiking; sailing; basketball; hockey; water polo; figuring out how mechanical and electronic devices worked. As a child, dismantled alarm clocks to understand their mechanisms.",
+    "worldEvents": "Lived through World War I (childhood); World War II (joined Navy WAVES in 1943); Cold War era; development of computing and information technology revolution. Her work on COBOL and compilers occurred during the early digital computing age (1940s-1960s). Witnessed the space race and technological acceleration of the late 20th century. Continued Navy service through the 1980s during the height of the Cold War.",
+    "personalChallenges": "Overcame societal expectations that women should not pursue advanced mathematics and technology. Navigated a male-dominated field in computing and military service. Balanced her scientific career with divorce in 1945. Managed the transition from academic teaching to military and industrial computing roles. Advocated for standardized programming languages despite resistance from various computing camps.",
+    "travel": "Spent summers at family cottage on Lake Wentworth in Wolfeboro, New Hampshire during childhood and youth. Naval assignments took her to Harvard (1943-1949 approximately) for Mark I and Mark II computer work. Traveled extensively throughout her Navy career. Conducted numerous speaking engagements and demonstrations across universities and industry venues, distributing 'nanosecond' wire samples to audiences. Maintained connection to Vassar College and Yale University as an alumna and speaker."
+  },
+  "health": {
+    "healthMilestones": "Lived actively for 85 years (1906-1992). Maintained vitality and engagement in professional activities until her death on January 1, 1992. Was able to continue Navy service until age 79, serving on active duty longer than typical for commissioned officers.",
+    "lifestyleChanges": "Remained intellectually active and engaged in speaking and teaching throughout her life. Maintained her famous nanosecond demonstrations and speaking tours well into her later years. Never slowed down significantly in terms of advocacy for computing standards and mentoring.",
+    "wellnessTips": "Grace's longevity and continued engagement suggest benefits of: staying intellectually active and curious; maintaining physical activity (she was athletic throughout her life); engaging in meaningful work and mentorship; embracing change and new ideas; pursuing passions and interests; maintaining social connections and speaking engagements."
+  },
+  "technology": {
+    "firstTechExperience": "First exposure to complex mechanical systems came at age seven when she took apart her first alarm clock, driven by curiosity about how it worked. Escalated her technical exploration by dismantling all seven alarm clocks in the family house. This hands-on, curiosity-driven approach to understanding technology characterized her entire career.",
+    "favoriteGadgets": "The nanosecond wire became her signature teaching tool and demonstration device. She would contrast a one-foot piece of wire (representing the distance electricity travels in a nanosecond) with a coil of wire 984 feet long (representing a microsecond). This physical, tangible representation of abstract computing concepts became her most famous way of explaining technology to general audiences. Her work with the Mark I and Mark II computers represented her engagement with the most advanced computing technology of her era.",
+    "culturalPractices": "Grace championed the democratization of technology through high-level programming languages. She believed computing should not be restricted to specialist programmers who understood machine code. Her work on FLOW-MATIC and COBOL made programming more accessible to business users and non-specialists. She demonstrated that technology could be explained and taught to people without advanced technical backgrounds. Her lectures and speaking tours helped establish a culture of technology education and accessibility. She advocated for standards in programming languages to reduce vendor lock-in and increase portability of code—an early vision of interoperable technology systems."
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "While Grace achieved tremendous success in creating the compiler and COBOL, she would likely have wanted to see even broader adoption of machine-independent programming languages and greater standardization across computing systems. She was passionate about making technology more accessible and democratized, and her continued speaking and advocacy into her later years suggests an ongoing desire to influence the future of computing education and practice.",
+    "messagesForFutureGenerations": "Don't be limited by 'we've always done it this way.' Challenge tradition and embrace change. Be future-focused: spend your energy on what's coming, not on what has passed. The most important contribution you can make is often through teaching and mentoring others, not just your own direct accomplishments. If you have a good idea that contributes meaningfully, take action—don't wait for perfect permission. Leadership means caring for the people who work with you; build mutual respect and loyalty both up and down. Technology is a tool for human purposes; never let the technology drive the vision, keep the human need at the center. Stay curious about how things work. Maintain the courage to be a pioneer and not follow the crowd. Women are equally capable of excellence in science, mathematics, and technology—don't accept limitations based on gender. Keep learning, keep growing, and keep pushing forward."
+  }
+}

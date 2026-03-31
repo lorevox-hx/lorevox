@@ -259,13 +259,15 @@ test.describe("Lori 8.0 — Narrator Switch (WO-2)", () => {
 
     // Verify A's facts don't include B's
     const rA = await request.get(`${API_URL}/api/facts/list?person_id=${personA}`);
-    const factsA = ((await rA.json()).items || []).map((f: any) => f.statement);
+    const bodyA = await rA.json();
+    const factsA = (bodyA.items || bodyA.facts || []).map((f: any) => f.statement);
     expect(factsA).toContain(factA);
     expect(factsA).not.toContain(factB);
 
     // Verify B's facts don't include A's
     const rB = await request.get(`${API_URL}/api/facts/list?person_id=${personB}`);
-    const factsB = ((await rB.json()).items || []).map((f: any) => f.statement);
+    const bodyB = await rB.json();
+    const factsB = (bodyB.items || bodyB.facts || []).map((f: any) => f.statement);
     expect(factsB).toContain(factB);
     expect(factsB).not.toContain(factA);
   });
@@ -281,13 +283,15 @@ test.describe("Lori 8.0 — UI Modules Loaded", () => {
     await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
     await page.waitForTimeout(2000);
 
-    // Check key global functions/objects exist
-    const checks = await page.evaluate(() => ({
-      hasState:       typeof (window as any).state === "object",
-      hasBuildR71:    typeof (window as any).buildRuntime71 === "function",
-      hasCheckStatus: typeof (window as any).checkStatus === "function",
-      hasLoadPerson:  typeof (window as any).loadPerson === "function",
-    }));
+    // Check key global functions/objects exist.
+    // state is declared with `let` in state.js (not a `window` property),
+    // so use a string-based evaluate to access the global lexical scope.
+    const checks: any = await page.evaluate(`({
+      hasState:       typeof state === 'object' && state !== null,
+      hasBuildR71:    typeof buildRuntime71 === 'function',
+      hasCheckStatus: typeof checkStatus === 'function',
+      hasLoadPerson:  typeof loadPerson === 'function',
+    })`);
 
     expect(checks.hasState, "state object should exist").toBeTruthy();
     expect(checks.hasBuildR71, "buildRuntime71 function should exist").toBeTruthy();
@@ -315,10 +319,13 @@ test.describe("Lori 8.0 — UI Modules Loaded", () => {
   test("E2E-13: Interview roadmap data is loaded", async ({ page }) => {
     await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
 
-    const hasRoadmap = await page.evaluate(() =>
-      Array.isArray((window as any).INTERVIEW_ROADMAP) &&
-      (window as any).INTERVIEW_ROADMAP.length > 0
-    );
+    // INTERVIEW_ROADMAP is declared with `const` in data.js — not a `window` property.
+    // Use string-based evaluate to access the global lexical scope directly.
+    const hasRoadmap = await page.evaluate(`
+      typeof INTERVIEW_ROADMAP !== 'undefined' &&
+      Array.isArray(INTERVIEW_ROADMAP) &&
+      INTERVIEW_ROADMAP.length > 0
+    `);
     expect(hasRoadmap, "INTERVIEW_ROADMAP should be a non-empty array").toBeTruthy();
   });
 });
@@ -367,7 +374,8 @@ test.describe("Lori 8.0 — Backend Contract Tests", () => {
     // Verify profile was populated
     const profResp = await request.get(`${API_URL}/api/profiles/${personId}`);
     const profile = (await profResp.json()).profile || {};
-    expect(profile.basics?.fullname || profile.basics?.pob).toBeTruthy();
+    const doc = profile.ingest?.basic_info?.document || {};
+    expect(doc.fullname || doc.place_of_birth || profile.basics?.fullname || profile.basics?.pob).toBeTruthy();
 
     await request.delete(`${API_URL}/api/people/${personId}?mode=hard&reason=e2e+cleanup`);
   });

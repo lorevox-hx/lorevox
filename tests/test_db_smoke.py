@@ -49,7 +49,9 @@ class DBPersistenceTests(unittest.TestCase):
         """DB-01: Created person survives immediate read-back"""
         r = requests.get(f"{BASE}/api/people/{self.person_id}", timeout=5)
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json()["date_of_birth"], "1938-11-22")
+        body = r.json()
+        person = body.get("person", body)  # unwrap nested response
+        self.assertEqual(person["date_of_birth"], "1938-11-22")
 
     def test_02_profile_persists(self):
         """DB-02: Profile JSON survives put → get round-trip"""
@@ -248,13 +250,13 @@ class DBSoftDeleteTests(unittest.TestCase):
 
         # Default list should not include
         r = requests.get(f"{BASE}/api/people", timeout=5)
-        ids = [p.get("person_id") or p.get("id") for p in r.json().get("items", [])]
+        ids = [p.get("person_id") or p.get("id") for p in r.json().get("items", r.json().get("people", []))]
         self.assertNotIn(pid, ids, "Soft-deleted person should not appear in default list")
 
         # include_deleted should include
         r2 = requests.get(f"{BASE}/api/people",
                           params={"include_deleted": "true"}, timeout=5)
-        ids2 = [p.get("person_id") or p.get("id") for p in r2.json().get("items", [])]
+        ids2 = [p.get("person_id") or p.get("id") for p in r2.json().get("items", r2.json().get("people", []))]
         self.assertIn(pid, ids2, "Soft-deleted person should appear with include_deleted=true")
 
         # Clean up
@@ -274,7 +276,7 @@ class DBSoftDeleteTests(unittest.TestCase):
         requests.post(f"{BASE}/api/people/{pid}/restore", timeout=5)
 
         r = requests.get(f"{BASE}/api/people", timeout=5)
-        ids = [p.get("person_id") or p.get("id") for p in r.json().get("items", [])]
+        ids = [p.get("person_id") or p.get("id") for p in r.json().get("items", r.json().get("people", []))]
         self.assertIn(pid, ids, "Restored person should appear in default list")
 
         # Clean up
@@ -306,7 +308,7 @@ class DBFactStatusWorkflowTests(unittest.TestCase):
             "fact_type": "general",
             "status": "extracted"
         }, timeout=5)
-        fid = r.json().get("fact_id") or r.json().get("id")
+        fid = r.json().get("fact_id") or r.json().get("id") or (r.json().get("fact", {}) or {}).get("id")
 
         # extracted → reviewed
         r2 = requests.patch(f"{BASE}/api/facts/status", json={

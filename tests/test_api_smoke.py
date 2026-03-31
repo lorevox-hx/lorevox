@@ -70,7 +70,7 @@ class PeopleTests(unittest.TestCase):
         """AS-04: GET /api/people returns items array with our person"""
         r = requests.get(f"{BASE}/api/people", timeout=5)
         self.assertEqual(r.status_code, 200)
-        items = r.json().get("items", [])
+        items = r.json().get("items") or r.json().get("people") or []
         self.assertIsInstance(items, list)
         ids = [p.get("person_id") or p.get("id") for p in items]
         self.assertIn(self.person_id, ids)
@@ -81,7 +81,8 @@ class PeopleTests(unittest.TestCase):
         r = requests.get(f"{BASE}/api/people/{self.person_id}", timeout=5)
         self.assertEqual(r.status_code, 200)
         body = r.json()
-        self.assertEqual(body.get("display_name"), self.test_name)
+        person = body.get("person", body)  # unwrap nested response
+        self.assertEqual(person.get("display_name"), self.test_name)
 
     def test_04_update_person(self):
         """AS-06: PATCH /api/people/{id} updates display_name"""
@@ -93,7 +94,9 @@ class PeopleTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         # Verify update stuck
         r2 = requests.get(f"{BASE}/api/people/{self.person_id}", timeout=5)
-        self.assertEqual(r2.json().get("display_name"), new_name)
+        body2 = r2.json()
+        person2 = body2.get("person", body2)  # unwrap nested response
+        self.assertEqual(person2.get("display_name"), new_name)
 
     def test_05_delete_inventory(self):
         """AS-07: GET /api/people/{id}/delete-inventory returns dependency counts"""
@@ -264,7 +267,7 @@ class FactsTests(unittest.TestCase):
         }, timeout=5)
         self.assertEqual(r.status_code, 200)
         body = r.json()
-        FactsTests.fact_id = body.get("fact_id") or body.get("id")
+        FactsTests.fact_id = body.get("fact_id") or body.get("id") or (body.get("fact", {}) or {}).get("id")
         self.assertIsNotNone(FactsTests.fact_id)
 
     def test_02_list_facts(self):
