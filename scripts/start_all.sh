@@ -11,8 +11,8 @@ source "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
 printf '\n=== Starting Lorevox stack ===\n\n'
 
-# Pre-flight: kill zombies and show VRAM before we load anything
-kill_stale_lorevox
+# Pre-flight: kill ALL stale services and show VRAM before fresh start
+kill_all_lorevox
 show_vram
 
 start_named_process "Lorevox API" "$API_CMD" "$API_PID_FILE" "$LOG_DIR/api.log"

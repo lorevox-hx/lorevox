@@ -18,7 +18,7 @@ Run:
     python lorevox-serve.py
 
 Then open:
-    http://localhost:8080/ui/lori7.4c.html
+    http://localhost:8080/ui/lori8.0.html
 
 Or use the single launcher to start all three services at once:
     bash launchers/run_all_dev.sh
@@ -57,11 +57,15 @@ class LorevoxHandler(http.server.SimpleHTTPRequestHandler):
             super().log_message(fmt, *args)
 
 
+class ReusableTCPServer(socketserver.TCPServer):
+    """TCPServer with SO_REUSEADDR so port is immediately available after restart."""
+    allow_reuse_address = True
+
+
 if __name__ == "__main__":
     os.chdir(ROOT)
     print(f"Lorevox UI  -> http://localhost:{PORT}/ui/lori8.0.html")
-    print(f"Classic UI  -> http://localhost:{PORT}/ui/lori7.4c.html")
     print(f"Serving from: {ROOT}")
     print("Press Ctrl+C to stop.\n")
-    with socketserver.TCPServer(("127.0.0.1", PORT), LorevoxHandler) as httpd:
+    with ReusableTCPServer(("127.0.0.1", PORT), LorevoxHandler) as httpd:
         httpd.serve_forever()

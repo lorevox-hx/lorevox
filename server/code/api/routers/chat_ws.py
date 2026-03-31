@@ -13,9 +13,9 @@ _LV_DEBUG = os.getenv("LV_DEV_MODE", "0") in ("1", "true", "True")
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from transformers import TextIteratorStreamer, StoppingCriteriaList
 
-from ..db import export_turns, persist_turn_transaction
+from ..db import export_turns, persist_turn_transaction, clear_turns
 import torch
-from ..api import _load_model, _apply_chat_template, StopOnEvent, _normalize_role
+from ..api import _load_model, _apply_chat_template, StopOnEvent, _normalize_role, MAX_CONTEXT_WINDOW
 from ..prompt_composer import compose_system_prompt
 from ..archive import (
     ensure_session as archive_ensure_session,
@@ -40,6 +40,8 @@ async def ws_chat(ws: WebSocket):
 
     ev = threading.Event()
     current_task: Optional[asyncio.Task] = None
+    # WO-2: track active person_id for identity-session handshake
+    active_person_id: Optional[str] = None
 
     async def generate_and_stream(conv_id: str, user_text: str, params: Dict[str, Any]) -> None:
       try:
@@ -135,6 +137,11 @@ async def ws_chat(ws: WebSocket):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         inputs = tok(prompt, return_tensors="pt").to(model.device)
+        # WO-1 VRAM guard: truncate input to MAX_CONTEXT_WINDOW to prevent KV cache OOM
+        if inputs["input_ids"].shape[-1] > MAX_CONTEXT_WINDOW:
+            logger.warning("[VRAM-GUARD] WS truncating input from %d to %d tokens",
+                           inputs["input_ids"].shape[-1], MAX_CONTEXT_WINDOW)
+            inputs = {k: v[:, -MAX_CONTEXT_WINDOW:] for k, v in inputs.items()}
         streamer = TextIteratorStreamer(tok, skip_prompt=True, skip_special_tokens=True)
 
         ev.clear()
@@ -213,10 +220,33 @@ async def ws_chat(ws: WebSocket):
             msg = await ws.receive_json()
             msg_type = msg.get("type")
 
-            if msg_type == "start_turn":
+            if msg_type == "sync_session":
+                # WO-2: Identity-session handshake
+                incoming_pid = str(msg.get("person_id") or "")
+                if incoming_pid and incoming_pid != active_person_id:
+                    # Person changed — flush conversation history
+                    if active_person_id:
+                        old_conv = msg.get("old_conv_id") or f"person_{active_person_id}"
+                        cleared = clear_turns(old_conv)
+                        logger.info("[WO-2] Session switch: %s → %s, flushed %d turns from %s",
+                                    active_person_id, incoming_pid, cleared, old_conv)
+                    active_person_id = incoming_pid
+                else:
+                    active_person_id = incoming_pid or active_person_id
+                await _ws_send(ws, {"type": "session_verified", "person_id": active_person_id})
+
+            elif msg_type == "start_turn":
                 conv_id = msg.get("session_id") or msg.get("conv_id") or "default"
                 user_text = msg.get("message") or ""
                 params = msg.get("params") or {}
+
+                # WO-2: check person_id in params matches active session
+                turn_pid = str(params.get("person_id") or "")
+                if turn_pid and active_person_id and turn_pid != active_person_id:
+                    cleared = clear_turns(conv_id)
+                    logger.info("[WO-2] Turn person_id mismatch: active=%s, turn=%s, flushed %d turns",
+                                active_person_id, turn_pid, cleared)
+                    active_person_id = turn_pid
 
                 # cancel any in-flight turn on this socket
                 ev.set()

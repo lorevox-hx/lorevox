@@ -4,7 +4,7 @@
 
 Lorevox captures a person's memories through guided interview conversations, organises them into a verified timeline, and drafts a human-readable memoir. The AI is a scribe — it structures, prompts, and drafts. The human is the author. Every word they speak is the ground truth.
 
-**Lorevox 8.0 — pre-production ready. 20/20 deep runtime tests passing. 0 critical failures.**
+**Lorevox 8.0 — pre-production ready. Phase D complete. Full test harness active.**
 
 ---
 
@@ -145,12 +145,15 @@ Parallel: safety.py — local scan on every answer, no LLM involved
 Parallel: Bio Builder pipeline → candidate review → Phase F → Life Map / Timeline / Memoir Preview
 ```
 
-### Two-server runtime
+### Three-service runtime
 
-| Server | Port | Handles |
+| Service | Port | Handles |
 |---|---|---|
 | LLM / Interview API | 8000 | Interview engine, LLM chat, prompt composition, affect events, safety scan, media, facts, DOCX export |
 | TTS | 8001 | Text-to-speech synthesis, voice playback |
+| UI Server | 8080 | Static file serving with COOP/COEP headers for WASM + SharedArrayBuffer + camera |
+
+All three services are managed by the scripts in `scripts/`. The API runs under a GPU-enabled Python venv, TTS under its own venv, and the UI server is a lightweight Python HTTP server (`lorevox-serve.py`) with `SO_REUSEADDR` for instant rebind on restart.
 
 ---
 
@@ -187,29 +190,45 @@ deactivate
 ### Launch
 
 ```bash
-# All services (recommended)
-bash launchers/run_all_dev.sh
+# All services — recommended (starts API, TTS, UI + warmup)
+bash scripts/start_all.sh
 
-# Or individually:
-# Terminal 1 — LLM / Interview API (port 8000)
-bash launchers/run_gpu_8000.sh
+# Or via Windows Terminal (opens 3 tabs automatically)
+start_lorevox.bat
 
-# Terminal 2 — TTS (port 8001)
-bash launchers/run_tts_8001.sh
-
-# Terminal 3 — Local UI server (port 8080, required for camera + WASM)
-python lorevox-serve.py
+# Or individually in separate terminals:
+bash scripts/start_api_visible.sh    # Terminal 1 — API (port 8000)
+bash scripts/start_tts_visible.sh    # Terminal 2 — TTS (port 8001)
+bash scripts/start_ui_visible.sh     # Terminal 3 — UI  (port 8080)
 ```
 
-Then open: **http://localhost:8000/ui/lori8.0.html**
+Then open: **http://localhost:8080/ui/lori8.0.html**
 
-The local server provides cross-origin isolation headers (COOP/COEP) required for reliable camera access and the multi-threaded WASM path.
+The UI server provides cross-origin isolation headers (COOP/COEP) required for reliable camera access and the multi-threaded WASM path.
+
+### Restart
+
+```bash
+# Restart API only (TTS and UI survive — Phase D scoped kill)
+bash scripts/restart_api_visible.sh
+
+# Restart everything
+bash scripts/stop_all.sh && bash scripts/start_all.sh
+```
 
 ### Stop
 
 ```bash
-bash launchers/stop_all_dev.sh
+bash scripts/stop_all.sh
 ```
+
+### Status
+
+```bash
+bash scripts/status_all.sh
+```
+
+Prints a table showing each service's PID, process state, and health endpoint result.
 
 ### Verify
 
@@ -217,6 +236,12 @@ Open the browser console. Send a message to Lori. You should see:
 
 ```
 [Lori 8.0] runtime71 → model: { "current_pass": ..., "fatigue_score": ..., ... }
+```
+
+On narrator switch, the console should show:
+
+```
+[WO-2] Session verified for person_id: <id>
 ```
 
 ---
@@ -356,6 +381,9 @@ lorevox/
 │   ├── start_ui_visible.sh          # Visible UI startup (Windows Terminal tab)
 │   ├── restart_api_visible.sh       # Visible API restart (Windows Terminal tab)
 │   ├── logs_visible.sh              # Visible combined log tail (Windows Terminal tab)
+│   ├── test_all.sh                  # Unified test runner (all layers)
+│   ├── test_stack_health.sh         # Stack health tests (ports, PIDs, VRAM guard)
+│   ├── test_startup_matrix.sh       # Startup cycle tests (isolation, rapid restart)
 │   ├── inspect_db.py                # DB inspection utility
 │   ├── warm_llm.py                  # LLM warm-up
 │   └── warm_tts.py                  # TTS warm-up
@@ -363,7 +391,15 @@ lorevox/
 ├── tools/
 │   └── LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html  # Session debug visualiser
 │
-├── tests/                           # Validation reports, e2e specs, behavioral matrices
+├── tests/
+│   ├── test_api_smoke.py            # API endpoint smoke tests (31 tests)
+│   ├── test_db_smoke.py             # DB persistence/isolation tests (14 tests)
+│   └── e2e/
+│       ├── test_lori80_smoke.spec.ts    # Browser smoke + regression (15 tests)
+│       ├── test_narrator_switch.spec.ts # Narrator isolation (6 tests)
+│       ├── test_bio_builder.spec.ts     # Bio Builder contracts (9 tests)
+│       ├── lorevox-smoke-flow.spec.ts   # Legacy backend contract test
+│       └── lorevox-ui-audit.spec.ts     # Legacy UI audit
 ├── docs/                            # All project documentation
 ├── lorevox-serve.py                 # Local UI HTTP server (COOP/COEP for WASM)
 ├── .env                             # Local environment config (not committed)
@@ -485,11 +521,102 @@ The inspector renders a vertical event timeline colour-coded by posture (indigo 
 
 ---
 
+## Testing
+
+Lorevox 8.0 ships with a layered test harness covering startup, API, DB, and browser behavior.
+
+### Run all tests
+
+```bash
+bash scripts/test_all.sh              # full suite (requires running stack)
+bash scripts/test_all.sh --skip-llm   # skip LLM chat tests (faster, no GPU needed)
+bash scripts/test_all.sh --health     # stack health only
+bash scripts/test_all.sh --api        # API smoke only
+bash scripts/test_all.sh --db         # DB smoke only
+bash scripts/test_all.sh --e2e        # Playwright E2E only
+```
+
+### Individual test layers
+
+```bash
+# Layer 1: Stack health (ports, PIDs, headers, VRAM guard, dead files)
+bash scripts/test_stack_health.sh
+
+# Layer 2: Startup matrix (start/stop/restart cycles, service isolation)
+bash scripts/test_startup_matrix.sh    # WARNING: cycles services
+
+# Layer 3: API smoke (CRUD, sessions, facts, timeline, chat)
+python tests/test_api_smoke.py -v
+
+# Layer 4: DB smoke (persistence, isolation, cascades, soft delete)
+python tests/test_db_smoke.py -v
+
+# Layer 5: Playwright E2E (UI, narrator switch, Bio Builder, contracts)
+npx playwright test tests/e2e/
+```
+
+### Test files
+
+| File | Tests | Focus |
+|---|---|---|
+| `scripts/test_stack_health.sh` | SH-01 to SH-22 | Ports, health, PIDs, VRAM guard, WO-2 code, dead files, kill scope |
+| `scripts/test_startup_matrix.sh` | SM-01 to SM-08 | Start/stop cycles, restart isolation, SO_REUSEADDR |
+| `tests/test_api_smoke.py` | AS-01 to AS-31 | REST endpoints, CRUD, chat, narrator isolation |
+| `tests/test_db_smoke.py` | DB-01 to DB-14 | Persistence, cross-narrator isolation, cascades, soft delete |
+| `tests/e2e/test_lori80_smoke.spec.ts` | E2E-01 to E2E-15 | UI load, status, modules, chat, interview |
+| `tests/e2e/test_narrator_switch.spec.ts` | NS-01 to NS-06 | Cross-narrator isolation, rapid switching |
+| `tests/e2e/test_bio_builder.spec.ts` | BB-01 to BB-09 | Bio Builder contracts, meaning engine, UI modules |
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| "Address already in use" on UI restart | Previous socket in TIME_WAIT | Fixed in Phase D: `ReusableTCPServer` sets `SO_REUSEADDR`. If it still occurs, run `bash scripts/stop_all.sh` and retry. |
+| API restart kills TTS | `kill_stale_lorevox()` was too broad | Fixed in Phase D: scoped to API-only patterns. Use `restart_api_visible.sh`. |
+| Narrator identity bleed across switches | Backend retains previous narrator's turns | Fixed in Phase D (WO-2): `sync_session`/`session_verified` handshake flushes context on switch. |
+| CUDA OOM / API self-terminates | Input tokens exceed KV cache | Fixed in Phase D (WO-1): `MAX_CONTEXT_WINDOW=4096` guard truncates inputs. |
+| Chat input stuck on "Syncing session" | `session_verified` not received | Restart the API (`bash scripts/restart_api_visible.sh`). Chat input unlocks when the new WS handshake completes. |
+| Stale PID files | Process died but PID file remains | Run `bash scripts/stop_all.sh` to clean up, then `bash scripts/start_all.sh`. |
+| TTS not loading | `USE_TTS=0` in .env | Set `USE_TTS=1` in `.env` and restart. TTS requires its own venv. |
+| VRAM guard triggers constantly | Context window too small | Increase `MAX_CONTEXT_WINDOW` in `.env` (default 4096). Monitor with `nvidia-smi`. |
+
+### Logs
+
+| Service | Log location |
+|---|---|
+| API | `logs/api.log` (also visible in terminal when using `start_api_visible.sh`) |
+| TTS | `logs/tts.log` |
+| UI | `logs/ui.log` |
+| Combined | `bash scripts/logs_visible.sh` tails all three |
+
+Set `LV_DEV_MODE=1` in `.env` to see full system prompts in the API log.
+
+---
+
+## Phase D Fixes (Active)
+
+Phase D addressed four operational risk areas. All fixes are verified and active in the current codebase.
+
+**WO-1 — VRAM Guard:** `MAX_CONTEXT_WINDOW=4096` (configurable in `.env`). Before every `model.generate()` call in `api.py` and `chat_ws.py`, input tokens are truncated via tail-slice if they exceed the window. Prevents CUDA OOM and the 100-second model reload.
+
+**WO-2 — Identity-Session Handshake:** On WebSocket open and narrator switch, the UI sends `sync_session` with the active `person_id`. The backend flushes old conversation turns on mismatch and responds with `session_verified`. The chat input is locked until verification completes. Prevents narrator identity contamination.
+
+**Startup Orchestration:** `kill_stale_lorevox()` is scoped to API processes only — TTS and UI survive API restarts. `kill_all_lorevox()` handles full-stack teardown. `lorevox-serve.py` uses `ReusableTCPServer` (SO_REUSEADDR) for instant port rebind.
+
+**Repo Cleanup:** 40 dead files removed (versioned copies: v1-v16 Python, old HTML/JS/CSS). Active import chain verified: `main.py → api.py → db.py → chat_ws.py`. UI entry: `lori8.0.html`.
+
+---
+
 ## Status — v8.0
 
-### ✅ Pre-production ready
+### Pre-production ready
 
 - 20-run deep runtime test: 20/20 PASS, 0 critical failures
+- Phase D work orders complete (VRAM guard, identity handshake)
+- Startup orchestration verified (service isolation, rapid restart)
+- Full test harness active (health, API, DB, E2E)
 - No drift across repeated runs
 - Architecture integrity confirmed (Phase F anti-leakage, meaning engine, affect pipeline, identity gate)
 - All core invariants holding

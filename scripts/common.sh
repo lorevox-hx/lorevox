@@ -128,12 +128,12 @@ open_ui_in_windows() {
   fi
 }
 
-# Kill any stale Lorevox processes that may be holding GPU memory.
-# Safe to call before starting services — only kills processes matching
-# our specific patterns, not unrelated GPU work.
+# Kill stale API processes that may be holding GPU memory.
+# Does NOT touch TTS or UI — those are independent services that
+# should survive an API restart without port conflicts.
 kill_stale_lorevox() {
   local killed=0
-  for pattern in "run_gpu_8000" "uvicorn.*8000" "run_tts_8001" "uvicorn.*8001" "lorevox-serve"; do
+  for pattern in "run_gpu_8000" "uvicorn.*8000"; do
     if pgrep -f "$pattern" >/dev/null 2>&1; then
       printf 'Killing stale process: %s\n' "$pattern"
       pkill -f "$pattern" 2>/dev/null || true
@@ -165,7 +165,34 @@ kill_stale_lorevox() {
     done
     printf 'Stale processes cleaned up.\n'
   fi
-  # Clear stale PID files
+  # Clear stale API PID file (TTS/UI PIDs left alone)
+  for f in "$API_PID_FILE"; do
+    if [[ -f "$f" ]]; then
+      local pid
+      pid="$(tr -d '[:space:]' < "$f")"
+      if ! kill -0 "$pid" 2>/dev/null; then
+        rm -f "$f"
+      fi
+    fi
+  done
+}
+
+# Kill ALL Lorevox processes (API, TTS, UI). Used by start_all and stop_all.
+kill_all_lorevox() {
+  local killed=0
+  for pattern in "run_gpu_8000" "uvicorn.*8000" "run_tts_8001" "uvicorn.*8001" "lorevox-serve"; do
+    if pgrep -f "$pattern" >/dev/null 2>&1; then
+      printf 'Killing stale process: %s\n' "$pattern"
+      pkill -f "$pattern" 2>/dev/null || true
+      killed=1
+    fi
+  done
+  if [[ "$killed" -eq 1 ]]; then
+    printf 'Waiting for ports to release...\n'
+    sleep 2
+    printf 'Stale processes cleaned up.\n'
+  fi
+  # Clear all PID files
   for f in "$API_PID_FILE" "$TTS_PID_FILE" "$UI_PID_FILE"; do
     if [[ -f "$f" ]]; then
       local pid

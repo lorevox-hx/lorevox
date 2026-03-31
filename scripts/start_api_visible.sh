@@ -7,7 +7,9 @@ printf '\n=== Lorevox API visible startup ===\n'
 printf 'Repo: %s\n' "$ROOT_DIR"
 printf 'Log:  %s\n\n' "$LOG_DIR/api.log"
 
-# Pre-flight: kill zombies and show VRAM before we load anything
+# Pre-flight: kill stale API processes and show VRAM
+# NOTE: kill_stale_lorevox only targets API (port 8000) — it does NOT
+# touch TTS or UI, so they survive an API restart without port conflicts.
 kill_stale_lorevox
 show_vram
 

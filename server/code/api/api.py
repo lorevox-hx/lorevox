@@ -55,6 +55,7 @@ LOAD_IN_4BIT = (os.getenv("LOAD_IN_4BIT", "1").strip().lower() in ("1", "true", 
 ATTN_IMPL = (os.getenv("ATTN_IMPL", "flash_attention_2") or "flash_attention_2").strip()
 TORCH_DTYPE = (os.getenv("TORCH_DTYPE", "bfloat16") or "bfloat16").strip().lower()
 MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS", "2048"))
+MAX_CONTEXT_WINDOW = int(os.getenv("MAX_CONTEXT_WINDOW", "4096"))
 
 # session transcript folder exports (optional, still handy)
 MEMO_DIR = DATA_DIR / "memory" / "agents"
@@ -250,6 +251,10 @@ def chat(req: _ChatReq) -> Dict[str, Any]:
     ]
     prompt = _apply_chat_template(msgs)
     inputs = tok(prompt, return_tensors="pt").to(model.device)
+    # WO-1 VRAM guard: truncate input to MAX_CONTEXT_WINDOW to prevent KV cache OOM
+    if inputs["input_ids"].shape[-1] > MAX_CONTEXT_WINDOW:
+        print(f"[VRAM-GUARD] Truncating input from {inputs['input_ids'].shape[-1]} to {MAX_CONTEXT_WINDOW} tokens")
+        inputs = {k: v[:, -MAX_CONTEXT_WINDOW:] for k, v in inputs.items()}
     out = model.generate(
         **inputs,
         max_new_tokens=int(req.max_new),
@@ -381,6 +386,10 @@ def chat_stream(req: _ChatReq):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             inputs = tok(prompt, return_tensors="pt").to(model.device)
+            # WO-1 VRAM guard: truncate input to MAX_CONTEXT_WINDOW to prevent KV cache OOM
+            if inputs["input_ids"].shape[-1] > MAX_CONTEXT_WINDOW:
+                print(f"[VRAM-GUARD] Truncating stream input from {inputs['input_ids'].shape[-1]} to {MAX_CONTEXT_WINDOW} tokens")
+                inputs = {k: v[:, -MAX_CONTEXT_WINDOW:] for k, v in inputs.items()}
             streamer = TextIteratorStreamer(tok, skip_prompt=True, skip_special_tokens=True)
             th = threading.Thread(
                 target=model.generate,

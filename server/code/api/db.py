@@ -690,6 +690,17 @@ def export_turns(conv_id: str) -> List[Dict[str, Any]]:
     return out
 
 
+def clear_turns(conv_id: str) -> int:
+    """WO-2: Delete all turns for a conversation, returning count deleted."""
+    init_db()
+    con = _connect()
+    cur = con.execute("DELETE FROM turns WHERE conv_id=?;", (conv_id,))
+    con.commit()
+    n = cur.rowcount
+    con.close()
+    return n
+
+
 def persist_turn_transaction(
     conv_id: str,
     user_message: str,

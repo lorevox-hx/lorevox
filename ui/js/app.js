@@ -315,9 +315,17 @@ async function createPersonFromForm(){
 let _loadGeneration=0;
 async function loadPerson(pid){
   const gen=++_loadGeneration;
+  const _prevPersonId = state.person_id;
   state.person_id=pid;
   document.getElementById("activePerson").textContent=`person_id: ${pid}`;
   localStorage.setItem(LS_ACTIVE,pid);
+  // WO-2: Send sync_session to backend when person changes
+  if(ws && wsReady && pid !== _prevPersonId){
+    ws.send(JSON.stringify({type:"sync_session",person_id:pid,
+      old_conv_id:state.chat?.conv_id||""}));
+    const ci=document.getElementById("chatInput");
+    if(ci){ ci.disabled=true; ci.placeholder="Syncing session…"; }
+  }
   // v7.4D ISSUE-16: update the always-visible active person indicator in the Lori dock.
   // The display_name is not available yet (profile loads below); update again after.
   _updateDockActivePerson();
@@ -1928,7 +1936,17 @@ async function _extractAndPostFacts(userText, loriText){
 function connectWebSocket(){
   try{
     ws=new WebSocket(API.CHAT_WS);
-    ws.onopen=()=>{ wsReady=true; usingFallback=false; pill("pillWs",true); };
+    ws.onopen=()=>{
+      wsReady=true; usingFallback=false; pill("pillWs",true);
+      // WO-2: Send sync_session packet immediately on connect
+      if(state.person_id){
+        ws.send(JSON.stringify({type:"sync_session",person_id:state.person_id,
+          old_conv_id:state.chat?.conv_id||""}));
+        // Lock chat input until session_verified
+        const ci=document.getElementById("chatInput");
+        if(ci){ ci.disabled=true; ci.placeholder="Syncing session…"; }
+      }
+    };
     ws.onclose=()=>{ wsReady=false; ws=null; pill("pillWs",false);
       usingFallback=true; setTimeout(connectWebSocket,4000); };
     ws.onerror=()=>{ wsReady=false; pill("pillWs",false); };
@@ -1979,6 +1997,12 @@ function handleWsMessage(j){
     if(obitDraftType==="lori_pending") setObitDraftType("lori");
     setLoriState("ready");
     currentAssistantBubble=null;
+  }
+  if(j.type==="session_verified"){
+    // WO-2: Unlock chat input after session handshake confirmed
+    const ci=document.getElementById("chatInput");
+    if(ci){ ci.disabled=false; ci.placeholder="Type a message…"; }
+    console.log("[WO-2] Session verified for person_id:", j.person_id);
   }
   if(j.type==="status") pill("pillWs", j.state==="connected"||j.state==="generating");
 }
