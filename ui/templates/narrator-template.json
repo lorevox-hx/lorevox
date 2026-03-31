@@ -1,0 +1,162 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_instructions": "Fill in fields below. Repeatable sections (parents, grandparents, siblings, children, pets) are arrays — add as many entries as needed. Leave empty strings for unknown fields. Load via: lv80PreloadNarrator(template) or lv80PreloadFromFile(file)",
+
+  "personal": {
+    "fullName": "",
+    "preferredName": "",
+    "legalFirstName": "",
+    "legalMiddleName": "",
+    "legalLastName": "",
+    "dateOfBirth": "",
+    "timeOfBirth": "",
+    "placeOfBirth": "",
+    "birthOrder": "",
+    "zodiacSign": "",
+    "pronouns": "",
+    "culture": "",
+    "country": "US",
+    "language": ""
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "",
+      "middleName": "",
+      "lastName": "",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "",
+      "deceased": false,
+      "notableLifeEvents": "",
+      "notes": ""
+    },
+    {
+      "relation": "Father",
+      "firstName": "",
+      "middleName": "",
+      "lastName": "",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "",
+      "deceased": false,
+      "notableLifeEvents": "",
+      "notes": ""
+    }
+  ],
+
+  "grandparents": [
+    {
+      "firstName": "",
+      "lastName": "",
+      "ancestry": "",
+      "culturalBackground": "",
+      "memorableStories": ""
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "",
+      "middleName": "",
+      "lastName": "",
+      "birthOrder": "",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": ""
+    }
+  ],
+
+  "spouse": {
+    "firstName": "",
+    "middleName": "",
+    "lastName": "",
+    "birthPlace": "",
+    "occupation": "",
+    "narrative": "",
+    "deceased": false
+  },
+
+  "children": [
+    {
+      "firstName": "",
+      "middleName": "",
+      "lastName": "",
+      "birthDate": "",
+      "narrative": ""
+    }
+  ],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": ""
+  },
+
+  "familyTraditions": [
+    {
+      "description": "",
+      "occasion": ""
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "",
+      "species": "",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "",
+    "favoriteToy": "",
+    "significantEvent": ""
+  },
+
+  "education": {
+    "schooling": "",
+    "higherEducation": "",
+    "earlyCareer": "",
+    "careerProgression": "",
+    "communityInvolvement": "",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "",
+    "lifeLessons": "",
+    "adviceForFutureGenerations": ""
+  },
+
+  "hobbies": {
+    "hobbies": "",
+    "worldEvents": "",
+    "personalChallenges": "",
+    "travel": ""
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "",
+    "wellnessTips": ""
+  },
+
+  "technology": {
+    "firstTechExperience": "",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "",
+    "messagesForFutureGenerations": ""
+  }
+}

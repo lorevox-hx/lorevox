@@ -1,0 +1,94 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "Kent James Horne",
+  "_version": 1,
+
+  "personal": {
+    "fullName": "Kent James Horne",
+    "preferredName": "Kent",
+    "legalFirstName": "Kent",
+    "legalMiddleName": "James",
+    "legalLastName": "Horne",
+    "dateOfBirth": "1939-12-24",
+    "timeOfBirth": "",
+    "placeOfBirth": "Stanley, North Dakota",
+    "birthOrder": "2",
+    "zodiacSign": "Capricorn",
+    "pronouns": "",
+    "culture": "",
+    "country": "US",
+    "language": ""
+  },
+
+  "parents": [],
+
+  "grandparents": [],
+
+  "siblings": [],
+
+  "spouse": {
+    "firstName": "Janice",
+    "middleName": "Josephine",
+    "lastName": "Horne",
+    "birthPlace": "Spokane, Washington",
+    "occupation": "Homemaker",
+    "narrative": "",
+    "deceased": false
+  },
+
+  "children": [],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": ""
+  },
+
+  "familyTraditions": [],
+
+  "pets": [],
+
+  "earlyMemories": {
+    "firstMemory": "",
+    "favoriteToy": "",
+    "significantEvent": ""
+  },
+
+  "education": {
+    "schooling": "",
+    "higherEducation": "",
+    "earlyCareer": "",
+    "careerProgression": "",
+    "communityInvolvement": "",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "",
+    "lifeLessons": "",
+    "adviceForFutureGenerations": ""
+  },
+
+  "hobbies": {
+    "hobbies": "",
+    "worldEvents": "",
+    "personalChallenges": "",
+    "travel": ""
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "",
+    "wellnessTips": ""
+  },
+
+  "technology": {
+    "firstTechExperience": "",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "",
+    "messagesForFutureGenerations": ""
+  }
+}

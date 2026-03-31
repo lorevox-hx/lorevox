@@ -504,12 +504,20 @@
       });
     });
 
-    /* Filter */
+    /* Filter — P4-002 fix: preserve focus + cursor position after re-render */
     var filterEl = _el("bioReviewFilter");
     if (filterEl) {
       filterEl.addEventListener("input", function (e) {
         ui.filterText = e.target.value || "";
+        var cursorPos = e.target.selectionStart;
         _render();
+        var newFilter = _el("bioReviewFilter");
+        if (newFilter) {
+          newFilter.focus();
+          if (typeof cursorPos === "number") {
+            newFilter.setSelectionRange(cursorPos, cursorPos);
+          }
+        }
       });
     }
 

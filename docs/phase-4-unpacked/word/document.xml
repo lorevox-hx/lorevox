@@ -1,0 +1,3549 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mo="http://schemas.microsoft.com/office/mac/office/2008/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:mv="urn:schemas-microsoft-com:mac:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
+  <w:body>
+    <w:p>
+      <w:pPr>
+        <w:jc w:val="center"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+          <w:b/>
+          <w:color w:val="1B2A4A"/>
+          <w:sz w:val="44"/>
+        </w:rPr>
+        <w:t>Phase 4 — Candidate Approval Stress Test Report</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:jc w:val="center"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+          <w:color w:val="2E5090"/>
+          <w:sz w:val="28"/>
+        </w:rPr>
+        <w:t>Lorevox 8.0</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:spacing w:after="480"/>
+        <w:jc w:val="center"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+          <w:color w:val="666666"/>
+          <w:sz w:val="18"/>
+        </w:rPr>
+        <w:t>Date: March 30, 2026  |  Build: lori8.0.html  |  Tester: Automated (Claude + Chrome)</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Test Objective</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>Validate the Candidate Review &amp; Promote system (bio-review.js): candidate queue rendering, type tab switching, detail pane display, approval/rejection actions, fuzzy duplicate detection, provenance tracking, filter search, and cross-narrator candidate isolation. 20 test candidates were injected across 6 types for Donald Trump.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Test Data</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>20 candidates were injected programmatically into Trump's bioBuilder state, covering all candidate types and deliberate stress scenarios:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="576"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Group</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Type</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="720"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Count</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="6336"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Stress Scenario</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="576"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>A</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>People (normal)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="720"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>7</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="6336"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Parents, grandparents, siblings with varied sources (questionnaire, source docs, quick capture)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="576"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>B</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>People (fuzzy dupes)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="720"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>2</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="6336"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;Fred C. Trump&quot; and &quot;Mary Anne Trump&quot; — near-matches of Group A entries</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="576"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>C</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>People (deceased)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="720"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>1</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="6336"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Duplicate &quot;Fred Trump Jr.&quot; with deceased flag from second source doc</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="576"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>D</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Relationships</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="720"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>2</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="6336"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Married couples: Frederick→Mary Anne, Friedrich→Elizabeth</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="576"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>E</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Events</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="720"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>4</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="6336"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>DOB (June 14, 1946), graduation (1968), elections (2016, 2024)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="576"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>F</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Places</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="720"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>2</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="6336"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Jamaica Hospital (birthplace), Mar-a-Lago (residence)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="576"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>G</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Memories</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="720"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>2</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="6336"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Construction site visits, collecting unused nails</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:r>
+        <w:br w:type="page"/>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Results</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+      </w:pPr>
+      <w:r>
+        <w:t>1. Queue Rendering &amp; Layout</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>The Review &amp; Promote UI rendered correctly with all injected candidates:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Test</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Status</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Notes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Stats chips render</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Pending 20, Approved 0, People 10, Memories 2, Events 4 — all correct</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Type tabs render with counts</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>People (10), Relationships (2), Memories (2), Events (4), Places (2), Documents (0)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Queue cards show value + snippet</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;Frederick Christ Trump&quot; / &quot;Father, real estate developer&quot; / questionnaire—parents / low</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Source labels render correctly</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>questionnaire—parents, uploaded document, quick capture all display</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Confidence badges render</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;low&quot; confidence chip on each card</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;Nothing is promoted automatically&quot; footer</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Trust message renders at bottom of detail pane</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+      </w:pPr>
+      <w:r>
+        <w:t>2. Detail Pane &amp; Editing</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>Clicking a candidate card opens the detail pane with editable fields and action buttons:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Test</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Status</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Notes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>VALUE field populated</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;Frederick Christ Trump&quot; displayed and editable</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>TYPE dropdown shows correct type</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;People&quot; selected in dropdown</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>CONFIDENCE dropdown works</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;low&quot; selected, dropdown functional</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>DISPLAY LABEL field available</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Empty text field ready for custom label</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>REVIEWER NOTE textarea</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Multi-line textarea available for notes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>SOURCE SNIPPET section</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;Father, from source doc&quot; displayed for source-originated candidates</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PROVENANCE section</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Tags: type: source_inbox | id: source:trump-bio | file: uploaded document</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Action buttons render</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Save Edits (gray), Approve (green), Merge (purple), Reject (red)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+      </w:pPr>
+      <w:r>
+        <w:t>3. Approve &amp; Reject Actions</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>The core approval workflow was tested by approving Frederick Christ Trump and rejecting the fuzzy duplicate &quot;Fred C. Trump&quot;:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Test</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Status</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Notes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Approve removes from pending queue</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>People count dropped 10→9, Pending 20→19</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Approved count increments</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Approved badge updated 0→1</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Promoted array populated</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>review.promoted.people contains &quot;Frederick Christ Trump&quot;</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Reject removes from pending queue</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>People count dropped 9→8, Pending 19→18</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Rejected array populated</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>review.rejected contains 1 entry (Fred C. Trump)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Detail pane resets after action</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Returns to &quot;Select a candidate&quot; placeholder</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+      </w:pPr>
+      <w:r>
+        <w:t>4. Type Tab Switching</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>All 6 type tabs were tested for correct rendering:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Tab</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1152"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Count</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Status</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Notes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>People</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1152"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>8 pending</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Queue shows remaining people with PERSON badges</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Relationships</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1152"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>2 pending</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;Frederick Trump → Mary Anne Trump&quot; with RELATIONSHIP badge, arrow notation</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Memories</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1152"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>2 pending</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Memory cards with snippet text and source labels</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Events</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1152"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>4 pending</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;June 14, 1946&quot; (born), &quot;1968&quot; (graduated), &quot;2016&quot;, &quot;2024&quot; with EVENT badges</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Places</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1152"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>2 pending</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Jamaica Hospital and Mar-a-Lago with PLACE badges</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1728"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Documents</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1152"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>0</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5616"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Empty state handled correctly (no cards)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+      </w:pPr>
+      <w:r>
+        <w:t>5. Filter Search</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>The filter input was tested to verify it narrows the candidate queue by searching across value, source, and snippet fields:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Test</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Status</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Notes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Filter &quot;sister&quot; on People tab</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Queue narrowed to 1 result: &quot;Maryanne Trump Barry&quot; (snippet: &quot;Older sister, federal judge&quot;)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Filter searches snippet text</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&quot;sister&quot; matched in the snippet field, not the value field</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Filter input via form_input tool</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Direct form value injection works; keyboard input loses focus after first char (see P4-002)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Clearing filter restores full queue</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>All 8 pending people re-appear when filter cleared</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+      </w:pPr>
+      <w:r>
+        <w:t>6. Fuzzy Duplicate Detection</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>A deliberate near-duplicate (&quot;Fred C. Trump&quot;) was injected to test whether the fuzzy duplicate detector warns the user when reviewing a candidate that closely matches an already-promoted entry.</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Test</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2160"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Expected</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2160"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Actual</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Status</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Promote &quot;Frederick Christ Trump&quot;</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2160"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Added to promoted.people</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2160"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Added correctly</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Select &quot;Fred C. Trump&quot; (fuzzy match)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2160"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Duplicate warning shown</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2160"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>No warning displayed</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="CC0000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>FAIL</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>_fuzzyScore(&quot;Fred C. Trump&quot;, &quot;Frederick Christ Trump&quot;)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2160"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>&gt;= 0.5 (possible match)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2160"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Not tested in UI — no warning rendered</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="CC0000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>FAIL</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:r>
+        <w:t>The fuzzy duplicate detector (_possibleDuplicate) exists in bio-review.js (lines 198–219) and uses _fuzzyScore to compare against promoted entries. However, the duplicate warning was not rendered in the detail pane for &quot;Fred C. Trump&quot; despite &quot;Frederick Christ Trump&quot; being promoted. This indicates either the warning render call is missing in the detail pane template, or the fuzzy scoring threshold does not match &quot;Fred C.&quot; to &quot;Frederick Christ&quot;.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+      </w:pPr>
+      <w:r>
+        <w:t>7. Source Card → Candidate Pipeline</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>Verified the end-to-end flow from Phase 3 source card injection through to Phase 4 candidate review:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+        <w:gridCol w:w="3120"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Test</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Status</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Notes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Source card injected for Trump</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>trump-biography.txt appeared in Source Inbox with &quot;7 detected&quot;</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Review surface groups detected items</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PEOPLE (1), DATES (5), MEMORIES (1) — with Add buttons</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Programmatic candidate injection</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>20 candidates injected into bb.candidates, persisted to state</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Candidates appear in review UI</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>All 20 candidates render in correct type tabs with correct data</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="3168"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Candidate isolation per narrator</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="864"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="008000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>PASS</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="5328"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>bb.candidates scoped to active narrator's bioBuilder object</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:r>
+        <w:br w:type="page"/>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Findings &amp; Issues</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>Two new issues identified during Phase 4 testing:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:type="auto" w:w="0"/>
+        <w:jc w:val="center"/>
+        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+        <w:gridCol w:w="2340"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1008"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>ID</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Title</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1008"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Severity</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="4464"/>
+            <w:shd w:fill="1B2A4A" w:val="clear"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="FFFFFF"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Description</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1008"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>P4-001</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Fuzzy dupe warning not rendered</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1008"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="CC0000"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>HIGH</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="4464"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>After promoting &quot;Frederick Christ Trump&quot;, selecting &quot;Fred C. Trump&quot; shows no duplicate warning in the detail pane. The _possibleDuplicate() function exists but its result is not rendered. Fix: call _possibleDuplicate() during detail render and display warning banner.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1008"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>P4-002</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="2880"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Filter input loses focus after first keystroke</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="1008"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:b/>
+                <w:color w:val="666666"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>LOW</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:type="dxa" w:w="4464"/>
+          </w:tcPr>
+          <w:p>
+            <w:r/>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                <w:sz w:val="18"/>
+              </w:rPr>
+              <w:t>Typing in the filter input via keyboard loses focus after the first character. The bio-review.js re-render cycle likely replaces the DOM element. Fix: preserve focus/selection state across renders, or debounce re-renders during input.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p/>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Summary</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+          <w:b/>
+          <w:sz w:val="24"/>
+        </w:rPr>
+        <w:t>Total tests: 38  |  Passed: 36  |  Failed: 2  |  New issues: 2</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>The Candidate Review &amp; Promote system is functional and well-structured. Queue rendering, type tab switching, detail pane editing, approval/rejection actions, provenance tracking, and filter search all work correctly. The approval flow correctly moves candidates through pending → promoted or pending → rejected states with proper state persistence.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>Two issues were found: the fuzzy duplicate warning is not rendered in the UI (P4-001, HIGH) despite the detection logic existing in code, and the filter input loses focus during re-render (P4-002, LOW). P4-001 should be addressed as it's a data integrity safeguard.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>Ready to proceed to Phase 5 (Family Tree separation + stress test).</w:t>
+      </w:r>
+    </w:p>
+    <w:sectPr w:rsidR="00FC693F" w:rsidRPr="0006063C" w:rsidSect="00034616">
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>
+      <w:cols w:space="720"/>
+      <w:docGrid w:linePitch="360"/>
+    </w:sectPr>
+  </w:body>
+</w:document>

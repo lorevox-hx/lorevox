@@ -1093,16 +1093,16 @@
       }
     });
 
+    var _usedGpIds = {}; // P5-OBS1 fix: hoisted outside forEach so grandparents aren't reused across parents
     parentNodes.forEach(function (pn) {
       var pEntry = { node: pn, grandparents: [] };
 
       // Find grandparent edges from this parent
       var gpIds = _scaffoldFindParentsOf(draft, pn.id);
       var gpNodes = [];
-      var _usedGpIds = {};
       gpIds.forEach(function (gpId) {
         var gn = draft.nodes.find(function (n) { return n.id === gpId && _scaffoldEffectiveRole(n) === "grandparent"; });
-        if (gn) { gpNodes.push(gn); _usedGpIds[gn.id] = true; }
+        if (gn && !_usedGpIds[gn.id]) { gpNodes.push(gn); _usedGpIds[gn.id] = true; }
       });
 
       // Also pick up unconnected grandparents

@@ -1,0 +1,201 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "Christopher Todd Horne — Creator of Lorevox",
+  "_version": 1,
+
+  "personal": {
+    "fullName": "Christopher Todd Horne",
+    "preferredName": "Chris",
+    "legalFirstName": "Christopher",
+    "legalMiddleName": "Todd",
+    "legalLastName": "Horne",
+    "dateOfBirth": "1962-12-24",
+    "timeOfBirth": "05:30",
+    "placeOfBirth": "Williston, North Dakota",
+    "birthOrder": "3",
+    "zodiacSign": "Capricorn",
+    "pronouns": "",
+    "culture": "",
+    "country": "US",
+    "language": ""
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Janice",
+      "middleName": "Josephine",
+      "lastName": "Horne",
+      "maidenName": "Zarr",
+      "birthDate": "1939-09-30",
+      "birthPlace": "Spokane, Washington",
+      "occupation": "Homemaker",
+      "deceased": false,
+      "notableLifeEvents": "Raised three sons; strong German-Russian heritage; experienced rural North Dakota upbringing and boarding school education",
+      "notes": ""
+    },
+    {
+      "relation": "Father",
+      "firstName": "Kent",
+      "middleName": "James",
+      "lastName": "Horne",
+      "maidenName": "",
+      "birthDate": "1939-12-24",
+      "birthPlace": "Stanley, North Dakota",
+      "occupation": "Worked in construction and trades",
+      "deceased": false,
+      "notableLifeEvents": "Married young, built family life across multiple states, long-term marriage beginning in 1959",
+      "notes": ""
+    }
+  ],
+
+  "grandparents": [
+    {
+      "firstName": "Ervin",
+      "lastName": "Horne",
+      "ancestry": "American",
+      "culturalBackground": "North Dakota",
+      "memorableStories": ""
+    },
+    {
+      "firstName": "Peter",
+      "lastName": "Zarr",
+      "ancestry": "German-Russian",
+      "culturalBackground": "North Dakota",
+      "memorableStories": "Worked on Garrison Dam; lost birth certificate in ND Capitol fire"
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "Vincent",
+      "middleName": "Edward",
+      "lastName": "Horne",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "Born in Germany",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": ""
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Jason",
+      "middleName": "Richard",
+      "lastName": "Horne",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Family-oriented",
+      "sharedExperiences": "Grew up together in North Dakota and surrounding areas",
+      "memories": "",
+      "notes": ""
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Melanie",
+    "middleName": "C",
+    "lastName": "Zollner",
+    "birthPlace": "",
+    "occupation": "College professor",
+    "narrative": "Married December 22, 2010; shares family-centered life including grandchildren",
+    "deceased": false
+  },
+
+  "children": [
+    {
+      "firstName": "Vincent",
+      "middleName": "Edward",
+      "lastName": "Horne",
+      "birthDate": "",
+      "narrative": "Oldest child, born in Germany"
+    },
+    {
+      "firstName": "Gretchen",
+      "middleName": "Jo",
+      "lastName": "Horne",
+      "birthDate": "1991-10-04",
+      "narrative": "Lives in Austin, TX; experienced major life challenges in 2024; attends ACA meetings"
+    },
+    {
+      "firstName": "Amelia",
+      "middleName": "Fay",
+      "lastName": "Horne",
+      "birthDate": "1994-08-05",
+      "narrative": "MSW; lived in multiple states including NM, CO, HI; works in social services"
+    },
+    {
+      "firstName": "Cole",
+      "middleName": "Harber",
+      "lastName": "Horne",
+      "birthDate": "2002-04-10",
+      "narrative": "Works in medical billing; studies computer science; interests in AI, cybersecurity, and accounting"
+    }
+  ],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "Married December 22, 2010"
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Frequent family dinners and gatherings with extended family",
+      "occasion": "Weekly meals and holidays"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Ivan",
+      "species": "Dog",
+      "breed": "Golden Retriever",
+      "birthDate": "1964-01-12",
+      "adoptionDate": "1965-01-12"
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Growing up in North Dakota with rural surroundings and family-centered life",
+    "favoriteToy": "",
+    "significantEvent": ""
+  },
+
+  "education": {
+    "schooling": "Graduated from Bismarck High School, 1981",
+    "higherEducation": "Occupational Therapy training",
+    "earlyCareer": "Began working in occupational therapy",
+    "careerProgression": "Occupational Therapist at West Las Vegas Schools since 1997",
+    "communityInvolvement": "School-based therapy services and student support",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "Planned retirement January 1, 2026",
+    "lifeLessons": "Focus on family, persistence, and building something meaningful",
+    "adviceForFutureGenerations": ""
+  },
+
+  "hobbies": {
+    "hobbies": "Technology development, AI systems, genealogy, travel",
+    "worldEvents": "Experienced major historical shifts including Cold War era, digital revolution",
+    "personalChallenges": "Complex family dynamics and relationships",
+    "travel": "United States, France, Hawaii, upcoming Europe travel"
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "",
+    "wellnessTips": ""
+  },
+
+  "technology": {
+    "firstTechExperience": "Early computing and later deep involvement in AI systems",
+    "favoriteGadgets": "Computers, AI tools",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "Building Lorevox into a lasting memory archive system",
+    "messagesForFutureGenerations": ""
+  }
+}

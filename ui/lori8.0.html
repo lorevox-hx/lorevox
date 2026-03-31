@@ -1674,6 +1674,7 @@
 <script src="js/bio-builder-family-tree.js"></script>
 <script src="js/bio-builder-life-threads.js"></script>
 <script src="js/bio-builder.js"></script>
+<script src="js/narrator-preload.js"></script>
 <script src="js/bio-review.js"></script>
 <script src="js/bio-promotion-adapters.js"></script>
 <script src="js/bio-phase-f.js"></script>
@@ -1969,9 +1970,14 @@ async function lv80SwitchPerson(personId) {
     setAssistantRole("interviewer");
     lv80RefreshCaptureBar();
 
+    // LV-002: deceased-aware greeting
+    const _decR = lv80GetNarratorDeceased();
+    const _decFrame = _decR.deceased
+      ? ` This narrator is deceased${_decR.dod ? " (d. " + _decR.dod + ")" : ""}. You are speaking with a family member or archivist preserving their story. Use past tense when referring to the narrator's life. Do not address the narrator directly as if they are present.`
+      : "";
     sendSystemPrompt(
       `[SYSTEM: You are resuming a life-archive session with ${name}, ` +
-      `born ${basics.dob}${pob ? " in " + pob : ""}. ` +
+      `born ${basics.dob}${pob ? " in " + pob : ""}.${_decFrame} ` +
       "Welcome them back warmly by name in one sentence, then immediately ask your " +
       "next most meaningful interview question. Do not re-introduce yourself. " +
       "Do not repeat the onboarding flow. Do not ask for name or DOB again.]"
@@ -2023,8 +2029,55 @@ function lv80NarratorInitials(name){
 
 function lv80NarratorKind(person){
   const label = String(person?.display_name || person?.name || "").toLowerCase();
-  if (label.includes("mark twain") || label.includes("chuck norris") || label.includes("test")) return "test";
+  // LV-003 fix: check multiple heuristics, not just hardcoded names
+  // 1. Explicit "test" in name
+  if (/\btest\b/i.test(label)) return "test";
+  // 2. Known fictional / test personas
+  const _TEST_NAMES = ["mark twain","chuck norris","jane doe","john doe","mickey mouse",
+    "donald duck","homer simpson","darth vader","harry potter","sherlock holmes",
+    "james bond","indiana jones","bruce wayne","peter parker","tony stark"];
+  for (let i = 0; i < _TEST_NAMES.length; i++) {
+    if (label.includes(_TEST_NAMES[i])) return "test";
+  }
+  // 3. Check person metadata for explicit test flag
+  if (person?.is_test === true || person?.role === "test") return "test";
   return "real";
+}
+
+/* ── LV-010: Age calculator ───────────────────────────── */
+function lv80CalcAge(dob, dod) {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return null;
+  const ref = dod ? new Date(dod) : new Date();
+  if (isNaN(ref.getTime())) return null;
+  let age = ref.getFullYear() - birth.getFullYear();
+  const m = ref.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && ref.getDate() < birth.getDate())) age--;
+  return age >= 0 ? age : null;
+}
+
+/* ── LV-006: Deceased info helper ─────────────────────── */
+function lv80GetNarratorDeceased() {
+  // Check multiple sources for current narrator's deceased status
+  // 1. Obituary form field
+  const obitDod = (typeof getv === "function") ? getv("obit_dod") : "";
+  if (obitDod) return { deceased: true, dod: obitDod };
+  // 2. Family tree narrator node (deathYear)
+  try {
+    const ft = window.LorevoxBioBuilderModules?.familyTree;
+    if (ft && ft._getFamilyTree) {
+      const pid = state?.person_id;
+      const tree = ft._getFamilyTree(pid);
+      if (tree && tree.nodes) {
+        const narrator = tree.nodes.find(n => n.role === "narrator" || n.isNarrator);
+        if (narrator && narrator.deathYear) {
+          return { deceased: true, dod: narrator.deathYear };
+        }
+      }
+    }
+  } catch (_) {}
+  return { deceased: false, dod: "" };
 }
 
 function lv80UpdateActiveNarratorCard(){
@@ -2033,12 +2086,22 @@ function lv80UpdateActiveNarratorCard(){
   const full = basics.fullname || basics.fullName || name;
   const dob  = basics.dob || "";
   const pob  = basics.pob || "";
+  // LV-006 + LV-010: show deceased status and age
+  const decInfo = lv80GetNarratorDeceased();
+  const age = lv80CalcAge(dob, decInfo.dod || null);
   const nameEl = document.getElementById("lv80ActiveNarratorName");
   const subEl  = document.getElementById("lv80ActiveNarratorSub");
   const avEl   = document.getElementById("lv80NarratorAvatar");
   if (nameEl) nameEl.textContent = name;
-  if (subEl)  subEl.textContent  =
-    [full !== name ? full : "", dob, pob].filter(Boolean).join(" · ") || "Choose a narrator";
+  if (subEl) {
+    const parts = [full !== name ? full : ""];
+    if (dob) parts.push(dob);
+    if (pob) parts.push(pob);
+    if (age !== null) parts.push(decInfo.deceased ? `age ${age} (deceased)` : `age ${age}`);
+    else if (decInfo.deceased) parts.push("(deceased)");
+    if (decInfo.dod && decInfo.deceased) parts.push("d. " + decInfo.dod);
+    subEl.textContent = parts.filter(Boolean).join(" · ") || "Choose a narrator";
+  }
   if (avEl)   avEl.textContent = lv80NarratorInitials(name);
 }
 
@@ -2062,7 +2125,7 @@ function lv80RenderNarratorCards(){
           <span class="lv80-narrator-badge ${kind}">${kind === "real" ? "REAL" : "TEST"}</span>
         </div>
         <div style="font-size:12px;color:#94a3b8;margin-top:3px;">
-          ${esc((person.date_of_birth || "").toString()) || "DOB unknown"}${person.place_of_birth ? " · " + esc(person.place_of_birth) : ""}
+          ${esc((person.date_of_birth || "").toString()) || "DOB unknown"}${person.place_of_birth ? " · " + esc(person.place_of_birth) : ""}${(() => { const _a = lv80CalcAge(person.date_of_birth, null); return _a !== null ? " · age " + _a : ""; })()}
         </div>
         <div class="lv80-narrator-card-actions">
           <button class="bb-btn-sm" onclick="lv80ConfirmNarratorSwitch('${pid}')">Open</button>
@@ -2311,6 +2374,9 @@ function _lv80InstallSafetyHook() {
   }
 
   window.sendUserMessage = async function lv80SafeSend() {
+    // LV-004 fix: clear idle timer on every message send, not just keydown
+    lv80ClearIdle();
+
     const input = document.getElementById("chatInput");
     const text  = input ? input.value.trim() : "";
 
@@ -3881,9 +3947,14 @@ async function lv80Init() {
         clearInterval(_pollWelcome);
         lv80UpdateActiveNarratorCard(); // v8: update card after profile loads
         const _pob = _basics.pob || null;
+        // LV-002: deceased-aware greeting
+        const _decW = lv80GetNarratorDeceased();
+        const _decFrameW = _decW.deceased
+          ? ` This narrator is deceased${_decW.dod ? " (d. " + _decW.dod + ")" : ""}. You are speaking with a family member or archivist preserving their story. Use past tense when referring to the narrator's life. Do not address the narrator directly as if they are present.`
+          : "";
         sendSystemPrompt(
           `[SYSTEM: You are resuming a life-archive session with ${_name}, ` +
-          `born ${_dob}${_pob ? " in " + _pob : ""}. ` +
+          `born ${_dob}${_pob ? " in " + _pob : ""}.${_decFrameW} ` +
           "Welcome them back warmly by first name in one sentence, then immediately " +
           "ask your next most meaningful interview question. Do not re-introduce " +
           "yourself. Do not repeat the onboarding flow. Do not ask for name or DOB again.]"
