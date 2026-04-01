@@ -678,6 +678,12 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
         current_target=req.current_target_path,
     )
 
+    # WO: Summary line — log outcome at endpoint level
+    _accepted = len(llm_items) if llm_items else 0
+    _method = "llm" if llm_items else ("rules-fallback" if raw_output else "no-llm")
+    logger.info("[extract][summary] llm_raw=%s accepted=%d method=%s",
+                "present" if raw_output else "none", _accepted, _method)
+
     if llm_items:
         logger.info("[extract] LLM returned %d items", len(llm_items))
         # Add writeMode from our schema
