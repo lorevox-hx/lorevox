@@ -376,7 +376,8 @@ def _extract_via_rules(answer: str, current_section: Optional[str], current_targ
     # Sibling
     m = _SIBLING.search(answer)
     if m:
-        rel_match = re.search(r'my\s+(brother|sister|sibling)', answer, re.IGNORECASE)
+        # Look for the actual relation word near the match — check both "my brother" and "a brother"
+        rel_match = re.search(r'(?:my|a)\s+(?:\w+\s+)*?(brother|sister|sibling)', answer, re.IGNORECASE)
         rel = rel_match.group(1).capitalize() if rel_match else "Sibling"
         items.append({"fieldPath": "siblings.relation", "value": rel, "confidence": 0.85})
         items.append({"fieldPath": "siblings.firstName", "value": m.group(1).strip(), "confidence": 0.85})
