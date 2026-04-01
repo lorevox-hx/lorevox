@@ -301,23 +301,35 @@ function buildRuntime71() {
         // Helper: projection fields are {value:"...", source:"...", ...} envelopes
         const v = (f) => { const e = fields[f]; return (e && typeof e === "object" ? e.value : e) || ""; };
         const fam = { parents: [], siblings: [] };
-        // Collect parents
+        // Collect parents — dedup by (name, relation) to avoid accumulation
+        const seenParents = new Set();
         for (let i = 0; i < 10; i++) {
           const fn = v("parents[" + i + "].firstName");
           const ln = v("parents[" + i + "].lastName");
           const rel = v("parents[" + i + "].relation");
           const occ = v("parents[" + i + "].occupation");
           if (fn || ln) {
-            fam.parents.push({ name: (fn + " " + ln).trim(), relation: rel, occupation: occ });
+            const name = (fn + " " + ln).trim();
+            const key = (name + "|" + rel).toLowerCase();
+            if (!seenParents.has(key)) {
+              seenParents.add(key);
+              fam.parents.push({ name: name, relation: rel, occupation: occ });
+            }
           }
         }
-        // Collect siblings
+        // Collect siblings — dedup by (name, relation)
+        const seenSiblings = new Set();
         for (let i = 0; i < 20; i++) {
           const fn = v("siblings[" + i + "].firstName");
           const ln = v("siblings[" + i + "].lastName");
           const rel = v("siblings[" + i + "].relation");
           if (fn || ln) {
-            fam.siblings.push({ name: (fn + " " + ln).trim(), relation: rel });
+            const name = (fn + " " + ln).trim();
+            const key = (name + "|" + rel).toLowerCase();
+            if (!seenSiblings.has(key)) {
+              seenSiblings.add(key);
+              fam.siblings.push({ name: name, relation: rel });
+            }
           }
         }
         return (fam.parents.length || fam.siblings.length) ? fam : null;

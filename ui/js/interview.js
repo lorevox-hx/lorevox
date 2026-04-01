@@ -760,6 +760,7 @@ function _projectAnswerToField(answerText, turnId) {
 
 // FIX-7: Track last extraction turnId to prevent double-firing per user message.
 var _lastExtractionTurnId = null;
+var _lastExtractionTimestamp = 0;
 
 function _extractAndProjectMultiField(answerText, turnId) {
   if (typeof LorevoxProjectionSync === "undefined") return;
@@ -772,7 +773,15 @@ function _extractAndProjectMultiField(answerText, turnId) {
     console.log("[extract] Skipping duplicate extraction for turnId: " + turnId);
     return;
   }
+  // FIX-7b: Timestamp cooldown — skip if extraction fired within the last 1s.
+  // This catches double-fires from interview + free-form paths which use different turnId formats.
+  var now = Date.now();
+  if (now - _lastExtractionTimestamp < 1000) {
+    console.log("[extract] Skipping rapid-fire duplicate extraction (cooldown)");
+    return;
+  }
   _lastExtractionTurnId = turnId;
+  _lastExtractionTimestamp = now;
 
   var targetPath = state.interviewProjection._lastTargetPath || null;
   var targetSection = state.interviewProjection._lastTargetSection || null;

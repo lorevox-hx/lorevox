@@ -364,8 +364,11 @@ _DATE_YEAR = re.compile(
 )
 
 # Place patterns — v8.0 FIX: handle "grew up right there in Dartford", "lived in X"
+# FIX: Added \b word boundaries to stop-words so "I" doesn't match inside "Island", etc.
 _PLACE_BORN = re.compile(
-    r'\b(?:born|raised|grew up|lived)\s+(?:\w+\s+)*?(?:in|at|near)\s+([A-Z][a-zA-Z\s,]+?)(?:\.|,?\s+(?:and|my|I|we|the|where|when|\d))',
+    r'\b(?:born|raised|grew up|lived)\s+(?:\w+\s+)*?(?:in|at|near)\s+'
+    r'([A-Z][a-zA-Z\s,]+?)'
+    r'(?:\.|,?\s+(?:(?:and|my|I|we|the|where|when)\b|\d))',
     re.IGNORECASE
 )
 
