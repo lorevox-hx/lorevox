@@ -1,0 +1,328 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "DOPPLEGANGER of mark-twain.json — test-only template",
+  "personal": {
+    "fullName": "Mark 4 Doppleganger",
+    "preferredName": "Mark 4",
+    "legalFirstName": "Samuel",
+    "legalMiddleName": "Langhorne",
+    "legalLastName": "Doppleganger",
+    "dateOfBirth": "1835-11-30",
+    "timeOfBirth": "",
+    "placeOfBirth": "Florida, Missouri, United States",
+    "birthOrder": "6th of 7 children",
+    "zodiacSign": "Sagittarius",
+    "pronouns": "he/him",
+    "culture": "American, Southern frontier / Mississippi River culture",
+    "country": "US",
+    "language": "English"
+  },
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Jane",
+      "middleName": "",
+      "lastName": "Clemens",
+      "maidenName": "Lampton",
+      "birthDate": "1803-06-18",
+      "birthPlace": "Adair County, Kentucky",
+      "occupation": "Homemaker",
+      "deceased": true,
+      "notableLifeEvents": "Married John Marshall Clemens in 1823 in Kentucky. Moved the family from Florida, Missouri to Hannibal when Sam was four. Known for her sharp wit and compassion — qualities Sam credited as shaping his humor. Tried various remedies on young Sam during his sickly childhood years, many of which later appeared in Tom Sawyer.",
+      "notes": "Died October 27, 1890. Native of Kentucky. Her indulgence of Sam's mischief became a recurring theme in his writing."
+    },
+    {
+      "relation": "Father",
+      "firstName": "John",
+      "middleName": "Marshall",
+      "lastName": "Clemens",
+      "maidenName": "",
+      "birthDate": "1798-08-11",
+      "birthPlace": "Virginia",
+      "occupation": "Lawyer, judge, merchant, land speculator",
+      "deceased": true,
+      "notableLifeEvents": "Called to the bar in Kentucky where he met Jane Lampton while helping her family avoid bankruptcy. Served as a justice of the peace in Hannibal. Invested in Tennessee land that never yielded the fortune he hoped for. Died of pneumonia on March 24, 1847, when Sam was just 11 years old.",
+      "notes": "His early death forced Sam to leave school and become a printer's apprentice, launching the career path that led to his writing life."
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "Samuel B.",
+      "lastName": "Clemens",
+      "ancestry": "English-Virginian",
+      "culturalBackground": "The Clemens family traced back to English settlers in Virginia in the early 1700s. Samuel was named after this grandfather.",
+      "memorableStories": "Paternal grandfather. Married Pamela Goggin on October 29, 1797, in Bedford County, Virginia. Father of five children including John Marshall Clemens."
+    },
+    {
+      "firstName": "Pamela",
+      "lastName": "Goggin",
+      "ancestry": "English-Virginian",
+      "culturalBackground": "Virginia colonial family",
+      "memorableStories": "Paternal grandmother. Married Samuel B. Clemens in Bedford County, Virginia (1775–1844)."
+    },
+    {
+      "firstName": "Benjamin",
+      "lastName": "Lampton",
+      "ancestry": "Scots-Irish / English, Kentucky",
+      "culturalBackground": "Kentucky frontier merchant family. Residents of Adair County, Kentucky upon its formation in 1802.",
+      "memorableStories": "Maternal grandfather. Married Margaret Casey on March 17, 1801, in Green County, Kentucky. Was a merchant in Columbia, the county seat of Adair County."
+    },
+    {
+      "firstName": "Margaret",
+      "lastName": "Casey",
+      "ancestry": "Irish-American, Kentucky",
+      "culturalBackground": "Kentucky pioneer family, Casey ancestry documented in Adair County records.",
+      "memorableStories": "Maternal grandmother. Married Benjamin Lampton in 1801."
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "Orion",
+      "middleName": "",
+      "lastName": "Clemens",
+      "birthOrder": "1st (eldest)",
+      "uniqueCharacteristics": "Newspaper publisher in Hannibal. Later appointed Secretary of the Nevada Territory, which led Sam to head west in 1861.",
+      "sharedExperiences": "Sam worked as a typesetter for Orion's Hannibal Journal in 1851. Traveled with Sam to Nevada Territory in July 1861, the trip that launched Sam's writing career.",
+      "memories": "Despite financial struggles and a reputation for changing his mind, Orion played a pivotal role in Sam's life by bringing him west.",
+      "notes": "Survived to adulthood."
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Pamela",
+      "middleName": "Ann",
+      "lastName": "Clemens",
+      "birthOrder": "2nd",
+      "uniqueCharacteristics": "Named after their paternal grandmother. Married William Anderson Moffett.",
+      "sharedExperiences": "Grew up together in Hannibal. Maintained a lifelong correspondence with Sam.",
+      "memories": "One of only three siblings who survived to adulthood.",
+      "notes": "Survived to adulthood."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Henry",
+      "middleName": "",
+      "lastName": "Clemens",
+      "birthOrder": "7th (youngest)",
+      "uniqueCharacteristics": "Sam's younger brother and close companion.",
+      "sharedExperiences": "Sam arranged a job for Henry as a 'mud clerk' on the steamboat Pennsylvania. Henry died on June 21, 1858, from injuries sustained in the steamboat's boiler explosion.",
+      "memories": "Henry's death haunted Sam for the rest of his life. He blamed himself for getting Henry the position on the Pennsylvania. The guilt profoundly shaped his worldview and appears in his later writing.",
+      "notes": "Died age 20 in the Pennsylvania steamboat explosion. Sam reportedly had a prophetic dream about Henry's death days before it happened."
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Margaret",
+      "middleName": "",
+      "lastName": "Clemens",
+      "birthOrder": "3rd",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": "Died in childhood."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Benjamin",
+      "middleName": "",
+      "lastName": "Clemens",
+      "birthOrder": "4th",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": "Died in childhood."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Pleasant",
+      "middleName": "Hannibal",
+      "lastName": "Clemens",
+      "birthOrder": "5th",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": "Died in childhood, lived only a few weeks."
+    }
+  ],
+  "spouse": {
+    "firstName": "Olivia",
+    "middleName": "Louise",
+    "lastName": "Langdon",
+    "birthPlace": "Elmira, New York",
+    "occupation": "Homemaker, editor (served as Sam's first reader and editor for all his manuscripts)",
+    "narrative": "Sam met Olivia through her brother Charles Langdon, who showed him a miniature portrait of her during their voyage to the Holy Land in 1867. He fell in love at first sight. She rejected his first marriage proposal, but Sam persisted and won over both Olivia and her initially reluctant father, Jervis Langdon, a wealthy coal merchant. They married on February 2, 1870, in Elmira, New York. Their 34-year marriage was marked by deep devotion, tremendous literary output, financial highs and devastating lows, and the heartbreaking loss of three of their four children. Olivia served as Sam's first editor and moral compass throughout his career.",
+    "deceased": true
+  },
+  "children": [
+    {
+      "firstName": "Langdon",
+      "middleName": "",
+      "lastName": "Clemens",
+      "birthDate": "1870-11-07",
+      "narrative": "Sam and Olivia's firstborn son, born premature in Buffalo, New York. Langdon was frail and sickly from birth. He died of diphtheria on June 2, 1872, at just 19 months old. Sam privately blamed himself, believing the child caught cold during a carriage ride when he had let the blankets slip."
+    },
+    {
+      "firstName": "Olivia Susan",
+      "middleName": "",
+      "lastName": "Clemens",
+      "birthDate": "1872-03-19",
+      "narrative": "Called 'Susy.' Bright, literary, and deeply attached to her father. At age 13 she began writing a biography of him. She studied at Bryn Mawr College briefly. In 1896, while Sam and Olivia were abroad on a lecture tour to pay off debts, Susy fell ill with spinal meningitis at the family's Hartford home and died on August 18, 1896, at age 24. Her death was the most devastating blow of Sam's life. He never returned to the Hartford house."
+    },
+    {
+      "firstName": "Clara",
+      "middleName": "Langdon",
+      "lastName": "Clemens",
+      "birthDate": "1874-06-08",
+      "narrative": "The only one of Sam's children to survive him. Pursued a career as a concert contralto singer, studying in Vienna and performing in Europe and America. Married pianist Ossip Gabrilowitsch in 1909 (Sam gave her away). After Sam's death she managed his estate and guarded his literary legacy fiercely. Had one daughter, Nina. Died November 19, 1962."
+    },
+    {
+      "firstName": "Jane",
+      "middleName": "Lampton",
+      "lastName": "Clemens",
+      "birthDate": "1880-07-26",
+      "narrative": "Called 'Jean.' Suffered from epilepsy from her teenage years, which dominated her life and limited her independence. She was devoted to animals and animal rights. On December 24, 1909 — Christmas Eve — Jean was found dead in her bathtub, having suffered a seizure. She was 29. Sam wrote 'The Death of Jean,' one of his most heartbreaking essays, in the days that followed. He died four months later."
+    }
+  ],
+  "marriage": {
+    "proposalStory": "Sam first proposed to Olivia Langdon in 1868 after a whirlwind courtship. She turned him down. He persisted, writing passionate letters and visiting the Langdon family in Elmira, New York repeatedly. He eventually won her heart, and her father Jervis Langdon — a wealthy Elmira coal merchant and abolitionist — gave his consent after receiving decidedly mixed character references about Sam. Jervis reportedly told Sam, 'What kind of people are your friends? Haven't you any friends better than these?' Sam replied, 'Apparently not.' Jervis gave his blessing anyway.",
+    "weddingDetails": "Married on February 2, 1870, at the Langdon family home in Elmira, New York. The couple honeymooned in Buffalo, New York, where Jervis Langdon had secretly purchased and furnished a house for them as a wedding gift. Their early married years were spent in Buffalo before they moved to Hartford, Connecticut in 1871, where they would build their famous home and live for 17 years during the most productive period of Sam's career."
+  },
+  "familyTraditions": [
+    {
+      "description": "Summers at Quarry Farm in Elmira, New York — the hilltop property of Olivia's sister Susan Crane. Sam did most of his best writing in the octagonal study Susan built for him there, including major portions of Tom Sawyer, Huckleberry Finn, A Tramp Abroad, The Prince and the Pauper, and A Connecticut Yankee.",
+      "occasion": "Every summer from the early 1870s through the 1890s"
+    },
+    {
+      "description": "Evening storytelling and reading sessions with the family. The children performed plays and skits. Susy's biography of her father was a family event.",
+      "occasion": "Regular evenings at the Hartford house"
+    },
+    {
+      "description": "Christmas celebrations at the Hartford house were elaborate. The family exchanged gifts, hosted gatherings, and Sam performed readings for guests.",
+      "occasion": "Christmas season"
+    }
+  ],
+  "pets": [
+    {
+      "name": "Sour Mash",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": "One of the institutions of Quarry Farm for many years"
+    },
+    {
+      "name": "Apollinaris",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Bambino",
+      "species": "Cat",
+      "breed": "Black cat",
+      "birthDate": "",
+      "adoptionDate": "When Bambino went missing in New York City, Sam placed a reward ad in the New York American offering $5 for his return."
+    },
+    {
+      "name": "Beelzebub",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Blatherskite",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Buffalo Bill",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Satan",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Sin",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Tammany",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Zoroaster",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Soapy Sal",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Pestilence",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+  "earlyMemories": {
+    "firstMemory": "Life in the tiny village of Florida, Missouri before the family moved to Hannibal at age 4. Summers spent at Uncle John Quarles' farm near Florida — a place Sam called 'a heavenly place for a boy' — with its slave quarters, crops, woods, and animals. These farm memories became the foundation for the Phelps farm scenes in Huckleberry Finn.",
+    "favoriteToy": "The Mississippi River itself was Sam's playground. He and his gang of friends — including Tom Blankenship (the model for Huckleberry Finn) and Laura Hawkins (the model for Becky Thatcher) — spent endless days exploring the river, the town, and McDowell's Cave just outside Hannibal (the cave in Tom Sawyer where Tom and Becky nearly perished).",
+    "significantEvent": "The death of his father John Marshall Clemens on March 24, 1847, when Sam was 11. This ended his formal schooling and launched him into the working world as a printer's apprentice. The sudden shift from childhood to labor shaped his entire outlook on life, class, and self-reliance."
+  },
+  "education": {
+    "schooling": "Attended a one-room schoolhouse in Hannibal, Missouri until age 11. Left school after the fifth grade following his father's death in 1847. His formal education ended there, but it never really stopped.",
+    "higherEducation": "No formal higher education. Self-educated voraciously in public libraries. Wrote that he 'found wider information' in libraries than any conventional school could have provided. His real universities were the Mississippi River, the printing press, and the lecture circuit.",
+    "earlyCareer": "1848: Printer's apprentice at the Missouri Courier. 1851: Typesetter and contributor of articles and humorous sketches for the Hannibal Journal (owned by brother Orion). 1853-1857: Itinerant printer in New York City, Philadelphia, St. Louis, and Cincinnati. Joined the International Typographical Union.",
+    "careerProgression": "1857-1861: Steamboat pilot on the Mississippi River, trained under Horace E. Bixby. Earned his pilot's license after two years of apprenticeship. The pen name 'Mark Twain' came from the leadsman's cry for a measured river depth of two fathoms (12 feet). 1861: Civil War halted river traffic, ending his piloting career. Briefly joined a Confederate militia unit before heading west with Orion. 1862-1866: Journalist for the Virginia City Territorial Enterprise in Nevada and San Francisco papers. 1865: 'The Celebrated Jumping Frog of Calaveras County' made him nationally famous. 1867: Voyage aboard the Quaker City to Europe and the Holy Land, leading to The Innocents Abroad (1869), his first bestseller. 1870s-1890s: Peak literary career — Tom Sawyer (1876), The Prince and the Pauper (1881), Life on the Mississippi (1883), Adventures of Huckleberry Finn (1885), A Connecticut Yankee in King Arthur's Court (1889). 1894: Bankruptcy from failed investments in the Paige typesetting machine. 1895-1896: Worldwide lecture tour to repay debts, traveling through Australia, New Zealand, India, and South Africa.",
+    "communityInvolvement": "Vice president of the Anti-Imperialist League of New York (1901). Outspoken opponent of the Philippine-American War and American imperialism. Active supporter of women's suffrage — delivered his 'Votes for Women' speech in 1901. Ally of the U.S. labor movement, having been a union man himself on the river. Befriended Frederick Douglass and Harriet Beecher Stowe. Paid the tuition for Black students at Yale Law School and Lincoln University. Spoke publicly against the mistreatment of Chinese immigrants in the American West.",
+    "mentorship": "Mentored by Horace E. Bixby on the Mississippi (piloting), Artemus Ward (comedy writing), and William Dean Howells (literary refinement). In turn mentored younger writers and was a towering influence on American literature — Ernest Hemingway later said 'All modern American literature comes from one book by Mark Twain called Huckleberry Finn.'"
+  },
+  "laterYears": {
+    "retirement": "After Olivia's death in 1904 and the loss of three children, Sam retreated increasingly into solitude, billiards, and the company of his cats. He built Stormfield, a mansion in Redding, Connecticut, designed by John Mead Howells. He received visitors, dictated his autobiography, and gave occasional speeches, but the fire had dimmed. Jean's death on Christmas Eve 1909 was the final blow.",
+    "lifeLessons": "Travel is fatal to prejudice, bigotry, and narrow-mindedness. The two most important days in your life are the day you are born and the day you find out why. Always do right — this will gratify some people and astonish the rest. Courage is resistance to fear, mastery of fear — not absence of fear. Kindness is a language which the deaf can hear and the blind can see.",
+    "adviceForFutureGenerations": "Twenty years from now you will be more disappointed by the things you didn't do than by the ones you did do. So throw off the bowlines. Sail away from the safe harbor. Catch the trade winds in your sails. Explore. Dream. Discover."
+  },
+  "hobbies": {
+    "hobbies": "Billiards (passionate player, had a billiard table in his Hartford study and played nightly), cigar smoking (smoked 22 cigars a day by his own account; favored Henry Clay and Jockey Club brands), cats (kept as many as 19 at a time, rented kittens when traveling), reading and storytelling, lecture performances.",
+    "worldEvents": "Witnessed and commented on the Civil War, Reconstruction, the Gilded Age (coined the term with Charles Dudley Warner), the Spanish-American War, the Philippine-American War, the Boxer Rebellion, the rise of industrial monopolies, and the emergence of electric light and the telephone.",
+    "personalChallenges": "1894 bankruptcy from investing $300,000 in the failed Paige typesetting machine. The deaths of son Langdon (1872), daughter Susy (1896), wife Olivia (1904), and daughter Jean (1909). Deep depression and growing pessimism in his later years. Guilt over brother Henry's death in the 1858 steamboat explosion.",
+    "travel": "1867: Quaker City voyage to Europe, Egypt, and the Holy Land (became The Innocents Abroad). 1878-1879: European walking tour through Germany, Switzerland, and Italy (became A Tramp Abroad). 1891-1895: Lived in Europe (France, Germany, Austria, Italy) to reduce expenses. 1895-1896: Round-the-world lecture tour through Australia, New Zealand, India, Ceylon, Mauritius, and South Africa to repay bankruptcy debts (became Following the Equator). Also traveled extensively across the United States on lecture circuits throughout his career."
+  },
+  "health": {
+    "healthMilestones": "Born two months premature in 1835, was sickly and frail for the first 10 years of his life. Mother tried various allopathic and hydropathic remedies. In later years, suffered from gout and rheumatism. Developed severe angina pectoris (coronary artery disease) in his final years. Suffered from chronic bronchitis worsened by decades of heavy cigar smoking.",
+    "lifestyleChanges": "Never moderated his cigar habit despite health warnings. In his final years at Stormfield, he became increasingly sedentary, spending days in bed. Could barely raise his arms above his head in his last weeks.",
+    "wellnessTips": "Sam's advice on health was characteristically sardonic. He once remarked that the only way to keep your health is to eat what you don't want, drink what you don't like, and do what you'd rather not."
+  },
+  "technology": {
+    "firstTechExperience": "One of the first authors to submit a typewritten manuscript to a publisher (Life on the Mississippi, 1883, typed on a Remington). Invested heavily in the Paige Compositor, an automatic typesetting machine that was a marvel of engineering but a commercial disaster — it bankrupted him in 1894.",
+    "favoriteGadgets": "The Remington typewriter, the telephone (he had one of the earliest residential phone installations in Hartford), and he was fascinated by Nikola Tesla's electrical experiments. He visited Tesla's laboratory and the two became friends.",
+    "culturalPractices": "Sam embraced new technology eagerly — sometimes too eagerly, as the Paige Compositor proved. He saw the telegraph, telephone, and typewriter transform communication in his lifetime and commented frequently on technology's double-edged nature."
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "His autobiography, which he dictated in his final years with instructions that portions not be published until long after his death. The final volumes of the Autobiography of Mark Twain were not published until 2010-2015, a century after his death, revealing his most candid thoughts on religion, politics, and the human condition. He also left unfinished manuscripts including 'The Mysterious Stranger' and other dark late works.",
+    "messagesForFutureGenerations": "I came in with Halley's Comet in 1835. It is coming again next year, and I expect to go out with it. It will be the greatest disappointment of my life if I don't go out with Halley's Comet. The Almighty has said, no doubt: 'Now here are these two unaccountable freaks; they came in together, they must go out together.' — He died on April 21, 1910, one day after Halley's Comet made its closest approach to the sun, exactly as he predicted."
+  }
+}

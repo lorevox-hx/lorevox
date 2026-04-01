@@ -251,6 +251,15 @@ function build71InterviewPrompt(){
   const mode = getCurrentMode();
   const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "this person";
 
+  // v8 projection integration — check if there's a specific template question to ask
+  var projectionQ = _getNextProjectionQuestion(era, pass);
+  if (projectionQ) {
+    var base = projectionQ;
+    // Still enrich with draft context for family/theme hints
+    var draftHint = _buildDraftContextHint(era);
+    return draftHint ? base + " " + draftHint : base;
+  }
+
   var base;
   if(pass==="pass2a") base = _timelinePassPrompt(era, mode);
   else if(pass==="pass2b") base = _depthPassPrompt(era, mode, name);
@@ -259,6 +268,77 @@ function build71InterviewPrompt(){
   // v5 integration — enrich with Family Tree / Life Threads draft context
   var draftHint = _buildDraftContextHint(era);
   return draftHint ? base + " " + draftHint : base;
+}
+
+/* ── v8 — Projection-aware question selection ──────────────────
+   Consults the projection map for the next unanswered questionnaire
+   field relevant to the current era. Returns a conversational
+   question string, or null if nothing to ask. Skips identity fields
+   that were already captured during onboarding.
+─────────────────────────────────────────────────────────────── */
+function _getNextProjectionQuestion(era, pass) {
+  if (typeof LorevoxProjectionMap === "undefined") return null;
+  if (typeof LorevoxProjectionSync === "undefined") return null;
+  if (!state.bioBuilder) return null;
+
+  // In pass1 (identity onboarding), don't inject template questions
+  if (pass === "pass1") return null;
+
+  var projFields = state.interviewProjection ? state.interviewProjection.fields : {};
+  var bbQQ = state.bioBuilder.questionnaire || {};
+
+  // Check if identity basics already captured
+  var hasIdentity = !!(state.profile?.basics?.dob && state.profile?.basics?.pob);
+
+  var unanswered = LorevoxProjectionMap.getUnansweredForEra(
+    era, projFields, bbQQ,
+    { limit: 3, includeIdentity: !hasIdentity }
+  );
+
+  if (unanswered.length === 0) {
+    // Try repeatable sections for this era
+    return _getNextRepeatableQuestion(era, projFields, bbQQ);
+  }
+
+  // Use the highest-priority unanswered question
+  var next = unanswered[0];
+
+  // Track which projection field this prompt targets (for answer extraction)
+  state.interviewProjection._currentTargetPath = next.path;
+
+  return next.config.conversational;
+}
+
+/* ── v8 — Repeatable section question selection ─────────────── */
+function _getNextRepeatableQuestion(era, projFields, bbQQ) {
+  if (typeof LorevoxProjectionMap === "undefined") return null;
+
+  var repeatableSections = ["parents", "grandparents", "siblings"];
+  for (var i = 0; i < repeatableSections.length; i++) {
+    var section = repeatableSections[i];
+    var tpl = LorevoxProjectionMap.REPEATABLE_TEMPLATES[section];
+    if (!tpl) continue;
+
+    // Check era relevance
+    if (era && tpl.eraTags.indexOf(era) < 0) continue;
+
+    // Check if section has any entries in BB yet
+    var entries = bbQQ[section];
+    var hasEntries = Array.isArray(entries) && entries.length > 0;
+
+    // Check if we already explored this section via projection
+    var explored = false;
+    Object.keys(projFields).forEach(function (k) {
+      if (k.indexOf(section + "[") === 0) explored = true;
+    });
+
+    if (!hasEntries && !explored) {
+      state.interviewProjection._currentTargetSection = section;
+      state.interviewProjection._currentTargetPath = null;
+      return tpl.entryPrompt;
+    }
+  }
+  return null;
 }
 
 /* ── v6 — era-aware draft context hint for interview prompts ── */
@@ -436,6 +516,13 @@ async function processInterviewAnswer(text, skipped=false){
   // Capture the answered question's ID BEFORE the response updates state.interview
   // (j.next_question will overwrite state.interview.question_id below)
   const answeredQuestionId = state.interview.question_id;
+
+  // v8 projection: attempt to project the answer into the targeted field
+  // Multi-field extraction runs async (non-blocking) alongside the interview API call
+  if (!skipped && text && text.trim()) {
+    _projectAnswerToField(text.trim(), answeredQuestionId);
+    _extractAndProjectMultiField(text.trim(), answeredQuestionId);
+  }
   try{
     const r=await fetch(API.IV_ANSWER,{method:"POST",headers:ctype(),body:JSON.stringify({
       session_id:state.interview.session_id,
@@ -565,5 +652,222 @@ function renderCaptureChip(){
     el.className="capture-chip saved"; el.textContent="📁 Saved to archive";
   } else {
     el.className="capture-chip edited"; el.textContent="✎ Edited by hand";
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   v8 — Interview Projection: Answer → Field Extraction
+   Attempts to project the user's answer text into the targeted
+   projection field. Uses the target path set by _getNextProjectionQuestion()
+   or _getNextRepeatableQuestion(). For simple identity fields, the answer
+   text is used directly. For narrative fields, the full answer is stored.
+   For repeatable sections, the answer seeds a new candidate entry.
+═══════════════════════════════════════════════════════════════ */
+
+function _projectAnswerToField(answerText, turnId) {
+  if (typeof LorevoxProjectionSync === "undefined") return;
+  if (typeof LorevoxProjectionMap === "undefined") return;
+  if (!state.interviewProjection) return;
+
+  var targetPath    = state.interviewProjection._currentTargetPath || null;
+  var targetSection = state.interviewProjection._currentTargetSection || null;
+
+  // Save for multi-field extractor (consumed after async call)
+  state.interviewProjection._lastTargetPath = targetPath;
+  state.interviewProjection._lastTargetSection = targetSection;
+
+  // Clean up tracking state
+  state.interviewProjection._currentTargetPath = null;
+  state.interviewProjection._currentTargetSection = null;
+
+  if (targetPath) {
+    // Direct field projection — answer maps to a specific questionnaire field
+    var config = LorevoxProjectionMap.getFieldConfig(targetPath);
+    var value = answerText;
+
+    // Apply normalization helpers if available
+    if (config && config.inputHelper) {
+      if (config.inputHelper === "normalizeDob" && typeof normalizeDobInput === "function") {
+        value = normalizeDobInput(value);
+      } else if (config.inputHelper === "normalizePlace" && typeof normalizePlaceInput === "function") {
+        value = normalizePlaceInput(value);
+      } else if (config.inputHelper === "normalizeTime" && typeof normalizeTimeOfBirthInput === "function") {
+        value = normalizeTimeOfBirthInput(value);
+      }
+    }
+
+    LorevoxProjectionSync.projectValue(targetPath, value, {
+      source: "interview",
+      turnId: turnId,
+      confidence: 0.85
+    });
+
+    // Auto-derive zodiac if we just projected a DOB
+    if (targetPath === "personal.dateOfBirth" && typeof deriveZodiacFromDob === "function") {
+      var zodiac = deriveZodiacFromDob(value);
+      if (zodiac) {
+        LorevoxProjectionSync.projectValue("personal.zodiacSign", zodiac, {
+          source: "interview",
+          turnId: turnId,
+          confidence: 1.0
+        });
+      }
+    }
+
+    console.log("[interview] Projected answer → " + targetPath);
+
+  } else if (targetSection) {
+    // Repeatable section — seed a new candidate entry from the answer
+    // The answer likely contains a name or description; we project it as
+    // the first field of a new entry (usually firstName for people sections)
+    var tpl = LorevoxProjectionMap.REPEATABLE_TEMPLATES[targetSection];
+    if (!tpl) return;
+
+    // Determine next index
+    var bb = state.bioBuilder;
+    var existingEntries = (bb && bb.questionnaire && Array.isArray(bb.questionnaire[targetSection]))
+      ? bb.questionnaire[targetSection].length : 0;
+    var projEntries = 0;
+    Object.keys(state.interviewProjection.fields).forEach(function (k) {
+      if (k.indexOf(targetSection + "[") === 0) {
+        var m = k.match(/\[(\d+)\]/);
+        if (m) projEntries = Math.max(projEntries, parseInt(m[1], 10) + 1);
+      }
+    });
+    var nextIdx = Math.max(existingEntries, projEntries);
+
+    // Try to extract a name from the answer (simple heuristic: first few words)
+    var words = answerText.split(/\s+/);
+    var nameGuess = words.slice(0, 3).join(" "); // rough first-name extraction
+
+    var firstNamePath = LorevoxProjectionMap.buildRepeatablePath(targetSection, nextIdx, "firstName");
+    LorevoxProjectionSync.projectValue(firstNamePath, nameGuess, {
+      source: "interview",
+      turnId: turnId,
+      confidence: 0.6  // lower confidence for heuristic extraction
+    });
+
+    console.log("[interview] Seeded repeatable entry → " + targetSection + "[" + nextIdx + "]");
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   v8.1 — Backend Multi-Field Extraction
+   Calls /api/extract-fields to decompose a compound answer into
+   multiple field projections. Runs async and non-blocking.
+   Falls back gracefully if the backend is unreachable.
+═══════════════════════════════════════════════════════════════ */
+
+function _extractAndProjectMultiField(answerText, turnId) {
+  if (typeof LorevoxProjectionSync === "undefined") return;
+  if (typeof LorevoxProjectionMap === "undefined") return;
+  if (!state.interviewProjection) return;
+  if (!state.person_id) return;
+
+  var targetPath = state.interviewProjection._lastTargetPath || null;
+  var targetSection = state.interviewProjection._lastTargetSection || null;
+
+  var payload = {
+    person_id: state.person_id,
+    session_id: state.interview.session_id || null,
+    answer: answerText,
+    current_section: targetSection || null,
+    current_target_path: targetPath || null
+  };
+
+  fetch((window.LOREVOX_API || "http://localhost:8000") + "/api/extract-fields", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(function (resp) {
+    if (!resp.ok) throw new Error("extract-fields returned " + resp.status);
+    return resp.json();
+  })
+  .then(function (data) {
+    if (!data.items || data.items.length === 0) {
+      console.log("[extract] No additional fields extracted (method: " + data.method + ")");
+      return;
+    }
+    console.log("[extract] Backend returned " + data.items.length + " items via " + data.method);
+
+    // Track repeatable section indices for grouping
+    var repeatableCounters = {};
+
+    data.items.forEach(function (item) {
+      var fieldPath = item.fieldPath;
+      var writeMode = item.writeMode;
+
+      // For repeatable sections, resolve the path with a proper index.
+      // Backend returns generic paths like "parents.firstName" (no index).
+      // parsePath("parents.firstName") returns {section, index: null, field}
+      // which needs an index assigned for repeatable sections.
+      var parsed = LorevoxProjectionMap.parsePath(fieldPath);
+      var needsIndex = !parsed
+        || (parsed && parsed.index === null && LorevoxProjectionMap.REPEATABLE_TEMPLATES[parsed.section]);
+
+      if (needsIndex) {
+        var parts = fieldPath.split(".");
+        var section = parsed ? parsed.section : parts[0];
+        var field = parsed ? parsed.field : parts[1];
+        if (section && field && LorevoxProjectionMap.REPEATABLE_TEMPLATES[section]) {
+
+          // Determine the right index for this entry
+          if (!repeatableCounters[section]) {
+            // Find the next available index
+            var bb = state.bioBuilder;
+            var existingEntries = (bb && bb.questionnaire && Array.isArray(bb.questionnaire[section]))
+              ? bb.questionnaire[section].length : 0;
+            var projEntries = 0;
+            Object.keys(state.interviewProjection.fields).forEach(function (k) {
+              if (k.indexOf(section + "[") === 0) {
+                var m = k.match(/\[(\d+)\]/);
+                if (m) projEntries = Math.max(projEntries, parseInt(m[1], 10) + 1);
+              }
+            });
+            repeatableCounters[section] = Math.max(existingEntries, projEntries);
+          }
+
+          fieldPath = LorevoxProjectionMap.buildRepeatablePath(section, repeatableCounters[section], field);
+        }
+      }
+
+      // Skip if the simple extractor already projected this exact path
+      var existing = state.interviewProjection.fields[fieldPath];
+      if (existing && existing.turnId === turnId && existing.value === item.value) {
+        console.log("[extract] Skipping duplicate: " + fieldPath);
+        return;
+      }
+
+      // Project through the sync layer — all write-mode rules still apply
+      var projected = LorevoxProjectionSync.projectValue(fieldPath, item.value, {
+        source: "backend_extract",
+        turnId: turnId,
+        confidence: item.confidence || 0.8
+      });
+
+      if (projected) {
+        console.log("[extract] ✓ Projected: " + fieldPath + " = " + item.value.substring(0, 50));
+      }
+    });
+
+    // Force persist after batch
+    if (typeof LorevoxProjectionSync.forcePersist === "function") {
+      LorevoxProjectionSync.forcePersist();
+    }
+  })
+  .catch(function (err) {
+    // Non-fatal: backend extraction is supplementary
+    console.warn("[extract] Backend extraction unavailable:", err.message);
+  });
+}
+
+
+/* ── v8 — Wire projection reset into narrator switch ─────────── */
+/* Called from app.js lvxSwitchNarratorSafe() alongside the
+   bio-builder-core narrator reset. */
+function _ivResetProjectionForNarrator(newPid) {
+  if (typeof LorevoxProjectionSync !== "undefined") {
+    LorevoxProjectionSync.resetForNarrator(newPid);
   }
 }

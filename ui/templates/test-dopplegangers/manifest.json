@@ -1,0 +1,185 @@
+{
+  "_note": "Doppleganger validation set for storage alignment testing",
+  "templates": [
+    {
+      "file": "william-1-doppleganger.json",
+      "source": "william-shatner.json",
+      "displayName": "William 1 Doppleganger",
+      "preferredName": "William 1",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "William Alan Shatner",
+          "to": "William 1 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "William Shatner",
+          "to": "William 1"
+        },
+        "personal.legalLastName": {
+          "from": "Shatner",
+          "to": "Doppleganger"
+        }
+      }
+    },
+    {
+      "file": "jane-2-doppleganger.json",
+      "source": "jane-goodall.json",
+      "displayName": "Jane 2 Doppleganger",
+      "preferredName": "Jane 2",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "Valerie Jane Morris-Goodall",
+          "to": "Jane 2 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "Jane Goodall",
+          "to": "Jane 2"
+        },
+        "personal.legalLastName": {
+          "from": "Morris-Goodall",
+          "to": "Doppleganger"
+        }
+      }
+    },
+    {
+      "file": "maya-3-doppleganger.json",
+      "source": "maya-angelou.json",
+      "displayName": "Maya 3 Doppleganger",
+      "preferredName": "Maya 3",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "Maya Angelou",
+          "to": "Maya 3 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "Maya",
+          "to": "Maya 3"
+        },
+        "personal.legalLastName": {
+          "from": "Johnson",
+          "to": "Doppleganger"
+        }
+      }
+    },
+    {
+      "file": "mark-4-doppleganger.json",
+      "source": "mark-twain.json",
+      "displayName": "Mark 4 Doppleganger",
+      "preferredName": "Mark 4",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "Samuel Langhorne Clemens",
+          "to": "Mark 4 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "Mark Twain",
+          "to": "Mark 4"
+        },
+        "personal.legalLastName": {
+          "from": "Clemens",
+          "to": "Doppleganger"
+        }
+      }
+    },
+    {
+      "file": "katherine-5-doppleganger.json",
+      "source": "katherine-johnson.json",
+      "displayName": "Katherine 5 Doppleganger",
+      "preferredName": "Katherine 5",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "Creola Katherine Coleman Johnson",
+          "to": "Katherine 5 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "Katherine Johnson",
+          "to": "Katherine 5"
+        },
+        "personal.legalLastName": {
+          "from": "Johnson",
+          "to": "Doppleganger"
+        }
+      }
+    },
+    {
+      "file": "grace-6-doppleganger.json",
+      "source": "grace-hopper.json",
+      "displayName": "Grace 6 Doppleganger",
+      "preferredName": "Grace 6",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "Grace Brewster Murray Hopper",
+          "to": "Grace 6 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "Grace Hopper",
+          "to": "Grace 6"
+        },
+        "personal.legalLastName": {
+          "from": "Murray",
+          "to": "Doppleganger"
+        }
+      }
+    },
+    {
+      "file": "harvey-7-doppleganger.json",
+      "source": "harvey-milk.json",
+      "displayName": "Harvey 7 Doppleganger",
+      "preferredName": "Harvey 7",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "Harvey Bernard Milk",
+          "to": "Harvey 7 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "Harvey",
+          "to": "Harvey 7"
+        },
+        "personal.legalLastName": {
+          "from": "Milk",
+          "to": "Doppleganger"
+        }
+      }
+    },
+    {
+      "file": "fred-8-doppleganger.json",
+      "source": "fred-korematsu.json",
+      "displayName": "Fred 8 Doppleganger",
+      "preferredName": "Fred 8",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "Fred Toyosaburo Korematsu",
+          "to": "Fred 8 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "Fred",
+          "to": "Fred 8"
+        },
+        "personal.legalLastName": {
+          "from": "Korematsu",
+          "to": "Doppleganger"
+        }
+      }
+    },
+    {
+      "file": "dolores-9-doppleganger.json",
+      "source": "dolores-huerta.json",
+      "displayName": "Dolores 9 Doppleganger",
+      "preferredName": "Dolores 9",
+      "changedFields": {
+        "personal.fullName": {
+          "from": "Dolores Clara Fernández Huerta",
+          "to": "Dolores 9 Doppleganger"
+        },
+        "personal.preferredName": {
+          "from": "Dolores Huerta",
+          "to": "Dolores 9"
+        },
+        "personal.legalLastName": {
+          "from": "Huerta",
+          "to": "Doppleganger"
+        }
+      }
+    }
+  ]
+}

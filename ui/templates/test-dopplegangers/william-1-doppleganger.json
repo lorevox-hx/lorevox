@@ -1,0 +1,258 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "DOPPLEGANGER of william-shatner.json — test-only template",
+  "personal": {
+    "fullName": "William 1 Doppleganger",
+    "preferredName": "William 1",
+    "legalFirstName": "William",
+    "legalMiddleName": "Alan",
+    "legalLastName": "Doppleganger",
+    "dateOfBirth": "1931-03-22",
+    "timeOfBirth": "04:00",
+    "placeOfBirth": "Notre-Dame-de-Grâce, Montreal, Quebec, Canada",
+    "birthOrder": "2 (middle of three children)",
+    "zodiacSign": "Aries",
+    "pronouns": "he/him",
+    "culture": "Jewish",
+    "country": "Canada (Canadian-American)",
+    "language": "English"
+  },
+  "parents": [
+    {
+      "relation": "father",
+      "firstName": "Joseph",
+      "middleName": "",
+      "lastName": "Shatner",
+      "maidenName": "",
+      "birthDate": "1898",
+      "birthPlace": "Ukraine/Lithuania (Jewish immigrant from Austria-Hungary and Russian Empire)",
+      "occupation": "Clothing manufacturer",
+      "deceased": true,
+      "notableLifeEvents": "Anglicized family surname from Schattner; immigrant from settlements in Ukraine and Lithuania",
+      "notes": "Died in 1967"
+    },
+    {
+      "relation": "mother",
+      "firstName": "Ann",
+      "middleName": "",
+      "lastName": "Shatner",
+      "maidenName": "Garmaise",
+      "birthDate": "1905",
+      "birthPlace": "Ukraine/Lithuania (Jewish immigrant)",
+      "occupation": "Elocution teacher",
+      "deceased": true,
+      "notableLifeEvents": "Taught elocution and influenced William's early communication skills",
+      "notes": "Died in 1992"
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "Wolf",
+      "lastName": "Schattner",
+      "ancestry": "Jewish immigrant",
+      "culturalBackground": "Originally from settlements in Ukraine and Lithuania under Austria-Hungary and Russian Empire rule",
+      "memorableStories": "Anglicized the family surname from Schattner to Shatner upon immigration to Canada"
+    },
+    {
+      "firstName": "",
+      "lastName": "Garmaise",
+      "ancestry": "Jewish immigrant",
+      "culturalBackground": "Originally from Ukraine and Lithuania",
+      "memorableStories": ""
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "older sister",
+      "firstName": "Joy",
+      "middleName": "",
+      "lastName": "Rutenberg",
+      "birthOrder": "1 (oldest)",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "Montreal childhood in Conservative Jewish household",
+      "memories": "",
+      "notes": "1928-2023"
+    },
+    {
+      "relation": "younger sister",
+      "firstName": "Farla",
+      "middleName": "",
+      "lastName": "Cohen",
+      "birthOrder": "3 (youngest)",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "Montreal childhood in Conservative Jewish household",
+      "memories": "",
+      "notes": "Born 1940"
+    }
+  ],
+  "spouse": [
+    {
+      "firstName": "Gloria",
+      "middleName": "",
+      "lastName": "Rand",
+      "birthPlace": "",
+      "occupation": "",
+      "narrative": "First wife, married 1956-1969. Mother of three daughters: Leslie, Lisabeth, and Melanie. Divorced the same year Star Trek's original series ended (1969).",
+      "deceased": false,
+      "marriageNumber": 1
+    },
+    {
+      "firstName": "Marcy",
+      "middleName": "",
+      "lastName": "Lafferty",
+      "birthPlace": "",
+      "occupation": "",
+      "narrative": "Second wife, married 1973-1996. This was Shatner's longest marriage lasting 23 years, but produced no children.",
+      "deceased": false,
+      "marriageNumber": 2
+    },
+    {
+      "firstName": "Nerine",
+      "middleName": "Elizabeth",
+      "lastName": "Kidd",
+      "birthPlace": "",
+      "occupation": "Actress",
+      "narrative": "Third wife, married 1997-1999. Tragically drowned in the couple's swimming pool on August 9, 1999, at age 40. Met Shatner on the set of 'Kung Fu: The Legend Continues' in 1994. Blood alcohol level was .27 (over 3x legal driving limit) at time of death. Official cause: drowning associated with neck trauma; ruled accidental.",
+      "deceased": true,
+      "marriageNumber": 3
+    },
+    {
+      "firstName": "Elizabeth",
+      "middleName": "",
+      "lastName": "Anderson Martin",
+      "birthPlace": "",
+      "occupation": "",
+      "narrative": "Fourth wife, married 2001. Divorced December 2019 but reconnected and are now back together. Shared affection for horses and dogs, particularly Doberman Pinschers.",
+      "deceased": false,
+      "marriageNumber": 4
+    }
+  ],
+  "children": [
+    {
+      "firstName": "Leslie",
+      "middleName": "",
+      "lastName": "Shatner",
+      "birthDate": "1958",
+      "narrative": "Daughter from first marriage to Gloria Rand. Eldest of three daughters."
+    },
+    {
+      "firstName": "Lisabeth",
+      "middleName": "",
+      "lastName": "Shatner",
+      "birthDate": "1961",
+      "narrative": "Daughter from first marriage to Gloria Rand. Middle daughter."
+    },
+    {
+      "firstName": "Melanie",
+      "middleName": "",
+      "lastName": "Shatner",
+      "birthDate": "1964",
+      "narrative": "Daughter from first marriage to Gloria Rand. Youngest of three daughters."
+    }
+  ],
+  "marriage": [
+    {
+      "spouseNumber": 1,
+      "proposalStory": "",
+      "weddingDetails": "Married Gloria Rand in 1956"
+    },
+    {
+      "spouseNumber": 2,
+      "proposalStory": "",
+      "weddingDetails": "Married Marcy Lafferty in 1973"
+    },
+    {
+      "spouseNumber": 3,
+      "proposalStory": "Met on the set of 'Kung Fu: The Legend Continues' in 1994 while Shatner was directing",
+      "weddingDetails": "Married Nerine Kidd in November 1997"
+    },
+    {
+      "spouseNumber": 4,
+      "proposalStory": "",
+      "weddingDetails": "Married Elizabeth Anderson Martin in February 2001"
+    }
+  ],
+  "familyTraditions": [
+    {
+      "description": "Conservative Jewish household observances in Montreal",
+      "occasion": "Religious and cultural heritage maintained throughout childhood"
+    },
+    {
+      "description": "Equestrian pursuits and breeding",
+      "occasion": "Belle Reve Farm in Versailles, Kentucky; world championship horse shows and breeding excellence"
+    },
+    {
+      "description": "Dog companionship",
+      "occasion": "Lifelong preference for Doberman Pinschers; owned at least 15 over his lifetime with names like Espresso, Mocha, Macchiato, Cappuccino, Starbuck, Bella, Charity, Sterling, Royale, Martika, Paris, Heidi, China, and Morgan"
+    }
+  ],
+  "pets": [
+    {
+      "name": "Espresso",
+      "species": "dog",
+      "breed": "Doberman Pinscher",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Mocha",
+      "species": "dog",
+      "breed": "Doberman Pinscher",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Macchiato",
+      "species": "dog",
+      "breed": "Doberman Pinscher",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "Sultan's Great Day",
+      "species": "horse",
+      "breed": "American Saddlebred",
+      "birthDate": "",
+      "adoptionDate": "Premier breeding stallion until death in 2004"
+    }
+  ],
+  "earlyMemories": {
+    "firstMemory": "",
+    "favoriteToy": "",
+    "significantEvent": "Growing up in Notre-Dame-de-Grâce neighborhood of Montreal in a Conservative Jewish household; influenced by mother's elocution teaching; early exposure to theatre through parents"
+  },
+  "education": {
+    "schooling": "Montreal public schools during 1930s-1940s",
+    "higherEducation": "McGill University, graduated 1952 with Commerce degree. President of McGill's Radio Workshop; active in Player's Club theatre productions. Awarded honorary Doctorate of Letters from McGill in 2011.",
+    "earlyCareer": "Assistant manager and actor at Mountain Playhouse in Montreal; Canadian National Repertory Theatre in Ottawa; joined Stratford Shakespeare Festival in 1954. Major breakthrough in 1956 when he replaced Christopher Plummer on 3 hours' notice in Henry V at Stratford.",
+    "careerProgression": "Stratford Festival (1954-1956); television work in the late 1950s; major film and television roles; Star Trek (1966-1969) as Captain James T. Kirk; T.J. Hooker (1982-1986); Boston Legal (2004-2008) as Denny Crane, winning Golden Globe (2005) and Emmy nominations (2005-2009); extensive film career spanning 6+ decades.",
+    "communityInvolvement": "Canadian theatre development; American horse breeding and equestrian competitions; space exploration advocate (Blue Origin ambassador)",
+    "mentorship": "Influenced by Stratford Shakespeare Festival directors; mentored by Canadian theatre traditions"
+  },
+  "laterYears": {
+    "retirement": "Never fully retired; continued acting well into his 90s. Boston Legal ended 2008 but took guest and voice roles thereafter. At age 90 in 2021, flew to space on Blue Origin's New Shepard suborbital flight, becoming oldest person to reach space.",
+    "lifeLessons": "Perseverance and reinvention; the importance of pursuing multiple passions (acting, directing, writing, equestrian sports, music); cultural pride in Jewish heritage; environmental awareness and space exploration advocacy; longevity through active lifestyle and diverse interests.",
+    "adviceForFutureGenerations": "Embrace bold challenges at any age; pursue excellence in multiple disciplines; maintain cultural and family heritage; use platform for positive influence; continue learning and growing throughout life; balance work with personal passions like animal care and horsemanship"
+  },
+  "hobbies": {
+    "hobbies": "Equestrian pursuits; horse breeding (American Saddlebred champion); writing (numerous books and autobiography); music and spoken word albums; dog breeding and care (Doberman Pinschers); directing; space exploration; golf; automobiles; photography",
+    "worldEvents": "Lived through Great Depression and World War II in Canada; Cold War era during Star Trek's creation; space race advocacy; environmental conservation efforts; advocated for Canadian cultural institutions; witnessed transformation of television and film industries",
+    "personalChallenges": "Loss of third wife Nerine Kidd in tragic drowning accident (1999); multiple divorces; managing public persona versus private life; sustaining successful career longevity across multiple mediums",
+    "travel": "Extensive international travel for film and television production; Star Trek convention appearances worldwide; equestrian competition travels to Kentucky and other U.S. locations for horse shows; space flight to edge of space via Blue Origin (October 13, 2021)"
+  },
+  "health": {
+    "healthMilestones": "Maintained active lifestyle into 90s; physically capable of space flight at age 90; no significant major health incidents publicly documented; active equestrian participation",
+    "lifestyleChanges": "Transitioned from physically demanding film/TV roles to directing and hosting later in career; maintained fitness through equestrian activities; continued professional work while managing personal relationships",
+    "wellnessTips": "Regular equestrian exercise; maintaining active professional and creative pursuits; diverse hobby engagement; strong family connections; purposeful life direction; space exploration experience at advanced age demonstrates vitality and openness to new challenges"
+  },
+  "technology": {
+    "firstTechExperience": "Early television work in 1950s; Star Trek groundbreaking special effects and futuristic technology portrayal; embraced space exploration through Blue Origin partnership",
+    "favoriteGadgets": "Television and film production equipment; professional directing technology; horses and equestrian equipment (modern saddles, training equipment); automobiles",
+    "culturalPractices": "Active on social media (Twitter/X, Facebook); embraced digital entertainment distribution; continued relevance through streaming platforms; digital music releases; online storytelling through spoken word and podcast formats"
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "Further space exploration beyond suborbital flight; continued acting and directing projects; expanding equestrian breeding legacy; advancing environmental and conservation causes",
+    "messagesForFutureGenerations": "Live boldly and pursue your passions at any age. The character of Captain Kirk taught me that leadership means standing up for what's right. My horses and dogs have taught me about loyalty and responsibility. The most important thing is to stay active, engaged, and curious about the world. Whether you're exploring space or breeding championship horses, excellence comes from dedication and love for what you do. Never let age define your possibilities. And remember—boldly go where no one has gone before, whether that's actual space or new chapters in your own life."
+  }
+}

@@ -4,7 +4,7 @@
    Loads a narrator template JSON file and populates:
    1. API person record (display_name, date_of_birth, place_of_birth)
    2. Profile basics + kinship + pets (state.profile)
-   3. Bio Builder questionnaire (localStorage bb_qq_<pid>)
+   3. Bio Builder questionnaire (localStorage lorevox_qq_draft_<pid>)
 
    Usage:
      lv80PreloadNarrator(templateObj)     — creates person + loads data
@@ -15,6 +15,42 @@
 
 (function () {
   "use strict";
+
+  /* ── One-time migration: bb_qq_<pid> → lorevox_qq_draft_<pid> ─
+     Runs once on load.  Finds any legacy keys, migrates them to
+     the unified key (wrapping in { v, d } if needed), then deletes
+     the legacy key so no dual storage paths remain.
+  ──────────────────────────────────────────────────────────── */
+  (function _migrateLegacyQQ() {
+    try {
+      var keys = Object.keys(localStorage);
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        if (k.indexOf("bb_qq_") !== 0) continue;
+        var pid = k.slice(6); // strip "bb_qq_"
+        var newKey = "lorevox_qq_draft_" + pid;
+        // Only migrate if the new key does not already exist
+        if (!localStorage.getItem(newKey)) {
+          var raw = localStorage.getItem(k);
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            // Ensure { v, d } wrapper — legacy may or may not have it
+            if (parsed && parsed.d && typeof parsed.d === "object") {
+              // Already wrapped
+              localStorage.setItem(newKey, raw);
+            } else if (parsed && typeof parsed === "object") {
+              // Raw questionnaire object — wrap it
+              localStorage.setItem(newKey, JSON.stringify({ v: 1, d: parsed }));
+            }
+            console.log("[preload] Migrated legacy bb_qq_" + pid + " → lorevox_qq_draft_" + pid);
+          }
+        }
+        localStorage.removeItem(k);
+      }
+    } catch (e) {
+      // localStorage unavailable — skip silently
+    }
+  })();
 
   /* ── Template → Questionnaire mapping ─────────────────────── */
 
@@ -237,13 +273,18 @@
       if (typeof hydrateProfileForm === "function") hydrateProfileForm();
       if (typeof saveProfile === "function") saveProfile();
 
-      // 4. Save questionnaire to localStorage
+      // 4. Save questionnaire to localStorage (unified key — matches bio-builder-core.js)
       var qq = _buildQuestionnaire(tpl);
-      localStorage.setItem("bb_qq_" + pid, JSON.stringify(qq));
+      localStorage.setItem("lorevox_qq_draft_" + pid, JSON.stringify(qq));
 
       // 5. Update UI
       if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
       if (typeof refreshPeople === "function") await refreshPeople();
+
+      // v8: initialize interview projection for the newly created person
+      if (typeof _ivResetProjectionForNarrator === "function") {
+        _ivResetProjectionForNarrator(pid);
+      }
 
       console.log("[preload] ✅ " + displayName + " fully loaded — PID: " + pid);
       if (typeof sysBubble === "function") sysBubble("✅ Preloaded: " + displayName);
@@ -272,7 +313,7 @@
       if (typeof saveProfile === "function") saveProfile();
 
       var qq = _buildQuestionnaire(tpl);
-      localStorage.setItem("bb_qq_" + pid, JSON.stringify(qq));
+      localStorage.setItem("lorevox_qq_draft_" + pid, JSON.stringify(qq));
 
       if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
 

@@ -389,6 +389,13 @@ async function loadPerson(pid){
   window.LorevoxLifeMap?.refresh();
   // Bio Builder — refresh per-narrator state when person switches
   window.LorevoxBioBuilder?.refresh();
+
+  // v8: auto-initialize interview projection from localStorage
+  // This fixes the bug where projection state is empty after reload
+  // despite data existing in localStorage under lorevox_proj_draft_<pid>.
+  if (typeof _ivResetProjectionForNarrator === "function") {
+    _ivResetProjectionForNarrator(pid);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -403,6 +410,11 @@ async function lvxSwitchNarratorSafe(pid){
   // hard clear narrator-scoped UI before profile hydration
   if (window.LorevoxBioBuilder?.onNarratorSwitch) {
     window.LorevoxBioBuilder.onNarratorSwitch(pid);
+  }
+
+  // v8: reset interview projection for incoming narrator
+  if (typeof _ivResetProjectionForNarrator === "function") {
+    _ivResetProjectionForNarrator(pid);
   }
 
   // clear narrator-scoped visible UI
@@ -1610,6 +1622,14 @@ async function sendUserMessage(){
         }
       }
     }catch{}
+  }
+
+  // v8.0 — fire multi-field extraction even in free-form chat (Timeline Walk)
+  // when no structured interview is active. Non-blocking async call.
+  if(!state.interview.session_id && typeof _extractAndProjectMultiField === "function"){
+    try{ _extractAndProjectMultiField(text, "turn-" + Date.now()); }catch(e){
+      console.log("[extract] free-form extraction error:", e);
+    }
   }
 
   const payload=systemInstruction?`${text}\n\n${systemInstruction}`:text;

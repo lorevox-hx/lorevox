@@ -121,7 +121,45 @@ let state = {
     cognitiveMode:    null,        // null | 'open' | 'recognition' | 'grounding' | 'light' | 'alongside'
     fatigueScore:     0,           // 0–100, estimated by session_vitals
   },
+
+  /* ── v8 Interview Projection ────────────────────────────────────
+     Live state for conversational template intake.
+     Lori asks Bio Builder questionnaire questions during interview;
+     answers project into this object, then sync to Bio Builder.
+
+     Keying:
+       Non-repeatable: "personal.fullName", "earlyMemories.firstMemory"
+       Repeatable:     "parents[0].firstName", "siblings[1].relation"
+
+     Each field entry:
+       value      : string — current projected value
+       source     : "interview" | "preload" | "human_edit" | "profile_hydrate"
+       turnId     : string|null — interview turn that produced this value
+       confidence : float 0–1 — extraction confidence
+       locked     : bool — true when human-edited; AI cannot overwrite
+       ts         : number — ms epoch of last update
+       history    : array — prior { value, source, turnId, confidence, ts }
+
+     Sync rules (enforced by projection-sync.js):
+       1. prefill_if_blank — write to BB field only if currently empty
+       2. candidate_only   — never write directly; create candidate entry
+       3. suggest_only     — queue suggestion; user must accept
+
+     Lifecycle:
+       - Reset on narrator switch (same as bioBuilder state)
+       - Persisted to localStorage as lorevox_proj_draft_<pid>
+       - Hydrated from localStorage on narrator load
+  ─────────────────────────────────────────────────────────────── */
+  interviewProjection: {
+    personId: null,
+    fields: {},           // { "section.field": { value, source, turnId, confidence, locked, ts, history[] } }
+    pendingSuggestions: [],// { fieldPath, value, confidence, turnId, ts } — for suggest_only fields
+    syncLog: [],          // { fieldPath, action, fromValue, toValue, ts } — audit trail, capped at 200
+  },
 };
+
+/* ── v8 Debug: expose projection state globally for console inspection ── */
+window.__proj = state.interviewProjection;
 
 /* ── Interview progress ── */
 let sectionIndex   = 0;

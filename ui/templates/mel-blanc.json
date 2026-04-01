@@ -1,0 +1,134 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_note": "Mel Blanc — voice actor test narrator for projection validation",
+
+  "personal": {
+    "fullName": "Melvin Jerome Blank",
+    "preferredName": "Mel Blanc",
+    "legalFirstName": "Melvin",
+    "legalMiddleName": "Jerome",
+    "legalLastName": "Blank",
+    "dateOfBirth": "1908-05-30",
+    "timeOfBirth": "",
+    "placeOfBirth": "San Francisco, California, United States",
+    "birthOrder": "Second child",
+    "zodiacSign": "Gemini",
+    "pronouns": "he/him",
+    "culture": "American, Jewish",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Eva",
+      "middleName": "",
+      "lastName": "Blank",
+      "maidenName": "Katz",
+      "birthDate": "",
+      "birthPlace": "Eastern Europe",
+      "occupation": "Homemaker",
+      "deceased": true,
+      "notableLifeEvents": "Immigrated to the United States from Eastern Europe. Raised the family in San Francisco before moving to Portland, Oregon when Mel was a young boy.",
+      "notes": "Jewish immigrant family."
+    },
+    {
+      "relation": "Father",
+      "firstName": "Frederick",
+      "middleName": "",
+      "lastName": "Blank",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "Eastern Europe",
+      "occupation": "Shopkeeper",
+      "deceased": true,
+      "notableLifeEvents": "Immigrated from Eastern Europe to San Francisco. Moved the family to Portland, Oregon when Mel was young. Ran a small shop.",
+      "notes": "The family name was originally 'Blank' — Mel later changed it to 'Blanc' for professional reasons."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "firstName": "",
+      "lastName": "Blank",
+      "ancestry": "Eastern European Jewish",
+      "culturalBackground": "Jewish immigrant family from Eastern Europe, likely Russia or Lithuania.",
+      "memorableStories": ""
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "Henry",
+      "middleName": "",
+      "lastName": "Blank",
+      "birthOrder": "First child",
+      "uniqueCharacteristics": "Mel's older brother.",
+      "sharedExperiences": "Grew up together in Portland, Oregon.",
+      "memories": "",
+      "notes": ""
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Estelle",
+    "middleName": "",
+    "lastName": "Rosenbaum",
+    "birthPlace": "",
+    "occupation": "",
+    "narrative": "Mel married Estelle Rosenbaum in 1933. Their marriage lasted 56 years until Mel's death in 1989. Estelle was a devoted partner throughout his career. They had one son, Noel.",
+    "deceased": true
+  },
+
+  "children": [
+    {
+      "firstName": "Noel",
+      "middleName": "",
+      "lastName": "Blanc",
+      "birthDate": "1938-07-25",
+      "narrative": "Noel followed his father into voice acting. After Mel's death, Noel took over many of his father's iconic character voices, including Bugs Bunny, for several years. He carried on the family legacy."
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Growing up in Portland, Oregon after the family moved from San Francisco. Mel was fascinated by sounds and voices from a very early age. He would mimic the sounds he heard around the neighborhood — animals, street vendors, the clang of trolley cars.",
+    "favoriteToy": "Not a toy so much as his own voice. By the time he was in grade school, Mel could imitate teachers, neighbors, and anyone he encountered. His classmates would gather around to hear him perform.",
+    "significantEvent": "Discovering his gift for mimicry. As a young boy, Mel realized he could reproduce almost any sound or voice he heard. This talent made him the center of attention at school and in the neighborhood, and set the course of his entire life."
+  },
+
+  "education": {
+    "schooling": "Attended Lincoln High School in Portland, Oregon. Was active in school plays, the orchestra, and any performance opportunity he could find. His teachers noticed his vocal talent early.",
+    "higherEducation": "No formal higher education. Mel went directly into radio and performing after high school. He considered his real education to be the years of radio work in Portland and later Los Angeles.",
+    "earlyCareer": "Started performing on local Portland radio stations in the late 1920s. Did voices, characters, and comedy bits. Worked at KGW and KEX radio stations in Portland. By the early 1930s, he was doing regular radio work and building a reputation as a versatile voice performer.",
+    "careerProgression": "1933: Moved to Los Angeles to pursue bigger opportunities. 1936: Auditioned at Warner Bros. and was hired by Leon Schlesinger Productions to voice characters in Looney Tunes and Merrie Melodies cartoons. 1937: First voiced Porky Pig, taking over from Joe Dougherty. 1940: Created the voice of Bugs Bunny for 'A Wild Hare,' the character that would define his career. Over the next decades, voiced Daffy Duck, Tweety Bird, Sylvester the Cat, Yosemite Sam, Foghorn Leghorn, Peppy Le Pew, Speedy Gonzales, the Tasmanian Devil, Barney Rubble, Mr. Spacely, Speed Buggy, Captain Caveman, and hundreds more. Was the only voice actor to receive on-screen credit at Warner Bros. during the golden age of animation. 1961: Near-fatal car accident on Sunset Boulevard left him in a coma. During recovery, a doctor reportedly asked 'How are you feeling today, Bugs Bunny?' and Mel answered in character — 'Eh, just fine, doc.' He returned to full voice work within a year.",
+    "communityInvolvement": "Active in the Hollywood community. Performed at charity events and for children's hospitals. Visited troops during wartime.",
+    "mentorship": "Mentored his son Noel Blanc in voice acting. Influenced generations of voice actors who studied his technique. Often credited by fellow performers as the gold standard of voice characterization."
+  },
+
+  "laterYears": {
+    "retirement": "Mel never truly retired. He continued voicing characters well into his 80s. His final recordings were made shortly before his death in 1989. He voiced Bugs Bunny, Daffy Duck, and other characters for various projects until the very end.",
+    "lifeLessons": "Do what you love and the rest will follow. Every character deserves a real personality, not just a funny voice. The voice has to come from who the character IS, not from a gimmick.",
+    "adviceForFutureGenerations": "Find what makes you different and lean into it. I was the kid who made weird noises in the back of class — and that turned out to be my whole life."
+  },
+
+  "hobbies": {
+    "hobbies": "Music — played bass violin and violin, was proficient in several instruments. Loved performing live. Enjoyed spending time with his family. Collected scripts and memorabilia from his cartoon work.",
+    "worldEvents": "Lived through the Great Depression, World War II (performed for troops and on Armed Forces Radio), the Golden Age of Hollywood animation, the rise of television, and the transition from theatrical cartoons to TV animation.",
+    "personalChallenges": "The devastating 1961 car accident on Dead Man's Curve on Sunset Boulevard. A head-on collision left him with a triple skull fracture, both legs broken, and a shattered pelvis. He was in a body cast for months and in a coma for weeks. Doctors feared he would never work again. His recovery was long and painful, but he returned to voice work within a year — an extraordinary testament to his determination.",
+    "travel": "Traveled extensively for performance engagements across the United States. International trips for animation conventions and appearances in later years. The bulk of his career was based in Hollywood."
+  },
+
+  "health": {
+    "healthMilestones": "The 1961 car accident was the defining health event of his life. Triple skull fracture, broken pelvis, broken legs. Full body cast for months. Coma lasting weeks. Despite this, he recovered and returned to work. In later years, suffered from heart disease and emphysema.",
+    "lifestyleChanges": "After the accident, Mel was more cautious but no less dedicated to his work. Warner Bros. set up recording equipment in his bedroom during his recovery so he could continue voicing characters from bed.",
+    "wellnessTips": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "Mel wanted to be remembered not just for the characters, but for elevating voice acting into a respected art form. He fought for on-screen credit when no other voice actor received it. His headstone reads 'THAT'S ALL FOLKS' — the Porky Pig sign-off he made famous.",
+    "messagesForFutureGenerations": "Every one of those characters was real to me. Bugs wasn't just a rabbit — he was a guy I knew. Daffy wasn't just a duck — he had feelings. When you give a character a real soul, the audience can tell."
+  }
+}

@@ -726,6 +726,31 @@
     }
 
     _extractQuestionnaireCandidates(sectionId);
+
+    // v8: mark saved fields as human-edited in projection layer
+    if (window.LorevoxProjectionSync && window.LorevoxProjectionMap) {
+      if (section.repeatable) {
+        var entries = bb.questionnaire[sectionId] || [];
+        entries.forEach(function (entry, idx) {
+          section.fields.forEach(function (f) {
+            var val = entry[f.id];
+            if (val && String(val).trim() !== "") {
+              var path = window.LorevoxProjectionMap.buildRepeatablePath(sectionId, idx, f.id);
+              window.LorevoxProjectionSync.markHumanEdit(path, val);
+            }
+          });
+        });
+      } else {
+        var data = bb.questionnaire[sectionId] || {};
+        section.fields.forEach(function (f) {
+          var val = data[f.id];
+          if (val && String(val).trim() !== "") {
+            window.LorevoxProjectionSync.markHumanEdit(sectionId + "." + f.id, val);
+          }
+        });
+      }
+    }
+
     var pid = _currentPersonId();
     if (pid) _persistDrafts(pid);
     if (closeCallback) closeCallback();
