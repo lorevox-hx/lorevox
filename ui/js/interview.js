@@ -793,6 +793,9 @@ function _extractAndProjectMultiField(answerText, turnId) {
 
     // Track repeatable section indices for grouping
     var repeatableCounters = {};
+    // v8.0 FIX: Track which fields have been seen at each index to detect
+    // when a new person starts (duplicate field = new entry).
+    var repeatableFieldsSeen = {};  // "section" → Set of field names seen at current index
 
     data.items.forEach(function (item) {
       var fieldPath = item.fieldPath;
@@ -813,7 +816,8 @@ function _extractAndProjectMultiField(answerText, turnId) {
         if (section && field && LorevoxProjectionMap.REPEATABLE_TEMPLATES[section]) {
 
           // Determine the right index for this entry
-          if (!repeatableCounters[section]) {
+          // v8.0 FIX: use `=== undefined` instead of `!` to avoid JS falsy-zero bug.
+          if (repeatableCounters[section] === undefined) {
             // Find the next available index
             var bb = state.bioBuilder;
             var existingEntries = (bb && bb.questionnaire && Array.isArray(bb.questionnaire[section]))
@@ -826,7 +830,19 @@ function _extractAndProjectMultiField(answerText, turnId) {
               }
             });
             repeatableCounters[section] = Math.max(existingEntries, projEntries);
+            repeatableFieldsSeen[section] = new Set();
           }
+
+          // v8.0 FIX: Detect when a new person starts — if we've already seen
+          // this field at the current index, it must be a new entry.
+          // E.g. second "parents.relation" or second "parents.firstName" = new parent.
+          if (repeatableFieldsSeen[section] && repeatableFieldsSeen[section].has(field)) {
+            repeatableCounters[section]++;
+            repeatableFieldsSeen[section] = new Set();
+            console.log("[extract] New " + section + " entry detected (duplicate " + field + ") — index now " + repeatableCounters[section]);
+          }
+          if (!repeatableFieldsSeen[section]) repeatableFieldsSeen[section] = new Set();
+          repeatableFieldsSeen[section].add(field);
 
           fieldPath = LorevoxProjectionMap.buildRepeatablePath(section, repeatableCounters[section], field);
         }

@@ -92,6 +92,11 @@ wheels/
 *.webm
 
 # =========================
+# RUNTIME / PID FILES
+# =========================
+.runtime/
+
+# =========================
 # LOCAL APP DATA
 # Keep runtime data out of the repo.
 # =========================
