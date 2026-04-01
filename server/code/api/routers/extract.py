@@ -312,12 +312,12 @@ _PARENT_MOTHER = re.compile(
 )
 
 # Sibling patterns — v8.0 FIX: handle "a younger brother named Chris", "my older sister Jane"
-# Supports optional "named/called" before the actual name. Uses IGNORECASE for
-# matching but requires the name to start with uppercase in the original text
-# to avoid capturing words like "named" or "who".
+# Supports optional "named/called/who" bridge words before the actual name.
 _SIBLING = re.compile(
-    r'(?:(?:my|a)\s+(?:\w+\s+)*?(?:brother|sister|sibling))\s+(?:(?:named|called)\s+)?([A-Z][a-z]+)',
-)  # Note: NOT IGNORECASE — name must start with uppercase to be a proper name
+    r'(?:(?:my|a)\s+(?:\w+\s+)*?(?:brother|sister|sibling))\s+(?:(?:named|called|who\s+was)\s+)?([A-Z][a-z]+)',
+    re.IGNORECASE
+)
+_SIBLING_NOT_NAME = {"named", "called", "who", "was", "is", "had", "and", "the", "that", "but", "in", "at", "from", "with", "about"}
 
 # Occupation patterns — v8.0 FIX: also match "was a PE teacher", "was a hairdresser"
 _OCCUPATION = re.compile(
