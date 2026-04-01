@@ -100,6 +100,7 @@ EXTRACTABLE_FIELDS = {
     # Repeatable: siblings (candidate_only)
     "siblings.relation":              {"label": "Sibling relationship (brother/sister)", "writeMode": "candidate_only", "repeatable": "siblings"},
     "siblings.firstName":             {"label": "Sibling first name", "writeMode": "candidate_only", "repeatable": "siblings"},
+    "siblings.lastName":              {"label": "Sibling last name", "writeMode": "candidate_only", "repeatable": "siblings"},
     "siblings.birthOrder":            {"label": "Sibling birth order (older/younger)", "writeMode": "candidate_only", "repeatable": "siblings"},
     "siblings.uniqueCharacteristics": {"label": "Sibling unique characteristics", "writeMode": "candidate_only", "repeatable": "siblings"},
 }
@@ -221,58 +222,121 @@ def _extract_via_llm(answer: str, current_section: Optional[str], current_target
 def _parse_llm_json(raw: str) -> List[dict]:
     """Parse JSON array from LLM output, handling various formats."""
     raw = raw.strip()
+    logger.info("[extract-parse] Raw LLM output (%d chars): %.500s", len(raw), raw)
+
+    arr = None
+    parse_method = None
 
     # Try direct JSON parse
     try:
-        arr = json.loads(raw)
-        if isinstance(arr, list):
-            return [_validate_item(x) for x in arr if _validate_item(x)]
-    except json.JSONDecodeError:
-        pass
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            arr = parsed
+            parse_method = "direct"
+        elif isinstance(parsed, dict):
+            # LLM may return {"items": [...]} or {"results": [...]}
+            for key in ("items", "results", "data", "extracted"):
+                if isinstance(parsed.get(key), list):
+                    arr = parsed[key]
+                    parse_method = f"dict.{key}"
+                    break
+            if arr is None:
+                logger.warning("[extract-parse] LLM returned dict but no array key found: %s", list(parsed.keys()))
+    except json.JSONDecodeError as e:
+        logger.info("[extract-parse] Direct JSON parse failed: %s", e)
 
     # Try extracting JSON array from markdown code block
-    m = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', raw, re.DOTALL)
-    if m:
-        try:
-            arr = json.loads(m.group(1))
-            if isinstance(arr, list):
-                return [_validate_item(x) for x in arr if _validate_item(x)]
-        except json.JSONDecodeError:
-            pass
+    if arr is None:
+        m = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', raw, re.DOTALL)
+        if m:
+            try:
+                arr = json.loads(m.group(1))
+                parse_method = "markdown_block"
+            except json.JSONDecodeError as e:
+                logger.info("[extract-parse] Markdown block parse failed: %s", e)
 
     # Try finding first [ ... ] in the output
-    m = re.search(r'\[.*\]', raw, re.DOTALL)
-    if m:
-        try:
-            arr = json.loads(m.group(0))
-            if isinstance(arr, list):
-                return [_validate_item(x) for x in arr if _validate_item(x)]
-        except json.JSONDecodeError:
-            pass
+    if arr is None:
+        m = re.search(r'\[.*\]', raw, re.DOTALL)
+        if m:
+            try:
+                arr = json.loads(m.group(0))
+                parse_method = "bracket_search"
+            except json.JSONDecodeError as e:
+                logger.info("[extract-parse] Bracket search parse failed: %s", e)
 
-    return []
+    if arr is None:
+        logger.warning("[extract-parse] Could not parse ANY JSON from LLM output")
+        return []
+
+    logger.info("[extract-parse] Parsed %d raw items via %s", len(arr), parse_method)
+
+    # Validate each item, logging rejections
+    valid = []
+    for i, x in enumerate(arr):
+        result = _validate_item(x)
+        if result:
+            valid.append(result)
+        else:
+            logger.info("[extract-parse] Item %d REJECTED: %s", i, json.dumps(x, default=str)[:300])
+    logger.info("[extract-parse] %d/%d items passed validation", len(valid), len(arr))
+    return valid
 
 
 def _validate_item(item: Any) -> Optional[dict]:
     """Validate and normalize a single extraction item."""
     if not isinstance(item, dict):
+        logger.info("[extract-validate] REJECT: not a dict, got %s", type(item).__name__)
         return None
-    fp = (item.get("fieldPath") or "").strip()
+
+    # P1: Accept alternate key names the LLM may use
+    fp = (item.get("fieldPath") or item.get("field_path") or item.get("field") or item.get("path") or "").strip()
     # P0: Normalize value — LLM may return list, dict envelope, or string
-    raw_val = item.get("value")
+    raw_val = item.get("value") if "value" in item else item.get("val") if "val" in item else item.get("text")
     if isinstance(raw_val, dict):
         raw_val = raw_val.get("value", "")
     if isinstance(raw_val, list):
         raw_val = ", ".join(str(x) for x in raw_val if x)
     val = (str(raw_val) if raw_val else "").strip()
     if not fp or not val:
+        logger.info("[extract-validate] REJECT: empty fieldPath=%r or value=%r (keys=%s)", fp, val, list(item.keys()))
         return None
 
     # Validate fieldPath exists in our schema
     # For repeatable fields, strip any index: "parents[0].firstName" → "parents.firstName"
     base_path = re.sub(r'\[\d+\]', '', fp)
     if base_path not in EXTRACTABLE_FIELDS:
-        return None
+        # P1: Try common LLM field path variants before rejecting
+        # LLMs often output "firstName" instead of "parents.firstName", or
+        # "dateOfBirth" instead of "personal.dateOfBirth"
+        _FIELD_ALIASES = {
+            # Bare field names → qualified paths
+            "fullName": "personal.fullName", "full_name": "personal.fullName",
+            "preferredName": "personal.preferredName", "nickname": "personal.preferredName",
+            "dateOfBirth": "personal.dateOfBirth", "date_of_birth": "personal.dateOfBirth",
+            "dob": "personal.dateOfBirth", "birthday": "personal.dateOfBirth",
+            "placeOfBirth": "personal.placeOfBirth", "place_of_birth": "personal.placeOfBirth",
+            "birthPlace": "personal.placeOfBirth", "birthplace": "personal.placeOfBirth",
+            "birthOrder": "personal.birthOrder", "birth_order": "personal.birthOrder",
+            # Family fields without section prefix
+            "father": "parents.relation", "mother": "parents.relation",
+            "fatherName": "parents.firstName", "motherName": "parents.firstName",
+            "parentName": "parents.firstName", "parent_name": "parents.firstName",
+            "parentOccupation": "parents.occupation", "parent_occupation": "parents.occupation",
+            "siblingName": "siblings.firstName", "sibling_name": "siblings.firstName",
+            "brotherName": "siblings.firstName", "sisterName": "siblings.firstName",
+            "siblingLastName": "siblings.lastName", "sibling_last_name": "siblings.lastName",
+            # Education
+            "school": "education.schooling", "college": "education.higherEducation",
+            "firstJob": "education.earlyCareer", "first_job": "education.earlyCareer",
+        }
+        alias = _FIELD_ALIASES.get(base_path) or _FIELD_ALIASES.get(fp)
+        if alias and alias in EXTRACTABLE_FIELDS:
+            logger.info("[extract-validate] ALIAS: %r → %r", base_path, alias)
+            base_path = alias
+        else:
+            logger.info("[extract-validate] REJECT: fieldPath %r (base=%r) not in EXTRACTABLE_FIELDS", fp, base_path)
+            return None
 
     conf = item.get("confidence", 0.8)
     if not isinstance(conf, (int, float)):
