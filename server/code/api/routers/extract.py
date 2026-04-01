@@ -18,11 +18,14 @@ Design:
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+logger = logging.getLogger("lorevox.extract")
 
 router = APIRouter(prefix="/api", tags=["extract"])
 
@@ -101,6 +104,40 @@ EXTRACTABLE_FIELDS = {
 }
 
 
+# ── LLM availability cache ──────────────────────────────────────────────────
+# Avoid blocking the server when the LLM is known to be unavailable.
+# Once checked, cache the result for LLM_CHECK_TTL seconds before rechecking.
+
+import time as _time
+
+_llm_available_cache: dict = {"available": None, "checked_at": 0.0}
+_LLM_CHECK_TTL = 120  # seconds — recheck every 2 minutes
+
+
+def _is_llm_available() -> bool:
+    """Return True if the LLM stack is responsive, using cached result."""
+    now = _time.time()
+    if _llm_available_cache["available"] is not None and (now - _llm_available_cache["checked_at"]) < _LLM_CHECK_TTL:
+        return _llm_available_cache["available"]
+
+    # Quick probe — tiny prompt, low max_new, should return fast
+    try:
+        from ..llm_interview import _try_call_llm
+        result = _try_call_llm(
+            "Return exactly: {\"status\":\"ok\"}",
+            "ping",
+            max_new=20, temp=0.0, top_p=1.0,
+        )
+        available = result is not None
+    except Exception:
+        available = False
+
+    _llm_available_cache["available"] = available
+    _llm_available_cache["checked_at"] = now
+    logger.info("[extract] LLM availability check: %s", "available" if available else "unavailable")
+    return available
+
+
 # ── LLM-based extraction ────────────────────────────────────────────────────
 
 def _build_extraction_prompt(answer: str, current_section: Optional[str], current_target: Optional[str]) -> tuple[str, str]:
@@ -146,7 +183,17 @@ def _build_extraction_prompt(answer: str, current_section: Optional[str], curren
 
 
 def _extract_via_llm(answer: str, current_section: Optional[str], current_target: Optional[str]) -> tuple[List[dict], Optional[str]]:
-    """Call the local LLM to extract fields. Returns (items, raw_output)."""
+    """Call the local LLM to extract fields. Returns (items, raw_output).
+
+    v8.0 FIX: Short-circuits immediately when the LLM is known to be
+    unavailable, preventing the blocking model.generate() call from tying
+    up the single uvicorn worker and causing 503 errors.
+    """
+    # Quick availability gate — cached for LLM_CHECK_TTL seconds
+    if not _is_llm_available():
+        logger.info("[extract] LLM unavailable (cached) — skipping to rules fallback")
+        return [], None
+
     try:
         from ..llm_interview import _try_call_llm
     except ImportError:
@@ -155,6 +202,9 @@ def _extract_via_llm(answer: str, current_section: Optional[str], current_target
     system, user = _build_extraction_prompt(answer, current_section, current_target)
     raw = _try_call_llm(system, user, max_new=400, temp=0.15, top_p=0.9)
     if not raw:
+        # LLM returned empty — mark as unavailable for caching
+        _llm_available_cache["available"] = False
+        _llm_available_cache["checked_at"] = _time.time()
         return [], None
 
     # Parse JSON from LLM output
@@ -237,9 +287,9 @@ _DATE_YEAR = re.compile(
     re.IGNORECASE
 )
 
-# Place patterns
+# Place patterns — v8.0 FIX: handle "grew up right there in Dartford", "lived in X"
 _PLACE_BORN = re.compile(
-    r'\b(?:born|raised|grew up)\s+(?:in|at|near)\s+([A-Z][a-zA-Z\s,]+?)(?:\.|,?\s+(?:in|and|my|I|we|the|where|when|\d))',
+    r'\b(?:born|raised|grew up|lived)\s+(?:\w+\s+)*?(?:in|at|near)\s+([A-Z][a-zA-Z\s,]+?)(?:\.|,?\s+(?:and|my|I|we|the|where|when|\d))',
     re.IGNORECASE
 )
 
@@ -249,25 +299,34 @@ _NAME_FULL = re.compile(
     re.IGNORECASE
 )
 
-# Parent patterns
+# Parent patterns — v8.0 FIX: match "my father Joe" but stop before verbs/conjunctions
+# The capture group uses a lookahead to stop at was/is/had/who/and/,/. to avoid
+# pulling verbs into the name (e.g. "my father Joe was a teacher" → "Joe" not "Joe was").
 _PARENT_FATHER = re.compile(
-    r'(?:my\s+(?:father|dad|papa|pop))\s+(?:was|is|,)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})',
+    r'(?:my\s+(?:father|dad|papa|pop))\s+(?:(?:was|is|,)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)(?=\s+(?:was|is|had|who|and|worked|did|ran|taught|,)|[.,]|\s*$)',
     re.IGNORECASE
 )
 _PARENT_MOTHER = re.compile(
-    r'(?:my\s+(?:mother|mom|mama|ma))\s+(?:was|is|,)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})',
+    r'(?:my\s+(?:mother|mom|mama|ma|mum))\s+(?:(?:was|is|,)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)(?=\s+(?:was|is|had|who|and|worked|did|ran|taught|,)|[.,]|\s*$)',
     re.IGNORECASE
 )
 
-# Sibling patterns
+# Sibling patterns — v8.0 FIX: handle "a younger brother named Chris", "my older sister Jane"
+# Supports optional "named/called" before the actual name. Uses IGNORECASE for
+# matching but requires the name to start with uppercase in the original text
+# to avoid capturing words like "named" or "who".
 _SIBLING = re.compile(
-    r'(?:my\s+(?:brother|sister|sibling))\s+([A-Z][a-z]+)',
+    r'(?:(?:my|a)\s+(?:\w+\s+)*?(?:brother|sister|sibling))\s+(?:(?:named|called)\s+)?([A-Z][a-z]+)',
+)  # Note: NOT IGNORECASE — name must start with uppercase to be a proper name
+
+# Occupation patterns — v8.0 FIX: also match "was a PE teacher", "was a hairdresser"
+_OCCUPATION = re.compile(
+    r'(?:(?:he|she|father|mother|dad|mom|mum)\s+(?:was|worked as|did|ran)\s+(?:a\s+)?)([\w\s]+?)(?:\.|,|\s+(?:in|and|for|at|who))',
     re.IGNORECASE
 )
-
-# Occupation patterns
-_OCCUPATION = re.compile(
-    r'(?:(?:he|she|father|mother|dad|mom)\s+(?:was|worked as|did|ran)\s+(?:a\s+)?)([\w\s]+?)(?:\.|,|\s+(?:in|and|for|at|who))',
+# v8.0: Also match "father/mother [Name] was a [occupation]" pattern
+_PARENT_OCCUPATION = re.compile(
+    r'(?:my\s+(?:father|dad|papa|pop|mother|mom|mama|ma|mum))\s+\w+\s+(?:was|is|worked as)\s+(?:a\s+)?([\w\s]+?)(?:\.|,|\s+(?:and|who|in))',
     re.IGNORECASE
 )
 
@@ -321,6 +380,18 @@ def _extract_via_rules(answer: str, current_section: Optional[str], current_targ
         rel = rel_match.group(1).capitalize() if rel_match else "Sibling"
         items.append({"fieldPath": "siblings.relation", "value": rel, "confidence": 0.85})
         items.append({"fieldPath": "siblings.firstName", "value": m.group(1).strip(), "confidence": 0.85})
+
+    # v8.0 FIX: Parent occupations (e.g. "my father Joe was a PE teacher")
+    m_occ = _PARENT_OCCUPATION.findall(answer)
+    if m_occ:
+        # Match occupation to parent (father vs mother)
+        for occ_match in re.finditer(_PARENT_OCCUPATION, answer):
+            occ_val = occ_match.group(1).strip()
+            parent_ctx = answer[max(0, occ_match.start()-30):occ_match.start()].lower()
+            if any(w in parent_ctx or w in occ_match.group(0).lower() for w in ["father", "dad", "papa", "pop"]):
+                items.append({"fieldPath": "parents.occupation", "value": occ_val, "confidence": 0.8})
+            elif any(w in parent_ctx or w in occ_match.group(0).lower() for w in ["mother", "mom", "mama", "ma", "mum"]):
+                items.append({"fieldPath": "parents.occupation", "value": occ_val, "confidence": 0.8})
 
     # If we have a current target and found nothing matching it, project the full answer
     if current_target and not any(i["fieldPath"] == current_target for i in items):
@@ -397,6 +468,9 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
         return ExtractFieldsResponse(items=[], method="fallback")
 
     # Try LLM extraction first
+    logger.info("[extract] Attempting LLM extraction for person=%s, section=%s, target=%s",
+                req.person_id[:8] if req.person_id else "?",
+                req.current_section, req.current_target_path)
     llm_items, raw_output = _extract_via_llm(
         answer=answer,
         current_section=req.current_section,
@@ -404,6 +478,7 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
     )
 
     if llm_items:
+        logger.info("[extract] LLM returned %d items", len(llm_items))
         # Add writeMode from our schema
         result_items = []
         for item in llm_items:
@@ -428,6 +503,8 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
         )
 
     # Fallback: rules-based extraction
+    logger.warning("[extract] LLM extraction returned no items (raw_output=%s), falling back to rules",
+                   "present" if raw_output else "None")
     rules_items = _extract_via_rules(
         answer=answer,
         current_section=req.current_section,
@@ -454,3 +531,37 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
 
     # Nothing extracted — return empty
     return ExtractFieldsResponse(items=[], method="fallback")
+
+
+# ── Diagnostic endpoint ─────────────────────────────────────────────────────
+
+@router.get("/extract-diag")
+def extract_diag():
+    """Diagnostic: check whether the LLM extraction stack is available."""
+    llm_available = False
+    llm_error = None
+    try:
+        from ..llm_interview import _try_call_llm
+        # Quick ping: tiny extraction to see if LLM responds
+        result = _try_call_llm(
+            "Return exactly: {\"status\":\"ok\"}",
+            "ping",
+            max_new=20, temp=0.0, top_p=1.0,
+        )
+        if result:
+            llm_available = True
+        else:
+            llm_error = "LLM returned None (likely ImportError or empty response)"
+    except ImportError as e:
+        llm_error = f"ImportError: {e}"
+    except Exception as e:
+        llm_error = f"{type(e).__name__}: {e}"
+
+    return {
+        "llm_available": llm_available,
+        "llm_error": llm_error,
+        "rules_available": True,
+        "regex_pattern_count": len([
+            k for k in globals() if k.startswith("_") and k[1:2].isupper()
+        ]),
+    }

@@ -343,8 +343,36 @@
     var proj = _proj();
     if (!proj) return;
 
-    // Persist outgoing narrator
     var outgoingPid = proj.personId;
+    var hasFields = Object.keys(proj.fields).length > 0;
+
+    // v8.0 FIX: If the incoming pid matches the current pid and we already
+    // have projection data, persist and reload (safe round-trip) instead of
+    // wiping state. This prevents accidental data loss when loadPerson()
+    // is called for the same narrator (e.g. after identity gate PATCH).
+    if (newPid && newPid === outgoingPid && hasFields) {
+      console.log("[projection-sync] Same narrator reset — persisting and reloading (no wipe)");
+      _persistProjection(outgoingPid);
+      _loadProjection(newPid);
+      return;
+    }
+
+    // v8.0 FIX: If outgoingPid is null but we have identity-phase projection
+    // data in memory (built during askName/askDob/askBirthplace before person
+    // creation), persist those fields under the NEW pid so they survive the reset.
+    // This happens during first-time identity gate: person_id was null, identity
+    // answers built projection fields, then _resolveOrCreatePerson() POST-created
+    // a new person and called loadPerson(newPid) → resetForNarrator(newPid).
+    if (!outgoingPid && newPid && hasFields) {
+      console.log("[projection-sync] Identity-phase fields detected (no outgoing pid) — persisting under new pid:", newPid);
+      proj.personId = newPid;
+      _persistProjection(newPid);
+      // Reload to pick up the just-persisted fields
+      _loadProjection(newPid);
+      return;
+    }
+
+    // Persist outgoing narrator
     if (outgoingPid) _persistProjection(outgoingPid);
 
     // Clear state

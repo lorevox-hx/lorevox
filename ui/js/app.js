@@ -26,15 +26,39 @@ window.onload = async () => {
   // The original `=== undefined` check was dead code (state.js uses null, not undefined).
   // No functional guard needed; null is the correct initial value for both paths.
 
+  // v8.0 STARTUP NEUTRALITY: Backend is the authority on narrator state.
+  // Do not trust cached active narrator until validated against /api/people.
   const saved = localStorage.getItem(LS_ACTIVE);
-  if(saved){
-    // Returning user — load their profile and skip onboarding.
+  const backendPeople = state?.narratorUi?.peopleCache || [];
+  const backendPids = backendPeople.map(p => p.id || p.person_id || p.uuid);
+
+  if (saved && backendPids.includes(saved)) {
+    // Returning user — saved narrator is confirmed valid in backend.
+    console.log("[startup] Validated active narrator from backend:", saved);
     loadPerson(saved).catch(()=>{});
+  } else if (saved && !backendPids.includes(saved)) {
+    // v8.0 FIX: Stale narrator pointer — narrator no longer exists in backend.
+    // Invalidate all cached state for this dead narrator.
+    console.warn("[startup] Stale active narrator detected:", saved, "— not in backend list. Clearing.");
+    _invalidateStaleNarrator(saved);
+    if (backendPids.length > 0) {
+      // Fall back to the first available backend narrator
+      console.log("[startup] Falling back to first available narrator:", backendPids[0]);
+      loadPerson(backendPids[0]).catch(()=>{});
+    } else {
+      // Zero narrators — go to clean blank state
+      console.log("[startup] Zero narrators in backend — entering blank state.");
+      _enforceBlankStartupState();
+      setTimeout(startIdentityOnboarding, 800);
+    }
+  } else if (backendPids.length === 0) {
+    // No saved narrator AND no backend narrators — clean blank state.
+    console.log("[startup] No saved narrator, no backend narrators — blank state.");
+    _enforceBlankStartupState();
+    setTimeout(startIdentityOnboarding, 800);
   } else {
-    // v7.4D — Phase 6: no person selected yet.
-    // Let Lori lead by starting the identity-first onboarding flow.
-    // A small delay gives the WS connection time to establish so Lori's
-    // first message goes out via the streaming path.
+    // No saved narrator but backend has narrators — start onboarding
+    // (user may have cleared localStorage but not the backend)
     setTimeout(startIdentityOnboarding, 800);
   }
 
@@ -46,6 +70,77 @@ window.onload = async () => {
   };
   console.log("[device_context]", _dc);
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   v8.0 STARTUP NEUTRALITY HELPERS
+═══════════════════════════════════════════════════════════════ */
+/**
+ * Invalidate all cached state for a narrator that no longer exists in the backend.
+ * This prevents ghost narrators from surviving across deletions and restarts.
+ */
+function _invalidateStaleNarrator(stalePid) {
+  try { localStorage.removeItem(LS_ACTIVE); } catch(_) {}
+  try { localStorage.removeItem("lorevox_offline_profile_" + stalePid); } catch(_) {}
+  try { localStorage.removeItem("lorevox_proj_draft_" + stalePid); } catch(_) {}
+  try { localStorage.removeItem("lorevox_qq_draft_" + stalePid); } catch(_) {}
+  try { localStorage.removeItem("lorevox.spine." + stalePid); } catch(_) {}
+  try { localStorage.removeItem(LS_DONE(stalePid)); } catch(_) {}
+  try { localStorage.removeItem(LS_SEGS(stalePid)); } catch(_) {}
+  try { localStorage.removeItem("lorevox_offline_people"); } catch(_) {}
+  console.log("[startup] Invalidated stale narrator cache:", stalePid);
+}
+
+/**
+ * Force a clean blank startup state when backend has zero narrators.
+ * Clears all narrator-scoped state so the UI renders a true blank slate.
+ */
+function _enforceBlankStartupState() {
+  // Clear global narrator pointer
+  state.person_id = null;
+  try { localStorage.removeItem(LS_ACTIVE); } catch(_) {}
+
+  // Clear profile/projection/questionnaire in-memory state
+  state.profile = { basics: {}, kinship: [], pets: [] };
+  if (state.interviewProjection) {
+    state.interviewProjection.personId = null;
+    state.interviewProjection.fields = {};
+    state.interviewProjection.pendingSuggestions = [];
+    state.interviewProjection.syncLog = [];
+  }
+
+  // Clear identity phase state
+  if (state.session) {
+    state.session.identityPhase = null;
+    state.session.identityCapture = { name: null, dob: null, birthplace: null };
+  }
+
+  // Invalidate any stale offline people cache
+  try { localStorage.removeItem("lorevox_offline_people"); } catch(_) {}
+
+  // v8.0 FIX: Also scan for and remove orphaned narrator-scoped keys
+  // that point to narrators no longer in the backend.
+  try {
+    const keys = Object.keys(localStorage);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (k.startsWith("lorevox_offline_profile_") ||
+          k.startsWith("lorevox_proj_draft_") ||
+          k.startsWith("lorevox_qq_draft_") ||
+          k.startsWith("lorevox.spine.") ||
+          k.startsWith("lv_done_") ||
+          k.startsWith("lv_segs_")) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch(_) {}
+
+  // Update header to blank state
+  if (typeof lv80UpdateActiveNarratorCard === "function") {
+    lv80UpdateActiveNarratorCard();
+  }
+
+  console.log("[startup] Enforced blank startup state — no active narrator.");
+}
 
 /* ═══════════════════════════════════════════════════════════════
    STATUS PILLS
@@ -396,6 +491,13 @@ async function loadPerson(pid){
   if (typeof _ivResetProjectionForNarrator === "function") {
     _ivResetProjectionForNarrator(pid);
   }
+
+  // v8.0 FIX: Ensure header card reflects loaded narrator immediately.
+  // This fixes the header showing "Choose a narrator" when a valid narrator
+  // is loaded, and ensures DOB/POB appear in the header on page reload.
+  if (typeof lv80UpdateActiveNarratorCard === "function") {
+    lv80UpdateActiveNarratorCard();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -499,6 +601,23 @@ async function lvxDeleteNarratorConfirmed(){
   if (state.person_id === pid) {
     state.person_id = null;
     localStorage.removeItem(LS_ACTIVE);
+  }
+
+  // v8.0 FIX: Clean up ALL offline caches for deleted narrator to prevent ghost narrators
+  try {
+    localStorage.removeItem("lorevox_offline_profile_" + pid);
+    localStorage.removeItem("lorevox_proj_draft_" + pid);
+    localStorage.removeItem("lorevox_qq_draft_" + pid);
+    localStorage.removeItem("lorevox.spine." + pid);
+    localStorage.removeItem(LS_DONE(pid));
+    localStorage.removeItem(LS_SEGS(pid));
+  } catch(_) {}
+  // Refresh the offline people cache
+  try { localStorage.removeItem("lorevox_offline_people"); } catch(_) {}
+
+  // v8.0 FIX: Update header to blank state if deleted narrator was active
+  if (typeof lv80UpdateActiveNarratorCard === "function") {
+    lv80UpdateActiveNarratorCard();
   }
 
   await refreshPeople();
@@ -1439,6 +1558,21 @@ async function _advanceIdentityPhase(text){
     state.session.identityCapture.name = name;
     state.session.speakerName = name;  // v7.4E — persist for runtime71 anchor
     state.session.identityPhase = "askDob";
+
+    // v8.0 FIX: Immediately project name into profile and projection state
+    if(!state.profile) state.profile = {basics:{}, kinship:[], pets:[]};
+    state.profile.basics.preferred = name;
+    state.profile.basics.fullname  = name;
+    if (typeof LorevoxProjectionSync !== "undefined" && state.interviewProjection) {
+      LorevoxProjectionSync.projectValue("personal.fullName", name, {
+        source: "interview", turnId: "identity-name", confidence: 0.95
+      });
+      LorevoxProjectionSync.projectValue("personal.preferredName", name, {
+        source: "interview", turnId: "identity-name", confidence: 0.95
+      });
+    }
+    // v8.0 FIX: Update narrator header card immediately
+    if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
     // Lori acknowledges and asks for DOB
     sendSystemPrompt(
       `[SYSTEM: SPEAKER IDENTITY — The person you are interviewing is named "${name}". ` +
@@ -1455,6 +1589,28 @@ async function _advanceIdentityPhase(text){
     const dob = _parseDob(text);
     state.session.identityCapture.dob = dob;  // may be null if unrecognised
     state.session.identityPhase = "askBirthplace";
+
+    // v8.0 FIX: Immediately project DOB into profile and projection state
+    if (dob) {
+      if(!state.profile) state.profile = {basics:{}, kinship:[], pets:[]};
+      state.profile.basics.dob = dob;
+      if (typeof LorevoxProjectionSync !== "undefined" && state.interviewProjection) {
+        LorevoxProjectionSync.projectValue("personal.dateOfBirth", dob, {
+          source: "interview", turnId: "identity-dob", confidence: 0.95
+        });
+      }
+      // v8.0 FIX: Update narrator header card with DOB
+      if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
+    }
+
+    // v8.0 FIX: Check if POB is embedded in the DOB answer (e.g. "born July 26 1943 in Dartford")
+    const _pobFromDob = text.match(/\bin\s+([A-Z][a-zA-Z\s,]+?)(?:\.|$)/i);
+    if (_pobFromDob && _pobFromDob[1]) {
+      const embeddedPob = _pobFromDob[1].trim().replace(/[,.\s]+$/, "");
+      if (embeddedPob.length >= 3) {
+        state.session.identityCapture._embeddedPob = embeddedPob;
+      }
+    }
     sendSystemPrompt(
       `[SYSTEM: The user gave their date of birth as "${text.trim()}". ` +
       `${dob ? "You have parsed it as "+dob+"." : "The date wasn't entirely clear but that's okay — continue."} ` +
@@ -1466,8 +1622,46 @@ async function _advanceIdentityPhase(text){
   }
 
   if(phase === "askBirthplace"){
-    const birthplace = text.trim();
+    // v8.0 FIX: Extract place from the answer instead of using the raw text.
+    let birthplace = text.trim();
+
+    // BEST SOURCE: If the DOB answer already contained a place ("born in Dartford"),
+    // prefer that extracted value over anything in this answer.
+    if (state.session.identityCapture._embeddedPob) {
+      birthplace = state.session.identityCapture._embeddedPob;
+    } else {
+      // Try structured extraction: "in X", "from X"
+      const _placePatterns = [
+        /\b(?:born|grew up|raised|from|lived)\s+(?:in|at|near)\s+([A-Z][a-zA-Z\s,]+?)(?:\.|,?\s+(?:and|my|I|we|the|where|when|\d))/i,
+      ];
+      for (const pat of _placePatterns) {
+        const m = text.match(pat);
+        if (m && m[1] && m[1].trim().length >= 3 && m[1].trim().length < 80) {
+          birthplace = m[1].trim().replace(/[,.\s]+$/, "");
+          break;
+        }
+      }
+
+      // If still a long narrative, truncate to first clause
+      if (birthplace.length > 80) {
+        const firstClause = text.split(/[.!?,]/)[0].trim();
+        if (firstClause.length < 80) birthplace = firstClause;
+      }
+    }
+
     state.session.identityCapture.birthplace = birthplace;
+
+    // v8.0 FIX: Immediately project POB into profile and projection state
+    if(!state.profile) state.profile = {basics:{}, kinship:[], pets:[]};
+    state.profile.basics.pob = birthplace;
+    if (typeof LorevoxProjectionSync !== "undefined" && state.interviewProjection) {
+      LorevoxProjectionSync.projectValue("personal.placeOfBirth", birthplace, {
+        source: "interview", turnId: "identity-pob", confidence: 0.9
+      });
+    }
+    // v8.0 FIX: Update narrator header card with POB
+    if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
+
     state.session.identityPhase = "resolving";
     // Create the person record now that we have the three anchors
     await _resolveOrCreatePerson();
@@ -1498,20 +1692,38 @@ async function _resolveOrCreatePerson(){
 
   let pid = null;
   try{
-    const r = await fetch(API.PEOPLE, {
-      method: "POST",
-      headers: ctype(),
-      body: JSON.stringify({
-        display_name: name,
-        role:         "subject",
-        date_of_birth: dob  || null,
-        place_of_birth: pob || null,
-      }),
-    });
-    const j = await r.json();
-    pid = j.id || j.person_id;
+    // v8.0 FIX: If a person_id already exists in state, PATCH the existing
+    // person instead of creating a duplicate. This prevents person duplication
+    // when the identity gate runs on an already-selected narrator.
+    if (state.person_id) {
+      pid = state.person_id;
+      await fetch(API.PERSON(pid), {
+        method: "PATCH",
+        headers: ctype(),
+        body: JSON.stringify({
+          display_name:   name,
+          date_of_birth:  dob  || undefined,
+          place_of_birth: pob  || undefined,
+        }),
+      });
+      console.log("[identity] Patched existing person:", pid);
+    } else {
+      const r = await fetch(API.PEOPLE, {
+        method: "POST",
+        headers: ctype(),
+        body: JSON.stringify({
+          display_name: name,
+          role:         "subject",
+          date_of_birth: dob  || null,
+          place_of_birth: pob || null,
+        }),
+      });
+      const j = await r.json();
+      pid = j.id || j.person_id;
+      console.log("[identity] Created new person:", pid);
+    }
   }catch(e){
-    console.warn("[identity] create person failed:", e);
+    console.warn("[identity] create/patch person failed:", e);
   }
 
   state.session.identityPhase = "complete";
@@ -1531,6 +1743,10 @@ async function _resolveOrCreatePerson(){
     if(ic.birthplace)  state.profile.basics.pob = ic.birthplace;
     hydrateProfileForm();
     _updateDockActivePerson();
+    // v8.0 FIX: Update header AFTER re-applying identity anchors.
+    // loadPerson() called lv80UpdateActiveNarratorCard() with the empty server profile,
+    // so we must call it again now that basics are re-applied.
+    if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
     // Save the profile so DOB + birthplace persist
     await saveProfile();
     sendSystemPrompt(

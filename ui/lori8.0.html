@@ -3940,6 +3940,14 @@ async function lv80Init() {
     let _pollCount = 0;
     const _pollWelcome = setInterval(() => {
       _pollCount++;
+      // v8.0 FIX: Verify state.person_id is set and matches saved pid.
+      // _enforceBlankStartupState() may have cleared person_id after we
+      // captured _savedPid. Without this, the poll can fire a welcome-back
+      // prompt during zero-narrator startup or after narrator invalidation.
+      if (!state.person_id || state.person_id !== _savedPid) {
+        clearInterval(_pollWelcome);
+        return;
+      }
       const _basics = state.profile?.basics || {};
       const _name   = _basics.preferred || _basics.fullname;
       const _dob    = _basics.dob;

@@ -21,6 +21,8 @@ from typing import List, Optional
 
 def _try_call_llm(system_prompt: str, user_prompt: str, *, max_new: int, temp: float, top_p: float) -> Optional[str]:
     """Return model text, or None if the LLM stack is unavailable."""
+    import logging
+    logger = logging.getLogger("lorevox.llm")
     try:
         # Local import so the server can still boot in USE_TTS=1 mode.
         from .api import chat, _ChatReq  # type: ignore
@@ -37,8 +39,14 @@ def _try_call_llm(system_prompt: str, user_prompt: str, *, max_new: int, temp: f
         )
         out = chat(req)
         txt = (out.get("text") or "").strip()
+        if not txt:
+            logger.warning("[llm] LLM returned empty text for extraction request")
         return txt or None
-    except Exception:
+    except ImportError as e:
+        logger.warning("[llm] LLM stack not available (import failed): %s", e)
+        return None
+    except Exception as e:
+        logger.error("[llm] LLM call failed: %s: %s", type(e).__name__, e)
         return None
 
 
