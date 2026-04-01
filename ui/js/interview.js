@@ -758,11 +758,21 @@ function _projectAnswerToField(answerText, turnId) {
    Falls back gracefully if the backend is unreachable.
 ═══════════════════════════════════════════════════════════════ */
 
+// FIX-7: Track last extraction turnId to prevent double-firing per user message.
+var _lastExtractionTurnId = null;
+
 function _extractAndProjectMultiField(answerText, turnId) {
   if (typeof LorevoxProjectionSync === "undefined") return;
   if (typeof LorevoxProjectionMap === "undefined") return;
   if (!state.interviewProjection) return;
   if (!state.person_id) return;
+
+  // FIX-7: Dedup — skip if we already extracted for this turnId.
+  if (turnId && turnId === _lastExtractionTurnId) {
+    console.log("[extract] Skipping duplicate extraction for turnId: " + turnId);
+    return;
+  }
+  _lastExtractionTurnId = turnId;
 
   var targetPath = state.interviewProjection._lastTargetPath || null;
   var targetSection = state.interviewProjection._lastTargetSection || null;
@@ -796,6 +806,10 @@ function _extractAndProjectMultiField(answerText, turnId) {
     // v8.0 FIX: Track which fields have been seen at each index to detect
     // when a new person starts (duplicate field = new entry).
     var repeatableFieldsSeen = {};  // "section" → Set of field names seen at current index
+    // FIX-4: Track repeatableGroup→index mapping from backend grouping.
+    // When the backend provides repeatableGroup tags, use them for index assignment
+    // instead of relying solely on duplicate-field detection.
+    var groupToIndex = {};
 
     data.items.forEach(function (item) {
       var fieldPath = item.fieldPath;
@@ -833,18 +847,36 @@ function _extractAndProjectMultiField(answerText, turnId) {
             repeatableFieldsSeen[section] = new Set();
           }
 
-          // v8.0 FIX: Detect when a new person starts — if we've already seen
-          // this field at the current index, it must be a new entry.
-          // E.g. second "parents.relation" or second "parents.firstName" = new parent.
-          if (repeatableFieldsSeen[section] && repeatableFieldsSeen[section].has(field)) {
-            repeatableCounters[section]++;
-            repeatableFieldsSeen[section] = new Set();
-            console.log("[extract] New " + section + " entry detected (duplicate " + field + ") — index now " + repeatableCounters[section]);
+          // FIX-4: Use backend repeatableGroup for index assignment when available.
+          // This ensures all fields for the same person share the same index,
+          // even when items arrive in non-contiguous order (e.g. occupations after all names).
+          if (item.repeatableGroup) {
+            if (groupToIndex[item.repeatableGroup] === undefined) {
+              // First field in this group — assign current counter
+              // Check if we need to bump (duplicate field in same section without group)
+              if (repeatableFieldsSeen[section] && repeatableFieldsSeen[section].has(field)) {
+                repeatableCounters[section]++;
+                repeatableFieldsSeen[section] = new Set();
+                console.log("[extract] New " + section + " entry detected via group (duplicate " + field + ") — index now " + repeatableCounters[section]);
+              }
+              groupToIndex[item.repeatableGroup] = repeatableCounters[section];
+            }
+            // Use the group's assigned index
+            var groupIdx = groupToIndex[item.repeatableGroup];
+            if (!repeatableFieldsSeen[section]) repeatableFieldsSeen[section] = new Set();
+            repeatableFieldsSeen[section].add(field);
+            fieldPath = LorevoxProjectionMap.buildRepeatablePath(section, groupIdx, field);
+          } else {
+            // Legacy path: duplicate-field detection for ungrouped items
+            if (repeatableFieldsSeen[section] && repeatableFieldsSeen[section].has(field)) {
+              repeatableCounters[section]++;
+              repeatableFieldsSeen[section] = new Set();
+              console.log("[extract] New " + section + " entry detected (duplicate " + field + ") — index now " + repeatableCounters[section]);
+            }
+            if (!repeatableFieldsSeen[section]) repeatableFieldsSeen[section] = new Set();
+            repeatableFieldsSeen[section].add(field);
+            fieldPath = LorevoxProjectionMap.buildRepeatablePath(section, repeatableCounters[section], field);
           }
-          if (!repeatableFieldsSeen[section]) repeatableFieldsSeen[section] = new Set();
-          repeatableFieldsSeen[section].add(field);
-
-          fieldPath = LorevoxProjectionMap.buildRepeatablePath(section, repeatableCounters[section], field);
         }
       }
 

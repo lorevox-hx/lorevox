@@ -483,8 +483,8 @@
     }
 
     // Parents
-    if (q.parents && Array.isArray(q.parents.entries)) {
-      q.parents.entries.forEach(function (p) {
+    if (q.parents && Array.isArray(q.parents)) {
+      q.parents.forEach(function (p) {
         var name = ((p.firstName || "") + " " + (p.lastName || "")).trim() || p.fullName || "";
         if (!name || _exists(name)) return;
         var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "parent" || n.type === "parent"); });
@@ -506,8 +506,8 @@
     }
 
     // Siblings
-    if (q.siblings && Array.isArray(q.siblings.entries)) {
-      q.siblings.entries.forEach(function (s) {
+    if (q.siblings && Array.isArray(q.siblings)) {
+      q.siblings.forEach(function (s) {
         var name = ((s.firstName || "") + " " + (s.lastName || "")).trim() || s.fullName || "";
         if (!name || _exists(name)) return;
         var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "sibling" || n.type === "sibling"); });
@@ -528,8 +528,8 @@
     }
 
     // Grandparents
-    if (q.grandparents && Array.isArray(q.grandparents.entries)) {
-      q.grandparents.entries.forEach(function (g) {
+    if (q.grandparents && Array.isArray(q.grandparents)) {
+      q.grandparents.forEach(function (g) {
         var name = ((g.firstName || "") + " " + (g.lastName || "")).trim() || g.fullName || "";
         if (!name || _exists(name)) return;
         var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "grandparent" || n.type === "grandparent"); });

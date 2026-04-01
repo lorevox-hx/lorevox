@@ -128,7 +128,12 @@ function _enforceBlankStartupState() {
           k.startsWith("lorevox_qq_draft_") ||
           k.startsWith("lorevox.spine.") ||
           k.startsWith("lv_done_") ||
-          k.startsWith("lv_segs_")) {
+          k.startsWith("lv_segs_") ||
+          // FIX-9: Also clean up FT draft, LT draft, deleted narrator backup, and draft PIDs
+          k.startsWith("lorevox_ft_draft_") ||
+          k.startsWith("lorevox_lt_draft_") ||
+          k.startsWith("lorevox_deleted_narrator_backup") ||
+          k === "lorevox_draft_pids") {
         localStorage.removeItem(k);
       }
     }
@@ -283,6 +288,41 @@ function buildRuntime71() {
     /* Media Builder — photo count for Lori's contextual awareness.
        window._lv80MediaCount is updated by the gallery on every load/upload/delete. */
     media_count: (window._lv80MediaCount || 0),
+    /* WO-S3: Projection family snapshot — injects parent/sibling names + occupations
+       from localStorage projection so prompt_composer can ground Lori post-reload. */
+    projection_family: (function() {
+      try {
+        const pid = state.session?.personId || state.currentPersonId || state.person_id;
+        if (!pid) return null;
+        const raw = localStorage.getItem("lorevox_proj_draft_" + pid);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const fields = (parsed && parsed.d && parsed.d.fields) || (parsed && parsed.fields) || parsed || {};
+        // Helper: projection fields are {value:"...", source:"...", ...} envelopes
+        const v = (f) => { const e = fields[f]; return (e && typeof e === "object" ? e.value : e) || ""; };
+        const fam = { parents: [], siblings: [] };
+        // Collect parents
+        for (let i = 0; i < 10; i++) {
+          const fn = v("parents[" + i + "].firstName");
+          const ln = v("parents[" + i + "].lastName");
+          const rel = v("parents[" + i + "].relation");
+          const occ = v("parents[" + i + "].occupation");
+          if (fn || ln) {
+            fam.parents.push({ name: (fn + " " + ln).trim(), relation: rel, occupation: occ });
+          }
+        }
+        // Collect siblings
+        for (let i = 0; i < 20; i++) {
+          const fn = v("siblings[" + i + "].firstName");
+          const ln = v("siblings[" + i + "].lastName");
+          const rel = v("siblings[" + i + "].relation");
+          if (fn || ln) {
+            fam.siblings.push({ name: (fn + " " + ln).trim(), relation: rel });
+          }
+        }
+        return (fam.parents.length || fam.siblings.length) ? fam : null;
+      } catch (_) { return null; }
+    })(),
   };
 }
 
@@ -395,6 +435,10 @@ function renderPeople(items){
     w.innerHTML=`<div class="text-xs text-slate-500 px-2">No people yet. Fill Profile and click + New Person.</div>`;
 }
 async function createPersonFromForm(){
+  // FIX-2: Clear stale narrator state from header before creating new narrator.
+  // Without this, the header card briefly shows the previous narrator's DOB/POB.
+  state.profile = { basics: {}, kinship: [], pets: [] };
+  if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
   const b=scrapeBasics();
   const display_name=b.fullname||b.preferred||"Unnamed";
   try{
@@ -490,6 +534,33 @@ async function loadPerson(pid){
   // despite data existing in localStorage under lorevox_proj_draft_<pid>.
   if (typeof _ivResetProjectionForNarrator === "function") {
     _ivResetProjectionForNarrator(pid);
+  }
+
+  // FIX-8: Seed identity projection fields from profile for narrators created
+  // via "+New" (which bypass the identity onboarding phase). Without this,
+  // narrator-2+ would have empty identity fields in the projection even though
+  // the profile has fullName, preferredName, dateOfBirth, placeOfBirth.
+  if (typeof LorevoxProjectionSync !== "undefined" && state.interviewProjection) {
+    var basics = state.profile?.basics || {};
+    var projFields = state.interviewProjection.fields || {};
+    var identityMap = {
+      "personal.fullName": basics.fullname || basics.fullName || "",
+      "personal.preferredName": basics.preferred || basics.preferredName || "",
+      "personal.dateOfBirth": basics.dob || basics.dateOfBirth || "",
+      "personal.placeOfBirth": basics.pob || basics.placeOfBirth || ""
+    };
+    Object.keys(identityMap).forEach(function(fp) {
+      var val = identityMap[fp];
+      var existingVal = projFields[fp] ? projFields[fp].value : null;
+      // Seed if empty OR if existing value doesn't match profile (stale cross-narrator data)
+      if (val && (!existingVal || existingVal !== val)) {
+        LorevoxProjectionSync.projectValue(fp, val, {
+          source: "profile_seed",
+          confidence: 1.0,
+          turnId: "profile-init-" + pid.slice(0, 8)
+        });
+      }
+    });
   }
 
   // v8.0 FIX: Ensure header card reflects loaded narrator immediately.
@@ -1867,10 +1938,19 @@ async function sendUserMessage(){
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
       message:payload,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71}}));
     // Safety timeout: if no response within 30s, unstick the UI
+    // WO-S3: Guard against stacked unavailable messages — only show once
+    const _sendTimestamp = Date.now();
     setTimeout(()=>{
       if(!currentAssistantBubble){
-        // No bubble created yet means no tokens arrived at all
-        const _errBubble = appendBubble("ai","Chat service unavailable — start or restart the Lorevox AI backend to enable responses.");
+        // Prevent stacked error messages: check if a recent error bubble already exists
+        const chatLog = document.getElementById("chatLog");
+        const lastBubble = chatLog && chatLog.lastElementChild;
+        const isRecentError = lastBubble && lastBubble.textContent &&
+          lastBubble.textContent.includes("Chat service unavailable") &&
+          (Date.now() - _sendTimestamp) < 35000;
+        if (!isRecentError) {
+          appendBubble("ai","Chat service unavailable — start or restart the Lorevox AI backend to enable responses.");
+        }
         setLoriState("ready");
       }
     }, 30000);

@@ -151,6 +151,11 @@ async def ws_chat(ws: WebSocket):
         temperature = float(params.get("temperature", params.get("temp", 0.8)))
         top_p = float(params.get("top_p", 0.95))
 
+        # WO-S1: Centralized generation parameter guard — temp≤0 → greedy
+        _do_sample = temperature > 0
+        if not _do_sample:
+            temperature = 1.0  # dummy; ignored when do_sample=False
+
         await _ws_send(ws, {"type": "status", "state": "generating"})
 
         th = threading.Thread(
@@ -161,7 +166,7 @@ async def ws_chat(ws: WebSocket):
                 max_new_tokens=max_new,
                 temperature=temperature,
                 top_p=top_p,
-                do_sample=True,
+                do_sample=_do_sample,
                 repetition_penalty=1.1,
                 stopping_criteria=stop,
                 pad_token_id=tok.eos_token_id,

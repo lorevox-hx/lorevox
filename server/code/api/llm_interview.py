@@ -19,10 +19,23 @@ import re
 from typing import List, Optional
 
 
-def _try_call_llm(system_prompt: str, user_prompt: str, *, max_new: int, temp: float, top_p: float) -> Optional[str]:
-    """Return model text, or None if the LLM stack is unavailable."""
+def _try_call_llm(system_prompt: str, user_prompt: str, *, max_new: int, temp: float, top_p: float, conv_id: Optional[str] = None) -> Optional[str]:
+    """Return model text, or None if the LLM stack is unavailable.
+
+    FIX-3: Accept optional conv_id to isolate extraction calls from shared
+    session context. When conv_id is None, falls back to 'default' (legacy).
+    Extraction callers should pass a unique ephemeral conv_id to prevent
+    cross-narrator context contamination.
+    """
     import logging
     logger = logging.getLogger("lorevox.llm")
+    # P1: Global temperature safety gate — clamp to minimum safe value.
+    # This is the single choke point for ALL LLM calls via this wrapper.
+    # chat()/chat_stream()/chat_ws all have their own guards too, but this
+    # catches any caller that might pass temp=0 before it reaches generate().
+    if temp <= 0:
+        logger.warning("[llm] temp=%s clamped to 0.01 (greedy-safe minimum)", temp)
+        temp = 0.01
     try:
         # Local import so the server can still boot in USE_TTS=1 mode.
         from .api import chat, _ChatReq  # type: ignore
@@ -35,7 +48,7 @@ def _try_call_llm(system_prompt: str, user_prompt: str, *, max_new: int, temp: f
             temp=temp,
             top_p=top_p,
             max_new=max_new,
-            conv_id=None,
+            conv_id=conv_id,
         )
         out = chat(req)
         txt = (out.get("text") or "").strip()

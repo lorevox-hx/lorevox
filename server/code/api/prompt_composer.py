@@ -577,6 +577,31 @@ def compose_system_prompt(
                     _known_facts.append(f"date of birth: {_dob}")
                 if _pob:
                     _known_facts.append(f"place of birth: {_pob}")
+                # WO-S3: Inject projection family data (parents/siblings) for
+                # post-reload grounding — data survives in localStorage but was
+                # previously invisible to prompt_composer after page refresh.
+                # P0: Safe string extractor — handles dict envelopes and list values
+                def _safe_str(v):
+                    if isinstance(v, dict):
+                        v = v.get("value", "")
+                    if isinstance(v, list):
+                        v = ", ".join(str(x) for x in v if x)
+                    return (str(v) if v else "").strip()
+                _proj_fam = runtime71.get("projection_family") or {}
+                for _p in (_proj_fam.get("parents") or []):
+                    _pname = _safe_str(_p.get("name"))
+                    _prel  = _safe_str(_p.get("relation"))
+                    _pocc  = _safe_str(_p.get("occupation"))
+                    if _pname:
+                        _fact = f"{_prel}: {_pname}" if _prel else f"parent: {_pname}"
+                        if _pocc:
+                            _fact += f" ({_pocc})"
+                        _known_facts.append(_fact)
+                for _s in (_proj_fam.get("siblings") or []):
+                    _sname = _safe_str(_s.get("name"))
+                    _srel  = _safe_str(_s.get("relation"))
+                    if _sname:
+                        _known_facts.append(f"{_srel or 'sibling'}: {_sname}")
                 _known_str = (
                     f"\nYou already know: {'; '.join(_known_facts)}."
                     if _known_facts else

@@ -48,6 +48,7 @@ class ExtractedItem(BaseModel):
     confidence: float     # 0.0–1.0
     source: str = "backend_extract"
     extractionMethod: str = "llm"  # "llm" | "rules"
+    repeatableGroup: Optional[str] = None  # FIX-4: group tag for same-person field association
 
 
 class ExtractFieldsResponse(BaseModel):
@@ -109,6 +110,7 @@ EXTRACTABLE_FIELDS = {
 # Once checked, cache the result for LLM_CHECK_TTL seconds before rechecking.
 
 import time as _time
+import uuid as _uuid
 
 _llm_available_cache: dict = {"available": None, "checked_at": 0.0}
 _LLM_CHECK_TTL = 120  # seconds — recheck every 2 minutes
@@ -126,11 +128,12 @@ def _is_llm_available() -> bool:
         result = _try_call_llm(
             "Return exactly: {\"status\":\"ok\"}",
             "ping",
-            max_new=20, temp=0.0, top_p=1.0,
+            max_new=20, temp=0.01, top_p=1.0,
         )
         available = result is not None
-    except Exception:
+    except Exception as exc:
         available = False
+        logger.warning("[extract] LLM availability probe failed: %s: %s", type(exc).__name__, exc)
 
     _llm_available_cache["available"] = available
     _llm_available_cache["checked_at"] = now
@@ -200,7 +203,10 @@ def _extract_via_llm(answer: str, current_section: Optional[str], current_target
         return [], None
 
     system, user = _build_extraction_prompt(answer, current_section, current_target)
-    raw = _try_call_llm(system, user, max_new=400, temp=0.15, top_p=0.9)
+    # FIX-3: Use a unique ephemeral conv_id for each extraction call to prevent
+    # cross-narrator context contamination via shared session/RAG state.
+    ephemeral_conv_id = f"_extract_{_uuid.uuid4().hex[:12]}"
+    raw = _try_call_llm(system, user, max_new=400, temp=0.15, top_p=0.9, conv_id=ephemeral_conv_id)
     if not raw:
         # LLM returned empty — mark as unavailable for caching
         _llm_available_cache["available"] = False
@@ -252,7 +258,13 @@ def _validate_item(item: Any) -> Optional[dict]:
     if not isinstance(item, dict):
         return None
     fp = (item.get("fieldPath") or "").strip()
-    val = (item.get("value") or "").strip()
+    # P0: Normalize value — LLM may return list, dict envelope, or string
+    raw_val = item.get("value")
+    if isinstance(raw_val, dict):
+        raw_val = raw_val.get("value", "")
+    if isinstance(raw_val, list):
+        raw_val = ", ".join(str(x) for x in raw_val if x)
+    val = (str(raw_val) if raw_val else "").strip()
     if not fp or not val:
         return None
 
@@ -299,25 +311,42 @@ _NAME_FULL = re.compile(
     re.IGNORECASE
 )
 
-# Parent patterns — v8.0 FIX: match "my father Joe" but stop before verbs/conjunctions
-# The capture group uses a lookahead to stop at was/is/had/who/and/,/. to avoid
-# pulling verbs into the name (e.g. "my father Joe was a teacher" → "Joe" not "Joe was").
+# FIX-6a: Parent name regex — limit to first name + at most 2 last name words.
+# The old pattern used *? (lazy) which could still capture middle names when the
+# lookahead didn't trigger soon enough. Limiting to {0,2} prevents this.
+# "my father Walter Murray was..." → "Walter Murray" (not "Walter Fletcher Murray")
 _PARENT_FATHER = re.compile(
-    r'(?:my\s+(?:father|dad|papa|pop))\s+(?:(?:was|is|,)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)(?=\s+(?:was|is|had|who|and|worked|did|ran|taught|,)|[.,]|\s*$)',
+    r'(?:my\s+(?:father|dad|papa|pop))\s+(?:(?:was|is|,)\s+)?([A-Z][a-z]+(?:\s+(?:Van\s+)?[A-Z][a-z]+){0,2}?)(?=\s+(?:was|is|had|who|and|worked|did|ran|taught|,)|[.,]|\s*$)',
     re.IGNORECASE
 )
 _PARENT_MOTHER = re.compile(
-    r'(?:my\s+(?:mother|mom|mama|ma|mum))\s+(?:(?:was|is|,)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)(?=\s+(?:was|is|had|who|and|worked|did|ran|taught|,)|[.,]|\s*$)',
+    r'(?:my\s+(?:mother|mom|mama|ma|mum))\s+(?:(?:was|is|,)\s+)?([A-Z][a-z]+(?:\s+(?:Van\s+)?[A-Z][a-z]+){0,2}?)(?=\s+(?:was|is|had|who|and|worked|did|ran|taught|,)|[.,]|\s*$)',
     re.IGNORECASE
 )
 
 # Sibling patterns — v8.0 FIX: handle "a younger brother named Chris", "my older sister Jane"
 # Supports optional "named/called/who" bridge words before the actual name.
 _SIBLING = re.compile(
-    r'(?:(?:my|a)\s+(?:\w+\s+)*?(?:brother|sister|sibling))\s+(?:(?:named|called|who\s+was)\s+)?([A-Z][a-z]+)',
+    r'(?:(?:my|an?)\s+(?:\w+\s+)*?(?:brother|sister|sibling))\s+(?:(?:named|called|who\s+was)\s+)?([A-Z][a-z]+)',
     re.IGNORECASE
 )
 _SIBLING_NOT_NAME = {"named", "called", "who", "was", "is", "had", "and", "the", "that", "but", "in", "at", "from", "with", "about"}
+
+# FIX-5: Sibling list patterns — handle coordinated pairs and comma-separated lists.
+# Matches patterns like: "brothers Hi, Joe, and Harry", "my brother Roger and my sister Mary"
+# FIX-5d: Require either 'my' prefix for singular OR plural form to prevent
+# false matches like "sister Dorothy, and" being treated as a name list.
+_SIBLING_LIST = re.compile(
+    r'(?:my\s+(?:brothers?|sisters?|siblings?)|(?:brothers|sisters|siblings))\s+'
+    r'(?:(?:named|called|were|,|:)\s+)*'
+    r'([A-Z][a-z]+(?:(?:\s*,?\s+and\s+|\s*,\s*)[A-Z][a-z]+)+)',
+    re.IGNORECASE
+)
+# Matches coordinated pairs: "my brother Roger and my sister Mary"
+_SIBLING_PAIR = re.compile(
+    r'my\s+(?:\w+\s+)?(brother|sister)\s+(?:(?:named|called)\s+)?([A-Z][a-z]+)\s+and\s+my\s+(?:\w+\s+)?(brother|sister)\s+(?:(?:named|called)\s+)?([A-Z][a-z]+)',
+    re.IGNORECASE
+)
 
 # Occupation patterns — v8.0 FIX: also match "was a PE teacher", "was a hairdresser"
 _OCCUPATION = re.compile(
@@ -325,8 +354,11 @@ _OCCUPATION = re.compile(
     re.IGNORECASE
 )
 # v8.0: Also match "father/mother [Name] was a [occupation]" pattern
+# FIX-6c: Use (?:\w+\s+){1,3} to handle multi-word names like "Walter Barker"
+# but cap at 3 words to prevent greedy consumption of the entire sentence
+# (e.g. "father Walter Barker was ... and my mother Mary Van Horne was ...")
 _PARENT_OCCUPATION = re.compile(
-    r'(?:my\s+(?:father|dad|papa|pop|mother|mom|mama|ma|mum))\s+\w+\s+(?:was|is|worked as)\s+(?:a\s+)?([\w\s]+?)(?:\.|,|\s+(?:and|who|in))',
+    r'(?:my\s+(?:father|dad|papa|pop|mother|mom|mama|ma|mum))\s+(?:\w+\s+){1,3}(?:was|is|worked as)\s+(?:a\s+|an\s+)?([\w\s]+?)(?:\.|,|\s+(?:and|who|in))',
     re.IGNORECASE
 )
 
@@ -373,28 +405,127 @@ def _extract_via_rules(answer: str, current_section: Optional[str], current_targ
         if len(parts) > 1:
             items.append({"fieldPath": "parents.lastName", "value": " ".join(parts[1:]), "confidence": 0.8})
 
-    # Sibling
-    m = _SIBLING.search(answer)
-    if m:
-        sib_name = m.group(1).strip()
-        # Filter out common words that aren't names (e.g. "named" captured before actual name)
-        if sib_name.lower() not in _SIBLING_NOT_NAME:
-            rel_match = re.search(r'(?:my|a)\s+(?:\w+\s+)*?(brother|sister|sibling)', answer, re.IGNORECASE)
-            rel = rel_match.group(1).capitalize() if rel_match else "Sibling"
-            items.append({"fieldPath": "siblings.relation", "value": rel, "confidence": 0.85})
-            items.append({"fieldPath": "siblings.firstName", "value": sib_name, "confidence": 0.85})
+    # FIX-5: Sibling extraction — handle lists, pairs, and single siblings.
+    sibling_items = []
+    _sibling_extracted = False
 
-    # v8.0 FIX: Parent occupations (e.g. "my father Joe was a PE teacher")
-    m_occ = _PARENT_OCCUPATION.findall(answer)
-    if m_occ:
-        # Match occupation to parent (father vs mother)
-        for occ_match in re.finditer(_PARENT_OCCUPATION, answer):
-            occ_val = occ_match.group(1).strip()
-            parent_ctx = answer[max(0, occ_match.start()-30):occ_match.start()].lower()
-            if any(w in parent_ctx or w in occ_match.group(0).lower() for w in ["father", "dad", "papa", "pop"]):
-                items.append({"fieldPath": "parents.occupation", "value": occ_val, "confidence": 0.8})
-            elif any(w in parent_ctx or w in occ_match.group(0).lower() for w in ["mother", "mom", "mama", "ma", "mum"]):
-                items.append({"fieldPath": "parents.occupation", "value": occ_val, "confidence": 0.8})
+    # Try coordinated pair first: "my brother Roger and my sister Mary"
+    m_pair = _SIBLING_PAIR.search(answer)
+    if m_pair:
+        rel1 = m_pair.group(1).capitalize()
+        name1 = m_pair.group(2).strip()
+        rel2 = m_pair.group(3).capitalize()
+        name2 = m_pair.group(4).strip()
+        if name1.lower() not in _SIBLING_NOT_NAME:
+            sibling_items.append({"fieldPath": "siblings.relation", "value": rel1, "confidence": 0.85})
+            sibling_items.append({"fieldPath": "siblings.firstName", "value": name1, "confidence": 0.85})
+        if name2.lower() not in _SIBLING_NOT_NAME:
+            sibling_items.append({"fieldPath": "siblings.relation", "value": rel2, "confidence": 0.85})
+            sibling_items.append({"fieldPath": "siblings.firstName", "value": name2, "confidence": 0.85})
+        _sibling_extracted = True
+
+    # Try comma/and-separated list: "brothers Hi, Joe, and Harry"
+    if not _sibling_extracted:
+        m_list = _SIBLING_LIST.search(answer)
+        if m_list:
+            names_str = m_list.group(1)
+            # Parse comma/and-separated names
+            # FIX-5b: Use ", and " as a single delimiter before plain "," or " and "
+            # so that "Hi, Joe, and Harry" splits to ["Hi", "Joe", "Harry"]
+            # instead of ["Hi", "Joe", "and Harry"] (where "and Harry" gets filtered).
+            names = re.split(r'\s*,\s+and\s+|\s*,\s*|\s+and\s+', names_str)
+            names = [n.strip() for n in names if n.strip() and n.strip()[0].isupper()]
+            # Determine relation from the preceding word
+            rel_match = re.search(r'(?:my\s+)?(?:\w+\s+)*(brothers?|sisters?|siblings?)', m_list.group(0), re.IGNORECASE)
+            rel_word = (rel_match.group(1) if rel_match else "sibling").lower()
+            if "brother" in rel_word:
+                rel = "Brother"
+            elif "sister" in rel_word:
+                rel = "Sister"
+            else:
+                rel = "Sibling"
+            for name in names:
+                if name.lower() not in _SIBLING_NOT_NAME:
+                    sibling_items.append({"fieldPath": "siblings.relation", "value": rel, "confidence": 0.85})
+                    sibling_items.append({"fieldPath": "siblings.firstName", "value": name, "confidence": 0.85})
+            if sibling_items:
+                _sibling_extracted = True
+
+    # Fallback: single/multiple sibling pattern via finditer
+    # FIX-5c: Use finditer instead of search to catch ALL sibling mentions,
+    # e.g. "a brother Roger and a sister Dorothy" yields both Roger and Dorothy.
+    if not _sibling_extracted:
+        for m in _SIBLING.finditer(answer):
+            sib_name = m.group(1).strip()
+            if sib_name.lower() not in _SIBLING_NOT_NAME:
+                # Extract relation from THIS match's text only (not preceding context)
+                match_text = m.group(0)
+                rel_match = re.search(r'(brother|sister|sibling)', match_text, re.IGNORECASE)
+                rel = rel_match.group(1).capitalize() if rel_match else "Sibling"
+                sibling_items.append({"fieldPath": "siblings.relation", "value": rel, "confidence": 0.85})
+                sibling_items.append({"fieldPath": "siblings.firstName", "value": sib_name, "confidence": 0.85})
+
+    items.extend(sibling_items)
+
+    # FIX-6b: Helper to strip article prefixes from occupations
+    def _clean_occupation(val):
+        val = val.strip()
+        # Strip leading "a " or "an " article prefix
+        val = re.sub(r'^(?:an?\s+)', '', val, flags=re.IGNORECASE)
+        return val.strip()
+
+    # FIX-4: Parent occupations — tag with _parentType so we can group with the correct parent.
+    # This replaces the old approach of appending occupations after both parents' names,
+    # which caused the frontend's duplicate-field detection to misassign them.
+    father_occupation = None
+    mother_occupation = None
+    for occ_match in re.finditer(_PARENT_OCCUPATION, answer):
+        occ_val = _clean_occupation(occ_match.group(1))
+        parent_ctx = answer[max(0, occ_match.start()-30):occ_match.start()].lower()
+        match_text = occ_match.group(0).lower()
+        if any(w in parent_ctx or w in match_text for w in ["father", "dad", "papa", "pop"]):
+            father_occupation = occ_val
+        elif any(w in parent_ctx or w in match_text for w in ["mother", "mom", "mama", "ma", "mum"]):
+            mother_occupation = occ_val
+
+    # FIX-4: Reorder items so each parent's fields are contiguous (relation, firstName, lastName, occupation).
+    # This ensures the frontend's duplicate-field counter bumps at the right time.
+    reordered = []
+    father_items = [i for i in items if i["fieldPath"].startswith("parents.") and i.get("_parentType") == "father"]
+    mother_items = [i for i in items if i["fieldPath"].startswith("parents.") and i.get("_parentType") == "mother"]
+    other_items = [i for i in items if not i["fieldPath"].startswith("parents.") or "_parentType" not in i]
+
+    # Tag father/mother items from the name extraction above
+    # The name extraction doesn't tag _parentType, so we need to split by discovery order:
+    # First batch of parents.* items = father (if father was matched), second = mother
+    parent_items = [i for i in items if i["fieldPath"].startswith("parents.")]
+    non_parent_items = [i for i in items if not i["fieldPath"].startswith("parents.")]
+
+    # Split parent items into father group and mother group
+    father_group = []
+    mother_group = []
+    seen_relations = set()
+    current_group = None
+    for pi in parent_items:
+        if pi["fieldPath"] == "parents.relation":
+            val_lower = pi["value"].lower()
+            if val_lower == "father":
+                current_group = "father"
+            elif val_lower == "mother":
+                current_group = "mother"
+        if current_group == "father":
+            father_group.append(pi)
+        elif current_group == "mother":
+            mother_group.append(pi)
+
+    # Append occupations to the correct parent group
+    if father_occupation:
+        father_group.append({"fieldPath": "parents.occupation", "value": father_occupation, "confidence": 0.8})
+    if mother_occupation:
+        mother_group.append({"fieldPath": "parents.occupation", "value": mother_occupation, "confidence": 0.8})
+
+    # Rebuild items: non-parent first, then father group, then mother group
+    items = non_parent_items + father_group + mother_group
 
     # If we have a current target and found nothing matching it, project the full answer
     if current_target and not any(i["fieldPath"] == current_target for i in items):
@@ -495,9 +626,14 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
                 extractionMethod="llm",
             ))
 
-        # Group repeatable fields
+        # Group repeatable fields — FIX-4: preserve _repeatableGroup as repeatableGroup
         grouped = _group_repeatable_items([i.model_dump() for i in result_items])
-        final_items = [ExtractedItem(**{k: v for k, v in item.items() if k != "_repeatableGroup"}) for item in grouped]
+        final_items = []
+        for item in grouped:
+            rg = item.pop("_repeatableGroup", None)
+            ei = ExtractedItem(**item)
+            ei.repeatableGroup = rg
+            final_items.append(ei)
 
         return ExtractFieldsResponse(
             items=final_items,
@@ -549,7 +685,7 @@ def extract_diag():
         result = _try_call_llm(
             "Return exactly: {\"status\":\"ok\"}",
             "ping",
-            max_new=20, temp=0.0, top_p=1.0,
+            max_new=20, temp=0.01, top_p=1.0,
         )
         if result:
             llm_available = True

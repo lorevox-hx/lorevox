@@ -255,12 +255,17 @@ def chat(req: _ChatReq) -> Dict[str, Any]:
     if inputs["input_ids"].shape[-1] > MAX_CONTEXT_WINDOW:
         print(f"[VRAM-GUARD] Truncating input from {inputs['input_ids'].shape[-1]} to {MAX_CONTEXT_WINDOW} tokens")
         inputs = {k: v[:, -MAX_CONTEXT_WINDOW:] for k, v in inputs.items()}
+    # WO-S1: Centralized generation parameter guard — temp≤0 → greedy
+    _temp = float(req.temp)
+    _do_sample = _temp > 0
+    if not _do_sample:
+        _temp = 1.0  # dummy; ignored when do_sample=False
     out = model.generate(
         **inputs,
         max_new_tokens=int(req.max_new),
-        temperature=float(req.temp),
+        temperature=_temp,
         top_p=float(req.top_p),
-        do_sample=True,
+        do_sample=_do_sample,
         repetition_penalty=1.1,
         pad_token_id=tok.eos_token_id,
         eos_token_id=tok.eos_token_id,
@@ -391,15 +396,20 @@ def chat_stream(req: _ChatReq):
                 print(f"[VRAM-GUARD] Truncating stream input from {inputs['input_ids'].shape[-1]} to {MAX_CONTEXT_WINDOW} tokens")
                 inputs = {k: v[:, -MAX_CONTEXT_WINDOW:] for k, v in inputs.items()}
             streamer = TextIteratorStreamer(tok, skip_prompt=True, skip_special_tokens=True)
+            # WO-S1: Centralized generation parameter guard — temp≤0 → greedy
+            _temp = float(req.temp)
+            _do_sample = _temp > 0
+            if not _do_sample:
+                _temp = 1.0  # dummy; ignored when do_sample=False
             th = threading.Thread(
                 target=model.generate,
                 kwargs=dict(
                     **inputs,
                     streamer=streamer,
                     max_new_tokens=int(req.max_new),
-                    temperature=float(req.temp),
+                    temperature=_temp,
                     top_p=float(req.top_p),
-                    do_sample=True,
+                    do_sample=_do_sample,
                     repetition_penalty=1.1,
                     stopping_criteria=stop,
                     pad_token_id=tok.eos_token_id,
