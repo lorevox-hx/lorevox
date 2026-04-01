@@ -116,6 +116,14 @@ exports/
 out/
 
 # =========================
+# TEST / CI ARTIFACTS
+# =========================
+playwright-report/
+test-results/
+repo_scan_log.txt
+test_normalizers.js
+
+# =========================
 # FRONTEND / BUILD
 # =========================
 node_modules/
