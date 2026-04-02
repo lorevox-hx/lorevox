@@ -118,6 +118,38 @@ import uuid as _uuid
 _llm_available_cache: dict = {"available": None, "checked_at": 0.0}
 _LLM_CHECK_TTL = 5  # seconds — keep short so negative cache clears quickly
 
+# ── Extraction metrics (Phase 6B) ──────────────────────────────────────────
+_extraction_metrics: dict = {
+    "total_turns": 0,
+    "llm_turns": 0,
+    "rules_turns": 0,
+    "fallback_turns": 0,
+    "total_parsed": 0,
+    "total_accepted": 0,
+    "total_rejected": 0,
+    "reject_reasons": {},  # reason → count
+}
+
+
+def _record_metric(method: str, parsed: int, accepted: int, rejected: int,
+                   reject_reasons: Optional[List[str]] = None) -> None:
+    """Record extraction metrics for a single turn."""
+    _extraction_metrics["total_turns"] += 1
+    if method == "llm":
+        _extraction_metrics["llm_turns"] += 1
+    elif method == "rules":
+        _extraction_metrics["rules_turns"] += 1
+    else:
+        _extraction_metrics["fallback_turns"] += 1
+    _extraction_metrics["total_parsed"] += parsed
+    _extraction_metrics["total_accepted"] += accepted
+    _extraction_metrics["total_rejected"] += rejected
+    if reject_reasons:
+        for reason in reject_reasons:
+            _extraction_metrics["reject_reasons"][reason] = (
+                _extraction_metrics["reject_reasons"].get(reason, 0) + 1
+            )
+
 
 def _is_llm_available() -> bool:
     """Return True if the LLM stack is responsive, using cached result."""
@@ -204,7 +236,14 @@ def _build_extraction_prompt(answer: str, current_section: Optional[str], curren
         "{\"fieldPath\":\"parents.occupation\",\"value\":\"teacher\",\"confidence\":0.9},"
         "{\"fieldPath\":\"siblings.relation\",\"value\":\"sister\",\"confidence\":0.9},"
         "{\"fieldPath\":\"siblings.firstName\",\"value\":\"Amy\",\"confidence\":0.9},"
-        "{\"fieldPath\":\"siblings.birthOrder\",\"value\":\"older\",\"confidence\":0.7}]"
+        "{\"fieldPath\":\"siblings.birthOrder\",\"value\":\"older\",\"confidence\":0.7}]\n"
+        "\n"
+        "Example — narrator says: \"I worked as a welder and later became a supervisor at a shipyard.\"\n"
+        "Output:\n"
+        "[{\"fieldPath\":\"education.earlyCareer\",\"value\":\"welder\",\"confidence\":0.9},"
+        "{\"fieldPath\":\"education.careerProgression\",\"value\":\"supervisor at a shipyard\",\"confidence\":0.9}]\n"
+        "Career rules: use education.earlyCareer for first job, education.careerProgression for later roles. "
+        "Do NOT invent career.* or personal.profession paths."
     )
 
     context_note = ""
@@ -776,6 +815,7 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
             ei.repeatableGroup = rg
             final_items.append(ei)
 
+        _record_metric("llm", parsed=len(llm_items), accepted=len(final_items), rejected=0)
         return ExtractFieldsResponse(
             items=final_items,
             method="llm",
@@ -804,6 +844,7 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
                 extractionMethod="rules",
             ))
 
+        _record_metric("rules", parsed=0, accepted=len(result_items), rejected=0)
         return ExtractFieldsResponse(
             items=result_items,
             method="rules",
@@ -811,6 +852,7 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
         )
 
     # Nothing extracted — return empty
+    _record_metric("fallback", parsed=0, accepted=0, rejected=0)
     return ExtractFieldsResponse(items=[], method="fallback", raw_llm_output=raw_output)
 
 
@@ -853,4 +895,22 @@ def extract_diag():
         "regex_pattern_count": len([
             k for k in globals() if k.startswith("_") and k[1:2].isupper()
         ]),
+        # Phase 6B: Extraction metrics
+        "metrics": {
+            "total_turns": _extraction_metrics["total_turns"],
+            "llm_turns": _extraction_metrics["llm_turns"],
+            "rules_turns": _extraction_metrics["rules_turns"],
+            "fallback_turns": _extraction_metrics["fallback_turns"],
+            "llm_ratio": round(
+                _extraction_metrics["llm_turns"] / max(1, _extraction_metrics["total_turns"]), 3
+            ),
+            "total_parsed": _extraction_metrics["total_parsed"],
+            "total_accepted": _extraction_metrics["total_accepted"],
+            "total_rejected": _extraction_metrics["total_rejected"],
+            "acceptance_ratio": round(
+                _extraction_metrics["total_accepted"] /
+                max(1, _extraction_metrics["total_parsed"] + _extraction_metrics["total_accepted"]), 3
+            ),
+            "reject_reasons": dict(_extraction_metrics["reject_reasons"]),
+        },
     }
