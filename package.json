@@ -1,7 +1,7 @@
 {
   "name": "lorevox",
-  "version": "6.3.0",
-  "description": "Lorevox Life Archive Studio — E2E test harness",
+  "version": "8.0.0",
+  "description": "Lorevox — local-first memoir and life-story platform",
   "private": true,
   "scripts": {
     "audit:ui": "playwright test tests/e2e/lorevox-ui-audit.spec.ts",

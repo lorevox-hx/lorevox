@@ -206,6 +206,16 @@ Then open: **http://localhost:8080/ui/lori8.0.html**
 
 The UI server provides cross-origin isolation headers (COOP/COEP) required for reliable camera access and the multi-threaded WASM path.
 
+### Desktop Shortcuts
+
+To create a `Lori` folder on your Desktop with one-click shortcuts for Start, Stop, Reload, Status, and Logs:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup_desktop_shortcuts.ps1
+```
+
+Alternatively, copy the `.bat` files from `shortcuts/` to wherever you want them. They use relative paths and will work from any location as long as the repo is at `C:\Users\chris\lorevox`.
+
 ### Restart
 
 ```bash
@@ -297,6 +307,7 @@ DB_PATH  = DB_DIR / DB_NAME
 lorevox/
 ├── ui/
 │   ├── lori8.0.html                 # Active shell — 8.0 UI, Bio Builder, Media Builder
+│   ├── lori7.5.html                 # Legacy 7.5 shell (reference only)
 │   ├── css/
 │   │   ├── tailwind.min.css         # Utility CSS base
 │   │   ├── base.css                 # Global base styles
@@ -323,26 +334,43 @@ lorevox/
 │   │   ├── app.js                   # Core: buildRuntime71, meaning engine, send flow, memoir export
 │   │   ├── cognitive-auto.js        # Auto cognitive mode selection per turn
 │   │   ├── life-map.js              # Life Map navigator canvas
+│   │   ├── narrator-preload.js      # Narrator preload / template loader
+│   │   ├── projection-map.js        # Projection map renderer
+│   │   ├── projection-sync.js       # Projection sync logic
 │   │   ├── bio-builder.js           # Bio Builder — quick capture, candidate pipeline
+│   │   ├── bio-builder-*.js         # Bio Builder modules (core, candidates, family-tree, life-threads, questionnaire, sources)
 │   │   ├── bio-review.js            # Bio Builder review surface
-│   │   ├── bio-promotion-adapters.js# Promotion adapters — candidates → structuredBio
+│   │   ├── bio-promotion-adapters.js # Promotion adapters — candidates → structuredBio
 │   │   ├── bio-phase-f.js           # Phase F orchestrator — approved-only downstream sync
 │   │   ├── bio-phase-f-report.js    # Phase F run report UI
 │   │   ├── bio-phase-f-test-harness.js # Phase F test harness (dev/QA)
-│   │   └── bio-control-center.js   # Bio Builder control center
+│   │   └── bio-control-center.js    # Bio Builder control center
+│   ├── templates/                   # Narrator profile templates (JSON)
+│   ├── docs/                        # UI-specific architecture docs
 │   └── vendor/
 │       ├── mediapipe/               # MediaPipe Face Mesh + camera utils (local WASM)
 │       ├── floating-ui/             # Tooltip / popover positioning
 │       └── mind-elixir/             # Life Map mind-map renderer
 │
 ├── server/
+│   ├── requirements.blackwell.txt   # GPU/LLM Python dependencies (RTX 5080 / Blackwell)
+│   ├── requirements.tts.txt         # TTS Python dependencies (separate venv)
+│   ├── schema/
+│   │   └── migrate_ai_extensions.sql # DB migration scripts
+│   ├── scripts/
+│   │   └── seed_rag_docs.py         # RAG document seeder
 │   └── code/
 │       └── api/
 │           ├── main.py              # FastAPI entrypoint; .env loader; CORS; mounts /ui
 │           ├── db.py                # SQLite CRUD; all table init; media + attachments
+│           ├── api.py               # LLM REST router
 │           ├── safety.py            # Crisis detection — local, no LLM
 │           ├── prompt_composer.py   # System prompt assembly; runtime71 directives; TRANSPARENCY RULE
-│           ├── api.py               # LLM REST router
+│           ├── affect_service.py    # Affect state service layer
+│           ├── archive.py           # Archive / transcript storage
+│           ├── interview_engine.py  # Interview plan engine
+│           ├── llm_interview.py     # LLM-driven interview logic
+│           ├── tts_service.py       # TTS client bridge
 │           └── routers/
 │               ├── chat_ws.py       # WebSocket turn handler
 │               ├── people.py        # Narrator entity CRUD
@@ -352,19 +380,24 @@ lorevox/
 │               ├── interview.py     # Session / question advancement
 │               ├── sessions.py      # Session management
 │               ├── facts.py         # Fact extraction POST
+│               ├── extract.py       # LLM-powered biographical extraction pipeline
 │               ├── stt.py           # Speech-to-text
 │               ├── affect.py        # Affect event logging
 │               ├── memoir_export.py # DOCX export with AttachedPhoto support
 │               ├── calendar.py      # Calendar utilities
 │               ├── db_inspector.py  # DB inspection (dev tool)
-│               └── tts.py           # TTS endpoint (optional; USE_TTS=1)
+│               ├── ping.py          # Health check endpoint
+│               ├── stream_bus.py    # SSE event stream bus
+│               └── tts.py           # TTS endpoint (optional; LV_ENABLE_TTS=1)
 │
-├── data/
-│   ├── db/
-│   │   └── lorevox.sqlite3          # Active database
-│   └── media/                       # Uploaded photos (created at first upload)
+├── shortcuts/                       # Desktop shortcut .bat files (portable)
+│   ├── Start Lori.bat               # Launch all services via Windows Terminal
+│   ├── Stop Lori.bat                # Stop all services
+│   ├── Reload API.bat               # Restart API only
+│   ├── Status.bat                   # Print service status
+│   └── Logs.bat                     # Tail combined logs
 │
-├── launchers/
+├── launchers/                       # WSL shell launchers (Linux-native)
 │   ├── run_all_dev.sh               # Start all services
 │   ├── stop_all_dev.sh              # Stop all services
 │   ├── run_gpu_8000.sh              # LLM / API server
@@ -381,15 +414,18 @@ lorevox/
 │   ├── start_ui_visible.sh          # Visible UI startup (Windows Terminal tab)
 │   ├── restart_api_visible.sh       # Visible API restart (Windows Terminal tab)
 │   ├── logs_visible.sh              # Visible combined log tail (Windows Terminal tab)
+│   ├── bootstrap.sh                 # First-time setup helper
 │   ├── test_all.sh                  # Unified test runner (all layers)
 │   ├── test_stack_health.sh         # Stack health tests (ports, PIDs, VRAM guard)
 │   ├── test_startup_matrix.sh       # Startup cycle tests (isolation, rapid restart)
 │   ├── inspect_db.py                # DB inspection utility
+│   ├── seed_interview_plan.py       # Seed default interview plan
 │   ├── warm_llm.py                  # LLM warm-up
 │   └── warm_tts.py                  # TTS warm-up
 │
 ├── tools/
-│   └── LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html  # Session debug visualiser
+│   ├── LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html  # Session debug visualiser
+│   └── samples/                     # Sample data files for testing
 │
 ├── tests/
 │   ├── test_api_smoke.py            # API endpoint smoke tests (31 tests)
@@ -400,8 +436,32 @@ lorevox/
 │       ├── test_bio_builder.spec.ts     # Bio Builder contracts (9 tests)
 │       ├── lorevox-smoke-flow.spec.ts   # Legacy backend contract test
 │       └── lorevox-ui-audit.spec.ts     # Legacy UI audit
+│
 ├── docs/                            # All project documentation
+│   ├── architecture/                # System design, philosophy, action plans
+│   ├── reports/                     # Phase reports, validation results, ship reports
+│   ├── bug-logs/                    # Bug logs, fix plans, failure logs
+│   ├── work-orders/                 # Work orders, implementation plans
+│   ├── test-matrices/               # Test plans, test checklists, scoring
+│   ├── release-notes/               # Version release notes
+│   ├── handoffs/                    # Handoff docs, session reports, audits
+│   ├── vision/                      # Conceptual docs, digital sunset, personas
+│   ├── runbook/                     # Operational guides
+│   └── scratch/                     # Temporary notes
+│
+├── eval/                            # Evaluation scripts
+│   └── eval_onboarding.py
+├── expansion ideas/                 # Future feature exploration (v7.1 packs)
+├── research/                        # Background research docs
+├── schemas/                         # JSON schemas (persona scoring, ingestion)
+│
 ├── lorevox-serve.py                 # Local UI HTTP server (COOP/COEP for WASM)
+├── start_lorevox.bat                # Windows: start all services (Windows Terminal)
+├── stop_lorevox.bat                 # Windows: stop all services
+├── reload_api.bat                   # Windows: restart API only
+├── status_lorevox.bat               # Windows: print service status
+├── logs_lorevox.bat                 # Windows: tail combined logs
+├── setup_desktop_shortcuts.ps1      # Create Desktop/Lori shortcut folder
 ├── .env                             # Local environment config (not committed)
 └── .env.example                     # Environment template
 ```
@@ -410,14 +470,14 @@ lorevox/
 
 ## Active Code Inventory by Layer
 
-### Backend entrypoints
-`server/code/api/main.py` · `server/code/api/db.py` · `server/code/api/prompt_composer.py` · `server/code/api/api.py` · `server/code/api/safety.py`
+### Backend core modules
+`server/code/api/main.py` · `server/code/api/db.py` · `server/code/api/api.py` · `server/code/api/prompt_composer.py` · `server/code/api/safety.py` · `server/code/api/affect_service.py` · `server/code/api/archive.py` · `server/code/api/interview_engine.py` · `server/code/api/llm_interview.py` · `server/code/api/tts_service.py`
 
 ### Active routers (all registered in `main.py`)
-`chat_ws` · `people` · `profiles` · `media` · `timeline` · `interview` · `sessions` · `facts` · `stt` · `affect` · `memoir_export` · `db_inspector` · `ping` · `calendar` · `tts` *(optional)*
+`chat_ws` · `people` · `profiles` · `media` · `timeline` · `interview` · `sessions` · `facts` · `extract` · `stt` · `affect` · `memoir_export` · `db_inspector` · `ping` · `stream_bus` · `calendar` · `tts` *(optional)*
 
 ### Active frontend JavaScript (loaded by `lori8.0.html`)
-`state.js` · `data.js` · `api.js` · `tabs.js` · `safety-ui.js` · `permissions.js` · `emotion.js` · `facial-consent.js` · `affect-bridge.js` · `emotion-ui.js` · `timeline-ui.js` · `interview.js` · `app.js` · `cognitive-auto.js` · `life-map.js` · `bio-builder.js` · `bio-review.js` · `bio-promotion-adapters.js` · `bio-phase-f.js` · `bio-phase-f-report.js` · `bio-phase-f-test-harness.js` · `bio-control-center.js` + Media Builder IIFE + Camera Preview IIFE (both inline in `lori8.0.html`)
+`state.js` · `data.js` · `api.js` · `tabs.js` · `safety-ui.js` · `permissions.js` · `emotion.js` · `facial-consent.js` · `affect-bridge.js` · `emotion-ui.js` · `timeline-ui.js` · `interview.js` · `app.js` · `cognitive-auto.js` · `life-map.js` · `narrator-preload.js` · `projection-map.js` · `projection-sync.js` · `bio-builder.js` · `bio-builder-core.js` · `bio-builder-candidates.js` · `bio-builder-family-tree.js` · `bio-builder-life-threads.js` · `bio-builder-questionnaire.js` · `bio-builder-sources.js` · `bio-review.js` · `bio-promotion-adapters.js` · `bio-phase-f.js` · `bio-phase-f-report.js` · `bio-phase-f-test-harness.js` · `bio-phase-f-debug.js` · `bio-control-center.js` + Media Builder IIFE + Camera Preview IIFE (both inline in `lori8.0.html`)
 
 ### Vendored dependencies (all local, no CDN)
 `mediapipe/face_mesh/face_mesh.js` · `mediapipe/camera_utils/camera_utils.js` · `floating-ui/core.min.js` · `floating-ui/dom.min.js` · `mind-elixir/mind-elixir.js`
@@ -504,17 +564,17 @@ The inspector renders a vertical event timeline colour-coded by posture (indigo 
 
 | Document | Purpose |
 |---|---|
-| `docs/REPO_AUDIT_AND_RUNTIME_INVENTORY.md` | **This audit** — complete active file inventory, DB path logic, legacy classification |
-| `docs/LOREVOX_20_RUN_DEEP_RUNTIME_REPORT.md` | 20-run deep runtime test — 20/20 PASS, 0 critical failures, findings and warnings |
-| `docs/LOREVOX_ACTION_PLAN.md` | Current action plan — completed milestones, remaining phases, tracked issues |
-| `docs/MEDIA_BUILDER_TEST_REPORT.md` | Media Builder ship report |
-| `docs/CAMERA_PREVIEW_SHIP_REPORT.md` | Camera preview ship report |
-| `docs/MEANING_ENGINE_POSTSHIP_REPORT.md` | Meaning engine post-ship analysis |
-| `docs/BIO_BUILDER_PHASE_F_REPORT.md` | Bio Builder Phase F ship report |
-| `docs/LOREVOX_80_RUNTIME_ASSESSMENT_UPDATED.md` | 10-turn runtime matrix — behaviorally validated |
-| `docs/Lorevox_Operating_Doctrine.md` | 10 product principles with implementation rules |
-| `docs/DESIGN_PHILOSOPHY.md` | UX rationale and decision history |
-| `docs/AGING_UI_PRINCIPLES.md` | Accessibility and aging-first UI principles |
+| `docs/handoffs/REPO_AUDIT_AND_RUNTIME_INVENTORY.md` | Complete active file inventory, DB path logic, legacy classification |
+| `docs/reports/LOREVOX_20_RUN_DEEP_RUNTIME_REPORT.md` | 20-run deep runtime test — 20/20 PASS, 0 critical failures |
+| `docs/architecture/LOREVOX_ACTION_PLAN.md` | Current action plan — milestones, remaining phases, tracked issues |
+| `docs/architecture/Lorevox_Operating_Doctrine.md` | 10 product principles with implementation rules |
+| `docs/architecture/DESIGN_PHILOSOPHY.md` | UX rationale and decision history |
+| `docs/architecture/AGING_UI_PRINCIPLES.md` | Accessibility and aging-first UI principles |
+| `docs/reports/MEDIA_BUILDER_TEST_REPORT.md` | Media Builder ship report |
+| `docs/reports/CAMERA_PREVIEW_SHIP_REPORT.md` | Camera preview ship report |
+| `docs/reports/MEANING_ENGINE_POSTSHIP_REPORT.md` | Meaning engine post-ship analysis |
+| `docs/reports/BIO_BUILDER_PHASE_F_REPORT.md` | Bio Builder Phase F ship report |
+| `docs/test-matrices/LOREVOX_80_RUNTIME_ASSESSMENT_UPDATED.md` | 10-turn runtime matrix — behaviorally validated |
 | `ui/docs/BIO_BUILDER_ARCHITECTURE.md` | Bio Builder architecture detail |
 | `ui/docs/LIFE_MAP_BEHAVIOR_TESTS.md` | Life Map behavior validation |
 | `tests/SAFETY_TEST_MATRIX_911_988.md` | Safety scan test matrix |
