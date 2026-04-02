@@ -2149,6 +2149,14 @@ function lv80ToggleNarratorSwitcher(){
   }catch(_){}
 }
 
+/** v8.1: Open narrator switcher (non-toggle — always opens). */
+function lv80OpenNarratorSwitcher(){
+  const pop = document.getElementById("lv80NarratorSwitcher");
+  if (!pop) return;
+  lv80RenderNarratorCards();
+  try{ if (!pop.matches(":popover-open")) pop.showPopover(); }catch(_){}
+}
+
 function lv80ConfirmNarratorSwitch(pid){
   const pop = document.getElementById("lv80NarratorSwitcher");
   try{ if (pop?.matches(":popover-open")) pop.hidePopover(); }catch(_){}
@@ -3860,6 +3868,29 @@ async function lv80Init() {
   if (typeof window._lv80InitMedia === "function") window._lv80InitMedia();
 
   peekBtn?.addEventListener("click", () => {
+    // Phase 4.2: Debug logging for Peek at Memoir
+    var _mPop = document.getElementById("memoirScrollPopover");
+    var _mCon = document.getElementById("memoirScrollContent");
+    var _mInt = document.getElementById("memoirScrollIntro");
+    console.log("[peek-memoir] click received", {
+      popoverFound: !!_mPop,
+      popoverOpen: _mPop ? (_mPop.matches(":popover-open") || _mPop.hasAttribute("open")) : false,
+      contentEl: !!_mCon,
+      contentHidden: _mCon ? _mCon.hidden : "n/a",
+      contentLength: _mCon ? (_mCon.innerHTML || "").length : 0,
+      contentChildren: _mCon ? _mCon.childElementCount : 0,
+      introHidden: _mInt ? _mInt.hidden : "n/a"
+    });
+
+    // Phase 4.3: Fix — if content exists but is hidden, unhide it and hide intro
+    if (_mCon && _mCon.innerHTML && _mCon.innerHTML.trim().length > 0) {
+      if (_mCon.hidden) {
+        _mCon.hidden = false;
+        if (_mInt) _mInt.hidden = true;
+        console.log("[peek-memoir] fixed: unhid content, hid intro");
+      }
+    }
+
     // Global peek uses docked slide-in — reset any Floating UI anchoring
     if (_goldenThreadCleanup) {
       _goldenThreadCleanup();
@@ -3871,6 +3902,11 @@ async function lv80Init() {
   // Clean up Floating UI when popover closes natively (click-outside)
   if (popover) {
     popover.addEventListener("toggle", (event) => {
+      // Phase 4.2: Debug logging on toggle state change
+      console.log("[peek-memoir] toggle event:", event.newState, {
+        hasContent: (document.getElementById("memoirScrollContent")?.innerHTML?.length || 0) > 0,
+        contentHidden: document.getElementById("memoirScrollContent")?.hidden
+      });
       if (event.newState === "closed") {
         if (_goldenThreadCleanup) {
           _goldenThreadCleanup();
@@ -3929,52 +3965,10 @@ async function lv80Init() {
   // 7. Initial capture bar state
   lv80RefreshCaptureBar();
 
-  // 8. For returning users — app.js called loadPerson(saved) fire-and-forget
-  //    (not awaited), so state.profile may not be populated yet.
-  //    We poll until it settles, then send the welcome-back prompt.
-  //    For new users (no savedPid), app.js already scheduled
-  //    setTimeout(startIdentityOnboarding, 800) — nothing to do here.
-  const _savedPid = typeof LS_ACTIVE !== "undefined"
-    ? localStorage.getItem(LS_ACTIVE) : null;
-  if (_savedPid) {
-    let _pollCount = 0;
-    const _pollWelcome = setInterval(() => {
-      _pollCount++;
-      // v8.0 FIX: Verify state.person_id is set and matches saved pid.
-      // _enforceBlankStartupState() may have cleared person_id after we
-      // captured _savedPid. Without this, the poll can fire a welcome-back
-      // prompt during zero-narrator startup or after narrator invalidation.
-      if (!state.person_id || state.person_id !== _savedPid) {
-        clearInterval(_pollWelcome);
-        return;
-      }
-      const _basics = state.profile?.basics || {};
-      const _name   = _basics.preferred || _basics.fullname;
-      const _dob    = _basics.dob;
-      const _chat   = document.getElementById("chatMessages");
-      // Fire once profile is ready and chat is still empty
-      if (_name && _dob && _chat && _chat.children.length === 0) {
-        clearInterval(_pollWelcome);
-        lv80UpdateActiveNarratorCard(); // v8: update card after profile loads
-        const _pob = _basics.pob || null;
-        // LV-002: deceased-aware greeting
-        const _decW = lv80GetNarratorDeceased();
-        const _decFrameW = _decW.deceased
-          ? ` This narrator is deceased${_decW.dod ? " (d. " + _decW.dod + ")" : ""}. You are speaking with a family member or archivist preserving their story. Use past tense when referring to the narrator's life. Do not address the narrator directly as if they are present.`
-          : "";
-        sendSystemPrompt(
-          `[SYSTEM: You are resuming a life-archive session with ${_name}, ` +
-          `born ${_dob}${_pob ? " in " + _pob : ""}.${_decFrameW} ` +
-          "Welcome them back warmly by first name in one sentence, then immediately " +
-          "ask your next most meaningful interview question. Do not re-introduce " +
-          "yourself. Do not repeat the onboarding flow. Do not ask for name or DOB again.]"
-        );
-      } else if (_pollCount > 20 || (_chat && _chat.children.length > 0)) {
-        // Give up after 4s or if something already started the conversation
-        clearInterval(_pollWelcome);
-      }
-    }, 200);
-  }
+  // 8. v8.1: Welcome-back polling removed from startup.
+  //    app.js now enforces blank startup state — no narrator auto-loaded.
+  //    The welcome-back prompt is handled by lv80SwitchPerson() when the
+  //    user explicitly picks a narrator from the selector.
 
   console.log("[Lori 8.0] Shell initialised.");
 }

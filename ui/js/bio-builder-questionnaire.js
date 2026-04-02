@@ -28,15 +28,17 @@
   if (!_core) throw new Error("bio-builder-core.js must load before bio-builder-questionnaire.js");
 
   // Pull core aliases
-  var _bb               = _core._bb;
-  var _el               = _core._el;
-  var _uid              = _core._uid;
-  var _esc              = _core._esc;
-  var _currentPersonId  = _core._currentPersonId;
-  var _currentPersonName = _core._currentPersonName;
-  var _persistDrafts    = _core._persistDrafts;
-  var _hasAnyValue      = _core._hasAnyValue;
-  var _emptyStateHtml   = _core._emptyStateHtml;
+  var _bb                  = _core._bb;
+  var _el                  = _core._el;
+  var _uid                 = _core._uid;
+  var _esc                 = _core._esc;
+  var _currentPersonId     = _core._currentPersonId;
+  var _currentPersonName   = _core._currentPersonName;
+  var _persistDrafts       = _core._persistDrafts;
+  var _hasAnyValue         = _core._hasAnyValue;
+  var _emptyStateHtml      = _core._emptyStateHtml;
+  var _restoreQuestionnaire = _core._restoreQuestionnaire;
+  var _qqDebugSnapshot     = _core._qqDebugSnapshot;
 
   /* ───────────────────────────────────────────────────────────
      OPTION CONSTANTS
@@ -365,6 +367,9 @@
      NEVER overwrites existing Bio Builder questionnaire data.
   ─────────────────────────────────────────────────────────── */
 
+  // Phase 3.3: Track whether hydration has already run for this narrator
+  var _lastHydratedPid = null;
+
   function _hydrateQuestionnaireFromProfile(bb) {
     if (!bb) return;
     try {
@@ -372,13 +377,33 @@
     } catch (_) { return; }
     var basics = state.profile.basics;
 
+    // Phase 3.3: Make hydration idempotent — skip if already hydrated for this narrator
+    var currentPid = bb.personId || null;
+    if (currentPid && currentPid === _lastHydratedPid) {
+      // Already hydrated this narrator — don't re-run (protects manual edits)
+      return;
+    }
+
     var q = bb.questionnaire.personal;
     var personalEmpty = !q || !_hasAnyValue(q);
     if (personalEmpty) {
+      // Phase 3.1: Fix full-name hydration — prefer display name, then composed full name
+      var fullName = "";
+      if (basics.fullname && basics.fullname.trim()) {
+        fullName = basics.fullname.trim();
+      } else {
+        // Compose from parts: first + middle + last
+        var parts = [basics.legalFirstName, basics.legalMiddleName, basics.legalLastName].filter(Boolean);
+        if (parts.length > 0) {
+          fullName = parts.join(" ").trim();
+        } else if (basics.preferred && basics.preferred.trim()) {
+          // Fallback to preferred name only if nothing else exists
+          fullName = basics.preferred.trim();
+        }
+      }
+
       bb.questionnaire.personal = {
-        fullName:      basics.fullname              || basics.legalFirstName
-                         ? [basics.legalFirstName || "", basics.legalMiddleName || "", basics.legalLastName || ""].filter(Boolean).join(" ").trim()
-                         : "",
+        fullName:      fullName,
         preferredName: basics.preferred             || "",
         birthOrder:    basics.birthOrder            || "",
         dateOfBirth:   basics.dob                   || "",
@@ -386,9 +411,6 @@
         placeOfBirth:  basics.placeOfBirthNormalized || basics.pob || basics.placeOfBirthRaw || "",
         zodiacSign:    basics.zodiacSign            || ""
       };
-      if (basics.fullname && basics.fullname.trim()) {
-        bb.questionnaire.personal.fullName = basics.fullname.trim();
-      }
       if (bb.questionnaire.personal.dateOfBirth && !bb.questionnaire.personal.zodiacSign) {
         var derived = deriveZodiacFromDob(bb.questionnaire.personal.dateOfBirth);
         if (derived) bb.questionnaire.personal.zodiacSign = derived;
@@ -403,6 +425,7 @@
 
     if (kinArr.length) {
       // --- Parents from flat kinship ---
+      // Phase 3.2: only hydrate if section is truly empty (no manual content)
       var kinParents = kinArr.filter(function (k) { return _PARENT_RELS.test(k.relation || ""); });
       if (kinParents.length) {
         var existingParents = bb.questionnaire.parents;
@@ -423,6 +446,7 @@
       }
 
       // --- Siblings from flat kinship ---
+      // Phase 3.2: only hydrate if section is truly empty
       var kinSiblings = kinArr.filter(function (k) { return _SIBLING_RELS.test(k.relation || ""); });
       if (kinSiblings.length) {
         var existingSiblings = bb.questionnaire.siblings;
@@ -442,6 +466,9 @@
         }
       }
     }
+
+    // Phase 3.3: Mark this narrator as hydrated so reopens don't re-run
+    _lastHydratedPid = currentPid;
   }
 
   // Register hydration as a post-switch hook in core
@@ -559,6 +586,11 @@
 
   function _sectionFillCount(section) {
     var bb = _bb(); if (!bb) return 0;
+    // Phase 1.2: ensure canonical state is current before counting
+    var pid = _currentPersonId();
+    if (pid && (!bb.questionnaire || Object.keys(bb.questionnaire).length === 0)) {
+      _restoreQuestionnaire(pid);
+    }
     var q  = bb.questionnaire[section.id]; if (!q) return 0;
     if (section.repeatable) { return (Array.isArray(q) ? q : [q]).length; }
     return section.fields.filter(function (f) { return q[f.id] && String(q[f.id]).trim(); }).length;
@@ -577,6 +609,12 @@
       container.innerHTML = _emptyStateHtml("No narrator selected", "Select a narrator to start the structured questionnaire.", []);
       return;
     }
+    // Phase 1.2: ensure canonical questionnaire state is loaded before any render
+    var bb = _bb();
+    if (bb && (!bb.questionnaire || Object.keys(bb.questionnaire).length === 0)) {
+      _restoreQuestionnaire(pid);
+    }
+    _qqDebugSnapshot("tab_render", pid);
     if (activeSection) { _renderSectionDetail(container, activeSection, renderActiveTab); return; }
 
     var sectionCards = SECTIONS.map(function (s) {
@@ -604,6 +642,11 @@
     var section = SECTIONS.find(function (s) { return s.id === activeSection; });
     if (!section) { return; }
     var bb = _bb();
+    // Phase 1.2: ensure canonical state before rendering detail
+    var pid = _currentPersonId();
+    if (pid && (!bb.questionnaire || Object.keys(bb.questionnaire).length === 0)) {
+      _restoreQuestionnaire(pid);
+    }
     var existing = bb.questionnaire[section.id];
     var fieldsHtml;
 
@@ -615,7 +658,7 @@
           + section.fields.map(function (f) { return _fieldHtml(f, "bbQ_" + idx + "_" + f.id, entry[f.id] || ""); }).join("")
           + '</div>';
       }).join("")
-      + '<button class="bb-ghost-btn bb-add-entry-btn" onclick="window.LorevoxBioBuilder._addRepeatEntry(\'' + section.id + '\')">'
+      + '<button class="bb-ghost-btn bb-add-entry-btn" onclick="event.stopPropagation();event.preventDefault();window.LorevoxBioBuilder._addRepeatEntry(\'' + section.id + '\')">'
       + '+ Add another ' + _esc(section.repeatLabel || "entry") + '</button>';
     } else {
       var q = existing || {};
@@ -704,6 +747,7 @@
     if (!section) return;
     var bb = _bb(); if (!bb) return;
 
+    // Phase 1.3: Step 1 — read DOM values; Step 2 — write into canonical bb.questionnaire
     if (section.repeatable) {
       var existing = Array.isArray(bb.questionnaire[sectionId])
         ? bb.questionnaire[sectionId]
@@ -724,6 +768,13 @@
       });
       bb.questionnaire[sectionId] = obj;
     }
+
+    // Phase 1.3: Step 3 — persist narrator-scoped state to localStorage AFTER in-memory update
+    var pid = _currentPersonId();
+    if (pid) _persistDrafts(pid);
+
+    // Phase 2.5: debug snapshot after save
+    _qqDebugSnapshot("save_section:" + sectionId, pid, bb);
 
     _extractQuestionnaireCandidates(sectionId);
 
@@ -751,17 +802,50 @@
       }
     }
 
-    var pid = _currentPersonId();
-    if (pid) _persistDrafts(pid);
+    // Phase 1.3: Step 4 — rerender/update badges from canonical state (via closeCallback)
     if (closeCallback) closeCallback();
   }
 
   function _addRepeatEntry(sectionId, renderCallback) {
     var bb = _bb(); if (!bb) return;
+    var pid = _currentPersonId();
+    var section = SECTIONS.find(function (s) { return s.id === sectionId; });
+
+    // Phase 2.2 Step 1: restore canonical questionnaire state
+    if (pid) _restoreQuestionnaire(pid);
+
+    // Phase 2.3: guard — ensure repeatable array exists
     if (!Array.isArray(bb.questionnaire[sectionId])) {
-      bb.questionnaire[sectionId] = bb.questionnaire[sectionId] ? [bb.questionnaire[sectionId]] : [];
+      bb.questionnaire[sectionId] = bb.questionnaire[sectionId] ? [bb.questionnaire[sectionId]] : [{}];
     }
+
+    // Phase 2.2 Step 2: commit current DOM edits into canonical state
+    if (section) {
+      var entries = bb.questionnaire[sectionId];
+      entries.forEach(function (_, idx) {
+        section.fields.forEach(function (f) {
+          var el = _el("bbQ_" + idx + "_" + f.id);
+          if (el) {
+            if (!entries[idx]) entries[idx] = {};
+            entries[idx][f.id] = el.value || "";
+          }
+        });
+      });
+    }
+
+    // Phase 2.2 Step 3: persist canonical state (with committed DOM edits)
+    if (pid) _persistDrafts(pid);
+
+    // Phase 2.2 Step 4: append empty repeatable entry to canonical state
     bb.questionnaire[sectionId].push({});
+
+    // Phase 2.2 Step 5: persist again (with new entry)
+    if (pid) _persistDrafts(pid);
+
+    // Phase 2.5: debug snapshot after add
+    _qqDebugSnapshot("add_repeat:" + sectionId, pid, bb);
+
+    // Phase 2.2 Step 6: rerender from canonical state
     if (renderCallback) renderCallback();
   }
 

@@ -1,7 +1,7 @@
 {
   "_template": "Lorevox 8.0 Narrator Preload",
   "_narrator": "Christopher Todd Horne — Creator of Lorevox",
-  "_version": 1,
+  "_version": 2,
 
   "personal": {
     "fullName": "Christopher Todd Horne",
@@ -14,10 +14,10 @@
     "placeOfBirth": "Williston, North Dakota",
     "birthOrder": "3",
     "zodiacSign": "Capricorn",
-    "pronouns": "",
-    "culture": "",
+    "pronouns": "he/him",
+    "culture": "Germans from Russia (maternal), North Dakota",
     "country": "US",
-    "language": ""
+    "language": "English"
   },
 
   "parents": [
@@ -31,8 +31,8 @@
       "birthPlace": "Spokane, Washington",
       "occupation": "Homemaker",
       "deceased": false,
-      "notableLifeEvents": "Raised three sons; strong German-Russian heritage; experienced rural North Dakota upbringing and boarding school education",
-      "notes": ""
+      "notableLifeEvents": "Born in Spokane while father Pete worked at an aluminum factory. Raised in Dodge, Glen Ulin, and Strasburg, ND. Advanced reader as a child — teacher had her read aloud to the class. Attended Sacred Hearts in Glen Ulin, then Strasburg where Lawrence Welk was from. Started college at Bismarck Junior College studying Speech and History, credits transferred to UND. Germans from Russia heritage through both parents (Zarr and Schaaf families). Married Kent on October 10, 1959. Raised three sons including time living in Germany. Strong, independent woman who grew up milking cows and riding her horse Grey.",
+      "notes": "Daughter of Peter Zarr (Dodge, ND) and Josephine Schaaf (Glen Ulin, ND). Siblings: Verene Marie Schnieder (older sister), James Peter Zarr (younger brother, born in a car on the way to Richardton Hospital)."
     },
     {
       "relation": "Father",
@@ -42,27 +42,61 @@
       "maidenName": "",
       "birthDate": "1939-12-24",
       "birthPlace": "Stanley, North Dakota",
-      "occupation": "Worked in construction and trades",
+      "occupation": "Construction and trades",
       "deceased": false,
-      "notableLifeEvents": "Married young, built family life across multiple states, long-term marriage beginning in 1959",
-      "notes": ""
+      "notableLifeEvents": "Born in Stanley, ND, second child of Ervin Horne. Married Janice Josephine Zarr on October 10, 1959 — Kent was 19, Janice was 20. Career in construction and trades. Family lived in Germany where oldest son Vincent was born, then across multiple states. Shares Christmas Eve birthday with youngest son Christopher.",
+      "notes": "Son of Ervin Horne. Ervin's wedding anniversary was June 29."
     }
   ],
 
   "grandparents": [
     {
+      "side": "paternal",
       "firstName": "Ervin",
       "lastName": "Horne",
       "ancestry": "American",
       "culturalBackground": "North Dakota",
-      "memorableStories": ""
+      "memorableStories": "Wedding anniversary June 29."
     },
     {
+      "side": "maternal",
       "firstName": "Peter",
       "lastName": "Zarr",
+      "birthDate": "1909-09-19",
+      "birthPlace": "Dodge, ND",
       "ancestry": "German-Russian",
-      "culturalBackground": "North Dakota",
-      "memorableStories": "Worked on Garrison Dam; lost birth certificate in ND Capitol fire"
+      "culturalBackground": "Germans from Russia, North Dakota",
+      "memorableStories": "Born at home, delivered by Mrs. Steve Dodenheffer. Worked on the Garrison Dam as a foreman of a finishing crew for cement forms. Lost his birth certificate when the ND state Capitol burned down. Steam boiler operator and carpenter. Siblings in order: Tillie Dodenheffer (oldest sister), Peter, Steven, Joe, August, Johnny (youngest)."
+    },
+    {
+      "side": "maternal",
+      "firstName": "Josephine",
+      "middleName": "Eugenia, Susanna",
+      "lastName": "Zarr",
+      "maidenName": "Schaaf",
+      "birthDate": "1914-10-22",
+      "birthPlace": "Glen Ulin, ND",
+      "ancestry": "German-Russian",
+      "culturalBackground": "Germans from Russia, North Dakota",
+      "memorableStories": "Called Josie. Gifted musician who played the organ at silent movie theaters to make money. Attended Capitol Business College in Bismarck (worked as housekeeper for owners to help pay, didn't like accounting). Her mother Anna was 50 when she had Josie and was embarrassed. Sent by train alone to Mount Marty in 7th grade, returned to Glen Ulin for 8th grade at Sacred Heart, then went to Mount Marty high school for 3 years in Yankton, SD. Hated boarding school and told her kids she would never send them. Worked in the kitchen at Mount Marty and learned to cook — expert with a knife, could dice an onion with great skill. Youngest child in her family, oldest sibling was Mike Schaaf."
+    }
+  ],
+
+  "greatGrandparents": [
+    {
+      "side": "maternal-maternal",
+      "firstName": "Anna",
+      "lastName": "Schaaf",
+      "maidenName": "Gustin",
+      "ancestry": "Germans from Russia",
+      "memorableStories": "Gustins were considered the arrogant ones. Arno Gustin was one of the founders of College of Mary. Ag reporter Al Gustin. Was 50 years old when she had Josie (Chris's maternal grandmother)."
+    },
+    {
+      "side": "maternal-maternal",
+      "firstName": "Mathias",
+      "lastName": "Schaaf",
+      "ancestry": "Ukraine — Germans from Russia",
+      "memorableStories": "Family emigrated from Ukraine as part of the Germans from Russia migration. Hated the Russians."
     }
   ],
 
@@ -73,7 +107,7 @@
       "middleName": "Edward",
       "lastName": "Horne",
       "birthOrder": "1",
-      "uniqueCharacteristics": "Born in Germany",
+      "uniqueCharacteristics": "Born in Germany while the family was living abroad",
       "sharedExperiences": "",
       "memories": "",
       "notes": ""
@@ -134,13 +168,17 @@
 
   "marriage": {
     "proposalStory": "",
-    "weddingDetails": "Married December 22, 2010"
+    "weddingDetails": "Married Melanie C. Zollner on December 22, 2010"
   },
 
   "familyTraditions": [
     {
       "description": "Frequent family dinners and gatherings with extended family",
       "occasion": "Weekly meals and holidays"
+    },
+    {
+      "description": "Germans from Russia cultural heritage from the Zarr and Schaaf families on mother's side",
+      "occasion": ""
     }
   ],
 
@@ -150,14 +188,15 @@
       "species": "Dog",
       "breed": "Golden Retriever",
       "birthDate": "1964-01-12",
-      "adoptionDate": "1965-01-12"
+      "adoptionDate": "1965-01-12",
+      "notes": "Family dog growing up"
     }
   ],
 
   "earlyMemories": {
     "firstMemory": "Growing up in North Dakota with rural surroundings and family-centered life",
     "favoriteToy": "",
-    "significantEvent": ""
+    "significantEvent": "Born on Christmas Eve in Williston, ND — shares birthday with father Kent"
   },
 
   "education": {
@@ -191,7 +230,7 @@
   "technology": {
     "firstTechExperience": "Early computing and later deep involvement in AI systems",
     "favoriteGadgets": "Computers, AI tools",
-    "culturalPractices": ""
+    "culturalPractices": "Germans from Russia heritage through maternal grandparents (Zarr/Schaaf families from Dodge and Glen Ulin, ND). Family roots in Ukraine through great-grandfather Mathias Schaaf."
   },
 
   "additionalNotes": {

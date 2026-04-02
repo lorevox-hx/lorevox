@@ -1,7 +1,7 @@
 {
   "_template": "Lorevox 8.0 Narrator Preload",
   "_narrator": "Kent James Horne",
-  "_version": 1,
+  "_version": 2,
 
   "personal": {
     "fullName": "Kent James Horne",
@@ -14,13 +14,40 @@
     "placeOfBirth": "Stanley, North Dakota",
     "birthOrder": "2",
     "zodiacSign": "Capricorn",
-    "pronouns": "",
-    "culture": "",
+    "pronouns": "he/him",
+    "culture": "North Dakota",
     "country": "US",
-    "language": ""
+    "language": "English"
   },
 
-  "parents": [],
+  "parents": [
+    {
+      "relation": "Father",
+      "firstName": "Ervin",
+      "middleName": "",
+      "lastName": "Horne",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "",
+      "deceased": true,
+      "notableLifeEvents": "",
+      "notes": "Wedding anniversary June 29"
+    },
+    {
+      "relation": "Mother",
+      "firstName": "",
+      "middleName": "",
+      "lastName": "Horne",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "",
+      "deceased": true,
+      "notableLifeEvents": "",
+      "notes": ""
+    }
+  ],
 
   "grandparents": [],
 
@@ -30,34 +57,65 @@
     "firstName": "Janice",
     "middleName": "Josephine",
     "lastName": "Horne",
+    "maidenName": "Zarr",
     "birthPlace": "Spokane, Washington",
     "occupation": "Homemaker",
-    "narrative": "",
+    "narrative": "Janice Josephine Zarr, born September 30, 1939 in Spokane, Washington. German-Russian heritage through her father Peter Zarr (Dodge, ND) and mother Josephine Schaaf (Glen Ulin, ND). Raised three sons together. Strong, independent woman who grew up on farms in North Dakota.",
     "deceased": false
   },
 
-  "children": [],
+  "children": [
+    {
+      "firstName": "Vincent",
+      "middleName": "Edward",
+      "lastName": "Horne",
+      "birthDate": "",
+      "narrative": "Oldest son, born in Germany"
+    },
+    {
+      "firstName": "Jason",
+      "middleName": "Richard",
+      "lastName": "Horne",
+      "birthDate": "",
+      "narrative": "Second son, family-oriented"
+    },
+    {
+      "firstName": "Christopher",
+      "middleName": "Todd",
+      "lastName": "Horne",
+      "birthDate": "1962-12-24",
+      "narrative": "Third son, born in Williston, North Dakota. Shares his birthday with Kent — both born on Christmas Eve. Creator of Lorevox."
+    }
+  ],
 
   "marriage": {
     "proposalStory": "",
-    "weddingDetails": ""
+    "weddingDetails": "Married Janice Josephine Zarr on October 10, 1959. Kent was 19, Janice was 20."
   },
 
   "familyTraditions": [],
 
-  "pets": [],
+  "pets": [
+    {
+      "name": "Ivan",
+      "species": "Dog",
+      "breed": "Golden Retriever",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
 
   "earlyMemories": {
     "firstMemory": "",
     "favoriteToy": "",
-    "significantEvent": ""
+    "significantEvent": "Grew up in Stanley, North Dakota, second child in the family"
   },
 
   "education": {
     "schooling": "",
     "higherEducation": "",
-    "earlyCareer": "",
-    "careerProgression": "",
+    "earlyCareer": "Construction and trades",
+    "careerProgression": "Long career in construction and trades; built family life across multiple states including time in Germany",
     "communityInvolvement": "",
     "mentorship": ""
   },
@@ -72,7 +130,7 @@
     "hobbies": "",
     "worldEvents": "",
     "personalChallenges": "",
-    "travel": ""
+    "travel": "Lived in Germany (where first son Vincent was born), North Dakota, and other locations"
   },
 
   "health": {

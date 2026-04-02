@@ -26,40 +26,38 @@ window.onload = async () => {
   // The original `=== undefined` check was dead code (state.js uses null, not undefined).
   // No functional guard needed; null is the correct initial value for both paths.
 
-  // v8.0 STARTUP NEUTRALITY: Backend is the authority on narrator state.
-  // Do not trust cached active narrator until validated against /api/people.
+  // v8.1 STARTUP NEUTRALITY: Always open to blank narrator selector.
+  // The user must explicitly choose a narrator or create a new one.
+  // Backend is still the authority — we validate and clean stale pointers,
+  // but we never auto-load a narrator on startup.
   const saved = localStorage.getItem(LS_ACTIVE);
   const backendPeople = state?.narratorUi?.peopleCache || [];
   const backendPids = backendPeople.map(p => p.id || p.person_id || p.uuid);
 
-  if (saved && backendPids.includes(saved)) {
-    // Returning user — saved narrator is confirmed valid in backend.
-    console.log("[startup] Validated active narrator from backend:", saved);
-    loadPerson(saved).catch(()=>{});
-  } else if (saved && !backendPids.includes(saved)) {
-    // v8.0 FIX: Stale narrator pointer — narrator no longer exists in backend.
-    // Invalidate all cached state for this dead narrator.
+  // Clean up stale narrator pointer if it no longer exists in backend
+  if (saved && !backendPids.includes(saved)) {
     console.warn("[startup] Stale active narrator detected:", saved, "— not in backend list. Clearing.");
     _invalidateStaleNarrator(saved);
-    if (backendPids.length > 0) {
-      // Fall back to the first available backend narrator
-      console.log("[startup] Falling back to first available narrator:", backendPids[0]);
-      loadPerson(backendPids[0]).catch(()=>{});
-    } else {
-      // Zero narrators — go to clean blank state
-      console.log("[startup] Zero narrators in backend — entering blank state.");
-      _enforceBlankStartupState();
-      setTimeout(startIdentityOnboarding, 800);
-    }
-  } else if (backendPids.length === 0) {
-    // No saved narrator AND no backend narrators — clean blank state.
-    console.log("[startup] No saved narrator, no backend narrators — blank state.");
-    _enforceBlankStartupState();
+  }
+
+  // v8.1: Always enter blank state — user picks their narrator from the selector.
+  _enforceBlankStartupState();
+  console.log("[startup] v8.1 — blank state enforced. User must select a narrator.");
+
+  // v8.1 NEW-USER DETECTION: Check per-device onboarding flag.
+  // If this device has never completed onboarding, show the welcome flow
+  // regardless of how many narrators exist in the backend (preloaded templates etc.)
+  const _deviceOnboarded = localStorage.getItem("lorevox_device_onboarded");
+  if (!_deviceOnboarded) {
+    console.log("[startup] New device detected — starting welcome onboarding.");
     setTimeout(startIdentityOnboarding, 800);
   } else {
-    // No saved narrator but backend has narrators — start onboarding
-    // (user may have cleared localStorage but not the backend)
-    setTimeout(startIdentityOnboarding, 800);
+    // Returning device — open narrator selector so they can pick who to talk to.
+    // lv80Init() → lv80LoadPeople() will render the narrator cards.
+    console.log("[startup] Returning device — narrator selector will open.");
+    setTimeout(() => {
+      if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
+    }, 800);
   }
 
   // Step 3 — log device context block on every session start for diagnostics.
@@ -687,16 +685,36 @@ async function lvxDeleteNarratorConfirmed(){
   }
 
   // v8.0 FIX: Clean up ALL offline caches for deleted narrator to prevent ghost narrators
+  // Phase 5: Added ft_draft and lt_draft cleanup, plus sources_draft
   try {
     localStorage.removeItem("lorevox_offline_profile_" + pid);
     localStorage.removeItem("lorevox_proj_draft_" + pid);
     localStorage.removeItem("lorevox_qq_draft_" + pid);
+    localStorage.removeItem("lorevox_ft_draft_" + pid);
+    localStorage.removeItem("lorevox_lt_draft_" + pid);
+    localStorage.removeItem("lorevox_sources_draft_" + pid);
     localStorage.removeItem("lorevox.spine." + pid);
     localStorage.removeItem(LS_DONE(pid));
     localStorage.removeItem(LS_SEGS(pid));
   } catch(_) {}
+  // Phase 5: Also clear from bio-builder-core draft index
+  try {
+    var bbCore = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.core;
+    if (bbCore && bbCore._clearDrafts) bbCore._clearDrafts(pid);
+  } catch(_) {}
   // Refresh the offline people cache
   try { localStorage.removeItem("lorevox_offline_people"); } catch(_) {}
+  // Phase 5.2: Verify no orphaned narrator-scoped draft keys remain
+  try {
+    var _orphanCheck = ["lorevox_offline_profile_","lorevox_proj_draft_","lorevox_qq_draft_",
+      "lorevox_ft_draft_","lorevox_lt_draft_","lorevox_sources_draft_","lorevox.spine."];
+    var _orphans = _orphanCheck.filter(function(prefix) { return localStorage.getItem(prefix + pid) !== null; });
+    if (_orphans.length) {
+      console.warn("[narrator-delete] Orphaned keys found after cleanup:", _orphans.map(function(p){return p+pid;}));
+    } else {
+      console.log("[narrator-delete] Cleanup verified — no orphaned draft keys for pid=" + pid.slice(0,8));
+    }
+  } catch(_) {}
 
   // v8.0 FIX: Update header to blank state if deleted narrator was active
   if (typeof lv80UpdateActiveNarratorCard === "function") {
@@ -1811,6 +1829,11 @@ async function _resolveOrCreatePerson(){
 
   state.session.identityPhase = "complete";
   setAssistantRole("interviewer");
+
+  // v8.1: Mark this device as onboarded so future startups skip the welcome flow
+  // and go straight to the narrator selector instead.
+  try { localStorage.setItem("lorevox_device_onboarded", "1"); } catch(_) {}
+
   // v7.5 hook — lets lori7.5.html update capture UI without modifying this file.
   if (typeof window._onIdentityComplete === "function") {
     window._onIdentityComplete({ name, dob, pob: pob || ic.birthplace });
@@ -1832,12 +1855,20 @@ async function _resolveOrCreatePerson(){
     if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
     // Save the profile so DOB + birthplace persist
     await saveProfile();
+    // v8.1: After identity capture, explain mic/camera options before starting the interview.
+    // This is the natural moment to ask — Lori has just met the user and is about to begin.
     sendSystemPrompt(
       `[SYSTEM: You have successfully captured ${name}'s identity. ` +
       `They were born in ${pob || "an unspecified location"}. ` +
       `Acknowledge their birthplace warmly (one sentence — mention it by name). ` +
-      `Then transition naturally into the memoir interview by asking one open, inviting ` +
-      `question about their earliest memory or childhood. Two sentences total. ` +
+      `Then, before starting the interview, briefly explain two things: ` +
+      `1) They can speak to you using the microphone button, or type — whichever feels more comfortable. ` +
+      `You can also speak your replies aloud. ` +
+      `2) The camera is completely optional — if they turn it on, you can use it to read their ` +
+      `expressions and pace the conversation more gently. The camera stays on this device and ` +
+      `you never save video. They can turn it on or off anytime using the settings gear icon. ` +
+      `Keep this explanation warm and brief — two to three sentences, not a list. ` +
+      `Then ask if they have any questions, or if they're ready to begin. ` +
       `Do not mention any technical steps or form saving.]`
     );
   } else {
@@ -2000,6 +2031,11 @@ async function sendSystemPrompt(instruction){
 }
 
 async function streamSse(text,overrideBubble=null){
+  // Phase 6A: Per-turn timing/lifecycle log
+  var _turnId = Date.now().toString(36);
+  var _t0 = performance.now();
+  var _tFirstToken = 0, _tLastToken = 0;
+  console.log("[chat-turn:" + _turnId + "] user_send", { textLen: text.length, ts: new Date().toISOString() });
   setLoriState("thinking");
   const bubble=overrideBubble||appendBubble("ai","…");
   // v6.2: inject language instruction when profile specifies a non-English preference
@@ -2033,6 +2069,8 @@ IMPORTANT INTERVIEW RULES:
             _sseError = d;
             console.error("[SSE] backend error:", d.error, d.message);
           } else if(d.delta||d.text){
+            if(!_tFirstToken) { _tFirstToken = performance.now(); console.log("[chat-turn:" + _turnId + "] first_token", { ms: Math.round(_tFirstToken - _t0) }); }
+            _tLastToken = performance.now();
             full+=(d.delta||d.text); _bubbleBody(bubble).textContent=full;
             document.getElementById("chatMessages").scrollTop=99999;
           }
@@ -2055,16 +2093,26 @@ IMPORTANT INTERVIEW RULES:
       }
       if(obitDraftType==="lori_pending"){ setObitDraftType("lori"); }
     }
+    // Phase 6A: log final token timing
+    console.log("[chat-turn:" + _turnId + "] final_token", { ms: Math.round(_tLastToken - _t0), responseLen: full.length });
     setLoriState("ready");
 
     // WO-deferred: Flush queued extraction now that SSE stream is complete
+    // Phase 6B.1: Make extraction failure non-fatal to the conversation
     if (typeof _runDeferredInterviewExtraction === "function") {
-      try { await _runDeferredInterviewExtraction(); } catch(e) {
-        console.log("[extract] deferred flush after SSE done failed:", e);
+      var _tExtStart = performance.now();
+      console.log("[chat-turn:" + _turnId + "] extraction_start");
+      try {
+        await _runDeferredInterviewExtraction();
+        console.log("[chat-turn:" + _turnId + "] extraction_finish", { ms: Math.round(performance.now() - _tExtStart) });
+      } catch(e) {
+        // Phase 6B.1: Extraction failure is non-fatal — log and continue
+        console.warn("[chat-turn:" + _turnId + "] extraction_failed (non-fatal)", { error: String(e), ms: Math.round(performance.now() - _tExtStart) });
       }
     }
   }catch(err){
-    console.error("[SSE] streamSse failed:", err);
+    // Phase 6A: log websocket/fetch error
+    console.error("[chat-turn:" + _turnId + "] ws_error", { error: String(err), ms: Math.round(performance.now() - _t0) });
     _bubbleBody(bubble).textContent="Chat service unavailable — start the Lorevox backend to enable AI responses.";
     setLoriState("ready");
   }

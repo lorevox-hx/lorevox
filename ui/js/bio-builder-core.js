@@ -105,19 +105,8 @@
     var bb = _bb(); if (!bb) return;
     if (!bb.familyTreeDraftsByPerson) bb.familyTreeDraftsByPerson = {};
     if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
-    // v8-fix: load questionnaire BEFORE the FT early-return guard (WD-1/WD-2 fix)
-    // FT/LT use per-person containers so the early return is safe for them,
-    // but questionnaire uses a single bb.questionnaire object and MUST always load.
-    try {
-      var qqRaw = localStorage.getItem(_LS_QQ_PREFIX + pid);
-      if (qqRaw) {
-        var qqObj = JSON.parse(qqRaw);
-        var qqD = qqObj && (qqObj.d || qqObj.data);
-        if (qqD && typeof qqD === "object") {
-          bb.questionnaire = qqD;
-        }
-      }
-    } catch (e) { /* malformed — ignore */ }
+    // v8-fix: load questionnaire via canonical restore helper (Phase 1.1)
+    _restoreQuestionnaire(pid);
     // Don't overwrite FT/LT if already in memory
     if (bb.familyTreeDraftsByPerson[pid] && bb.familyTreeDraftsByPerson[pid].nodes && bb.familyTreeDraftsByPerson[pid].nodes.length) return;
     try {
@@ -159,6 +148,101 @@
       var idx = _getDraftIndex().filter(function (p) { return p !== pid; });
       localStorage.setItem(_LS_DRAFT_INDEX, JSON.stringify(idx));
     } catch (e) {}
+  }
+
+  /* ── Phase 1.1: Canonical questionnaire restore helper ──────
+     Single restore path for narrator-scoped questionnaire state.
+     Reads lorevox_qq_draft_{pid}, parses the {v,d} wrapper,
+     replaces bb.questionnaire with the parsed data or {}.
+     Returns the restored object.
+     MUST be the only path that reads qq from localStorage.
+  ─────────────────────────────────────────────────────────── */
+  function _restoreQuestionnaire(pid) {
+    var bb = _bb(); if (!bb) return {};
+    if (!pid) { bb.questionnaire = {}; return bb.questionnaire; }
+    try {
+      var raw = localStorage.getItem(_LS_QQ_PREFIX + pid);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        var d = parsed && (parsed.d || parsed.data);
+        if (d && typeof d === "object") {
+          bb.questionnaire = d;
+          _qqDebugSnapshot("restore", pid, bb);
+          return bb.questionnaire;
+        }
+      }
+    } catch (e) {
+      console.warn("[bb-core] _restoreQuestionnaire parse error for pid=" + pid, e);
+    }
+    // Fallback: keep current if non-empty, else reset
+    if (!bb.questionnaire || Object.keys(bb.questionnaire).length === 0) {
+      bb.questionnaire = {};
+    }
+    _qqDebugSnapshot("restore_fallback", pid, bb);
+    return bb.questionnaire;
+  }
+
+  /* ── Phase 2.5: Questionnaire debug snapshot helper ────────
+     Emits a compact console log showing in-memory vs persisted
+     section counts. Active in dev mode (localhost or ?debug).
+  ─────────────────────────────────────────────────────────── */
+  var _qqDebugEnabled = (function () {
+    try {
+      var loc = window.location;
+      return loc.hostname === "localhost" || loc.hostname === "127.0.0.1"
+        || (loc.search && loc.search.indexOf("debug") >= 0);
+    } catch (_) { return false; }
+  })();
+
+  function _qqDebugSnapshot(action, pid, bb) {
+    if (!_qqDebugEnabled) return;
+    if (!bb) bb = _bb();
+    if (!bb) return;
+
+    // Count in-memory sections
+    var memCounts = {};
+    var q = bb.questionnaire || {};
+    Object.keys(q).forEach(function (k) {
+      var v = q[k];
+      memCounts[k] = Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.keys(v).filter(function (fk) { return v[fk] && String(v[fk]).trim(); }).length : 0);
+    });
+
+    // Count persisted sections
+    var persCounts = {};
+    try {
+      var raw = localStorage.getItem(_LS_QQ_PREFIX + (pid || ""));
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        var d = parsed && (parsed.d || parsed.data);
+        if (d && typeof d === "object") {
+          Object.keys(d).forEach(function (k) {
+            var v = d[k];
+            persCounts[k] = Array.isArray(v) ? v.length : (v && typeof v === "object" ? Object.keys(v).filter(function (fk) { return v[fk] && String(v[fk]).trim(); }).length : 0);
+          });
+        }
+      }
+    } catch (_) {}
+
+    console.log("[bb-debug] %c" + action, "color:#6366f1;font-weight:bold", {
+      ts: new Date().toISOString().slice(11, 23),
+      pid: (pid || "none").slice(0, 8),
+      mem: memCounts,
+      disk: persCounts,
+      section: (_viewState && _viewState.activeSection) || null
+    });
+
+    // Phase 2.5.2: Mismatch warning
+    var memKeys = Object.keys(memCounts).sort().join(",");
+    var persKeys = Object.keys(persCounts).sort().join(",");
+    if (memKeys !== persKeys) {
+      console.warn("[bb-drift] KEY MISMATCH after '" + action + "': mem=[" + memKeys + "] disk=[" + persKeys + "]");
+    } else {
+      Object.keys(memCounts).forEach(function (k) {
+        if (memCounts[k] !== persCounts[k]) {
+          console.warn("[bb-drift] COUNT MISMATCH '" + k + "' after '" + action + "': mem=" + memCounts[k] + " disk=" + persCounts[k]);
+        }
+      });
+    }
   }
 
   /* ── v8 Narrator-switch hard reset ─────────────────────────
@@ -209,6 +293,8 @@
     _resetNarratorScopedState(newId);
     // Run registered hooks (e.g. questionnaire hydration)
     _postSwitchHooks.forEach(function (fn) { fn(bb); });
+    // Phase 2.5.3: Narrator-switch drift validation
+    _qqDebugSnapshot("narrator_switch", newId, bb);
   }
 
   /* ── Person-change logic (called from render path) ──────── */
@@ -235,6 +321,8 @@
     _loadDrafts(newId);
     // v6-fix: hydrate questionnaire from active profile if empty
     _postSwitchHooks.forEach(function (fn) { fn(bb); });
+    // Phase 2.5: debug snapshot after person change
+    _qqDebugSnapshot("person_changed", newId, bb);
   }
 
   /* ───────────────────────────────────────────────────────────
@@ -357,6 +445,10 @@
     _loadDrafts:              _loadDrafts,
     _clearDrafts:             _clearDrafts,
     _getDraftIndex:           _getDraftIndex,
+    _restoreQuestionnaire:    _restoreQuestionnaire,
+
+    // Debug / drift detection (Phase 2.5)
+    _qqDebugSnapshot:         _qqDebugSnapshot,
 
     // Utilities
     _el:                      _el,
