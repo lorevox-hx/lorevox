@@ -107,20 +107,31 @@ EXTRACTABLE_FIELDS = {
 
 
 # ── LLM availability cache ──────────────────────────────────────────────────
-# Avoid blocking the server when the LLM is known to be unavailable.
-# Once checked, cache the result for LLM_CHECK_TTL seconds before rechecking.
+# Keep this cache very short-lived. A long negative cache causes extraction
+# to stay stuck on rules fallback even after the model has warmed successfully.
+# We re-check frequently and always refresh to True immediately after a
+# successful probe.
 
 import time as _time
 import uuid as _uuid
 
 _llm_available_cache: dict = {"available": None, "checked_at": 0.0}
-_LLM_CHECK_TTL = 120  # seconds — recheck every 2 minutes
+_LLM_CHECK_TTL = 5  # seconds — keep short so negative cache clears quickly
 
 
 def _is_llm_available() -> bool:
     """Return True if the LLM stack is responsive, using cached result."""
     now = _time.time()
-    if _llm_available_cache["available"] is not None and (now - _llm_available_cache["checked_at"]) < _LLM_CHECK_TTL:
+    cache_age = now - _llm_available_cache["checked_at"]
+    if (
+        _llm_available_cache["available"] is not None
+        and cache_age < _LLM_CHECK_TTL
+    ):
+        logger.info(
+            "[extract] LLM availability cache hit: %s (age=%.1fs)",
+            "available" if _llm_available_cache["available"] else "unavailable",
+            cache_age,
+        )
         return _llm_available_cache["available"]
 
     # Quick probe — tiny prompt, low max_new, should return fast
@@ -138,8 +149,22 @@ def _is_llm_available() -> bool:
 
     _llm_available_cache["available"] = available
     _llm_available_cache["checked_at"] = now
-    logger.info("[extract] LLM availability check: %s", "available" if available else "unavailable")
+    logger.info("[extract] LLM availability probe: %s", "available" if available else "unavailable")
     return available
+
+
+def _mark_llm_available() -> None:
+    """Refresh cache to available after a successful LLM response."""
+    _llm_available_cache["available"] = True
+    _llm_available_cache["checked_at"] = _time.time()
+    logger.info("[extract] LLM cache refreshed: available")
+
+
+def _mark_llm_unavailable(reason: str = "unknown") -> None:
+    """Mark cache unavailable with reason logging."""
+    _llm_available_cache["available"] = False
+    _llm_available_cache["checked_at"] = _time.time()
+    logger.warning("[extract] LLM cache refreshed: unavailable (%s)", reason)
 
 
 # ── LLM-based extraction ────────────────────────────────────────────────────
@@ -209,10 +234,13 @@ def _extract_via_llm(answer: str, current_section: Optional[str], current_target
     ephemeral_conv_id = f"_extract_{_uuid.uuid4().hex[:12]}"
     raw = _try_call_llm(system, user, max_new=400, temp=0.15, top_p=0.9, conv_id=ephemeral_conv_id)
     if not raw:
-        # LLM returned empty — mark as unavailable for caching
-        _llm_available_cache["available"] = False
-        _llm_available_cache["checked_at"] = _time.time()
+        # Empty response: mark temporarily unavailable so we retry soon,
+        # but do not get stuck for 2 minutes.
+        _mark_llm_unavailable("empty-response")
         return [], None
+
+    # Successful response means the LLM is available right now.
+    _mark_llm_available()
 
     # Parse JSON from LLM output
     items = _parse_llm_json(raw)
@@ -752,6 +780,7 @@ def extract_diag():
     """Diagnostic: check whether the LLM extraction stack is available."""
     llm_available = False
     llm_error = None
+    cache_age = _time.time() - _llm_available_cache["checked_at"]
     try:
         from ..llm_interview import _try_call_llm
         # Quick ping: tiny extraction to see if LLM responds
@@ -762,16 +791,23 @@ def extract_diag():
         )
         if result:
             llm_available = True
+            _mark_llm_available()
         else:
             llm_error = "LLM returned None (likely ImportError or empty response)"
+            _mark_llm_unavailable("diag-empty-response")
     except ImportError as e:
         llm_error = f"ImportError: {e}"
+        _mark_llm_unavailable(f"diag-import-error:{e}")
     except Exception as e:
         llm_error = f"{type(e).__name__}: {e}"
+        _mark_llm_unavailable(f"diag-exception:{type(e).__name__}")
 
     return {
         "llm_available": llm_available,
         "llm_error": llm_error,
+        "llm_cache_available": _llm_available_cache["available"],
+        "llm_cache_age_sec": round(cache_age, 2),
+        "llm_cache_ttl_sec": _LLM_CHECK_TTL,
         "rules_available": True,
         "regex_pattern_count": len([
             k for k in globals() if k.startswith("_") and k[1:2].isupper()
