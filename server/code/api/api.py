@@ -260,8 +260,11 @@ def chat(req: _ChatReq) -> Dict[str, Any]:
     _do_sample = _temp > 0
     if not _do_sample:
         _temp = 1.0  # dummy; ignored when do_sample=False
-    out = model.generate(
-        **inputs,
+    # WO-LLM-FIX: Use GenerationConfig to avoid model.generation_config merge
+    # issues in transformers 4.40+ where the model's default temperature=0.0
+    # can override the passed keyword argument.
+    from transformers import GenerationConfig
+    gen_config = GenerationConfig(
         max_new_tokens=int(req.max_new),
         temperature=_temp,
         top_p=float(req.top_p),
@@ -269,6 +272,10 @@ def chat(req: _ChatReq) -> Dict[str, Any]:
         repetition_penalty=1.1,
         pad_token_id=tok.eos_token_id,
         eos_token_id=tok.eos_token_id,
+    )
+    out = model.generate(
+        **inputs,
+        generation_config=gen_config,
     )
     text = tok.decode(out[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
     if req.conv_id:
@@ -401,19 +408,24 @@ def chat_stream(req: _ChatReq):
             _do_sample = _temp > 0
             if not _do_sample:
                 _temp = 1.0  # dummy; ignored when do_sample=False
+            # WO-LLM-FIX: Use GenerationConfig to avoid model.generation_config merge issues
+            from transformers import GenerationConfig
+            _gen_config = GenerationConfig(
+                max_new_tokens=int(req.max_new),
+                temperature=_temp,
+                top_p=float(req.top_p),
+                do_sample=_do_sample,
+                repetition_penalty=1.1,
+                pad_token_id=tok.eos_token_id,
+                eos_token_id=tok.eos_token_id,
+            )
             th = threading.Thread(
                 target=model.generate,
                 kwargs=dict(
                     **inputs,
                     streamer=streamer,
-                    max_new_tokens=int(req.max_new),
-                    temperature=_temp,
-                    top_p=float(req.top_p),
-                    do_sample=_do_sample,
-                    repetition_penalty=1.1,
+                    generation_config=_gen_config,
                     stopping_criteria=stop,
-                    pad_token_id=tok.eos_token_id,
-                    eos_token_id=tok.eos_token_id,
                 ),
                 daemon=True,
             )

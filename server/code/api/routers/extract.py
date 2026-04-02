@@ -193,7 +193,18 @@ def _build_extraction_prompt(answer: str, current_section: Optional[str], curren
         "Each item: {\"fieldPath\":\"...\",\"value\":\"...\",\"confidence\":0.0-1.0}\n"
         "Confidence: 0.9=clearly stated, 0.7=implied.\n"
         "Dates: YYYY-MM-DD if full date given. Places: City, State format.\n"
-        f"Fields: {compact_catalog}"
+        "IMPORTANT: Use ONLY these exact fieldPath values:\n"
+        f"{compact_catalog}\n"
+        "\n"
+        "Example — narrator says: \"My dad John Smith was a teacher and my sister Amy was older.\"\n"
+        "Output:\n"
+        "[{\"fieldPath\":\"parents.relation\",\"value\":\"father\",\"confidence\":0.9},"
+        "{\"fieldPath\":\"parents.firstName\",\"value\":\"John\",\"confidence\":0.9},"
+        "{\"fieldPath\":\"parents.lastName\",\"value\":\"Smith\",\"confidence\":0.9},"
+        "{\"fieldPath\":\"parents.occupation\",\"value\":\"teacher\",\"confidence\":0.9},"
+        "{\"fieldPath\":\"siblings.relation\",\"value\":\"sister\",\"confidence\":0.9},"
+        "{\"fieldPath\":\"siblings.firstName\",\"value\":\"Amy\",\"confidence\":0.9},"
+        "{\"fieldPath\":\"siblings.birthOrder\",\"value\":\"older\",\"confidence\":0.7}]"
     )
 
     context_note = ""
@@ -232,7 +243,7 @@ def _extract_via_llm(answer: str, current_section: Optional[str], current_target
     # FIX-3: Use a unique ephemeral conv_id for each extraction call to prevent
     # cross-narrator context contamination via shared session/RAG state.
     ephemeral_conv_id = f"_extract_{_uuid.uuid4().hex[:12]}"
-    raw = _try_call_llm(system, user, max_new=400, temp=0.15, top_p=0.9, conv_id=ephemeral_conv_id)
+    raw = _try_call_llm(system, user, max_new=600, temp=0.15, top_p=0.9, conv_id=ephemeral_conv_id)
     if not raw:
         # Empty response: mark temporarily unavailable so we retry soon,
         # but do not get stuck for 2 minutes.
@@ -340,23 +351,52 @@ def _validate_item(item: Any) -> Optional[dict]:
         _FIELD_ALIASES = {
             # Bare field names → qualified paths
             "fullName": "personal.fullName", "full_name": "personal.fullName",
+            "name": "personal.fullName",
             "preferredName": "personal.preferredName", "nickname": "personal.preferredName",
+            "preferred_name": "personal.preferredName",
             "dateOfBirth": "personal.dateOfBirth", "date_of_birth": "personal.dateOfBirth",
             "dob": "personal.dateOfBirth", "birthday": "personal.dateOfBirth",
             "placeOfBirth": "personal.placeOfBirth", "place_of_birth": "personal.placeOfBirth",
             "birthPlace": "personal.placeOfBirth", "birthplace": "personal.placeOfBirth",
             "birthOrder": "personal.birthOrder", "birth_order": "personal.birthOrder",
+            # LLM-invented personal.* paths → nearest valid field
+            "personal.profession": "parents.occupation",
+            "personal.occupation": "education.earlyCareer",
+            "personal.job": "education.earlyCareer",
+            "personal.career": "education.careerProgression",
+            "personal.school": "education.schooling",
+            "personal.education": "education.higherEducation",
+            "personal.hobby": "hobbies.hobbies",
+            "personal.hobbies": "hobbies.hobbies",
             # Family fields without section prefix
             "father": "parents.relation", "mother": "parents.relation",
             "fatherName": "parents.firstName", "motherName": "parents.firstName",
             "parentName": "parents.firstName", "parent_name": "parents.firstName",
             "parentOccupation": "parents.occupation", "parent_occupation": "parents.occupation",
+            "occupation": "parents.occupation", "profession": "parents.occupation",
             "siblingName": "siblings.firstName", "sibling_name": "siblings.firstName",
             "brotherName": "siblings.firstName", "sisterName": "siblings.firstName",
+            "brother": "siblings.relation", "sister": "siblings.relation",
             "siblingLastName": "siblings.lastName", "sibling_last_name": "siblings.lastName",
+            "firstName": "parents.firstName", "first_name": "parents.firstName",
+            "lastName": "parents.lastName", "last_name": "parents.lastName",
+            "maidenName": "parents.maidenName", "maiden_name": "parents.maidenName",
+            "relation": "parents.relation", "relationship": "parents.relation",
+            # Family paths with wrong prefix
+            "family.father": "parents.relation", "family.mother": "parents.relation",
+            "family.relation": "parents.relation",
+            "family.firstName": "parents.firstName",
+            "family.lastName": "parents.lastName",
+            "family.occupation": "parents.occupation",
+            "family.sibling": "siblings.relation",
+            "family.brother": "siblings.relation", "family.sister": "siblings.relation",
             # Education
             "school": "education.schooling", "college": "education.higherEducation",
             "firstJob": "education.earlyCareer", "first_job": "education.earlyCareer",
+            "career": "education.careerProgression",
+            # Memory paths
+            "memory": "earlyMemories.firstMemory", "firstMemory": "earlyMemories.firstMemory",
+            "childhood": "earlyMemories.firstMemory",
         }
         alias = _FIELD_ALIASES.get(base_path) or _FIELD_ALIASES.get(fp)
         if alias and alias in EXTRACTABLE_FIELDS:
@@ -742,7 +782,7 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
             raw_llm_output=raw_output,
         )
 
-    # Fallback: rules-based extraction
+    # Fallback: rules-based extraction (still include raw_llm_output for debugging)
     logger.warning("[extract] LLM extraction returned no items (raw_output=%s), falling back to rules",
                    "present" if raw_output else "None")
     rules_items = _extract_via_rules(
@@ -767,10 +807,11 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
         return ExtractFieldsResponse(
             items=result_items,
             method="rules",
+            raw_llm_output=raw_output,  # include for debugging even on rules fallback
         )
 
     # Nothing extracted — return empty
-    return ExtractFieldsResponse(items=[], method="fallback")
+    return ExtractFieldsResponse(items=[], method="fallback", raw_llm_output=raw_output)
 
 
 # ── Diagnostic endpoint ─────────────────────────────────────────────────────
