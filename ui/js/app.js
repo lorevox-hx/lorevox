@@ -1923,12 +1923,17 @@ async function sendUserMessage(){
     }catch{}
   }
 
-  // v8.0 — fire multi-field extraction even in free-form chat (Timeline Walk)
-  // when no structured interview is active. Non-blocking async call.
+  // v8.0 / WO-deferred — queue free-form extraction instead of firing immediately.
+  // Extraction will flush after Lori finishes responding (WS done / SSE complete).
   if(!state.interview.session_id && typeof _extractAndProjectMultiField === "function"){
-    try{ _extractAndProjectMultiField(text, "turn-" + Date.now()); }catch(e){
-      console.log("[extract] free-form extraction error:", e);
-    }
+    state.interviewProjection = state.interviewProjection || {};
+    state.interviewProjection._pendingExtraction = {
+      answerText: text,
+      turnId: "turn-" + Date.now(),
+      queuedAt: Date.now(),
+      source: "sendUserMessage.freeform"
+    };
+    console.log("[extract][queue] deferred free-form extraction queued");
   }
 
   const payload=systemInstruction?`${text}\n\n${systemInstruction}`:text;
@@ -2051,6 +2056,13 @@ IMPORTANT INTERVIEW RULES:
       if(obitDraftType==="lori_pending"){ setObitDraftType("lori"); }
     }
     setLoriState("ready");
+
+    // WO-deferred: Flush queued extraction now that SSE stream is complete
+    if (typeof _runDeferredInterviewExtraction === "function") {
+      try { await _runDeferredInterviewExtraction(); } catch(e) {
+        console.log("[extract] deferred flush after SSE done failed:", e);
+      }
+    }
   }catch(err){
     console.error("[SSE] streamSse failed:", err);
     _bubbleBody(bubble).textContent="Chat service unavailable — start the Lorevox backend to enable AI responses.";
@@ -2325,6 +2337,13 @@ function handleWsMessage(j){
     if(obitDraftType==="lori_pending") setObitDraftType("lori");
     setLoriState("ready");
     currentAssistantBubble=null;
+
+    // WO-deferred: Flush queued extraction now that Lori has finished
+    if (typeof _runDeferredInterviewExtraction === "function") {
+      Promise.resolve(_runDeferredInterviewExtraction()).catch(function(err) {
+        console.log("[extract] deferred flush after WS done failed:", err);
+      });
+    }
   }
   if(j.type==="session_verified"){
     // WO-2: Unlock chat input after session handshake confirmed

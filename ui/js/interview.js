@@ -518,10 +518,23 @@ async function processInterviewAnswer(text, skipped=false){
   const answeredQuestionId = state.interview.question_id;
 
   // v8 projection: attempt to project the answer into the targeted field
-  // Multi-field extraction runs async (non-blocking) alongside the interview API call
+  // WO-deferred: immediate single-field projection, but queue multi-field extraction
+  // to run AFTER Lori finishes responding (avoids GPU contention).
   if (!skipped && text && text.trim()) {
-    _projectAnswerToField(text.trim(), answeredQuestionId);
-    _extractAndProjectMultiField(text.trim(), answeredQuestionId);
+    const clean = text.trim();
+    _projectAnswerToField(clean, answeredQuestionId);
+
+    // Queue extraction instead of firing immediately
+    state.interviewProjection = state.interviewProjection || {};
+    state.interviewProjection._pendingExtraction = {
+      answerText: clean,
+      turnId: answeredQuestionId,
+      queuedAt: Date.now(),
+      source: "processInterviewAnswer"
+    };
+    console.log("[extract][queue] deferred interview extraction", {
+      turnId: answeredQuestionId
+    });
   }
   try{
     const r=await fetch(API.IV_ANSWER,{method:"POST",headers:ctype(),body:JSON.stringify({
@@ -748,6 +761,57 @@ function _projectAnswerToField(answerText, turnId) {
     });
 
     console.log("[interview] Seeded repeatable entry → " + targetSection + "[" + nextIdx + "]");
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-deferred: Deferred extraction runner
+   Flushes queued extraction AFTER Lori finishes responding.
+   Called from app.js WS done / SSE completion paths.
+═══════════════════════════════════════════════════════════════ */
+
+async function _runDeferredInterviewExtraction() {
+  var pending = state && state.interviewProjection && state.interviewProjection._pendingExtraction;
+  if (!pending || !pending.answerText) return;
+
+  // Ensure at least 1s has elapsed since queueing to let chat/TTS settle
+  var ageMs = Date.now() - (pending.queuedAt || 0);
+  if (ageMs < 1000) {
+    await new Promise(function(r) { setTimeout(r, 1000 - ageMs); });
+  }
+
+  // Re-read the queue — a newer turn may have replaced this one
+  var current = state && state.interviewProjection && state.interviewProjection._pendingExtraction;
+  if (!current || current.turnId !== pending.turnId) {
+    console.log("[extract][stale] deferred extraction superseded by newer turn");
+    return;
+  }
+
+  // Extra dedup: if _extractAndProjectMultiField already ran for this turnId, skip
+  if (current.turnId === _lastExtractionTurnId) {
+    console.log("[extract][dedup] deferred extraction already ran for turnId=" + current.turnId);
+    state.interviewProjection._pendingExtraction = null;
+    return;
+  }
+
+  console.log("[extract][run] deferred extraction firing", {
+    turnId: current.turnId,
+    source: current.source,
+    ageMs: Date.now() - current.queuedAt
+  });
+
+  try {
+    _extractAndProjectMultiField(current.answerText, current.turnId);
+  } catch (e) {
+    console.log("[extract][run] deferred extraction error:", e);
+  } finally {
+    // Clear only if still the same turn (don't clobber a newer queue entry)
+    if (state && state.interviewProjection &&
+        state.interviewProjection._pendingExtraction &&
+        state.interviewProjection._pendingExtraction.turnId === current.turnId) {
+      state.interviewProjection._pendingExtraction = null;
+      console.log("[extract][flush-complete] turnId=" + current.turnId);
+    }
   }
 }
 
