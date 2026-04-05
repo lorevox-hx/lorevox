@@ -1,0 +1,181 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "David Alan Mercer",
+  "_version": 2,
+
+  "personal": {
+    "fullName": "David Alan Mercer",
+    "preferredName": "David",
+    "legalFirstName": "David",
+    "legalMiddleName": "Alan",
+    "legalLastName": "Mercer",
+    "dateOfBirth": "1946-05-18",
+    "timeOfBirth": "",
+    "placeOfBirth": "St. Louis, Missouri",
+    "birthOrder": "3",
+    "zodiacSign": "Taurus",
+    "pronouns": "he/him",
+    "culture": "African American",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Dorothy",
+      "middleName": "Louise",
+      "lastName": "Mercer",
+      "maidenName": "Johnson",
+      "birthDate": "1920-03-12",
+      "birthPlace": "Memphis, Tennessee",
+      "occupation": "Schoolteacher",
+      "deceased": true,
+      "notableLifeEvents": "Dorothy moved from Memphis to St. Louis in 1938 for a teaching position. She taught third grade for 35 years at Dunbar Elementary. She was active in her church choir and was known in the neighborhood for her pound cake.",
+      "notes": "Great Migration family. Moved north for teaching work."
+    },
+    {
+      "relation": "Father",
+      "firstName": "James",
+      "middleName": "Robert",
+      "lastName": "Mercer",
+      "maidenName": "",
+      "birthDate": "1918-11-04",
+      "birthPlace": "St. Louis, Missouri",
+      "occupation": "Post office clerk, later postal supervisor",
+      "deceased": true,
+      "notableLifeEvents": "James worked at the downtown post office for 40 years. He was a deacon at Antioch Baptist Church. He taught David to play chess and they played every Sunday afternoon.",
+      "notes": "Quiet, steady man. David says he never raised his voice."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "maternal",
+      "firstName": "Essie",
+      "lastName": "Johnson",
+      "maidenName": "Williams",
+      "ancestry": "African American",
+      "culturalBackground": "Memphis, Tennessee — Great Migration family",
+      "memorableStories": "Essie told stories about picking cotton as a girl and dreaming about going north. She insisted every grandchild learn to read before starting school."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "Robert",
+      "middleName": "James",
+      "lastName": "Mercer",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "Serious, responsible, became a dentist",
+      "sharedExperiences": "Grew up together on Delmar Boulevard in St. Louis",
+      "memories": "Robert always had his nose in a book. David used to tease him about it.",
+      "notes": "Oldest sibling"
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Patricia",
+      "middleName": "Ann",
+      "lastName": "Mercer",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Outspoken, funny, became a union organizer",
+      "sharedExperiences": "Patricia and David were close in age and competed at everything",
+      "memories": "Patricia dared David to sing at a school talent show. He did. He was terrible.",
+      "notes": "Middle child, one year older than David"
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Michael",
+    "middleName": "Thomas",
+    "lastName": "Bennett",
+    "birthDate": "1949-08-30",
+    "birthPlace": "Chicago, Illinois",
+    "occupation": "High school English teacher, later department chair",
+    "narrative": "David met Michael Bennett in 1978 at a community theater production in San Francisco. They moved in together in 1980 and have been partners for over 45 years. Michael taught English at Lincoln High School for 30 years. They built a life together that included a wide circle of friends and chosen family. Michael is a quiet reader who loves jazz and cooking elaborate Sunday dinners.",
+    "deceased": false
+  },
+
+  "children": [],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "David and Michael did not formally marry until 2013, when same-sex marriage became legal in California. After 35 years together, they had a small ceremony in their backyard with close friends. Michael wore a blue suit. David cried."
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Sunday dinners with friends and chosen family — Michael cooks, David sets the table and picks the music",
+      "occasion": "Weekly"
+    },
+    {
+      "description": "Annual Thanksgiving with their closest friends, which they call 'Friendsgiving' — started in 1982 and has never been missed",
+      "occasion": "Thanksgiving"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Miles",
+      "species": "Cat",
+      "breed": "Tabby",
+      "birthDate": "",
+      "adoptionDate": "2010",
+      "notes": "Named after Miles Davis. Very dignified."
+    },
+    {
+      "name": "Coltrane",
+      "species": "Cat",
+      "breed": "Black shorthair",
+      "birthDate": "",
+      "adoptionDate": "2012",
+      "notes": "Named after John Coltrane. Not dignified at all."
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Sitting on his father's lap listening to Duke Ellington on the radio. The warmth of the room and the sound of the brass.",
+    "favoriteToy": "A set of wooden blocks his mother brought home from her classroom. David built cities.",
+    "significantEvent": "The 1954 Brown v. Board of Education decision. David was 8. His mother came home from school and told the children that something important had happened."
+  },
+
+  "education": {
+    "schooling": "Attended Dunbar Elementary (where his mother taught), Sumner High School. Graduated 1964.",
+    "higherEducation": "BA in Theater from Howard University, 1968. MFA in Directing from Yale School of Drama, 1971.",
+    "earlyCareer": "Assistant director at a regional theater in Philadelphia",
+    "careerProgression": "Moved to San Francisco in 1975. Directed community theater, then became artistic director of Bay Area Repertory Theater. Retired in 2014.",
+    "communityInvolvement": "Active in LGBTQ arts community in San Francisco. Mentored young playwrights through the Bay Area Writers Project.",
+    "mentorship": "Mentored dozens of young directors and actors over 40 years"
+  },
+
+  "laterYears": {
+    "retirement": "Retired from Bay Area Rep in 2014. Still directs one production a year by invitation.",
+    "lifeLessons": "Living truthfully is the only way to live. It took me a long time to learn that, but once I did, everything else followed.",
+    "adviceForFutureGenerations": "Find your people. Not everyone will understand you, and that's fine. But find the ones who do."
+  },
+
+  "hobbies": {
+    "hobbies": "Jazz, theater, cooking, chess, reading",
+    "worldEvents": "Civil rights movement, Stonewall, the AIDS crisis, marriage equality",
+    "personalChallenges": "Coming out to his parents in 1976. His mother was quiet for a week. His father said 'You're still my son.' David says that was the bravest thing his father ever did.",
+    "travel": "Born in St. Louis, educated in DC and New Haven, lived in Philadelphia briefly, settled in San Francisco in 1975."
+  },
+
+  "health": {
+    "healthMilestones": "Lost several close friends during the AIDS crisis in the 1980s and 1990s. David and Michael were both tested and were fortunate.",
+    "lifestyleChanges": "Started yoga in 2005 at Michael's suggestion. Still practices.",
+    "wellnessTips": "Stay connected. Isolation is the real danger as you age."
+  },
+
+  "technology": {
+    "firstTechExperience": "First email account in 1996. Michael had to teach him.",
+    "favoriteGadgets": "Vinyl record player — refuses to go digital for music",
+    "culturalPractices": "African American cultural traditions, jazz, community theater, chosen family bonds"
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "Wants to write a memoir. Has started it three times.",
+    "messagesForFutureGenerations": "The world doesn't owe you acceptance, but you owe yourself the truth."
+  }
+}

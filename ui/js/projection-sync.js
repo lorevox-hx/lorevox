@@ -88,6 +88,23 @@
       return false;
     }
 
+    // ── Phase G: PROTECTED IDENTITY CHECK ──
+    // Protected identity fields (fullName, DOB, placeOfBirth, etc.) cannot be
+    // overwritten by non-human sources once they have a value.
+    var PM = window.LorevoxProjectionMap;
+    if (PM && PM.isProtectedIdentity && PM.isProtectedIdentity(fieldPath)) {
+      if (existing && existing.value && source !== "human_edit") {
+        if (value !== existing.value) {
+          _logSync(fieldPath, "blocked_protected_identity", existing.value, value);
+          // Route to suggestion instead of direct write
+          _syncSuggestOnly(fieldPath, value, confidence);
+          console.warn("[projection-sync] ⛔ Protected identity conflict: " + fieldPath +
+            " current=" + existing.value + " proposed=" + value + " source=" + source);
+          return false;
+        }
+      }
+    }
+
     // ── CONFIDENCE GATE: AI can only upgrade, not downgrade ──
     if (existing && existing.value && source !== "human_edit") {
       if (existing.source !== "human_edit" && confidence <= existing.confidence) {
@@ -393,16 +410,22 @@
     if (!pid) return;
     var proj = _proj();
     if (!proj) return;
+    var payload = {
+      fields: proj.fields,
+      pendingSuggestions: proj.pendingSuggestions
+      // syncLog intentionally NOT persisted (session-only audit)
+    };
+    // Phase G: Backend canonical save (fire-and-forget)
     try {
-      var data = {
-        v: SCHEMA_VERSION,
-        d: {
-          fields: proj.fields,
-          pendingSuggestions: proj.pendingSuggestions
-          // syncLog intentionally NOT persisted (session-only audit)
-        }
-      };
-      localStorage.setItem(LS_PROJ_PREFIX + pid, JSON.stringify(data));
+      fetch(API.IV_PROJ_PUT, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ person_id: pid, projection: payload, source: "projection_sync", version: SCHEMA_VERSION })
+      }).catch(function(e) { console.warn("[projection-sync] Backend persist failed", e); });
+    } catch (e) {}
+    // Transient localStorage fallback
+    try {
+      localStorage.setItem(LS_PROJ_PREFIX + pid, JSON.stringify({ v: SCHEMA_VERSION, d: payload }));
     } catch (e) {
       // localStorage full — degrade silently
     }
@@ -412,6 +435,11 @@
     if (!pid) return;
     var proj = _proj();
     if (!proj) return;
+
+    // Phase G: Try backend first (async — overwrites when ready)
+    _loadProjectionFromBackend(pid);
+
+    // Immediate: localStorage transient fallback
     try {
       var raw = localStorage.getItem(LS_PROJ_PREFIX + pid);
       if (!raw) return;
@@ -424,6 +452,33 @@
     } catch (e) {
       // Malformed — ignore
     }
+  }
+
+  /* ── Phase G: Backend projection restore (async) ─────────── */
+  function _loadProjectionFromBackend(pid) {
+    if (!pid || typeof API === "undefined" || !API.IV_PROJ_GET) return;
+    fetch(API.IV_PROJ_GET(pid))
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(j) {
+        if (!j || !j.projection) return;
+        var p = j.projection;
+        var fields = p.fields || {};
+        if (typeof fields === "object" && Object.keys(fields).length > 0) {
+          var proj = _proj(); if (!proj) return;
+          proj.fields = fields;
+          proj.pendingSuggestions = p.pendingSuggestions || [];
+          console.log("[projection-sync] ✅ Projection restored from backend for " + pid);
+          // Sync transient localStorage
+          try {
+            localStorage.setItem(LS_PROJ_PREFIX + pid, JSON.stringify({
+              v: SCHEMA_VERSION, d: { fields: fields, pendingSuggestions: proj.pendingSuggestions }
+            }));
+          } catch (e) {}
+        }
+      })
+      .catch(function(e) {
+        console.warn("[projection-sync] Backend projection load failed (using localStorage fallback)", e);
+      });
   }
 
   function clearProjection(pid) {

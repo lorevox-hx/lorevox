@@ -127,7 +127,13 @@
     if (src.startsWith("source:")) {
       return filename ? "📄 " + filename : "uploaded document";
     }
-    if (src.startsWith("quick:")) return "quick capture";
+    if (src.startsWith("quickCapture:") || src.startsWith("quick:")) {
+      // Phase M: show displayTag if available (e.g. "Possible Duplicate", "Adds New Detail")
+      var d = candidate.data || {};
+      var tag = d.displayTag || d.label || "";
+      var base = src.startsWith("quickCapture:fact") ? "Quick Fact" : src.startsWith("quickCapture:note") ? "Quick Note" : "Quick Capture";
+      return tag && tag !== base ? base + " — " + tag : base;
+    }
     return src || "unknown";
   }
 

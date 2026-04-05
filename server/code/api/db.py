@@ -557,6 +557,8 @@ def init_db() -> None:
         if col_name not in existing_isess_cols:
             cur.execute(alter_sql)
 
+    _ensure_phase_g_tables(con, cur)
+
     con.commit()
     con.close()
 
@@ -2307,3 +2309,372 @@ def list_delete_audit(limit: int = 50) -> List[Dict[str, Any]]:
         d["dependency_counts"] = _json_load(d.pop("dependency_counts_json", "{}"), {})
         results.append(d)
     return results
+
+
+# ── Phase G: Ensure Phase G tables ──────────────────────────────────────────
+
+def _ensure_phase_g_tables(con: sqlite3.Connection, cur: sqlite3.Cursor) -> None:
+    """Create Phase G tables: questionnaires, projections, identity change log."""
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # bio_builder_questionnaires: canonical questionnaire state
+    # ─────────────────────────────────────────────────────────────────────────
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS bio_builder_questionnaires (
+            person_id TEXT PRIMARY KEY,
+            questionnaire_json TEXT NOT NULL DEFAULT '{}',
+            source TEXT NOT NULL DEFAULT 'unknown',
+            version INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
+        );
+        """
+    )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # interview_projections: canonical projection state
+    # ─────────────────────────────────────────────────────────────────────────
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS interview_projections (
+            person_id TEXT PRIMARY KEY,
+            projection_json TEXT NOT NULL DEFAULT '{}',
+            source TEXT NOT NULL DEFAULT 'unknown',
+            version INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
+        );
+        """
+    )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # identity_change_log: audit trail of proposed identity changes
+    # ─────────────────────────────────────────────────────────────────────────
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS identity_change_log (
+            id TEXT PRIMARY KEY,
+            person_id TEXT NOT NULL,
+            field_path TEXT NOT NULL,
+            old_value TEXT DEFAULT '',
+            new_value TEXT DEFAULT '',
+            source TEXT NOT NULL DEFAULT 'unknown',
+            status TEXT NOT NULL DEFAULT 'proposed',
+            accepted_by TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            resolved_at TEXT DEFAULT '',
+            meta_json TEXT NOT NULL DEFAULT '{}',
+            FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
+        );
+        """
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_identity_change_person_created "
+        "ON identity_change_log(person_id, created_at);"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase G: Questionnaire canonical persistence
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_questionnaire(person_id: str) -> Dict[str, Any]:
+    """Load canonical questionnaire state from backend DB."""
+    con = _connect()
+    try:
+        row = con.execute(
+            "SELECT questionnaire_json, source, version, updated_at "
+            "FROM bio_builder_questionnaires WHERE person_id = ?",
+            (person_id,),
+        ).fetchone()
+        if not row:
+            return {
+                "person_id": person_id,
+                "questionnaire": {},
+                "source": "empty",
+                "version": 0,
+                "updated_at": "",
+            }
+        return {
+            "person_id": person_id,
+            "questionnaire": json.loads(row["questionnaire_json"] or "{}"),
+            "source": row["source"],
+            "version": row["version"],
+            "updated_at": row["updated_at"],
+        }
+    finally:
+        con.close()
+
+
+def upsert_questionnaire(
+    person_id: str,
+    questionnaire: Dict[str, Any],
+    source: str = "ui",
+    version: int = 1,
+) -> Dict[str, Any]:
+    """Save canonical questionnaire state to backend DB."""
+    now = datetime.utcnow().isoformat()
+    q_json = json.dumps(questionnaire, ensure_ascii=False)
+    con = _connect()
+    try:
+        con.execute(
+            """INSERT INTO bio_builder_questionnaires
+                   (person_id, questionnaire_json, source, version, updated_at)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(person_id) DO UPDATE SET
+                   questionnaire_json = excluded.questionnaire_json,
+                   source = excluded.source,
+                   version = excluded.version,
+                   updated_at = excluded.updated_at""",
+            (person_id, q_json, source, version, now),
+        )
+        con.commit()
+        return {
+            "person_id": person_id,
+            "questionnaire": questionnaire,
+            "source": source,
+            "version": version,
+            "updated_at": now,
+        }
+    finally:
+        con.close()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase G: Projection canonical persistence
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_projection(person_id: str) -> Dict[str, Any]:
+    """Load canonical interview projection state from backend DB."""
+    con = _connect()
+    try:
+        row = con.execute(
+            "SELECT projection_json, source, version, updated_at "
+            "FROM interview_projections WHERE person_id = ?",
+            (person_id,),
+        ).fetchone()
+        if not row:
+            return {
+                "person_id": person_id,
+                "projection": {},
+                "source": "empty",
+                "version": 0,
+                "updated_at": "",
+            }
+        return {
+            "person_id": person_id,
+            "projection": json.loads(row["projection_json"] or "{}"),
+            "source": row["source"],
+            "version": row["version"],
+            "updated_at": row["updated_at"],
+        }
+    finally:
+        con.close()
+
+
+def upsert_projection(
+    person_id: str,
+    projection: Dict[str, Any],
+    source: str = "projection_sync",
+    version: int = 1,
+) -> Dict[str, Any]:
+    """Save canonical projection state to backend DB."""
+    now = datetime.utcnow().isoformat()
+    p_json = json.dumps(projection, ensure_ascii=False)
+    con = _connect()
+    try:
+        con.execute(
+            """INSERT INTO interview_projections
+                   (person_id, projection_json, source, version, updated_at)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(person_id) DO UPDATE SET
+                   projection_json = excluded.projection_json,
+                   source = excluded.source,
+                   version = excluded.version,
+                   updated_at = excluded.updated_at""",
+            (person_id, p_json, source, version, now),
+        )
+        con.commit()
+        return {
+            "person_id": person_id,
+            "projection": projection,
+            "source": source,
+            "version": version,
+            "updated_at": now,
+        }
+    finally:
+        con.close()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase G: Combined narrator state snapshot
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_narrator_state_snapshot(person_id: str) -> Dict[str, Any]:
+    """
+    Return combined backend canonical state for a narrator.
+    Used by frontend on startup/switch to hydrate from backend authority.
+    """
+    person = get_person(person_id) or {}
+    profile_row = get_profile(person_id) or {}
+    profile = {}
+    if isinstance(profile_row, str):
+        try:
+            profile = json.loads(profile_row)
+        except Exception:
+            profile = {}
+    elif isinstance(profile_row, dict):
+        profile = profile_row
+
+    qq = get_questionnaire(person_id)
+    proj = get_projection(person_id)
+
+    # Build protected identity snapshot from person record + profile basics
+    basics = profile.get("basics", {}) if isinstance(profile, dict) else {}
+    protected_identity = {
+        "personal.fullName": person.get("display_name", ""),
+        "personal.preferredName": basics.get("preferred", ""),
+        "personal.dateOfBirth": person.get("date_of_birth", ""),
+        "personal.placeOfBirth": person.get("place_of_birth", ""),
+        "personal.birthOrder": basics.get("birthOrder", ""),
+    }
+
+    now = datetime.utcnow().isoformat()
+    return {
+        "person_id": person_id,
+        "person": person,
+        "profile": profile,
+        "questionnaire": qq.get("questionnaire", {}),
+        "projection": proj.get("projection", {}),
+        "protected_identity": protected_identity,
+        "updated_at": now,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase G: Identity change log
+# ─────────────────────────────────────────────────────────────────────────────
+
+def log_identity_change_proposal(
+    person_id: str,
+    field_path: str,
+    old_value: str,
+    new_value: str,
+    source: str,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Log a proposed change to a protected identity field."""
+    proposal_id = "chg_" + uuid.uuid4().hex[:12]
+    now = datetime.utcnow().isoformat()
+    meta_json = json.dumps(meta or {}, ensure_ascii=False)
+    con = _connect()
+    try:
+        con.execute(
+            """INSERT INTO identity_change_log
+                   (id, person_id, field_path, old_value, new_value, source,
+                    status, created_at, meta_json)
+               VALUES (?, ?, ?, ?, ?, ?, 'proposed', ?, ?)""",
+            (proposal_id, person_id, field_path, old_value, new_value,
+             source, now, meta_json),
+        )
+        con.commit()
+        return {
+            "proposal_id": proposal_id,
+            "person_id": person_id,
+            "field_path": field_path,
+            "old_value": old_value,
+            "new_value": new_value,
+            "source": source,
+            "status": "proposed",
+            "created_at": now,
+        }
+    finally:
+        con.close()
+
+
+def approve_identity_change_proposal(
+    proposal_id: str,
+    accepted_by: str = "human",
+) -> Dict[str, Any]:
+    """
+    Accept a proposed identity change, apply it to the person/profile record,
+    and mark the log entry as accepted.
+    """
+    now = datetime.utcnow().isoformat()
+    con = _connect()
+    try:
+        row = con.execute(
+            "SELECT * FROM identity_change_log WHERE id = ?",
+            (proposal_id,),
+        ).fetchone()
+        if not row:
+            return {"ok": False, "error": "proposal_not_found"}
+        row = dict(row)
+
+        if row["status"] != "proposed":
+            return {"ok": False, "error": f"proposal already {row['status']}"}
+
+        # Apply the change to canonical person/profile data
+        person_id = row["person_id"]
+        field_path = row["field_path"]
+        new_value = row["new_value"]
+
+        # Map field_path to actual DB column/field
+        _applied = False
+        if field_path == "personal.fullName":
+            con.execute(
+                "UPDATE people SET display_name = ?, updated_at = ? WHERE id = ?",
+                (new_value, now, person_id),
+            )
+            _applied = True
+        elif field_path == "personal.dateOfBirth":
+            con.execute(
+                "UPDATE people SET date_of_birth = ?, updated_at = ? WHERE id = ?",
+                (new_value, now, person_id),
+            )
+            _applied = True
+        elif field_path == "personal.placeOfBirth":
+            con.execute(
+                "UPDATE people SET place_of_birth = ?, updated_at = ? WHERE id = ?",
+                (new_value, now, person_id),
+            )
+            _applied = True
+        elif field_path in ("personal.preferredName", "personal.birthOrder"):
+            # These live in profile basics JSON
+            prof_row = con.execute(
+                "SELECT profile_json FROM profiles WHERE person_id = ?",
+                (person_id,),
+            ).fetchone()
+            if prof_row:
+                profile = json.loads(prof_row["profile_json"] or "{}")
+                basics = profile.setdefault("basics", {})
+                key = "preferred" if field_path == "personal.preferredName" else "birthOrder"
+                basics[key] = new_value
+                con.execute(
+                    "UPDATE profiles SET profile_json = ?, updated_at = ? WHERE person_id = ?",
+                    (json.dumps(profile, ensure_ascii=False), now, person_id),
+                )
+                _applied = True
+
+        # Mark proposal as accepted
+        con.execute(
+            """UPDATE identity_change_log
+               SET status = 'accepted', accepted_by = ?, resolved_at = ?
+               WHERE id = ?""",
+            (accepted_by, now, proposal_id),
+        )
+        con.commit()
+
+        return {
+            "ok": True,
+            "proposal_id": proposal_id,
+            "person_id": person_id,
+            "field_path": field_path,
+            "new_value": new_value,
+            "applied": _applied,
+            "accepted_by": accepted_by,
+            "resolved_at": now,
+        }
+    finally:
+        con.close()

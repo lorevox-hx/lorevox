@@ -1,0 +1,236 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "Eleanor Mae Price",
+  "_version": 2,
+  "_purpose": "Complex family narrator — tests kinship graph, step/half/adopted relationships, repeatable family sections, dense relational isolation",
+
+  "personal": {
+    "fullName": "Eleanor Mae Price",
+    "preferredName": "Ellie",
+    "legalFirstName": "Eleanor",
+    "legalMiddleName": "Mae",
+    "legalLastName": "Price",
+    "dateOfBirth": "1955-03-19",
+    "timeOfBirth": "",
+    "placeOfBirth": "Dayton, Ohio",
+    "birthOrder": "1",
+    "zodiacSign": "Pisces",
+    "pronouns": "she/her",
+    "culture": "Midwestern working-class",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Joanne",
+      "middleName": "",
+      "lastName": "Price",
+      "maidenName": "Keller",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Nurse aide",
+      "deceased": true,
+      "notableLifeEvents": "Held the household together through divorce, remarriage, and blended family change.",
+      "notes": ""
+    },
+    {
+      "relation": "Father",
+      "firstName": "Richard",
+      "middleName": "",
+      "lastName": "Price",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Auto plant machinist",
+      "deceased": true,
+      "notableLifeEvents": "Worked long shifts and remained an important figure even after the family changed.",
+      "notes": ""
+    },
+    {
+      "relation": "Stepfather",
+      "firstName": "Leonard",
+      "middleName": "",
+      "lastName": "Bishop",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Truck driver",
+      "deceased": true,
+      "notableLifeEvents": "Entered Eleanor's life when she was about 9 and changed the shape of the household.",
+      "notes": "Important step-parent figure."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "maternal",
+      "firstName": "Martha",
+      "lastName": "Keller",
+      "ancestry": "Kentucky to Ohio migration family",
+      "culturalBackground": "Midwestern family rooted in migration stories",
+      "memorableStories": "Helped raise Eleanor during difficult transitions and provided a stable household presence."
+    },
+    {
+      "side": "paternal",
+      "firstName": "Samuel",
+      "lastName": "Price",
+      "ancestry": "Appalachian and Midwestern working family",
+      "culturalBackground": "Factory-era Ohio",
+      "memorableStories": "Talked about Depression years and factory layoffs."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "David",
+      "middleName": "",
+      "lastName": "Price",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Funny and mechanical",
+      "sharedExperiences": "Shared the first household before remarriage",
+      "memories": "Could take apart bicycles and radios.",
+      "notes": "Full sibling"
+    },
+    {
+      "relation": "Half-sister",
+      "firstName": "Carol",
+      "middleName": "",
+      "lastName": "Price",
+      "birthOrder": "older",
+      "uniqueCharacteristics": "Independent and outspoken",
+      "sharedExperiences": "Family ties shifted over time",
+      "memories": "Represented an earlier chapter of the family story.",
+      "notes": "Half-sibling from father's prior relationship"
+    },
+    {
+      "relation": "Adoptive sister",
+      "firstName": "Nina",
+      "middleName": "",
+      "lastName": "Bishop",
+      "birthOrder": "younger",
+      "uniqueCharacteristics": "Quiet, artistic",
+      "sharedExperiences": "Joined the household after remarriage",
+      "memories": "Family adjusted slowly but meaningfully.",
+      "notes": "Adoptive family connection through stepfather"
+    },
+    {
+      "relation": "Stepbrother",
+      "firstName": "Mark",
+      "middleName": "",
+      "lastName": "Bishop",
+      "birthOrder": "older",
+      "uniqueCharacteristics": "Reserved",
+      "sharedExperiences": "Present in the blended family years",
+      "memories": "Relationships were sometimes strained but lasting.",
+      "notes": "Step-family connection through mother's second marriage"
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Marsha",
+    "middleName": "",
+    "lastName": "Cole",
+    "birthPlace": "",
+    "occupation": "Nonprofit administrator",
+    "narrative": "Long-term later-life partner after an earlier marriage, bringing steadiness and a wider blended family network.",
+    "deceased": false
+  },
+
+  "children": [
+    {
+      "firstName": "Andrew",
+      "middleName": "",
+      "lastName": "Price",
+      "birthDate": "",
+      "narrative": "Biological son from Eleanor's first marriage."
+    },
+    {
+      "firstName": "Leah",
+      "middleName": "",
+      "lastName": "Cole",
+      "birthDate": "",
+      "narrative": "Stepdaughter through later partnership."
+    },
+    {
+      "firstName": "Sophie",
+      "middleName": "",
+      "lastName": "Price",
+      "birthDate": "",
+      "narrative": "Adopted daughter who became central to later family life."
+    }
+  ],
+
+  "marriage": {
+    "proposalStory": "Her first marriage happened young and quickly, while later partnership grew more slowly and with greater trust.",
+    "weddingDetails": "Early marriage ended; later-life partnership became the steadier and more enduring family bond."
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Blended family holiday meals with houses rotating each year",
+      "occasion": "Thanksgiving and Christmas"
+    },
+    {
+      "description": "Summer picnic where step, adoptive, and biological relatives all attended together",
+      "occasion": "Summer reunion"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Molly",
+      "species": "Dog",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Sitting on the hood of a car while her father worked in the driveway.",
+    "favoriteToy": "",
+    "significantEvent": "Her mother's remarriage reshaped the household and her sense of family."
+  },
+
+  "education": {
+    "schooling": "Attended public schools in Ohio.",
+    "higherEducation": "Returned to community college later in life.",
+    "earlyCareer": "Worked first as a hair salon receptionist.",
+    "careerProgression": "Moved into office administration and later nonprofit family services.",
+    "communityInvolvement": "Participated in neighborhood and school-family support efforts.",
+    "mentorship": "Learned resilience from several generations of women in her family."
+  },
+
+  "laterYears": {
+    "retirement": "Partial retirement while remaining active in family care and community work.",
+    "lifeLessons": "Family is sometimes built, not just inherited.",
+    "adviceForFutureGenerations": "Be honest about change and do not force family into one shape."
+  },
+
+  "hobbies": {
+    "hobbies": "Quilting, genealogy, potluck organizing.",
+    "worldEvents": "",
+    "personalChallenges": "Divorce, blended family stress, and balancing loyalty across households.",
+    "travel": ""
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "",
+    "wellnessTips": "Stay connected and keep a routine."
+  },
+
+  "technology": {
+    "firstTechExperience": "Learned computers on the job in middle adulthood.",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "",
+    "messagesForFutureGenerations": "Ask careful clarifying follow-ups around step, half, adopted, and former marriage relationships. More detail could be developed around first marriage, adoption process, and multigenerational caregiving."
+  }
+}

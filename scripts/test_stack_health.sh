@@ -80,10 +80,10 @@ else
   fail "SH-05: TTS /api/tts/voices returns 200" "curl failed or non-200"
 fi
 
-if curl -sf http://127.0.0.1:8080/ui/lori8.0.html >/dev/null 2>&1; then
-  pass "SH-06: UI /ui/lori8.0.html returns 200"
+if curl -sf http://127.0.0.1:8080/ui/lori9.0.html >/dev/null 2>&1; then
+  pass "SH-06: UI /ui/lori9.0.html returns 200"
 else
-  fail "SH-06: UI /ui/lori8.0.html returns 200" "curl failed or non-200"
+  fail "SH-06: UI /ui/lori9.0.html returns 200" "curl failed or non-200"
 fi
 
 echo ""
@@ -107,7 +107,7 @@ done
 echo ""
 echo "── Group 4: Cross-Origin Isolation Headers ──"
 
-HEADERS=$(curl -sI http://127.0.0.1:8080/ui/lori8.0.html 2>/dev/null || true)
+HEADERS=$(curl -sI http://127.0.0.1:8080/ui/lori9.0.html 2>/dev/null || true)
 if echo "$HEADERS" | grep -qi "Cross-Origin-Opener-Policy"; then
   pass "SH-08: UI serves COOP header"
 else

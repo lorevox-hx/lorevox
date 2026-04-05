@@ -71,6 +71,10 @@ from .routers import (  # type: ignore
     affect,          # v6.1 Track B — Emotion Signal Layer
     memoir_export,   # Phase E — server-side DOCX export
     extract,         # v8.0 — Multi-field extraction engine
+    questionnaire,   # Phase G — Storage Authority (QQ canonical)
+    projection,      # Phase G — Storage Authority (projection canonical)
+    narrator_state,  # Phase G — Storage Authority (state snapshot)
+    identity_review, # Phase G — Storage Authority (identity change review)
 )
 
 # Core Entity & State Routers
@@ -88,6 +92,10 @@ app.include_router(stt.router)
 app.include_router(affect.router)  # v6.1 Track B
 app.include_router(memoir_export.router)  # Phase E — DOCX export
 app.include_router(extract.router)       # v8.0 — Multi-field extraction
+app.include_router(questionnaire.router)  # Phase G — QQ canonical
+app.include_router(projection.router)     # Phase G — Projection canonical
+app.include_router(narrator_state.router) # Phase G — State snapshot
+app.include_router(identity_review.router) # Phase G — Identity change review
 
 # Real LLM Routers (REST and WS)
 app.include_router(llm_api.router)

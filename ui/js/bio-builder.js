@@ -383,9 +383,21 @@
         + bb.quickItems.slice().reverse().slice(0, 20).map(function (item) {
             var typeLabel = item.type === "fact" ? "Fact" : "Note";
             var preview   = (item.text || "").slice(0, 120) + ((item.text || "").length > 120 ? "…" : "");
+            // Phase M: show overlap/split info from pipeline
+            var tagHtml = "";
+            if (_qcPipeline && bb.candidates && bb.candidates.memories) {
+              var matchingCand = bb.candidates.memories.find(function (c) {
+                return c.data && c.data.originalText === item.text;
+              });
+              if (matchingCand && matchingCand.data && matchingCand.data.overlapState && matchingCand.data.overlapState !== "none") {
+                var tagText = matchingCand.data.displayTag || matchingCand.data.overlapState;
+                tagHtml = ' <span class="bb-quick-tag bb-quick-tag--overlap">' + _esc(tagText) + '</span>';
+              }
+            }
             return '<div class="bb-quick-item">'
               + '<span class="bb-quick-type">' + _esc(typeLabel) + '</span>'
               + '<span class="bb-quick-text">' + _esc(preview) + '</span>'
+              + tagHtml
               + '</div>';
           }).join("")
         + '</div>';
@@ -545,10 +557,53 @@
     _renderActiveTab();
   }
 
+  /* ── Phase M: Quick Capture → Pipeline routing ───────────────
+     Uses the QC pipeline module for atomic splitting, overlap
+     comparison, relationship qualifier detection, and provenance
+     labeling.  Falls back to simple candidate creation if the
+     pipeline module is not loaded.
+  ──────────────────────────────────────────────────────────── */
+  var _qcPipeline = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules._qcPipeline;
+
+  function _qcCreateCandidate(bb, text, sourceType) {
+    if (!bb || !bb.candidates) return;
+
+    if (_qcPipeline && typeof _qcPipeline.processQuickCapture === "function") {
+      _qcPipeline.processQuickCapture(bb, text, sourceType);
+      return;
+    }
+
+    // Fallback: simple candidate creation (pre-Phase M compat)
+    if (!bb.candidates.memories) bb.candidates.memories = [];
+    var isDupe = bb.candidates.memories.some(function (c) {
+      return c.data && c.data.text === text;
+    });
+    if (isDupe) return;
+
+    bb.candidates.memories.push({
+      id: _uid(),
+      type: "memory",
+      source: "quickCapture:" + sourceType,
+      sourceId: null,
+      data: {
+        label: sourceType === "fact" ? "Quick Fact" : "Quick Note",
+        text: text
+      },
+      status: "pending"
+    });
+  }
+
   function _addFact() {
     var input = _el("bbFactInput"); if (!input) return;
     var text  = (input.value || "").trim(); if (!text) return;
-    var bb    = _bb(); if (bb) bb.quickItems.push({ id: _uid(), type: "fact", text: text, ts: Date.now() });
+    var bb    = _bb();
+    if (bb) {
+      bb.quickItems.push({ id: _uid(), type: "fact", text: text, ts: Date.now() });
+      // Phase M: route through QC pipeline (atomic split, overlap, qualifiers)
+      _qcCreateCandidate(bb, text, "fact");
+      // Phase M: persist QC inbox immediately
+      _persistQCInbox(bb);
+    }
     input.value = "";
     _renderActiveTab();
   }
@@ -556,9 +611,25 @@
   function _addNote() {
     var ta   = _el("bbNoteInput"); if (!ta) return;
     var text = (ta.value || "").trim(); if (!text) return;
-    var bb   = _bb(); if (bb) bb.quickItems.push({ id: _uid(), type: "note", text: text, ts: Date.now() });
+    var bb   = _bb();
+    if (bb) {
+      bb.quickItems.push({ id: _uid(), type: "note", text: text, ts: Date.now() });
+      // Phase M: route through QC pipeline (atomic split, overlap, qualifiers)
+      _qcCreateCandidate(bb, text, "note");
+      // Phase M: persist QC inbox immediately
+      _persistQCInbox(bb);
+    }
     ta.value = "";
     _renderActiveTab();
+  }
+
+  /* Phase M: Immediately persist QC inbox after each add */
+  function _persistQCInbox(bb) {
+    if (!bb || !bb.personId || !bb.quickItems || bb.quickItems.length === 0) return;
+    try {
+      var prefix = _core._LS_QC_PREFIX || "lorevox_qc_draft_";
+      localStorage.setItem(prefix + bb.personId, JSON.stringify({ v: 1, d: bb.quickItems }));
+    } catch (e) {}
   }
 
   function _openSection(sectionId)  { _activeSection = sectionId; _renderActiveTab(); }

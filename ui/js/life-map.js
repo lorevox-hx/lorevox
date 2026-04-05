@@ -489,15 +489,10 @@
 
     // ── Life-period click ─────────────────────────────────────
     // Mirrors jumpToSection(): navigate era → jump to interview.
-    // In lori8.0 "jump" = dismiss popover → user is back in chat.
-    // In lori7.4c "jump" = showTab("interview").
-    //
-    // NOTE: _jumpToInterview() is called FIRST so the popover always
-    // closes even if any navigation function throws.  State setters
-    // (setEra/setPass) are called before DOM refresh functions so the
-    // era context is correct when the user lands in the interview.
+    // Phase L fix: set era FIRST so the meta bar updates correctly,
+    // then re-render the Life Map to show the new era, then dismiss.
     if (data.kind === "era" && data.era) {
-      _jumpToInterview();                           // ① dismiss / tab-switch
+      // ① Set era state
       if (typeof setEra  === "function") setEra(data.era);
       if (typeof setPass === "function" &&
           typeof interviewMode !== "undefined" &&
@@ -512,6 +507,21 @@
       try { if (typeof renderInterview       === "function") renderInterview();       } catch (_) {}
       try { if (typeof updateContextTriggers === "function") updateContextTriggers(); } catch (_) {}
       try { if (typeof renderTimeline        === "function") renderTimeline();        } catch (_) {}
+
+      // ③ Phase L: Re-render the Life Map so meta bar + button label update
+      // immediately to reflect the new era, giving visible state-change feedback.
+      _lastSig = null; // force fresh build
+      render(true);
+
+      // ④ Phase L: Visible confirmation toast
+      var prettyName = _prettyEra(data.era);
+      if (typeof sysBubble === "function") {
+        sysBubble("Interview moved to " + prettyName);
+      }
+      console.log("[life-map] Era changed to: " + data.era + " (" + prettyName + ")");
+
+      // ⑤ Dismiss popover / switch tab (delayed slightly so user sees the update)
+      setTimeout(function () { _jumpToInterview(); }, 400);
       return;
     }
 

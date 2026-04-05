@@ -1,0 +1,179 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "David Alan Mercer",
+  "_version": 2,
+  "_purpose": "LGBTQ life-history narrator — tests respectful handling of same-sex partnership, chosen family, identity-sensitive memoir tone, ordinary biography depth",
+
+  "personal": {
+    "fullName": "David Alan Mercer",
+    "preferredName": "David",
+    "legalFirstName": "David",
+    "legalMiddleName": "Alan",
+    "legalLastName": "Mercer",
+    "dateOfBirth": "1946-11-02",
+    "timeOfBirth": "",
+    "placeOfBirth": "St. Louis, Missouri",
+    "birthOrder": "2",
+    "zodiacSign": "Scorpio",
+    "pronouns": "he/him",
+    "culture": "Midwestern, later urban academic and community life",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Helen",
+      "middleName": "",
+      "lastName": "Mercer",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Elementary teacher",
+      "deceased": true,
+      "notableLifeEvents": "Encouraged reading, education, and careful self-expression.",
+      "notes": ""
+    },
+    {
+      "relation": "Father",
+      "firstName": "Robert",
+      "middleName": "",
+      "lastName": "Mercer",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Postal worker and Army veteran",
+      "deceased": true,
+      "notableLifeEvents": "Valued duty and steadiness, even when emotional communication was difficult.",
+      "notes": ""
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "paternal",
+      "firstName": "Evelyn",
+      "lastName": "Mercer",
+      "ancestry": "Midwestern American",
+      "culturalBackground": "Bookish family culture",
+      "memorableStories": "Encouraged David's love of reading and took him to the library often."
+    },
+    {
+      "side": "maternal",
+      "firstName": "Joseph",
+      "lastName": "Miller",
+      "ancestry": "Midwestern American",
+      "culturalBackground": "Traditional working family",
+      "memorableStories": "Distrusted city life but cared deeply about family reputation and security."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Sister",
+      "firstName": "Anne",
+      "middleName": "",
+      "lastName": "Mercer",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "Practical, organized",
+      "sharedExperiences": "Shared childhood routines and family holidays",
+      "memories": "Their closeness shifted over time but remained important.",
+      "notes": ""
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Paul",
+      "middleName": "",
+      "lastName": "Mercer",
+      "birthOrder": "3",
+      "uniqueCharacteristics": "Restless, musical",
+      "sharedExperiences": "Represented a different style of adulthood than David's own path",
+      "memories": "",
+      "notes": ""
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Michael",
+    "middleName": "",
+    "lastName": "Bennett",
+    "birthPlace": "",
+    "occupation": "Archivist",
+    "narrative": "Met David in the late 1970s. They built a long partnership, a wide circle of chosen family, and cared for one another through illness, work transitions, and later life.",
+    "deceased": false
+  },
+
+  "children": [],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "Their relationship lasted many years before later-life legal recognition became possible."
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Holiday dinners with friends, nieces, former students, and neighbors",
+      "occasion": "Winter holidays"
+    },
+    {
+      "description": "Annual summer arts outing and shared meal with chosen family",
+      "occasion": "Summer"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Theo",
+      "species": "Cat",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Library steps, polished church shoes, and being told to sit still.",
+    "favoriteToy": "A box of colored pencils and paper.",
+    "significantEvent": "Realizing early that he felt different, long before he had words for it."
+  },
+
+  "education": {
+    "schooling": "Strong student and active in debate and reading-based school activities.",
+    "higherEducation": "Studied English and history in college.",
+    "earlyCareer": "Worked in education and public humanities settings.",
+    "careerProgression": "Moved through teaching, archives, and community arts work over the years.",
+    "communityInvolvement": "Mentored younger people and stayed active in local cultural and civic work.",
+    "mentorship": "Was influenced by teachers, librarians, and older community members who modeled thoughtful living."
+  },
+
+  "laterYears": {
+    "retirement": "Remained engaged in mentoring, reading, and community life after formal retirement.",
+    "lifeLessons": "A truthful life often takes courage and patience.",
+    "adviceForFutureGenerations": "Build the family that sustains you, and do not mistake silence for peace."
+  },
+
+  "hobbies": {
+    "hobbies": "Gardening, music, reading, local history walks.",
+    "worldEvents": "Lived through major social changes that shaped how openly and safely he could live.",
+    "personalChallenges": "Secrecy in earlier life, community loss, and the long work of living openly.",
+    "travel": "Enjoyed city visits, museums, and trips centered on books, music, and history."
+  },
+
+  "health": {
+    "healthMilestones": "Later-life caregiving became an important part of the relationship with his partner.",
+    "lifestyleChanges": "Learned to slow down and choose a steadier pace in later life.",
+    "wellnessTips": "Friendship, walking, reading, and purpose matter."
+  },
+
+  "technology": {
+    "firstTechExperience": "Used early word processors and office systems in professional life.",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "",
+    "messagesForFutureGenerations": "Handle partner history, chosen family, and life transitions naturally and respectfully, without making identity the only story. Could be expanded with more specific career milestones, community history, and later-life family relationships."
+  }
+}

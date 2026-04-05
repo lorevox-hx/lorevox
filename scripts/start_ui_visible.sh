@@ -63,7 +63,7 @@ fi
 open_ui_in_windows
 
 printf '\nUI visible startup complete.\n'
-printf 'UI: http://127.0.0.1:%s/ui/lori8.0.html\n' "$UI_PORT"
+printf 'UI: http://127.0.0.1:%s/ui/lori9.0.html\n' "$UI_PORT"
 printf 'Tailing UI log. Press Ctrl+C to stop tail.\n\n'
 
 touch "$LOG_DIR/ui.log"

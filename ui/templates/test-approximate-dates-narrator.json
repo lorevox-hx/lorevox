@@ -1,0 +1,175 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "Walter James Greene",
+  "_version": 2,
+  "_purpose": "Approximate-dates narrator — tests uncertainty handling, timeline precision, review routing, no fake precision on fuzzy chronology",
+
+  "personal": {
+    "fullName": "Walter James Greene",
+    "preferredName": "Walt",
+    "legalFirstName": "Walter",
+    "legalMiddleName": "James",
+    "legalLastName": "Greene",
+    "dateOfBirth": "",
+    "timeOfBirth": "",
+    "placeOfBirth": "near Macon, Georgia",
+    "birthOrder": "1",
+    "zodiacSign": "",
+    "pronouns": "he/him",
+    "culture": "Rural southern, later Midwestern",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Father",
+      "firstName": "Thomas",
+      "middleName": "",
+      "lastName": "Greene",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Farm laborer and later mill worker",
+      "deceased": true,
+      "notableLifeEvents": "Moved the family north when Walter was young, maybe around 1944 or 1945.",
+      "notes": "Family chronology is remembered approximately."
+    },
+    {
+      "relation": "Mother",
+      "firstName": "Lillian",
+      "middleName": "",
+      "lastName": "Greene",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Took in laundry and boarders",
+      "deceased": true,
+      "notableLifeEvents": "Remembered family dates better than anyone else, but records were incomplete.",
+      "notes": ""
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "paternal",
+      "firstName": "Elias",
+      "lastName": "Greene",
+      "ancestry": "Southern American",
+      "culturalBackground": "Rural Georgia",
+      "memorableStories": "Worked land he did not own and taught younger family members how to mend almost anything."
+    },
+    {
+      "side": "maternal",
+      "firstName": "Sarah",
+      "lastName": "Brooks",
+      "ancestry": "Southern American",
+      "culturalBackground": "Church-centered family life",
+      "memorableStories": "Known for hymn singing and herbal home remedies."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Sister",
+      "firstName": "Louise",
+      "middleName": "",
+      "lastName": "Greene",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Remembered as lively and quick with stories",
+      "sharedExperiences": "Shared the family move north in childhood",
+      "memories": "Walter was never certain of her exact birth year.",
+      "notes": ""
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Ruth",
+    "middleName": "",
+    "lastName": "Greene",
+    "birthPlace": "",
+    "occupation": "",
+    "narrative": "Married in the early 1960s, likely 1962 or 1963, in a small church ceremony remembered differently by family members.",
+    "deceased": true
+  },
+
+  "children": [
+    {
+      "firstName": "Carla",
+      "middleName": "",
+      "lastName": "Greene",
+      "birthDate": "",
+      "narrative": "One of two children; family records preserve only partial chronology."
+    },
+    {
+      "firstName": "Michael",
+      "middleName": "",
+      "lastName": "Greene",
+      "birthDate": "",
+      "narrative": "Childhood and early adult years overlapped with several family moves."
+    }
+  ],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "Small church wedding in the early 1960s; family later disagreed about the exact year."
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Sunday radio baseball and a large midday meal",
+      "occasion": "Weekends"
+    },
+    {
+      "description": "Summer reunions after the family settled up north",
+      "occasion": "Summer"
+    }
+  ],
+
+  "pets": [],
+
+  "earlyMemories": {
+    "firstMemory": "A red dirt road, a screen door, and summer heat.",
+    "favoriteToy": "",
+    "significantEvent": "Moving north as a child, maybe during wartime or just after."
+  },
+
+  "education": {
+    "schooling": "Left school young, likely after 8th or 9th grade.",
+    "higherEducation": "",
+    "earlyCareer": "Worked factory and warehouse jobs.",
+    "careerProgression": "Had steady work rather than one formal career, with several moves between states.",
+    "communityInvolvement": "Union hall events and church men's breakfasts.",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "Slowed down rather than formally retired all at once.",
+    "lifeLessons": "Dates matter less than who was there and what happened.",
+    "adviceForFutureGenerations": "Write things down because memory shifts."
+  },
+
+  "hobbies": {
+    "hobbies": "Fishing, radio baseball, fixing things in the garage.",
+    "worldEvents": "Family memories are sometimes anchored to wartime and postwar movement, but dates remain approximate.",
+    "personalChallenges": "Periods of unstable work and repeated relocation.",
+    "travel": ""
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "Walked more in later life after work became less physical.",
+    "wellnessTips": ""
+  },
+
+  "technology": {
+    "firstTechExperience": "Color television felt like a major leap.",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "",
+    "messagesForFutureGenerations": "Preserve uncertainty. Do not invent precision where records are incomplete. Exact birth date, migration year, wedding year, and children's birth chronology remain uncertain."
+  }
+}

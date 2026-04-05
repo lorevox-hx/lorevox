@@ -286,16 +286,26 @@ function buildRuntime71() {
     /* Media Builder — photo count for Lori's contextual awareness.
        window._lv80MediaCount is updated by the gallery on every load/upload/delete. */
     media_count: (window._lv80MediaCount || 0),
-    /* WO-S3: Projection family snapshot — injects parent/sibling names + occupations
-       from localStorage projection so prompt_composer can ground Lori post-reload. */
+    /* WO-S3: Projection family snapshot — injects parent/sibling names + occupations.
+       Phase G: Read from in-memory canonical state (loaded from backend), NOT directly
+       from localStorage. Falls back to localStorage only if in-memory is empty. */
     projection_family: (function() {
       try {
         const pid = state.session?.personId || state.currentPersonId || state.person_id;
         if (!pid) return null;
-        const raw = localStorage.getItem("lorevox_proj_draft_" + pid);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        const fields = (parsed && parsed.d && parsed.d.fields) || (parsed && parsed.fields) || parsed || {};
+        // Phase G: prefer in-memory projection (backend-loaded)
+        let fields = null;
+        const iProj = state.interviewProjection;
+        if (iProj && iProj.personId === pid && iProj.fields && Object.keys(iProj.fields).length > 0) {
+          fields = iProj.fields;
+        }
+        // Fallback to localStorage transient draft if in-memory empty
+        if (!fields) {
+          const raw = localStorage.getItem("lorevox_proj_draft_" + pid);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          fields = (parsed && parsed.d && parsed.d.fields) || (parsed && parsed.fields) || parsed || {};
+        }
         // Helper: projection fields are {value:"...", source:"...", ...} envelopes
         const v = (f) => { const e = fields[f]; return (e && typeof e === "object" ? e.value : e) || ""; };
         const fam = { parents: [], siblings: [] };
@@ -608,6 +618,34 @@ async function lvxSwitchNarratorSafe(pid){
   if (typeof _memoirClearContent === "function") _memoirClearContent();
 
   await loadPerson(pid);
+
+  // Phase G: hydrate canonical state from backend state-snapshot
+  // This ensures backend authority overrides any stale localStorage data
+  try {
+    const snapResp = await fetch(API.NARRATOR_STATE(pid));
+    if (snapResp.ok) {
+      const snap = await snapResp.json();
+      console.log("[app] Phase G: narrator state snapshot loaded for " + pid);
+      // Backend questionnaire overwrites in-memory if non-empty
+      if (snap.questionnaire && Object.keys(snap.questionnaire).length > 0) {
+        const bb = state.bioBuilder;
+        if (bb) {
+          bb.questionnaire = snap.questionnaire;
+          try { localStorage.setItem("lorevox_qq_draft_" + pid, JSON.stringify({ v: 1, d: snap.questionnaire })); } catch(_){}
+        }
+      }
+      // Backend projection overwrites in-memory if non-empty
+      if (snap.projection && snap.projection.fields && Object.keys(snap.projection.fields).length > 0) {
+        const iProj = state.interviewProjection;
+        if (iProj) {
+          iProj.fields = snap.projection.fields;
+          iProj.pendingSuggestions = snap.projection.pendingSuggestions || [];
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[app] Phase G: state-snapshot fetch failed (proceeding with local data)", e);
+  }
 
   // run a second hydration after profile is loaded
   if (window.LorevoxBioBuilder?.onNarratorSwitch) {
@@ -1056,7 +1094,7 @@ function addKinRow(kind,data){
   d.innerHTML=`
     <input class="input-ghost" style="min-width:110px;flex:1" data-k="name" placeholder="Name" value="${escAttr(data.name||"")}">
     <select class="input-ghost" style="min-width:100px" data-k="relation">
-      ${["Mother","Father","Sister","Brother","Half-sister","Half-brother","Stepsister","Stepbrother","Sibling","Spouse","Partner","Child","Step-parent","Step-child","Adoptive parent","Adoptive mother","Adoptive father","Adopted child","Grandparent","Grandmother","Grandfather","Grandchild","Nephew","Niece","Cousin","Aunt","Uncle","Former spouse","Guardian","Chosen family","Other"]
+      ${["Mother","Father","Stepmother","Stepfather","Sister","Brother","Half-sister","Half-brother","Stepsister","Stepbrother","Adoptive sister","Adoptive brother","Sibling","Spouse","Partner","Child","Step-parent","Step-child","Adoptive parent","Adoptive mother","Adoptive father","Adopted child","Grandparent","Grandmother","Grandfather","Grandparent-guardian","Grandchild","Nephew","Niece","Cousin","Aunt","Uncle","Former spouse","Guardian","Chosen family","Other"]
         .map(x=>`<option ${(data.relation||kind)===x?"selected":""}>${x}</option>`).join("")}
     </select>
     <input class="input-ghost" style="flex:1;min-width:90px" data-k="pob" placeholder="Birthplace" value="${escAttr(data.pob||"")}">
@@ -2409,19 +2447,41 @@ function appendBubble(role,text){
   const w=document.getElementById("chatMessages");
   const d=document.createElement("div");
   d.className=`bubble bubble-${role}`;
-  // v7.4D — speaker label: every turn gets a clear "You" or "Lori" header.
+  // v7.4D+N.1-03 — speaker label with narrator identity resolution.
   // sys bubbles (status messages) skip the label.
   if(role==="user"||role==="ai"){
     const label=document.createElement("div");
     label.className="bubble-speaker";
-    label.textContent=(role==="user")?"You":"Lori";
+    if(role==="ai"){
+      label.textContent="Lori";
+    } else {
+      // N.1-03: Resolve narrator display name from multiple sources
+      let uName="";
+      if(typeof state!=="undefined"){
+        if(state.narratorUi && state.narratorUi.activeLabel) uName=state.narratorUi.activeLabel;
+        if(!uName && state.person_id && state.narratorUi && state.narratorUi.peopleCache){
+          const m=state.narratorUi.peopleCache.find(p=>(p.id||p.personId)===state.person_id);
+          if(m) uName=m.display_name||m.name||m.fullName||"";
+        }
+        if(!uName && state.session && state.session.identityCapture && state.session.identityCapture.name){
+          uName=state.session.identityCapture.name;
+        }
+      }
+      label.textContent=uName||"You";
+    }
     d.appendChild(label);
   }
   const body=document.createElement("div");
   body.className="bubble-body";
   body.textContent=text;
   d.appendChild(body);
-  w.appendChild(d); w.scrollTop=w.scrollHeight;
+  w.appendChild(d);
+  // N.1-02: Use smooth scroll via FocusCanvas scroll manager if available, else fallback
+  if(typeof window._scrollChatToBottom==="function"){
+    window._scrollChatToBottom();
+  } else {
+    w.scrollTop=w.scrollHeight;
+  }
   return d;
 }
 function sysBubble(text){ return appendBubble("sys",text); }

@@ -24,8 +24,24 @@ export DATA_DIR="${DATA_DIR:-/mnt/c/lorevox_data}"
 echo "[bootstrap] DATA_DIR=$DATA_DIR"
 
 # ── Create data dirs ─────────────────────────────────────────────────────────
-mkdir -p "$DATA_DIR"/{db,voices,cache_audio,memory,projects,interview,logs}
+mkdir -p "$DATA_DIR"/{db,voices,cache_audio,memory,projects,interview,logs,templates,backups,exports/people}
 echo "[bootstrap] Data dirs ready"
+
+# ── Seed narrator templates (copy repo defaults if not already present) ──────
+REPO_TPL="$REPO_DIR/ui/templates"
+DATA_TPL="$DATA_DIR/templates"
+if [ -d "$REPO_TPL" ]; then
+    _copied=0
+    for f in "$REPO_TPL"/*.json; do
+        [ -f "$f" ] || continue
+        base="$(basename "$f")"
+        if [ ! -f "$DATA_TPL/$base" ]; then
+            cp "$f" "$DATA_TPL/$base"
+            _copied=$((_copied + 1))
+        fi
+    done
+    echo "[bootstrap] Templates: $_copied new files seeded to $DATA_TPL"
+fi
 
 # ── Activate venv ────────────────────────────────────────────────────────────
 source "$REPO_DIR/.venv-gpu/bin/activate"

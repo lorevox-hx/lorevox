@@ -39,4 +39,10 @@ const API = {
   // v8 — Phase 2: narrator delete cascade
   PERSON_INVENTORY: (id) => `${ORIGIN}/api/people/${id}/delete-inventory`,
   PERSON_RESTORE:   (id) => `${ORIGIN}/api/people/${id}/restore`,
+  // Phase G — Storage Authority
+  BB_QQ_GET:        (id) => `${ORIGIN}/api/bio-builder/questionnaire?person_id=${encodeURIComponent(id)}`,
+  BB_QQ_PUT:        ORIGIN + "/api/bio-builder/questionnaire",
+  IV_PROJ_GET:      (id) => `${ORIGIN}/api/interview/projection?person_id=${encodeURIComponent(id)}`,
+  IV_PROJ_PUT:      ORIGIN + "/api/interview/projection",
+  NARRATOR_STATE:   (id) => `${ORIGIN}/api/narrator/state-snapshot?person_id=${encodeURIComponent(id)}`,
 };

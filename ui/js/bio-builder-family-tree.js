@@ -447,7 +447,23 @@
 
   function _ftSeedFromQuestionnaire() {
     var pid = _currentPersonId(); if (!pid) return;
-    var bb = _bb(); if (!bb || !bb.questionnaire) return;
+    var bb = _bb();
+    if (!bb || !bb.questionnaire) {
+      // Phase L: try to load questionnaire from localStorage if bio builder hasn't hydrated it
+      var qqRaw = localStorage.getItem("lorevox_qq_draft_" + pid);
+      if (qqRaw) {
+        var qqParsed = JSON.parse(qqRaw);
+        if (!bb) {
+          if (typeof sysBubble === "function") sysBubble("Bio Builder state not ready — try again in a moment.");
+          return;
+        }
+        bb.questionnaire = qqParsed.d || qqParsed;
+        console.log("[family-tree] Loaded questionnaire from localStorage for seeding");
+      } else {
+        if (typeof sysBubble === "function") sysBubble("No questionnaire data available to seed.");
+        return;
+      }
+    }
     var draft = _ftDraft(pid);
     var q = bb.questionnaire;
 
@@ -547,17 +563,58 @@
       });
     }
 
+    // Phase L: Children (were missing from questionnaire seed)
+    if (q.children && Array.isArray(q.children)) {
+      q.children.forEach(function (ch) {
+        var name = ((ch.firstName || "") + " " + (ch.lastName || "")).trim() || ch.fullName || "";
+        if (!name || _exists(name)) return;
+        var exists = draft.nodes.some(function (n) { return _ftNodeDisplayName(n) === name && (n.role === "child" || n.type === "child"); });
+        if (exists) return;
+        var node = _ftMakeNode("child", {
+          displayName: name,
+          birthYear: (ch.birthDate || ch.dateOfBirth || "").substring(0, 4),
+          deceased: !!ch.deceased,
+          source: "questionnaire"
+        });
+        draft.nodes.push(node);
+        existing[name.toLowerCase()] = true;
+        var relType = (ch.relation || "").toLowerCase().indexOf("step") >= 0 ? "step"
+                    : (ch.relation || "").toLowerCase().indexOf("adopt") >= 0 ? "adoptive"
+                    : "biological";
+        draft.edges.push(_ftMakeEdge(narratorId, node.id, relType, ch.relation || "child", ""));
+      });
+    }
+
+    var nodeCountAfter = draft.nodes.length;
     _ftCleanOrphanEdges(pid);
     _persistDrafts(pid);
     _renderCallback();
+
+    // Phase L: visible user feedback
+    var addedCount = nodeCountAfter - 1; // minus narrator node
+    if (addedCount > 0) {
+      if (typeof sysBubble === "function") sysBubble("Family Tree: added " + addedCount + " member(s) from questionnaire.");
+      console.log("[family-tree] Seeded " + addedCount + " nodes from questionnaire for " + pid);
+    } else {
+      if (typeof sysBubble === "function") sysBubble("No new members found in questionnaire.");
+    }
   }
 
   function _ftSeedFromProfile() {
     var pid = _currentPersonId(); if (!pid) return;
-    if (typeof state === "undefined" || !state.profile) return;
+    if (typeof state === "undefined" || !state.profile) {
+      if (typeof sysBubble === "function") sysBubble("No profile data available to seed.");
+      return;
+    }
     var prof = state.profile;
     var basics = prof.basics || {};
     var kin = prof.kinship || {};
+    // Phase L: check for empty kinship and provide feedback
+    var kinLength = Array.isArray(kin) ? kin.length : Object.keys(kin).length;
+    if (kinLength === 0 && !basics.fullName && !basics.preferred) {
+      if (typeof sysBubble === "function") sysBubble("Profile is empty — nothing to seed. Try Seed from Questionnaire instead.");
+      return;
+    }
 
     var draft = _ftDraft(pid);
 
@@ -591,17 +648,29 @@
     }
 
     // Kinship entries
+    // Phase L: handle both array-form kinship (preload: [{name, relation, ...}])
+    // and legacy object-form kinship ({ parents: [...], siblings: [...] })
     var kinEntries = [];
-    Object.keys(kin).forEach(function (k) {
-      var arr = kin[k];
-      if (Array.isArray(arr)) {
-        arr.forEach(function (entry) {
-          kinEntries.push({ entry: entry, relation: k });
-        });
-      } else if (arr && typeof arr === "object") {
-        kinEntries.push({ entry: arr, relation: k });
-      }
-    });
+    if (Array.isArray(kin)) {
+      // Flat array — each entry has its own .relation property
+      kin.forEach(function (entry) {
+        if (entry && typeof entry === "object") {
+          kinEntries.push({ entry: entry, relation: entry.relation || "other" });
+        }
+      });
+    } else {
+      // Object-keyed form (legacy): { parents: [...], spouse: {...}, ... }
+      Object.keys(kin).forEach(function (k) {
+        var arr = kin[k];
+        if (Array.isArray(arr)) {
+          arr.forEach(function (entry) {
+            kinEntries.push({ entry: entry, relation: entry.relation || k });
+          });
+        } else if (arr && typeof arr === "object") {
+          kinEntries.push({ entry: arr, relation: arr.relation || k });
+        }
+      });
+    }
 
     kinEntries.forEach(function (item) {
       var e = item.entry;
@@ -645,6 +714,15 @@
     _ftCleanOrphanEdges(pid);
     _persistDrafts(pid);
     _renderCallback();
+
+    // Phase L: visible user feedback
+    var addedCount = draft.nodes.length - 1; // minus narrator node
+    if (addedCount > 0) {
+      if (typeof sysBubble === "function") sysBubble("Family Tree: added " + addedCount + " member(s) from profile.");
+      console.log("[family-tree] Seeded " + addedCount + " nodes from profile for " + pid);
+    } else {
+      if (typeof sysBubble === "function") sysBubble("No new members to add from profile — tree is up to date.");
+    }
   }
 
   function _ftSeedFromCandidates() {

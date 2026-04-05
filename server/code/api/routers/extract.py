@@ -105,6 +105,18 @@ EXTRACTABLE_FIELDS = {
     "siblings.uniqueCharacteristics": {"label": "Sibling unique characteristics", "writeMode": "candidate_only", "repeatable": "siblings"},
 }
 
+# ── Phase G: Protected identity fields ─────────────────────────────────────
+# These fields MUST NOT be directly overwritten by chat extraction.
+# If the backend already has a canonical value and the extracted value conflicts,
+# the extraction result should be flagged as suggest_only with a conflict reason.
+PROTECTED_IDENTITY_FIELDS = frozenset([
+    "personal.fullName",
+    "personal.preferredName",
+    "personal.dateOfBirth",
+    "personal.placeOfBirth",
+    "personal.birthOrder",
+])
+
 
 # ── LLM availability cache ──────────────────────────────────────────────────
 # Keep this cache very short-lived. A long negative cache causes extraction
@@ -806,16 +818,38 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
     logger.info("[extract][summary] llm_raw=%s accepted=%d method=%s",
                 "present" if raw_output else "none", _accepted, _method)
 
+    # Phase G: Load protected identity snapshot for conflict detection
+    _protected_snapshot = {}
+    if req.person_id:
+        try:
+            from ..db import get_narrator_state_snapshot
+            snap = get_narrator_state_snapshot(req.person_id)
+            _protected_snapshot = snap.get("protected_identity", {}) if snap else {}
+        except Exception as e:
+            logger.warning("[extract] Phase G: Could not load protected identity snapshot: %s", e)
+
     if llm_items:
         logger.info("[extract] LLM returned %d items", len(llm_items))
         # Add writeMode from our schema
         result_items = []
         for item in llm_items:
             meta = EXTRACTABLE_FIELDS.get(item["fieldPath"], {})
+            write_mode = meta.get("writeMode", "suggest_only")
+
+            # Phase G: Protected identity field conflict detection
+            if item["fieldPath"] in PROTECTED_IDENTITY_FIELDS:
+                canonical_val = _protected_snapshot.get(item["fieldPath"], "")
+                if canonical_val and canonical_val.strip() and item["value"] != canonical_val:
+                    write_mode = "suggest_only"
+                    logger.warning(
+                        "[extract] Phase G: Protected identity conflict for %s: canonical=%r extracted=%r — downgraded to suggest_only",
+                        item["fieldPath"], canonical_val, item["value"],
+                    )
+
             result_items.append(ExtractedItem(
                 fieldPath=item["fieldPath"],
                 value=item["value"],
-                writeMode=meta.get("writeMode", "suggest_only"),
+                writeMode=write_mode,
                 confidence=item["confidence"],
                 source="backend_extract",
                 extractionMethod="llm",
@@ -850,10 +884,22 @@ def extract_fields(req: ExtractFieldsRequest) -> ExtractFieldsResponse:
         result_items = []
         for item in rules_items:
             meta = EXTRACTABLE_FIELDS.get(item["fieldPath"], {})
+            write_mode = meta.get("writeMode", "suggest_only")
+
+            # Phase G: Protected identity field conflict detection (rules path)
+            if item["fieldPath"] in PROTECTED_IDENTITY_FIELDS:
+                canonical_val = _protected_snapshot.get(item["fieldPath"], "")
+                if canonical_val and canonical_val.strip() and item["value"] != canonical_val:
+                    write_mode = "suggest_only"
+                    logger.warning(
+                        "[extract] Phase G: Protected identity conflict (rules) for %s: canonical=%r extracted=%r",
+                        item["fieldPath"], canonical_val, item["value"],
+                    )
+
             result_items.append(ExtractedItem(
                 fieldPath=item["fieldPath"],
                 value=item["value"],
-                writeMode=meta.get("writeMode", "suggest_only"),
+                writeMode=write_mode,
                 confidence=item["confidence"],
                 source="backend_extract",
                 extractionMethod="rules",

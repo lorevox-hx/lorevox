@@ -84,7 +84,7 @@ API_OK=false; TTS_OK=false; UI_OK=false
 
 if wait_healthy "http://127.0.0.1:8000/api/ping" 120; then API_OK=true; fi
 if wait_healthy "http://127.0.0.1:8001/api/tts/voices" 120; then TTS_OK=true; fi
-if wait_healthy "http://127.0.0.1:8080/ui/lori8.0.html" 60; then UI_OK=true; fi
+if wait_healthy "http://127.0.0.1:8080/ui/lori9.0.html" 60; then UI_OK=true; fi
 
 wait $START_PID 2>/dev/null || true
 
@@ -136,7 +136,7 @@ if [[ -f "$UI_PID_FILE" ]]; then
   disown $NEW_UI_PID 2>/dev/null || true
   echo "$NEW_UI_PID" > "$UI_PID_FILE"
 
-  if wait_healthy "http://127.0.0.1:8080/ui/lori8.0.html" 10; then
+  if wait_healthy "http://127.0.0.1:8080/ui/lori9.0.html" 10; then
     pass "SM-04: UI rapid restart — no address-in-use error"
   else
     fail "SM-04: UI rapid restart — no address-in-use error" "UI failed to bind port 8080"
@@ -248,7 +248,7 @@ START_PID=$!
 API_OK2=false; TTS_OK2=false; UI_OK2=false
 if wait_healthy "http://127.0.0.1:8000/api/ping" 120; then API_OK2=true; fi
 if wait_healthy "http://127.0.0.1:8001/api/tts/voices" 120; then TTS_OK2=true; fi
-if wait_healthy "http://127.0.0.1:8080/ui/lori8.0.html" 60; then UI_OK2=true; fi
+if wait_healthy "http://127.0.0.1:8080/ui/lori9.0.html" 60; then UI_OK2=true; fi
 
 wait $START_PID 2>/dev/null || true
 

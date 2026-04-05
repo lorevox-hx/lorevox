@@ -1,0 +1,236 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "Eleanor Mae Price",
+  "_version": 2,
+
+  "personal": {
+    "fullName": "Eleanor Mae Price",
+    "preferredName": "Eleanor",
+    "legalFirstName": "Eleanor",
+    "legalMiddleName": "Mae",
+    "legalLastName": "Price",
+    "dateOfBirth": "1955-03-14",
+    "timeOfBirth": "07:45",
+    "placeOfBirth": "Dayton, Ohio",
+    "birthOrder": "1",
+    "zodiacSign": "Pisces",
+    "pronouns": "she/her",
+    "culture": "American Midwest",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Joanne",
+      "middleName": "Ruth",
+      "lastName": "Price",
+      "maidenName": "Mitchell",
+      "birthDate": "1932-08-05",
+      "birthPlace": "Cincinnati, Ohio",
+      "occupation": "Secretary, later homemaker",
+      "deceased": true,
+      "notableLifeEvents": "Joanne held the household together after the divorce from Richard in 1963. She remarried Leonard Bishop in 1964 when Eleanor was about 9. Joanne was fiercely protective of her children and made sure they all stayed close despite the blended household.",
+      "notes": "Married Richard Price 1953, divorced 1963. Married Leonard Bishop 1964."
+    },
+    {
+      "relation": "Father",
+      "firstName": "Richard",
+      "middleName": "Allen",
+      "lastName": "Price",
+      "maidenName": "",
+      "birthDate": "1930-11-20",
+      "birthPlace": "Dayton, Ohio",
+      "occupation": "Auto mechanic, later factory supervisor",
+      "deceased": true,
+      "notableLifeEvents": "Richard was a quiet man who struggled after the divorce. He stayed in Dayton and saw the kids on weekends when he could. Eleanor remembers him teaching her to change a tire when she was 12.",
+      "notes": "Biological father. Divorced Joanne 1963."
+    },
+    {
+      "relation": "Stepfather",
+      "firstName": "Leonard",
+      "middleName": "Wayne",
+      "lastName": "Bishop",
+      "maidenName": "",
+      "birthDate": "1928-02-14",
+      "birthPlace": "Springfield, Ohio",
+      "occupation": "High school shop teacher",
+      "deceased": true,
+      "notableLifeEvents": "Leonard married Joanne in 1964 and brought his son Mark into the household. He was patient and steady. Eleanor says he never tried to replace her father but always showed up. He built the back porch where the family ate dinner every summer.",
+      "notes": "Stepfather. Married Joanne 1964. Brought son Mark Bishop into the household."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "maternal",
+      "firstName": "Dorothy",
+      "lastName": "Mitchell",
+      "maidenName": "Crane",
+      "ancestry": "English-American",
+      "culturalBackground": "Southern Ohio farming family",
+      "memorableStories": "Dorothy made the best cornbread Eleanor ever tasted. She kept a garden until she was 88."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "David",
+      "middleName": "Allen",
+      "lastName": "Price",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Quiet, bookish, became a librarian",
+      "sharedExperiences": "Grew up together in Dayton before and after the divorce",
+      "memories": "David and Eleanor walked to school together every day until junior high",
+      "notes": "Biological brother, younger by 2 years"
+    },
+    {
+      "relation": "Half-sister",
+      "firstName": "Carol",
+      "middleName": "Ann",
+      "lastName": "Price",
+      "birthOrder": "3",
+      "uniqueCharacteristics": "Outgoing, musical, played clarinet in school band",
+      "sharedExperiences": "Carol was born after the divorce but before Joanne remarried. She grew up in the blended household.",
+      "memories": "Carol used to follow Eleanor everywhere. Eleanor taught her to braid hair.",
+      "notes": "Half-sister through mother Joanne. Born 1962."
+    },
+    {
+      "relation": "Adoptive sister",
+      "firstName": "Nina",
+      "middleName": "",
+      "lastName": "Bishop",
+      "birthOrder": "4",
+      "uniqueCharacteristics": "Artistic, painted watercolors, loved cats",
+      "sharedExperiences": "Nina was adopted by Leonard and Joanne in 1967. She and Eleanor shared a room for three years.",
+      "memories": "Nina's first night in the house she cried and Eleanor read her a story until she fell asleep.",
+      "notes": "Adopted by Leonard and Joanne Bishop in 1967 when Nina was 5."
+    },
+    {
+      "relation": "Stepbrother",
+      "firstName": "Mark",
+      "middleName": "Leonard",
+      "lastName": "Bishop",
+      "birthOrder": "5",
+      "uniqueCharacteristics": "Athletic, played football, later became a coach",
+      "sharedExperiences": "Mark moved in when Leonard married Joanne. He and David became close friends.",
+      "memories": "Mark taught Eleanor how to throw a football. She was better than he expected.",
+      "notes": "Leonard's biological son from first marriage. Moved in 1964."
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Marsha",
+    "middleName": "Jean",
+    "lastName": "Cole",
+    "birthDate": "1958-07-22",
+    "birthPlace": "Columbus, Ohio",
+    "occupation": "Nurse",
+    "narrative": "Eleanor married Marsha Cole in 1980. Marsha brought her daughter Leah from a previous relationship. Together they raised Andrew and later adopted Sophie. Marsha worked night shifts at Good Samaritan Hospital for 25 years.",
+    "deceased": false
+  },
+
+  "children": [
+    {
+      "relation": "Son",
+      "firstName": "Andrew",
+      "middleName": "David",
+      "lastName": "Price",
+      "birthDate": "1982-04-10",
+      "birthPlace": "Dayton, Ohio",
+      "narrative": "Biological son of Eleanor and donor. Named middle name after Eleanor's brother. Works as a civil engineer."
+    },
+    {
+      "relation": "Stepdaughter",
+      "firstName": "Leah",
+      "middleName": "Marie",
+      "lastName": "Cole",
+      "birthDate": "1976-09-03",
+      "birthPlace": "Columbus, Ohio",
+      "narrative": "Marsha's daughter from a previous relationship. Eleanor has been her stepmother since 1980. Leah is a middle school teacher."
+    },
+    {
+      "relation": "Adopted daughter",
+      "firstName": "Sophie",
+      "middleName": "Lin",
+      "lastName": "Price",
+      "birthDate": "1990-01-15",
+      "birthPlace": "Guangzhou, China",
+      "narrative": "Adopted from China in 1991 when she was one year old. Sophie is now a graphic designer in Portland, Oregon."
+    }
+  ],
+
+  "marriage": {
+    "proposalStory": "Eleanor proposed to Marsha on a walk through Hills and Dales park in Dayton. Marsha said yes before Eleanor finished the question.",
+    "weddingDetails": "Married October 18, 1980 in a small ceremony at Marsha's parents' house in Columbus."
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Every Thanksgiving the whole blended family gathers at Eleanor's house. Joanne's cornbread recipe is always on the table.",
+      "occasion": "Thanksgiving"
+    },
+    {
+      "description": "Summer dinners on the back porch Leonard built",
+      "occasion": "Summer"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Biscuit",
+      "species": "Dog",
+      "breed": "Beagle",
+      "birthDate": "",
+      "adoptionDate": "1985",
+      "notes": "Family dog when Andrew was little. Lived to 14."
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Sitting on the front steps of the Dayton house watching fireflies with her brother David. She was maybe four or five.",
+    "favoriteToy": "A stuffed elephant named Peanut that she kept until college.",
+    "significantEvent": "Her parents' divorce in 1963. Eleanor was 8. She remembers her mother crying in the kitchen and her father's car pulling away."
+  },
+
+  "education": {
+    "schooling": "Attended Roosevelt Elementary in Dayton, then Fairview Junior High, then Fairmont High School. Graduated 1973.",
+    "higherEducation": "BA in Social Work from Ohio State University, 1977.",
+    "earlyCareer": "First job was at Montgomery County Children's Services",
+    "careerProgression": "Social worker for 30 years, eventually became a supervisor at the county level",
+    "communityInvolvement": "Volunteered at a domestic violence shelter for 15 years",
+    "mentorship": "Mentored younger social workers through the county program"
+  },
+
+  "laterYears": {
+    "retirement": "Retired in 2015. Now gardens, reads, and visits grandchildren.",
+    "lifeLessons": "Family is who shows up, not just who shares your blood.",
+    "adviceForFutureGenerations": "Be patient with people. Everyone is carrying something you can't see."
+  },
+
+  "hobbies": {
+    "hobbies": "Gardening, reading historical fiction, birdwatching",
+    "worldEvents": "Remembers the moon landing, Watergate, the fall of the Berlin Wall",
+    "personalChallenges": "Navigating a blended family as a child shaped her entire worldview",
+    "travel": "Born and raised in Dayton, Ohio. Traveled to China in 1991 to adopt Sophie."
+  },
+
+  "health": {
+    "healthMilestones": "Knee replacement in 2018",
+    "lifestyleChanges": "Started walking daily after retirement",
+    "wellnessTips": "Keep moving. Even a short walk helps."
+  },
+
+  "technology": {
+    "firstTechExperience": "Used a typewriter in college. First computer was a Gateway in 1998.",
+    "favoriteGadgets": "iPad for reading",
+    "culturalPractices": "Midwest American values — hard work, family dinners, community service"
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "Always wanted to visit Ireland where her grandmother's family came from",
+    "messagesForFutureGenerations": "Take care of each other. The world is hard enough without making it harder."
+  }
+}

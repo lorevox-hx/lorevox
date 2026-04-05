@@ -60,7 +60,7 @@ echo "Pre-flight check..."
 API_UP=false; TTS_UP=false; UI_UP=false
 curl -sf http://127.0.0.1:8000/api/ping >/dev/null 2>&1 && API_UP=true
 curl -sf http://127.0.0.1:8001/api/tts/voices >/dev/null 2>&1 && TTS_UP=true
-curl -sf http://127.0.0.1:8080/ui/lori8.0.html >/dev/null 2>&1 && UI_UP=true
+curl -sf http://127.0.0.1:8080/ui/lori9.0.html >/dev/null 2>&1 && UI_UP=true
 echo "  API: $($API_UP && echo UP || echo DOWN)"
 echo "  TTS: $($TTS_UP && echo UP || echo DOWN)"
 echo "  UI:  $($UI_UP && echo UP || echo DOWN)"

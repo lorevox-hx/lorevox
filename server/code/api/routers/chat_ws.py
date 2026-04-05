@@ -199,24 +199,37 @@ async def ws_chat(ws: WebSocket):
 
         final_text = "".join(reply_parts).strip()
 
-        persist_turn_transaction(
-            conv_id=conv_id,
-            user_message=user_text,
-            assistant_message=final_text,
-            model_name="local-llm-ws",
-            meta={"ws": True, "cancelled": ev.is_set()},
-        )
+        # Phase G: fail-closed — only persist if generation completed cleanly
+        if ev.is_set():
+            logger.warning("[chat-ws] Turn cancelled/disconnected — skipping persistence (fail-closed)")
+            await _ws_send(ws, {"type": "done", "final_text": final_text, "cancelled": True})
+            return
+
+        try:
+            persist_turn_transaction(
+                conv_id=conv_id,
+                user_message=user_text,
+                assistant_message=final_text,
+                model_name="local-llm-ws",
+                meta={"ws": True, "cancelled": ev.is_set()},
+            )
+        except Exception as persist_err:
+            logger.error("[chat-ws] Phase G: persist_turn_transaction failed — %s", persist_err)
+            await _ws_send(ws, {"type": "error", "message": "Turn persist failed — no state written"})
 
         # Memory Archive — log assistant reply + rebuild transcript
         if person_id:
-            archive_append_event(
-                person_id=person_id,
-                session_id=conv_id,
-                role="assistant",
-                content=final_text,
-                meta={"ws": True, "cancelled": ev.is_set()},
-            )
-            archive_rebuild_txt(person_id=person_id, session_id=conv_id)
+            try:
+                archive_append_event(
+                    person_id=person_id,
+                    session_id=conv_id,
+                    role="assistant",
+                    content=final_text,
+                    meta={"ws": True, "cancelled": ev.is_set()},
+                )
+                archive_rebuild_txt(person_id=person_id, session_id=conv_id)
+            except Exception as arch_err:
+                logger.error("[chat-ws] Phase G: archive write failed — %s", arch_err)
 
         await _ws_send(ws, {"type": "done", "final_text": final_text})
 
@@ -272,7 +285,9 @@ async def ws_chat(ws: WebSocket):
                 await _ws_send(ws, {"type": "error", "message": f"unknown type: {msg_type}"})
 
     except WebSocketDisconnect:
+        # Phase G: fail-closed — cancel in-flight generation, do not replay stale state
         ev.set()
         if current_task and not current_task.done():
             current_task.cancel()
+        logger.info("[chat-ws] Phase G: WebSocket disconnected — cancelled in-flight, no stale replay")
         return

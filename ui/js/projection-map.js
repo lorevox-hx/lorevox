@@ -36,6 +36,7 @@
     /* ── Personal Information ──────────────────────────────── */
     "personal.fullName": {
       writeMode: "prefill_if_blank",
+      protectedIdentity: true,   // Phase G — cannot be overwritten by chat extraction
       priority: 1,
       eraTags: [],
       conversational: "What is your full name — first, middle, and last?",
@@ -43,12 +44,14 @@
     },
     "personal.preferredName": {
       writeMode: "prefill_if_blank",
+      protectedIdentity: true,   // Phase G
       priority: 1,
       eraTags: [],
       conversational: "What name do you prefer to go by?",
     },
     "personal.dateOfBirth": {
       writeMode: "prefill_if_blank",
+      protectedIdentity: true,   // Phase G
       priority: 1,
       eraTags: [],
       conversational: "When were you born?",
@@ -62,6 +65,7 @@
     },
     "personal.placeOfBirth": {
       writeMode: "prefill_if_blank",
+      protectedIdentity: true,   // Phase G — birthplace especially must not drift
       priority: 1,
       eraTags: ["early_childhood"],
       conversational: "Where were you born — what city and state, or country?",
@@ -69,6 +73,7 @@
     },
     "personal.birthOrder": {
       writeMode: "prefill_if_blank",
+      protectedIdentity: true,   // Phase G
       priority: 2,
       eraTags: ["early_childhood"],
       conversational: "Were you the first child, or did you have older siblings?",
@@ -327,6 +332,15 @@
     return null;
   }
 
+  /**
+   * Phase G: Check if a field path is a protected identity field.
+   * Protected fields cannot be overwritten by chat extraction.
+   */
+  function isProtectedIdentity(path) {
+    var conf = FIELD_MAP[path];
+    return !!(conf && conf.protectedIdentity);
+  }
+
   /* ───────────────────────────────────────────────────────────
      QUESTION SELECTION — Choose next unasked question for era
   ─────────────────────────────────────────────────────────── */
@@ -472,7 +486,10 @@
     getRepeatableFields:    getRepeatableFields,
 
     // Completeness
-    sectionCompleteness:    sectionCompleteness
+    sectionCompleteness:    sectionCompleteness,
+
+    // Phase G: Protected identity
+    isProtectedIdentity:    isProtectedIdentity
   };
 
   console.log("[Lorevox] Projection map loaded — " + Object.keys(FIELD_MAP).length + " direct fields, " +

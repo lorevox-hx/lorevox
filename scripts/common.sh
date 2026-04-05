@@ -25,7 +25,7 @@ UI_CMD="${LOREVOX_UI_CMD:-$UI_CMD_DEFAULT}"
 
 api_up() { curl -fsS "http://127.0.0.1:${API_PORT}/api/ping" >/dev/null 2>&1; }
 tts_up() { curl -fsS "http://127.0.0.1:${TTS_PORT}/api/tts/voices" >/dev/null 2>&1; }
-ui_up()  { curl -fsS "http://127.0.0.1:${UI_PORT}/ui/lori8.0.html" >/dev/null 2>&1; }
+ui_up()  { curl -fsS "http://127.0.0.1:${UI_PORT}/ui/lori9.0.html" >/dev/null 2>&1; }
 
 pid_is_running() {
   local pid="${1:-}"
@@ -122,7 +122,14 @@ wait_for_health() {
 }
 
 open_ui_in_windows() {
-  local url="${1:-http://localhost:8080/ui/lori8.0.html}"
+  local url="${1:-http://localhost:${UI_PORT}/ui/lori9.0.html}"
+  # If a clean-start reset flag exists, append ?lorevox_reset=clean to the URL
+  # so the browser page auto-clears Lorevox storage on load.
+  if [[ -f "$RUNTIME_DIR/reset_on_start" ]]; then
+    url="${url}?lorevox_reset=clean"
+    rm -f "$RUNTIME_DIR/reset_on_start"
+    printf '[startup] Clean-start flag detected — browser will auto-clear Lorevox state.\n'
+  fi
   if command -v powershell.exe >/dev/null 2>&1; then
     powershell.exe -NoProfile -Command "Start-Process '$url'" >/dev/null 2>&1 || true
   fi

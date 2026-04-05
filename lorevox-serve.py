@@ -34,10 +34,78 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PORT = 8080
 
+# ── Template resolution ──────────────────────────────────────────────────────
+# Templates are served at /templates/*.json.
+# Resolution order:
+#   1. DATA_DIR/templates/  (user data — editable, backed up with lorevox_data)
+#   2. ui/templates/        (repo defaults — read-only fallback)
+#
+# This lets users add/edit templates in lorevox_data while repo defaults
+# continue to work if DATA_DIR isn't set or file doesn't exist there yet.
+_data_dir = os.environ.get("DATA_DIR", "")
+if _data_dir:
+    DATA_TEMPLATES = Path(_data_dir) / "templates"
+else:
+    # Try the default production path
+    _default = Path("/mnt/c/lorevox_data/templates")
+    DATA_TEMPLATES = _default if _default.is_dir() else None
+REPO_TEMPLATES = ROOT / "ui" / "templates"
+
 
 class LorevoxHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
+
+    def do_GET(self):
+        """Override GET to resolve /templates/ from DATA_DIR first."""
+        if self.path.startswith("/templates/"):
+            # Strip query params for file lookup
+            clean = self.path.split("?")[0]
+            rel = clean[len("/templates/"):]  # e.g. "janice-josephine-horne.json"
+
+            # Try DATA_DIR/templates/ first
+            if DATA_TEMPLATES:
+                data_file = DATA_TEMPLATES / rel
+                if data_file.is_file():
+                    self._serve_file(data_file)
+                    return
+
+            # Fall back to repo ui/templates/
+            repo_file = REPO_TEMPLATES / rel
+            if repo_file.is_file():
+                self._serve_file(repo_file)
+                return
+
+            # Not found
+            self.send_error(404, f"Template not found: {rel}")
+            return
+
+        # Also handle legacy /ui/templates/ path for backward compatibility
+        if self.path.startswith("/ui/templates/"):
+            clean = self.path.split("?")[0]
+            rel = clean[len("/ui/templates/"):]
+
+            # Try DATA_DIR/templates/ first (new canonical location)
+            if DATA_TEMPLATES:
+                data_file = DATA_TEMPLATES / rel
+                if data_file.is_file():
+                    self._serve_file(data_file)
+                    return
+
+            # Fall through to default handler (serves from repo ui/templates/)
+
+        super().do_GET()
+
+    def _serve_file(self, filepath: Path):
+        """Serve a single file with correct headers."""
+        import mimetypes
+        content = filepath.read_bytes()
+        mime = mimetypes.guess_type(str(filepath))[0] or "application/octet-stream"
+        self.send_response(200)
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)
 
     def end_headers(self):
         # Cross-origin isolation — required for SharedArrayBuffer + multi-threaded WASM

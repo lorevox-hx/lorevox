@@ -224,15 +224,9 @@ def chat(req: _ChatReq) -> Dict[str, Any]:
     ui_system = next((m.content for m in (req.messages or []) if _normalize_role(m.role) == 'system'), None)
     profile_obj, ui_base = extract_profile_json_from_ui_system(ui_system)
 
-    # Persist PROFILE_JSON from UI into session payload (only when conv_id is provided)
-    if req.conv_id and profile_obj is not None:
-        sess = get_session(req.conv_id) or {'title': '', 'payload': {}}
-        title = (sess.get('title') or '').strip()
-        payload = dict(sess.get('payload') or {})
-        payload['ui_profile'] = profile_obj
-        if isinstance(profile_obj, dict) and profile_obj.get('person_id'):
-            payload['active_person_id'] = profile_obj.get('person_id')
-        upsert_session(req.conv_id, title, payload)
+    # Phase G: Defer profile persist until AFTER successful generation (fail-closed).
+    # Captured here but written only after generation completes without error.
+    _deferred_profile = profile_obj if (req.conv_id and profile_obj is not None) else None
 
     user_text = ''
     for mm in reversed(req.messages or []):
@@ -278,7 +272,19 @@ def chat(req: _ChatReq) -> Dict[str, Any]:
         generation_config=gen_config,
     )
     text = tok.decode(out[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
+    # Phase G: Only persist profile + turns AFTER generation succeeds (fail-closed)
     if req.conv_id:
+        if _deferred_profile is not None:
+            try:
+                sess = get_session(req.conv_id) or {'title': '', 'payload': {}}
+                title = (sess.get('title') or '').strip()
+                payload = dict(sess.get('payload') or {})
+                payload['ui_profile'] = _deferred_profile
+                if isinstance(_deferred_profile, dict) and _deferred_profile.get('person_id'):
+                    payload['active_person_id'] = _deferred_profile.get('person_id')
+                upsert_session(req.conv_id, title, payload)
+            except Exception as e:
+                print(f"[Phase G] Profile persist failed (non-fatal): {e}")
         add_turn(req.conv_id, "user", msgs[-1]["content"], datetime.utcnow().isoformat(), req.anchor_id or "", {"section": req.section or ""})
         add_turn(req.conv_id, "assistant", text, datetime.utcnow().isoformat(), req.anchor_id or "", {"section": req.section or ""})
     return {"ok": True, "text": text, "latency": round(time.time() - start, 2)}
@@ -355,15 +361,8 @@ def chat_stream(req: _ChatReq):
     ui_system = next((m.content for m in (req.messages or []) if _normalize_role(m.role) == 'system'), None)
     profile_obj, ui_base = extract_profile_json_from_ui_system(ui_system)
 
-    # Persist PROFILE_JSON from UI into session payload (only when conv_id is provided)
-    if req.conv_id and profile_obj is not None:
-        sess = get_session(req.conv_id) or {'title': '', 'payload': {}}
-        title = (sess.get('title') or '').strip()
-        payload = dict(sess.get('payload') or {})
-        payload['ui_profile'] = profile_obj
-        if isinstance(profile_obj, dict) and profile_obj.get('person_id'):
-            payload['active_person_id'] = profile_obj.get('person_id')
-        upsert_session(req.conv_id, title, payload)
+    # Phase G: Defer profile persist until AFTER streaming completes (fail-closed).
+    _deferred_stream_profile = profile_obj if (req.conv_id and profile_obj is not None) else None
 
     user_text = ''
     for mm in reversed(req.messages or []):
@@ -436,6 +435,18 @@ def chat_stream(req: _ChatReq):
                 if stream_id: stream_bus.publish(stream_id, delta)
                 yield json.dumps({"delta": delta}, ensure_ascii=False) + "\n"
             if conv_id:
+                # Phase G: Persist deferred profile AFTER successful streaming (fail-closed)
+                if _deferred_stream_profile is not None:
+                    try:
+                        sess = get_session(conv_id) or {'title': '', 'payload': {}}
+                        stitle = (sess.get('title') or '').strip()
+                        spayload = dict(sess.get('payload') or {})
+                        spayload['ui_profile'] = _deferred_stream_profile
+                        if isinstance(_deferred_stream_profile, dict) and _deferred_stream_profile.get('person_id'):
+                            spayload['active_person_id'] = _deferred_stream_profile.get('person_id')
+                        upsert_session(conv_id, stitle, spayload)
+                    except Exception as e:
+                        print(f"[Phase G] Streaming profile persist failed (non-fatal): {e}")
                 add_turn(conv_id, "assistant", full, datetime.utcnow().isoformat(), anchor_id, {"section": section})
                 try:
                     _save_chat_memory_fs(conv_id, msgs + [{"role":"assistant","content":full}])

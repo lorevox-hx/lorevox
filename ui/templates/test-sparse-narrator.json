@@ -1,0 +1,160 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "Mabel Rose Ortiz",
+  "_version": 2,
+  "_purpose": "Sparse narrator — tests minimal preload, graceful empty sections, no hallucinated fill-in, backend hydration with mostly blank fields",
+
+  "personal": {
+    "fullName": "Mabel Rose Ortiz",
+    "preferredName": "Mabel",
+    "legalFirstName": "Mabel",
+    "legalMiddleName": "Rose",
+    "legalLastName": "Ortiz",
+    "dateOfBirth": "1948-06-11",
+    "timeOfBirth": "",
+    "placeOfBirth": "Pueblo, Colorado",
+    "birthOrder": "2",
+    "zodiacSign": "Gemini",
+    "pronouns": "she/her",
+    "culture": "Mexican American, southern Colorado",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Elena",
+      "middleName": "",
+      "lastName": "Ortiz",
+      "maidenName": "Romero",
+      "birthDate": "",
+      "birthPlace": "Walsenburg, Colorado",
+      "occupation": "Seamstress",
+      "deceased": true,
+      "notableLifeEvents": "Worked from home sewing dresses, school clothes, and church garments for neighbors and relatives.",
+      "notes": "Strong home-centered presence in family memory."
+    },
+    {
+      "relation": "Father",
+      "firstName": "",
+      "middleName": "",
+      "lastName": "Ortiz",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "",
+      "deceased": true,
+      "notableLifeEvents": "",
+      "notes": "Little information preserved."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "maternal",
+      "firstName": "Teresa",
+      "lastName": "Romero",
+      "ancestry": "New Mexico / Colorado Hispanic family",
+      "culturalBackground": "Southern Colorado",
+      "memorableStories": "Kept a vegetable garden and chickens behind the house and always had a kitchen full of food."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "Daniel",
+      "middleName": "",
+      "lastName": "Ortiz",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "Quiet and protective",
+      "sharedExperiences": "Walked Mabel to elementary school",
+      "memories": "She remembered him carrying her books when the sidewalks were icy.",
+      "notes": ""
+    }
+  ],
+
+  "spouse": {
+    "firstName": "",
+    "middleName": "",
+    "lastName": "",
+    "birthPlace": "",
+    "occupation": "",
+    "narrative": "",
+    "deceased": false
+  },
+
+  "children": [],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": ""
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Sunday dinner with beans, rice, tortillas, and family conversation",
+      "occasion": "Weekly family meal"
+    },
+    {
+      "description": "Christmas Eve church service followed by a late meal at home",
+      "occasion": "Christmas Eve"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Rusty",
+      "species": "Dog",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Standing on a stool in the kitchen while her mother rolled dough.",
+    "favoriteToy": "A cloth doll made by her mother.",
+    "significantEvent": "Moving from one small house to another across town as a child."
+  },
+
+  "education": {
+    "schooling": "Attended public school in Pueblo, Colorado.",
+    "higherEducation": "",
+    "earlyCareer": "Worked at a department store counter after high school.",
+    "careerProgression": "Later worked in the school cafeteria for many years.",
+    "communityInvolvement": "Participated in church bake sales and neighborhood events.",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "Retired quietly after many years in school food service.",
+    "lifeLessons": "Do what needs to be done and do not complain first.",
+    "adviceForFutureGenerations": "Learn practical skills and be kind to your neighbors."
+  },
+
+  "hobbies": {
+    "hobbies": "Sewing, church bake sales, crossword puzzles.",
+    "worldEvents": "",
+    "personalChallenges": "",
+    "travel": ""
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "",
+    "wellnessTips": "Keep moving, do a little work every day."
+  },
+
+  "technology": {
+    "firstTechExperience": "Using a microwave felt like a major change from the way she had always cooked.",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "",
+    "messagesForFutureGenerations": "Ask gently and do not over-assume missing details. More could be learned about her father, marriage history, and later friendships."
+  }
+}

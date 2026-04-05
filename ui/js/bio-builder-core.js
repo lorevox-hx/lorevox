@@ -69,6 +69,7 @@
   var _LS_FT_PREFIX    = "lorevox_ft_draft_";
   var _LS_LT_PREFIX    = "lorevox_lt_draft_";
   var _LS_QQ_PREFIX    = "lorevox_qq_draft_";
+  var _LS_QC_PREFIX    = "lorevox_qc_draft_";
   var _LS_DRAFT_INDEX  = "lorevox_draft_pids";
 
   function _persistDrafts(pid) {
@@ -79,15 +80,26 @@
       var lt = bb.lifeThreadsDraftsByPerson && bb.lifeThreadsDraftsByPerson[pid];
       if (ft) localStorage.setItem(_LS_FT_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: ft }));
       if (lt) localStorage.setItem(_LS_LT_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: lt }));
-      // v8-fix: persist questionnaire data per narrator (WD-1/WD-2 fix)
-      // GUARD: bb.questionnaire belongs to the CURRENT narrator only.
-      // FT/LT use per-person containers so any pid is safe, but qq is shared.
-      // Only persist qq when pid matches the active narrator to prevent cross-write.
+      // Phase G: persist questionnaire to BACKEND (canonical authority)
+      // FT/LT stay in localStorage; QQ goes backend-first with localStorage as transient fallback.
       if (pid === bb.personId) {
         var qq = bb.questionnaire;
         if (qq && Object.keys(qq).length > 0) {
+          // Backend canonical save (fire-and-forget, non-blocking)
+          try {
+            fetch(API.BB_QQ_PUT, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ person_id: pid, questionnaire: qq, source: "ui_save", version: DRAFT_SCHEMA_VERSION })
+            }).catch(function(e) { console.warn("[bb-core] Backend QQ persist failed", e); });
+          } catch (e) {}
+          // Transient localStorage fallback
           localStorage.setItem(_LS_QQ_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: qq }));
         }
+      }
+      // Phase M: persist Quick Capture inbox
+      if (pid === bb.personId && bb.quickItems && bb.quickItems.length > 0) {
+        localStorage.setItem(_LS_QC_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: bb.quickItems }));
       }
       // Track which pids have drafts
       var idx = _getDraftIndex();
@@ -105,6 +117,20 @@
     var bb = _bb(); if (!bb) return;
     if (!bb.familyTreeDraftsByPerson) bb.familyTreeDraftsByPerson = {};
     if (!bb.lifeThreadsDraftsByPerson) bb.lifeThreadsDraftsByPerson = {};
+    // Phase M: restore Quick Capture inbox
+    try {
+      var qcRaw = localStorage.getItem(_LS_QC_PREFIX + pid);
+      if (qcRaw) {
+        var qcObj = JSON.parse(qcRaw);
+        var qcD = qcObj && (qcObj.d || qcObj.data);
+        if (qcD && Array.isArray(qcD) && qcD.length > 0) {
+          bb.quickItems = qcD;
+          console.log("[bb-core] ✅ Restored " + qcD.length + " Quick Capture items for " + pid.slice(0, 8));
+        }
+      }
+    } catch (e) {
+      console.warn("[bb-core] QC restore error for pid=" + pid, e);
+    }
     // v8-fix: load questionnaire via canonical restore helper (Phase 1.1)
     _restoreQuestionnaire(pid);
     // Don't overwrite FT/LT if already in memory
@@ -131,6 +157,50 @@
     }
   }
 
+  /* ── Phase L.1: Rehydrate candidates from questionnaire ────
+     After narrator switch restores the questionnaire, re-run
+     candidate extraction so the Candidates tab is never empty
+     for a narrator that has questionnaire data.
+     Idempotent — extraction dedup prevents doubling.
+  ─────────────────────────────────────────────────────────── */
+  function _rehydrateCandidates(pid) {
+    var bb = _bb(); if (!bb) return;
+    var qq = bb.questionnaire;
+    if (!qq || Object.keys(qq).length === 0) return;
+
+    var qqMod = window.LorevoxBioBuilderModules &&
+                window.LorevoxBioBuilderModules.questionnaire;
+    if (!qqMod || typeof qqMod._extractQuestionnaireCandidates !== "function") {
+      console.log("[bb-core] Questionnaire module not loaded — skipping candidate rehydration");
+      return;
+    }
+
+    // Ensure fresh candidate container
+    if (!bb.candidates || !bb.candidates.people) {
+      bb.candidates = {
+        people: [], relationships: [], events: [],
+        memories: [], places: [], documents: []
+      };
+    }
+
+    var sections = ["parents", "grandparents", "siblings", "children", "earlyMemories"];
+    var before = bb.candidates.people.length + bb.candidates.relationships.length + bb.candidates.memories.length;
+    sections.forEach(function (s) {
+      if (qq[s]) qqMod._extractQuestionnaireCandidates(s);
+    });
+    var after = bb.candidates.people.length + bb.candidates.relationships.length + bb.candidates.memories.length;
+    if (after > before) {
+      console.log("[bb-core] ✅ Rehydrated " + (after - before) + " QQ candidates for " + pid);
+    }
+
+    // Phase M: also rehydrate candidates from persisted Quick Capture items
+    var qcMod = window.LorevoxBioBuilderModules &&
+                window.LorevoxBioBuilderModules._qcPipeline;
+    if (qcMod && typeof qcMod.rehydrateQCCandidates === "function") {
+      qcMod.rehydrateQCCandidates(bb);
+    }
+  }
+
   function _getDraftIndex() {
     try {
       var raw = localStorage.getItem(_LS_DRAFT_INDEX);
@@ -145,29 +215,44 @@
       localStorage.removeItem(_LS_FT_PREFIX + pid);
       localStorage.removeItem(_LS_LT_PREFIX + pid);
       localStorage.removeItem(_LS_QQ_PREFIX + pid);
+      localStorage.removeItem(_LS_QC_PREFIX + pid);
       var idx = _getDraftIndex().filter(function (p) { return p !== pid; });
       localStorage.setItem(_LS_DRAFT_INDEX, JSON.stringify(idx));
     } catch (e) {}
   }
 
-  /* ── Phase 1.1: Canonical questionnaire restore helper ──────
+  /* ── Phase G: Canonical questionnaire restore helper ─────────
      Single restore path for narrator-scoped questionnaire state.
-     Reads lorevox_qq_draft_{pid}, parses the {v,d} wrapper,
-     replaces bb.questionnaire with the parsed data or {}.
+     Backend is the authority; localStorage is transient fallback only.
      Returns the restored object.
-     MUST be the only path that reads qq from localStorage.
+     MUST be the only path that reads qq.
   ─────────────────────────────────────────────────────────── */
   function _restoreQuestionnaire(pid) {
     var bb = _bb(); if (!bb) return {};
     if (!pid) { bb.questionnaire = {}; return bb.questionnaire; }
+
+    // Phase G: Try backend first (async, fire-and-forget for sync callers)
+    // The backend load is async so we start it and also load localStorage
+    // as immediate fallback. When backend responds it overwrites if non-empty.
+    _restoreQuestionnaireFromBackend(pid);
+
+    // Immediate: read transient localStorage draft
     try {
       var raw = localStorage.getItem(_LS_QQ_PREFIX + pid);
       if (raw) {
         var parsed = JSON.parse(raw);
         var d = parsed && (parsed.d || parsed.data);
+        // Guard against double-wrapped drafts: { v, d: { v, d: {sections} } }
+        // If d looks like another envelope (has .v and .d), unwrap one more level
+        if (d && typeof d === "object" && d.v !== undefined && d.d && typeof d.d === "object") {
+          console.warn("[bb-core] Unwrapping double-wrapped localStorage draft for pid=" + pid);
+          d = d.d;
+          // Fix the localStorage so it doesn't happen again
+          localStorage.setItem(_LS_QQ_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: d }));
+        }
         if (d && typeof d === "object") {
           bb.questionnaire = d;
-          _qqDebugSnapshot("restore", pid, bb);
+          _qqDebugSnapshot("restore_ls", pid, bb);
           return bb.questionnaire;
         }
       }
@@ -180,6 +265,37 @@
     }
     _qqDebugSnapshot("restore_fallback", pid, bb);
     return bb.questionnaire;
+  }
+
+  /* ── Phase G: Backend questionnaire restore (async) ────────
+     Fetches canonical QQ from backend and overwrites in-memory
+     state if the backend has data. Non-blocking.
+  ─────────────────────────────────────────────────────────── */
+  function _restoreQuestionnaireFromBackend(pid) {
+    if (!pid || typeof API === "undefined" || !API.BB_QQ_GET) return;
+    fetch(API.BB_QQ_GET(pid))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.questionnaire) return;
+        var q = j.questionnaire;
+        if (typeof q === "object" && Object.keys(q).length > 0) {
+          var bb = _bb(); if (!bb) return;
+          // Unwrap { v, d } envelope if present — backend stores { v:1, d:{sections} }
+          // but bb.questionnaire expects flat sections { personal:{}, parents:[], ... }
+          var sections = (q.d && typeof q.d === "object" && !Array.isArray(q.d)) ? q.d : q;
+          // Only overwrite if backend has data (backend authority rule)
+          bb.questionnaire = sections;
+          _qqDebugSnapshot("restore_backend", pid, bb);
+          console.log("[bb-core] ✅ Questionnaire restored from backend for " + pid);
+          // Update transient localStorage to match backend (wrap in { v, d } for localStorage format)
+          try {
+            localStorage.setItem(_LS_QQ_PREFIX + pid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: sections }));
+          } catch (e) {}
+        }
+      })
+      .catch(function (e) {
+        console.warn("[bb-core] Backend QQ restore failed (using localStorage fallback)", e);
+      });
   }
 
   /* ── Phase 2.5: Questionnaire debug snapshot helper ────────
@@ -253,9 +369,16 @@
     var bb = _bb(); if (!bb) return;
 
     // v8-fix: persist outgoing narrator's questionnaire before clearing (WD-1 fix)
+    // Phase M: also persists Quick Capture inbox
     var outgoingPid = bb.personId;
-    if (outgoingPid && bb.questionnaire && Object.keys(bb.questionnaire).length > 0) {
-      _persistDrafts(outgoingPid);
+    if (outgoingPid) {
+      // Persist QC inbox for outgoing narrator (even if QQ is empty)
+      if (bb.quickItems && bb.quickItems.length > 0) {
+        try { localStorage.setItem(_LS_QC_PREFIX + outgoingPid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: bb.quickItems })); } catch (e) {}
+      }
+      if (bb.questionnaire && Object.keys(bb.questionnaire).length > 0) {
+        _persistDrafts(outgoingPid);
+      }
     }
 
     bb.personId      = newId || null;
@@ -271,6 +394,9 @@
 
     // v8-fix: restore incoming narrator's questionnaire from localStorage (WD-1 fix)
     _loadDrafts(newId);
+
+    // Phase L.1: rehydrate candidates from restored questionnaire
+    _rehydrateCandidates(newId);
   }
 
   /* ── v8 Explicit narrator-switch entry point ───────────────
@@ -302,9 +428,15 @@
     var bb = _bb(); if (!bb) return;
     if (bb.personId !== newId) {
       // v8-fix: persist outgoing narrator's questionnaire before clearing
+      // Phase M: also persists Quick Capture inbox
       var outgoingPid = bb.personId;
-      if (outgoingPid && bb.questionnaire && Object.keys(bb.questionnaire).length > 0) {
-        _persistDrafts(outgoingPid);
+      if (outgoingPid) {
+        if (bb.quickItems && bb.quickItems.length > 0) {
+          try { localStorage.setItem(_LS_QC_PREFIX + outgoingPid, JSON.stringify({ v: DRAFT_SCHEMA_VERSION, d: bb.quickItems })); } catch (e) {}
+        }
+        if (bb.questionnaire && Object.keys(bb.questionnaire).length > 0) {
+          _persistDrafts(outgoingPid);
+        }
       }
       bb.personId      = newId;
       bb.quickItems    = [];
@@ -321,6 +453,8 @@
     _loadDrafts(newId);
     // v6-fix: hydrate questionnaire from active profile if empty
     _postSwitchHooks.forEach(function (fn) { fn(bb); });
+    // Phase L.1: rehydrate candidates from restored questionnaire
+    _rehydrateCandidates(newId);
     // Phase 2.5: debug snapshot after person change
     _qqDebugSnapshot("person_changed", newId, bb);
   }
@@ -440,6 +574,7 @@
     _LS_FT_PREFIX:            _LS_FT_PREFIX,
     _LS_LT_PREFIX:            _LS_LT_PREFIX,
     _LS_QQ_PREFIX:            _LS_QQ_PREFIX,
+    _LS_QC_PREFIX:            _LS_QC_PREFIX,
     _LS_DRAFT_INDEX:          _LS_DRAFT_INDEX,
     _persistDrafts:           _persistDrafts,
     _loadDrafts:              _loadDrafts,

@@ -61,7 +61,7 @@ def _warm_lightweight() -> int:
         headers={"Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
+        with urllib.request.urlopen(req, timeout=210) as resp:
             body = resp.read().decode("utf-8", errors="replace")
             data = json.loads(body)
             if data.get("ok"):
@@ -101,7 +101,7 @@ def _warm_via_chat() -> int:
         headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=210) as resp:
             data = b""
             while len(data) < 4096:
                 chunk = resp.read(1024)
@@ -156,23 +156,28 @@ def _warm() -> int:
 
 
 def main() -> int:
-    print("[warm_llm] Checking LLM backend...")
+    print("[warm_llm] ── Readiness check ──")
+    print("[warm_llm]   State: checking process")
 
     if not _ping():
-        print(f"[warm_llm] Backend not reachable at {LLM_BASE} — skipping warmup.")
+        print(f"[warm_llm]   State: process NOT reachable at {LLM_BASE}")
+        print("[warm_llm]   Model shards may still be loading. This is normal for the first 1–2 minutes.")
         return 1
 
-    print(f"[warm_llm] Backend alive. Sending warmup turn to {CHAT_URL}...")
+    print("[warm_llm]   State: API healthy — process running")
+    print("[warm_llm]   State: model loading / sending warmup (timeout 210s)...")
     result = _warm()
     if result == 0:
+        print("[warm_llm]   State: MODEL READY")
         print("[warm_llm] LLM warmed and ready.")
         return 0
     elif result == 2:
-        print("[warm_llm] FATAL: CUDA OOM — model loaded but GPU cannot allocate inference memory.")
+        print("[warm_llm]   State: CUDA OOM — model loaded but GPU cannot allocate inference memory.")
         print("[warm_llm] VRAM may have been freed. A second attempt might succeed.")
         return 2
     else:
-        print("[warm_llm] Warmup request failed — model may still be loading.")
+        print("[warm_llm]   State: model still loading (warmup timed out or failed)")
+        print("[warm_llm] Model is not ready yet — this can take 2–3 minutes on first load.")
         return 1
 
 

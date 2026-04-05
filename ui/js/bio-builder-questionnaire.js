@@ -66,6 +66,67 @@
     "Stepsister", "Stepbrother", "Adoptive sister", "Adoptive brother", "Other"
   ];
 
+  var CHILD_RELATION_OPTIONS = [
+    "", "Son", "Daughter", "Stepson", "Stepdaughter",
+    "Adoptive son", "Adoptive daughter", "Foster child", "Other"
+  ];
+
+  /* ── Birth-order normalization map ──────────────────────────
+     Maps numeric template values to the UI select labels.
+     Also handles ordinals like "1st", "2nd", etc.
+     Pass-through if the value already matches a known label.
+  ──────────────────────────────────────────────────────────── */
+  var _BIRTH_ORDER_MAP = {
+    "1": "First child",   "1st": "First child",   "first": "First child",
+    "2": "Second child",  "2nd": "Second child",  "second": "Second child",
+    "3": "Third child",   "3rd": "Third child",   "third": "Third child",
+    "4": "Fourth child",  "4th": "Fourth child",  "fourth": "Fourth child",
+    "5": "Fifth child",   "5th": "Fifth child",   "fifth": "Fifth child",
+    "6": "Sixth child",   "6th": "Sixth child",   "sixth": "Sixth child",
+    "7": "Seventh child", "7th": "Seventh child", "seventh": "Seventh child",
+    "8": "Eighth child",  "8th": "Eighth child",  "eighth": "Eighth child",
+    "9": "Ninth child",   "9th": "Ninth child",   "ninth": "Ninth child",
+    "10": "Tenth child",  "10th": "Tenth child",  "tenth": "Tenth child",
+    "only": "Only child", "twin": "Twin", "triplet": "Triplet"
+  };
+
+  // Phase L: ordinal-word → digit map for descriptive string extraction
+  var _ORDINAL_WORD_MAP = {
+    "first":"1","second":"2","third":"3","fourth":"4","fifth":"5",
+    "sixth":"6","seventh":"7","eighth":"8","ninth":"9","tenth":"10"
+  };
+
+  function normalizeBirthOrder(raw) {
+    if (!raw) return "";
+    var s = String(raw).trim();
+    if (!s) return "";
+    // Already a valid label? Pass through.
+    if (BIRTH_ORDER_OPTIONS.indexOf(s) >= 0) return s;
+    // Look up in map (case-insensitive)
+    var mapped = _BIRTH_ORDER_MAP[s.toLowerCase()];
+    if (mapped) return mapped;
+
+    // Phase L: extract leading digit from descriptive strings
+    // e.g., "2 (middle of three children)" → "2" → "Second child"
+    var leadDigit = s.match(/^(\d{1,2})\b/);
+    if (leadDigit) {
+      var digitMapped = _BIRTH_ORDER_MAP[leadDigit[1]];
+      if (digitMapped) return digitMapped;
+    }
+
+    // Phase L: extract ordinal word from strings like "sixth of eleven children"
+    var firstWord = s.toLowerCase().split(/[\s,]+/)[0];
+    var ordNum = _ORDINAL_WORD_MAP[firstWord];
+    if (ordNum) {
+      var ordMapped = _BIRTH_ORDER_MAP[ordNum];
+      if (ordMapped) return ordMapped;
+    }
+
+    // Unknown value — preserve as-is so nothing is silently lost.
+    // The UI select will fall back to default display, but the value is stored.
+    return s;
+  }
+
   /* ── US state abbreviation map (for place-of-birth normalization) ── */
   var US_STATES = {
     AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",
@@ -90,12 +151,12 @@
       id: "personal", label: "Personal Information", icon: "\u{1F464}",
       hint: "Full name, preferred name, birth date, birth place",
       fields: [
-        { id: "fullName",      label: "Full Name",      type: "text" },
-        { id: "preferredName", label: "Preferred Name", type: "text" },
+        { id: "fullName",      label: "Full Name",      type: "text",     placeholder: "Enter full name" },
+        { id: "preferredName", label: "Preferred Name", type: "text",     placeholder: "Enter preferred name" },
         { id: "birthOrder",    label: "Birth Order",    type: "select",   options: BIRTH_ORDER_OPTIONS },
-        { id: "dateOfBirth",   label: "Date of Birth",  type: "text",     placeholder: "12241962, 12/24/1962, Dec 24 1962 \u2192 auto-parsed", inputHelper: "normalizeDob" },
-        { id: "timeOfBirth",   label: "Time of Birth",  type: "text",     placeholder: "1250p, 12:50 pm \u2192 auto-parsed", inputHelper: "normalizeTime" },
-        { id: "placeOfBirth",  label: "Place of Birth", type: "text",     placeholder: "Williston ND \u2192 Williston, North Dakota", inputHelper: "normalizePlace" },
+        { id: "dateOfBirth",   label: "Date of Birth",  type: "text",     placeholder: "Enter date of birth", helperText: "Use YYYY-MM-DD when known. Common formats are normalized automatically.", inputHelper: "normalizeDob" },
+        { id: "timeOfBirth",   label: "Time of Birth",  type: "text",     placeholder: "Enter time of birth", helperText: "Common shorthand like 1250p is normalized automatically.", inputHelper: "normalizeTime" },
+        { id: "placeOfBirth",  label: "Place of Birth", type: "text",     placeholder: "Enter place of birth", helperText: "Short place names like abbreviations are normalized automatically.", inputHelper: "normalizePlace" },
         { id: "zodiacSign",    label: "Zodiac Sign",    type: "select",   options: ZODIAC_OPTIONS, autoDerive: "zodiacFromDob" }
       ]
     },
@@ -109,7 +170,7 @@
         { id: "middleName",        label: "Middle Name",                   type: "text" },
         { id: "lastName",          label: "Last Name",                     type: "text" },
         { id: "maidenName",        label: "Maiden / Birth Name",           type: "text",     placeholder: "if different from last name" },
-        { id: "birthDate",         label: "Birth Date",                    type: "text",     placeholder: "YYYY-MM-DD", inputHelper: "normalizeDob" },
+        { id: "birthDate",         label: "Birth Date",                    type: "text",     placeholder: "Enter birth date", helperText: "Use YYYY-MM-DD when known.", inputHelper: "normalizeDob" },
         { id: "birthPlace",        label: "Birth Place",                   type: "text",     inputHelper: "normalizePlace" },
         { id: "occupation",        label: "Occupation",                    type: "text" },
         { id: "notableLifeEvents", label: "Notable Life Events / Stories", type: "textarea" },
@@ -142,6 +203,20 @@
         { id: "sharedExperiences",     label: "Shared Experiences",     type: "textarea" },
         { id: "memories",              label: "Memories",               type: "textarea" },
         { id: "notes",                 label: "Additional Notes",       type: "textarea" }
+      ]
+    },
+    {
+      id: "children", label: "Children", icon: "\u{1F476}",
+      hint: "Sons and daughters \u2014 names, dates, notes",
+      repeatable: true, repeatLabel: "child",
+      fields: [
+        { id: "relation",   label: "Relation",    type: "select",   options: CHILD_RELATION_OPTIONS },
+        { id: "firstName",  label: "First Name",  type: "text" },
+        { id: "middleName", label: "Middle Name",  type: "text" },
+        { id: "lastName",   label: "Last Name",    type: "text" },
+        { id: "birthDate",  label: "Birth Date",   type: "text",     placeholder: "Enter birth date", helperText: "Use YYYY-MM-DD when known.", inputHelper: "normalizeDob" },
+        { id: "birthPlace", label: "Birth Place",  type: "text",     inputHelper: "normalizePlace" },
+        { id: "narrative",  label: "Notes / Narrative", type: "textarea" }
       ]
     },
     {
@@ -405,7 +480,7 @@
       bb.questionnaire.personal = {
         fullName:      fullName,
         preferredName: basics.preferred             || "",
-        birthOrder:    basics.birthOrder            || "",
+        birthOrder:    normalizeBirthOrder(basics.birthOrder),
         dateOfBirth:   basics.dob                   || "",
         timeOfBirth:   basics.timeOfBirth           || basics.timeOfBirthDisplay || "",
         placeOfBirth:  basics.placeOfBirthNormalized || basics.pob || basics.placeOfBirthRaw || "",
@@ -542,6 +617,35 @@
                   notes: [sib.uniqueCharacteristics, sib.sharedExperiences, sib.memories, sib.notes].filter(Boolean).join("\n\n") },
           status: "pending"
         });
+      });
+    }
+
+    // Phase K: children candidate extraction
+    if (sectionId === "children") {
+      var kids = Array.isArray(q) ? q : [q];
+      kids.forEach(function (ch) {
+        var name = [ch.firstName, ch.middleName, ch.lastName].filter(Boolean).join(" ");
+        if (!name) return;
+        if (_candidateExists(bb, "people", name, "questionnaire:children")) return;
+        bb.candidates.people.push({
+          id: _uid(), type: "person", source: "questionnaire:children",
+          sourceId: sectionId, sourceFilename: null,
+          data: { name: name, relation: ch.relation || "Child", birthDate: ch.birthDate || "",
+                  birthPlace: ch.birthPlace || "",
+                  notes: ch.narrative || "" },
+          status: "pending"
+        });
+        var narratorName = _currentPersonName();
+        if (narratorName && name) {
+          if (!_relCandidateExists(bb, narratorName, name)) {
+            bb.candidates.relationships.push({
+              id: _uid(), type: "relationship", source: "questionnaire:children",
+              sourceId: sectionId, sourceFilename: null,
+              data: { personA: narratorName, personB: name, relation: ch.relation || "Child" },
+              status: "pending"
+            });
+          }
+        }
       });
     }
 
@@ -706,9 +810,15 @@
       deriveAttr = ' data-derive-zodiac="true"';
     }
 
+    var helperHtml = "";
+    if (field.helperText) {
+      helperHtml = '<div class="bb-helper-text">\u24D8 ' + _esc(field.helperText) + '</div>';
+    }
+
     return '<div class="bb-field">' + labelHtml
       + '<input id="' + domId + '" class="bb-input" type="text" value="' + va
-      + '" placeholder="' + _esc(field.placeholder || "") + '"' + blurAttr + deriveAttr + ' /></div>';
+      + '" placeholder="' + _esc(field.placeholder || "") + '"' + blurAttr + deriveAttr + ' />'
+      + helperHtml + '</div>';
   }
 
   function _onNormalizeBlur(inputEl, kind) {
@@ -872,6 +982,7 @@
     normalizeDobInput:             normalizeDobInput,
     normalizeTimeOfBirthInput:     normalizeTimeOfBirthInput,
     normalizePlaceInput:           normalizePlaceInput,
+    normalizeBirthOrder:           normalizeBirthOrder,
     deriveZodiacFromDob:           deriveZodiacFromDob,
     buildCanonicalBasicsFromBioBuilder: buildCanonicalBasicsFromBioBuilder,
     _onNormalizeBlur:              _onNormalizeBlur,

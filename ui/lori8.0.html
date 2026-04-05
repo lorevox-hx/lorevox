@@ -4,6 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>Lorevox 8.0 — Life Archive</title>
+  <link rel="icon" type="image/png" href="favicon.png">
 
   <!-- MediaPipe vendored locally (needed by app.js for affect sensing) -->
   <script src="vendor/mediapipe/face_mesh/face_mesh.js"></script>
@@ -727,6 +728,7 @@
     .bb-fields-list { display: flex; flex-direction: column; gap: 12px; }
     .bb-field { display: flex; flex-direction: column; gap: 4px; }
     .bb-label { font-size: 12px; color: #64748b; font-weight: 500; }
+    .bb-helper-text { font-size: 11px; color: #64748b; opacity: 0.75; margin-top: 2px; line-height: 1.4; }
     .bb-repeat-entry {
       padding: 14px;
       background: rgba(30,41,59,0.3);
@@ -1673,6 +1675,7 @@
 <script src="js/bio-builder-questionnaire.js"></script>
 <script src="js/bio-builder-sources.js"></script>
 <script src="js/bio-builder-candidates.js"></script>
+<script src="js/bio-builder-qc-pipeline.js"></script>
 <script src="js/bio-builder-family-tree.js"></script>
 <script src="js/bio-builder-life-threads.js"></script>
 <script src="js/bio-builder.js"></script>
@@ -2931,7 +2934,7 @@ async function memoirExportDOCX() {
   };
 
   try {
-    const resp = await fetch("/api/memoir/export-docx", {
+    const resp = await fetch((typeof ORIGIN !== "undefined" ? ORIGIN : (window.LOREVOX_API || "http://localhost:8000")) + "/api/memoir/export-docx", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -4025,7 +4028,7 @@ async function lv80Init() {
     } catch (_) { return null; }
   }
 
-  function _apiBase() { return window.location.origin; }
+  function _apiBase() { return (typeof ORIGIN !== "undefined" ? ORIGIN : (window.LOREVOX_API || "http://localhost:8000")); }
 
   function _showEl(id)  { var el = document.getElementById(id); if (el) el.hidden = false; }
   function _hideEl(id)  { var el = document.getElementById(id); if (el) el.hidden = true;  }
@@ -4099,7 +4102,7 @@ async function lv80Init() {
       card.dataset.mediaId = item.id;
 
       var img = document.createElement("img");
-      img.src = item.url || ("/api/media/file/" + item.id);
+      img.src = item.url || (_apiBase() + "/api/media/file/" + item.id);
       img.alt = item.description || item.filename || "photo";
       img.loading = "lazy";
       card.appendChild(img);
@@ -4209,7 +4212,7 @@ async function lv80Init() {
     var sel  = document.getElementById("lv80LbSectionPick");
     var stat = document.getElementById("lv80LbAttachStatus");
 
-    if (img)  img.src = item.url || ("/api/media/file/" + item.id);
+    if (img)  img.src = item.url || (_apiBase() + "/api/media/file/" + item.id);
     if (desc) desc.value = item.description || "";
     if (date) date.value = item.taken_at || "";
     if (sel)  sel.value  = "";
@@ -4319,7 +4322,7 @@ async function lv80Init() {
         if (!item) return;
         var img = document.createElement("img");
         img.className = "lv80-section-thumb";
-        img.src = item.url || ("/api/media/file/" + item.id);
+        img.src = item.url || (_apiBase() + "/api/media/file/" + item.id);
         img.alt = item.description || "photo";
         img.title = item.description || item.taken_at || "Photo";
         img.loading = "lazy";
