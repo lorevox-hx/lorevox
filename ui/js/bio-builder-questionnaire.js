@@ -1056,6 +1056,12 @@
       }
     }
 
+    // Phase Q.1: Sync graph from questionnaire after save
+    var graphMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.graph;
+    if (graphMod && typeof graphMod.fullSync === "function") {
+      graphMod.fullSync();
+    }
+
     // Phase 1.3: Step 4 — rerender/update badges from canonical state (via closeCallback)
     if (closeCallback) closeCallback();
   }

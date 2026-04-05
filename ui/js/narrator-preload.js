@@ -634,6 +634,12 @@
       // so preloaded narrators have usable candidates immediately.
       _postPreloadExtractCandidates(pid, qqSections);
 
+      // Phase Q.1: Build relationship graph from preloaded data
+      var graphMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.graph;
+      if (graphMod && typeof graphMod.fullSync === "function") {
+        graphMod.fullSync();
+      }
+
       // 5. Update UI
       if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
       if (typeof refreshPeople === "function") await refreshPeople();
@@ -713,6 +719,12 @@
 
       // Phase L: post-preload candidate extraction
       _postPreloadExtractCandidates(pid, qqSections);
+
+      // Phase Q.1: Build relationship graph from preloaded data
+      var graphMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.graph;
+      if (graphMod && typeof graphMod.fullSync === "function") {
+        graphMod.fullSync();
+      }
 
       if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
 

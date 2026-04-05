@@ -38,6 +38,7 @@
         personId:      null,
         quickItems:    [],   // [{id, text, type, ts}]  type: "fact"|"note"
         questionnaire: {},   // {sectionId: data}
+        graph: { persons: {}, relationships: {} },  // Phase Q.1: canonical relationship graph
         sourceCards:   [],   // [{id, filename, fileSize, sourceType, ts, status,
                              //   extractedText, pastedText, detectedItems,
                              //   addedCandidateIds}]
@@ -385,6 +386,7 @@
     bb.personId      = newId || null;
     bb.quickItems    = [];
     bb.questionnaire = {};
+    bb.graph         = { persons: {}, relationships: {} };  // Phase Q.1
     bb.sourceCards   = [];
     bb.candidates    = {
       people: [], relationships: [], events: [], memories: [], places: [], documents: []
@@ -442,6 +444,7 @@
       bb.personId      = newId;
       bb.quickItems    = [];
       bb.questionnaire = {};
+      bb.graph         = { persons: {}, relationships: {} };  // Phase Q.1
       bb.sourceCards   = [];
       bb.candidates    = {
         people: [], relationships: [], events: [], memories: [], places: [], documents: []

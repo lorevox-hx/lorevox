@@ -45,4 +45,11 @@ const API = {
   IV_PROJ_GET:      (id) => `${ORIGIN}/api/interview/projection?person_id=${encodeURIComponent(id)}`,
   IV_PROJ_PUT:      ORIGIN + "/api/interview/projection",
   NARRATOR_STATE:   (id) => `${ORIGIN}/api/narrator/state-snapshot?person_id=${encodeURIComponent(id)}`,
+  // Phase Q.1 — Relationship Graph Layer
+  GRAPH_GET:        (id) => `${ORIGIN}/api/graph/${encodeURIComponent(id)}`,
+  GRAPH_PUT:        (id) => `${ORIGIN}/api/graph/${encodeURIComponent(id)}`,
+  GRAPH_PERSON:     (nid) => `${ORIGIN}/api/graph/${encodeURIComponent(nid)}/person`,
+  GRAPH_REL:        (nid) => `${ORIGIN}/api/graph/${encodeURIComponent(nid)}/relationship`,
+  GRAPH_DEL_PERSON: (pid) => `${ORIGIN}/api/graph/person/${encodeURIComponent(pid)}`,
+  GRAPH_DEL_REL:    (rid) => `${ORIGIN}/api/graph/relationship/${encodeURIComponent(rid)}`,
 };

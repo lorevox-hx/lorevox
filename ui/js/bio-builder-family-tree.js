@@ -810,6 +810,100 @@
     _renderCallback();
   }
 
+  /* ── Phase Q.1: Seed from Relationship Graph ────────────────
+     The primary seeding function.  Reads the canonical graph
+     (persons + relationships) and creates FT nodes/edges.
+     This is the preferred path — graph is the truth model.
+  ─────────────────────────────────────────────────────────── */
+  function _ftSeedFromGraph() {
+    var pid = _currentPersonId(); if (!pid) return;
+    var graphMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.graph;
+    if (!graphMod || typeof graphMod.getGraphForFamilyTree !== "function") {
+      console.log("[bb-ft] Graph module not loaded — falling back to profile/questionnaire seed");
+      _ftSeedFromProfile();
+      _ftSeedFromQuestionnaire();
+      return;
+    }
+
+    var graphData = graphMod.getGraphForFamilyTree();
+    if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+      console.log("[bb-ft] Graph empty — falling back to profile/questionnaire seed");
+      _ftSeedFromProfile();
+      _ftSeedFromQuestionnaire();
+      return;
+    }
+
+    var draft = _ftDraft(pid);
+
+    // Dedupe helper
+    var existing = {};
+    draft.nodes.forEach(function (n) {
+      var dn = _ftNodeDisplayName(n);
+      if (dn) existing[dn.toLowerCase()] = true;
+    });
+
+    // Map from graph node id → FT node id
+    var graphToFt = {};
+    draft.nodes.forEach(function (n) {
+      if (n.graphPersonId) graphToFt[n.graphPersonId] = n.id;
+    });
+
+    var added = 0;
+
+    graphData.nodes.forEach(function (gn) {
+      var name = gn.displayName || "";
+      if (!name) return;
+      var key = name.toLowerCase().trim();
+
+      // Check if already exists by name
+      if (existing[key]) {
+        // Still map the graph ID for edge creation
+        var existingNode = draft.nodes.find(function (n) {
+          return _ftNodeDisplayName(n).toLowerCase().trim() === key;
+        });
+        if (existingNode) graphToFt[gn.graphPersonId] = existingNode.id;
+        return;
+      }
+
+      var node = _ftMakeNode(gn.role || "other", {
+        displayName: name,
+        preferredName: gn.preferredName || "",
+        birthYear: gn.birthYear || "",
+        deathYear: gn.deathYear || "",
+        source: "graph",
+        sourceRef: gn.graphPersonId || null,
+        deceased: gn.deceased || false
+      });
+      node.graphPersonId = gn.graphPersonId;
+      draft.nodes.push(node);
+      graphToFt[gn.graphPersonId] = node.id;
+      existing[key] = true;
+      added++;
+    });
+
+    // Add edges
+    var edgeAdded = 0;
+    graphData.edges.forEach(function (ge) {
+      var fromFt = graphToFt[ge.from.replace("ft_", "")];
+      var toFt = graphToFt[ge.to.replace("ft_", "")];
+      if (!fromFt || !toFt) return;
+
+      // Check for duplicate edge
+      var dupEdge = draft.edges.some(function (e) {
+        return (e.from === fromFt && e.to === toFt)
+            || (e.from === toFt && e.to === fromFt);
+      });
+      if (dupEdge) return;
+
+      draft.edges.push(_ftMakeEdge(fromFt, toFt, ge.relType || "biological", ge.label || "", ge.notes || ""));
+      edgeAdded++;
+    });
+
+    console.log("[bb-ft] ✅ Graph seed: added " + added + " nodes, " + edgeAdded + " edges");
+    _persistDrafts(pid);
+    _renderCallback();
+  }
+
   /* ═══════════════════════════════════════════════════════════════
      QUALITY UTILITIES
   ═══════════════════════════════════════════════════════════════ */
@@ -914,6 +1008,7 @@
         "Family Tree",
         "Build the family structure here as you gather biography details. Add parents, siblings, spouses, children, and chosen family. This is a draft workspace \u2014 nothing is promoted automatically.",
         [
+          { label: "Seed from Graph", action: "window.LorevoxBioBuilder._ftSeedFromGraph()" },
           { label: "\ud83d\udccb Seed from Profile", action: "window.LorevoxBioBuilder._ftSeedFromProfile()" },
           { label: "\ud83c\udf31 Seed from Questionnaire", action: "window.LorevoxBioBuilder._ftSeedFromQuestionnaire()" },
           { label: "\ud83d\udc65 Seed from Candidates", action: "window.LorevoxBioBuilder._ftSeedFromCandidates()" },
@@ -947,6 +1042,7 @@
 
     var html = '<div class="ft-toolbar">'
       + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftAddNode(\'other\')">+ Add Person</button>'
+      + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromGraph()">Seed Graph</button>'
       + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromProfile()">\ud83d\udccb Seed Profile</button>'
       + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromQuestionnaire()">\ud83c\udf31 Seed Questionnaire</button>'
       + '<button class="bb-btn-sm" onclick="window.LorevoxBioBuilder._ftSeedFromCandidates()">\ud83d\udc65 Seed Candidates</button>'
@@ -1401,6 +1497,7 @@
     _ftDeleteEdge:         _ftDeleteEdge,
 
     // Seeding
+    _ftSeedFromGraph:         _ftSeedFromGraph,
     _ftSeedFromProfile:       _ftSeedFromProfile,
     _ftSeedFromQuestionnaire: _ftSeedFromQuestionnaire,
     _ftSeedFromCandidates:    _ftSeedFromCandidates,

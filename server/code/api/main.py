@@ -75,6 +75,7 @@ from .routers import (  # type: ignore
     projection,      # Phase G — Storage Authority (projection canonical)
     narrator_state,  # Phase G — Storage Authority (state snapshot)
     identity_review, # Phase G — Storage Authority (identity change review)
+    relationships,   # Phase Q.1 — Relationship Graph Layer
 )
 
 # Core Entity & State Routers
@@ -96,6 +97,7 @@ app.include_router(questionnaire.router)  # Phase G — QQ canonical
 app.include_router(projection.router)     # Phase G — Projection canonical
 app.include_router(narrator_state.router) # Phase G — State snapshot
 app.include_router(identity_review.router) # Phase G — Identity change review
+app.include_router(relationships.router)   # Phase Q.1 — Relationship Graph Layer
 
 # Real LLM Routers (REST and WS)
 app.include_router(llm_api.router)

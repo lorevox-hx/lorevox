@@ -558,6 +558,7 @@ def init_db() -> None:
             cur.execute(alter_sql)
 
     _ensure_phase_g_tables(con, cur)
+    _ensure_phase_q1_tables(con, cur)
 
     con.commit()
     con.close()
@@ -2676,5 +2677,374 @@ def approve_identity_change_proposal(
             "accepted_by": accepted_by,
             "resolved_at": now,
         }
+    finally:
+        con.close()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase Q.1: Relationship Graph Layer
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _ensure_phase_q1_tables(con: sqlite3.Connection, cur: sqlite3.Cursor) -> None:
+    """Create Phase Q.1 tables: graph_persons and graph_relationships."""
+
+    # graph_persons: every person node in the relationship graph
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS graph_persons (
+            id TEXT PRIMARY KEY,
+            narrator_id TEXT NOT NULL,
+            display_name TEXT NOT NULL DEFAULT '',
+            first_name TEXT NOT NULL DEFAULT '',
+            middle_name TEXT NOT NULL DEFAULT '',
+            last_name TEXT NOT NULL DEFAULT '',
+            maiden_name TEXT NOT NULL DEFAULT '',
+            birth_date TEXT NOT NULL DEFAULT '',
+            birth_place TEXT NOT NULL DEFAULT '',
+            occupation TEXT NOT NULL DEFAULT '',
+            deceased INTEGER NOT NULL DEFAULT 0,
+            is_narrator INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT 'manual',
+            provenance TEXT NOT NULL DEFAULT '',
+            confidence REAL NOT NULL DEFAULT 1.0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            meta_json TEXT NOT NULL DEFAULT '{}',
+            FOREIGN KEY(narrator_id) REFERENCES people(id) ON DELETE CASCADE
+        );
+        """
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_graph_persons_narrator "
+        "ON graph_persons(narrator_id);"
+    )
+
+    # graph_relationships: edges between graph_persons
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS graph_relationships (
+            id TEXT PRIMARY KEY,
+            narrator_id TEXT NOT NULL,
+            from_person_id TEXT NOT NULL,
+            to_person_id TEXT NOT NULL,
+            relationship_type TEXT NOT NULL DEFAULT '',
+            subtype TEXT NOT NULL DEFAULT '',
+            label TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'active',
+            notes TEXT NOT NULL DEFAULT '',
+            source TEXT NOT NULL DEFAULT 'manual',
+            provenance TEXT NOT NULL DEFAULT '',
+            confidence REAL NOT NULL DEFAULT 1.0,
+            start_date TEXT NOT NULL DEFAULT '',
+            end_date TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            meta_json TEXT NOT NULL DEFAULT '{}',
+            FOREIGN KEY(narrator_id) REFERENCES people(id) ON DELETE CASCADE,
+            FOREIGN KEY(from_person_id) REFERENCES graph_persons(id) ON DELETE CASCADE,
+            FOREIGN KEY(to_person_id) REFERENCES graph_persons(id) ON DELETE CASCADE
+        );
+        """
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_graph_rels_narrator "
+        "ON graph_relationships(narrator_id);"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_graph_rels_from "
+        "ON graph_relationships(from_person_id);"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_graph_rels_to "
+        "ON graph_relationships(to_person_id);"
+    )
+
+
+# ── Graph Persons CRUD ──
+
+def graph_upsert_person(
+    narrator_id: str,
+    person_id: Optional[str] = None,
+    display_name: str = "",
+    first_name: str = "",
+    middle_name: str = "",
+    last_name: str = "",
+    maiden_name: str = "",
+    birth_date: str = "",
+    birth_place: str = "",
+    occupation: str = "",
+    deceased: bool = False,
+    is_narrator: bool = False,
+    source: str = "manual",
+    provenance: str = "",
+    confidence: float = 1.0,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Insert or update a person node in the relationship graph."""
+    pid = person_id or _uuid()
+    now = _now_iso()
+    con = _connect()
+    try:
+        con.execute(
+            """INSERT INTO graph_persons
+                   (id, narrator_id, display_name, first_name, middle_name,
+                    last_name, maiden_name, birth_date, birth_place, occupation,
+                    deceased, is_narrator, source, provenance, confidence,
+                    created_at, updated_at, meta_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(id) DO UPDATE SET
+                   display_name=excluded.display_name,
+                   first_name=excluded.first_name,
+                   middle_name=excluded.middle_name,
+                   last_name=excluded.last_name,
+                   maiden_name=excluded.maiden_name,
+                   birth_date=excluded.birth_date,
+                   birth_place=excluded.birth_place,
+                   occupation=excluded.occupation,
+                   deceased=excluded.deceased,
+                   is_narrator=excluded.is_narrator,
+                   source=excluded.source,
+                   provenance=excluded.provenance,
+                   confidence=excluded.confidence,
+                   updated_at=excluded.updated_at,
+                   meta_json=excluded.meta_json""",
+            (pid, narrator_id, display_name, first_name, middle_name,
+             last_name, maiden_name, birth_date, birth_place, occupation,
+             1 if deceased else 0, 1 if is_narrator else 0,
+             source, provenance, confidence,
+             now, now, _json_dump(meta or {})),
+        )
+        con.commit()
+        return {
+            "id": pid, "narrator_id": narrator_id,
+            "display_name": display_name,
+            "first_name": first_name, "middle_name": middle_name,
+            "last_name": last_name, "maiden_name": maiden_name,
+            "birth_date": birth_date, "birth_place": birth_place,
+            "occupation": occupation, "deceased": deceased,
+            "is_narrator": is_narrator,
+            "source": source, "provenance": provenance,
+            "confidence": confidence,
+            "created_at": now, "updated_at": now,
+            "meta": meta or {},
+        }
+    finally:
+        con.close()
+
+
+def graph_list_persons(narrator_id: str) -> List[Dict[str, Any]]:
+    """List all person nodes for a narrator."""
+    con = _connect()
+    try:
+        rows = con.execute(
+            "SELECT * FROM graph_persons WHERE narrator_id=? ORDER BY created_at",
+            (narrator_id,),
+        ).fetchall()
+        out = []
+        for r in rows:
+            out.append({
+                "id": r["id"], "narrator_id": r["narrator_id"],
+                "display_name": r["display_name"],
+                "first_name": r["first_name"], "middle_name": r["middle_name"],
+                "last_name": r["last_name"], "maiden_name": r["maiden_name"],
+                "birth_date": r["birth_date"], "birth_place": r["birth_place"],
+                "occupation": r["occupation"],
+                "deceased": bool(r["deceased"]),
+                "is_narrator": bool(r["is_narrator"]),
+                "source": r["source"], "provenance": r["provenance"],
+                "confidence": r["confidence"],
+                "created_at": r["created_at"], "updated_at": r["updated_at"],
+                "meta": _json_load(r["meta_json"], {}),
+            })
+        return out
+    finally:
+        con.close()
+
+
+def graph_delete_person(person_id: str) -> bool:
+    """Delete a person node (cascades to relationship edges)."""
+    con = _connect()
+    try:
+        con.execute("DELETE FROM graph_relationships WHERE from_person_id=? OR to_person_id=?", (person_id, person_id))
+        cur = con.execute("DELETE FROM graph_persons WHERE id=?", (person_id,))
+        con.commit()
+        return cur.rowcount > 0
+    finally:
+        con.close()
+
+
+# ── Graph Relationships CRUD ──
+
+def graph_upsert_relationship(
+    narrator_id: str,
+    rel_id: Optional[str] = None,
+    from_person_id: str = "",
+    to_person_id: str = "",
+    relationship_type: str = "",
+    subtype: str = "",
+    label: str = "",
+    status: str = "active",
+    notes: str = "",
+    source: str = "manual",
+    provenance: str = "",
+    confidence: float = 1.0,
+    start_date: str = "",
+    end_date: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Insert or update a relationship edge."""
+    rid = rel_id or _uuid()
+    now = _now_iso()
+    con = _connect()
+    try:
+        con.execute(
+            """INSERT INTO graph_relationships
+                   (id, narrator_id, from_person_id, to_person_id,
+                    relationship_type, subtype, label, status, notes,
+                    source, provenance, confidence, start_date, end_date,
+                    created_at, updated_at, meta_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(id) DO UPDATE SET
+                   from_person_id=excluded.from_person_id,
+                   to_person_id=excluded.to_person_id,
+                   relationship_type=excluded.relationship_type,
+                   subtype=excluded.subtype,
+                   label=excluded.label,
+                   status=excluded.status,
+                   notes=excluded.notes,
+                   source=excluded.source,
+                   provenance=excluded.provenance,
+                   confidence=excluded.confidence,
+                   start_date=excluded.start_date,
+                   end_date=excluded.end_date,
+                   updated_at=excluded.updated_at,
+                   meta_json=excluded.meta_json""",
+            (rid, narrator_id, from_person_id, to_person_id,
+             relationship_type, subtype, label, status, notes,
+             source, provenance, confidence, start_date, end_date,
+             now, now, _json_dump(meta or {})),
+        )
+        con.commit()
+        return {
+            "id": rid, "narrator_id": narrator_id,
+            "from_person_id": from_person_id, "to_person_id": to_person_id,
+            "relationship_type": relationship_type, "subtype": subtype,
+            "label": label, "status": status, "notes": notes,
+            "source": source, "provenance": provenance,
+            "confidence": confidence,
+            "start_date": start_date, "end_date": end_date,
+            "created_at": now, "updated_at": now,
+            "meta": meta or {},
+        }
+    finally:
+        con.close()
+
+
+def graph_list_relationships(narrator_id: str) -> List[Dict[str, Any]]:
+    """List all relationship edges for a narrator."""
+    con = _connect()
+    try:
+        rows = con.execute(
+            "SELECT * FROM graph_relationships WHERE narrator_id=? ORDER BY created_at",
+            (narrator_id,),
+        ).fetchall()
+        out = []
+        for r in rows:
+            out.append({
+                "id": r["id"], "narrator_id": r["narrator_id"],
+                "from_person_id": r["from_person_id"],
+                "to_person_id": r["to_person_id"],
+                "relationship_type": r["relationship_type"],
+                "subtype": r["subtype"],
+                "label": r["label"], "status": r["status"],
+                "notes": r["notes"],
+                "source": r["source"], "provenance": r["provenance"],
+                "confidence": r["confidence"],
+                "start_date": r["start_date"], "end_date": r["end_date"],
+                "created_at": r["created_at"], "updated_at": r["updated_at"],
+                "meta": _json_load(r["meta_json"], {}),
+            })
+        return out
+    finally:
+        con.close()
+
+
+def graph_delete_relationship(rel_id: str) -> bool:
+    """Delete a relationship edge."""
+    con = _connect()
+    try:
+        cur = con.execute("DELETE FROM graph_relationships WHERE id=?", (rel_id,))
+        con.commit()
+        return cur.rowcount > 0
+    finally:
+        con.close()
+
+
+def graph_get_full(narrator_id: str) -> Dict[str, Any]:
+    """Load the full relationship graph for a narrator (persons + relationships)."""
+    return {
+        "narrator_id": narrator_id,
+        "persons": graph_list_persons(narrator_id),
+        "relationships": graph_list_relationships(narrator_id),
+    }
+
+
+def graph_replace_full(narrator_id: str, persons: List[Dict[str, Any]], relationships: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Replace the entire relationship graph for a narrator (atomic)."""
+    now = _now_iso()
+    con = _connect()
+    try:
+        # Clear existing graph
+        con.execute("DELETE FROM graph_relationships WHERE narrator_id=?", (narrator_id,))
+        con.execute("DELETE FROM graph_persons WHERE narrator_id=?", (narrator_id,))
+
+        # Insert persons
+        for p in persons:
+            con.execute(
+                """INSERT INTO graph_persons
+                       (id, narrator_id, display_name, first_name, middle_name,
+                        last_name, maiden_name, birth_date, birth_place, occupation,
+                        deceased, is_narrator, source, provenance, confidence,
+                        created_at, updated_at, meta_json)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (p.get("id") or _uuid(), narrator_id,
+                 p.get("display_name", ""), p.get("first_name", ""),
+                 p.get("middle_name", ""), p.get("last_name", ""),
+                 p.get("maiden_name", ""), p.get("birth_date", ""),
+                 p.get("birth_place", ""), p.get("occupation", ""),
+                 1 if p.get("deceased") else 0,
+                 1 if p.get("is_narrator") else 0,
+                 p.get("source", "manual"), p.get("provenance", ""),
+                 p.get("confidence", 1.0),
+                 p.get("created_at", now), now,
+                 _json_dump(p.get("meta", {}))),
+            )
+
+        # Insert relationships
+        for r in relationships:
+            con.execute(
+                """INSERT INTO graph_relationships
+                       (id, narrator_id, from_person_id, to_person_id,
+                        relationship_type, subtype, label, status, notes,
+                        source, provenance, confidence, start_date, end_date,
+                        created_at, updated_at, meta_json)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (r.get("id") or _uuid(), narrator_id,
+                 r.get("from_person_id", ""), r.get("to_person_id", ""),
+                 r.get("relationship_type", ""), r.get("subtype", ""),
+                 r.get("label", ""), r.get("status", "active"),
+                 r.get("notes", ""),
+                 r.get("source", "manual"), r.get("provenance", ""),
+                 r.get("confidence", 1.0),
+                 r.get("start_date", ""), r.get("end_date", ""),
+                 r.get("created_at", now), now,
+                 _json_dump(r.get("meta", {}))),
+            )
+
+        con.commit()
+        return graph_get_full(narrator_id)
+    except Exception:
+        con.rollback()
+        raise
     finally:
         con.close()
