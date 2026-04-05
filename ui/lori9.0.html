@@ -1319,31 +1319,46 @@
       border-color: rgba(239, 68, 68, 0.3);
     }
 
-    /* ── N.1-01: Last-reply eyebrow ── */
+    /* ── N.2: Lori context header ── */
     .fc-last-reply {
-      padding: 12px 28px;
-      border-bottom: 1px solid rgba(99, 102, 241, 0.10);
-      background: rgba(99, 102, 241, 0.06);
+      padding: 14px 24px 16px;
+      margin: 0 16px;
+      margin-top: 8px;
+      border-radius: 14px;
+      background: rgba(99, 102, 241, 0.05);
+      border: 1px solid rgba(99, 102, 241, 0.08);
       flex-shrink: 0;
     }
+    .fc-last-reply-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .fc-lori-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      opacity: 0.7;
+      filter: brightness(0) saturate(100%) invert(62%) sepia(30%) saturate(700%) hue-rotate(200deg) brightness(100%) contrast(95%);
+    }
     .fc-last-reply-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      font-weight: 700;
-      color: #6366f1;
-      margin-bottom: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #a5b4fc;
+      letter-spacing: 0.01em;
     }
     .fc-last-reply-text {
-      font-size: 16px;
-      line-height: 1.5;
+      font-size: 17px;
+      line-height: 1.55;
       color: #cbd5e1;
-      max-height: 4.5em;         /* ~3 lines */
+      max-height: 4.65em;        /* ~3 lines */
       overflow: hidden;
       text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 3;
       -webkit-box-orient: vertical;
+      padding-left: 26px;        /* align with text after icon */
     }
 
     /* ── N.1-02: See New Message button ── */
@@ -2100,9 +2115,12 @@
     <button class="fc-close-btn" onclick="FocusCanvas.close()" title="Close capture mode" aria-label="Close">✕</button>
   </div>
 
-  <!-- N.1-01: Last-reply eyebrow — Lori's most recent message pinned at top -->
+  <!-- N.1-01 + N.2: Lori context header — pinned last prompt with icon -->
   <div id="fcLastReply" class="fc-last-reply fc-hidden" aria-live="polite">
-    <div class="fc-last-reply-label">Lori said:</div>
+    <div class="fc-last-reply-header">
+      <img src="assets/icons/lori/smile.svg" alt="" class="fc-lori-icon" aria-hidden="true">
+      <span class="fc-last-reply-label">Lori asked:</span>
+    </div>
     <div id="fcLastReplyText" class="fc-last-reply-text"></div>
   </div>
 
