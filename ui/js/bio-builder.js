@@ -676,8 +676,14 @@
 
   function refresh() {
     _ensureState();
+    // N.2-fix: always clear stale DOM on refresh, even when popover is closed,
+    // so a narrator switch doesn't leave the previous narrator's content cached.
+    var content = _el("bbTabContent");
     var host = _el("bioBuilderPopover");
-    if (!host || (!host.hasAttribute("open") && !host.matches(":popover-open"))) return;
+    if (!host || (!host.hasAttribute("open") && !host.matches(":popover-open"))) {
+      if (content) content.innerHTML = "";
+      return;
+    }
     render();
   }
 

@@ -1352,12 +1352,8 @@
       font-size: 17px;
       line-height: 1.55;
       color: #cbd5e1;
-      max-height: 4.65em;        /* ~3 lines */
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
+      max-height: 12em;          /* ~7-8 lines, scroll if longer */
+      overflow-y: auto;
       padding-left: 26px;        /* align with text after icon */
     }
 
