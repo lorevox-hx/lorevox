@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# launch_lorevox_test_browser.sh — Lorevox 8.0 Phase O
+# launch_lorevox_test_browser.sh — Lorevox 9.0 Phase O
 # Opens Lorevox in a dedicated Chrome/Edge test profile with
 # cache-busting and optional clean-state reset.
 #

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/restart_api.sh — Lorevox 8.0
+# scripts/restart_api.sh — Lorevox 9.0
 # Shell-native API restart: stops the API, restarts it, runs health check
 # and LLM warmup. For the visible Windows Terminal version, use
 # reload_api.bat instead.

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   projection-sync.js — Lorevox 8.0 Interview Projection Sync Layer
+   projection-sync.js — Lorevox 9.0 Interview Projection Sync Layer
 
    Owns:
      - Writing values into state.interviewProjection.fields

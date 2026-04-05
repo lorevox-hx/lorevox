@@ -1,5 +1,5 @@
 /**
- * reset_lorevox_browser_state.js — Lorevox 8.0 Phase O
+ * reset_lorevox_browser_state.js — Lorevox 9.0 Phase O
  * ─────────────────────────────────────────────────────
  * Browser-side reset script for Lorevox test harness.
  *

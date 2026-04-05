@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    bio-builder.js — Bio Builder intake and staging layer
-   Lorevox 8.0 — Phase D (builds on Phase B + C foundation)
+   Lorevox 9.0 — Phase D (builds on Phase B + C foundation)
 
    Phase D additions over Phase C:
      - FileReader text extraction for text/md/csv/htm uploads

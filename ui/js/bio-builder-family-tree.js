@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    bio-builder-family-tree.js — Family Tree Draft Surface
-   Lorevox 8.0 — Phase 5 module split
+   Lorevox 9.0 — Phase 5 module split
 
    Extracted from bio-builder.js.  Contains all Family Tree draft
    management, CRUD operations, seeding logic, quality utilities,

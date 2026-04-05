@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   projection-map.js — Lorevox 8.0 Interview Projection Map
+   projection-map.js — Lorevox 9.0 Interview Projection Map
 
    Maps each Bio Builder questionnaire field to:
      - projectionPath : key in state.interviewProjection.fields

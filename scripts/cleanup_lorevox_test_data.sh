@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# cleanup_lorevox_test_data.sh — Lorevox 8.0 Phase O
+# cleanup_lorevox_test_data.sh — Lorevox 9.0 Phase O
 # Optional test-data cleanup for backend narrators/sessions created
 # during automated or manual QA runs.
 #

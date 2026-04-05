@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# Lorevox 8.0 — Stack Health Test Runner
+# Lorevox 9.0 — Stack Health Test Runner
 # Tests service health, port binding, PID accuracy, and isolation.
 # Run from the repo root:  bash scripts/test_stack_health.sh
 # ─────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ wait_port_free() {
 # ── Test Group: Service Health ───────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════"
-echo " Lorevox 8.0 — Stack Health Tests"
+echo " Lorevox 9.0 — Stack Health Tests"
 echo "═══════════════════════════════════════════"
 echo ""
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# test_preflight_lorevox.sh — Lorevox 8.0 Phase O
+# test_preflight_lorevox.sh — Lorevox 9.0 Phase O
 # Standard entrypoint for all Lorevox test runs.
 #
 # This script is the required preflight step before any formal
@@ -52,7 +52,7 @@ done
 # ── Banner ───────────────────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║   Lorevox 8.0 — Test Preflight Harness            ║"
+echo "║   Lorevox 9.0 — Test Preflight Harness            ║"
 echo "║   $(date '+%Y-%m-%d %H:%M:%S')                         ║"
 echo "╠══════════════════════════════════════════════════╣"
 echo "║ Mode:    ${MODE}"

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    bio-builder-core.js — Shared foundation for Bio Builder modules
-   Lorevox 8.0 — Phase 1 module split
+   Lorevox 9.0 — Phase 1 module split
 
    Owns:
      - state initialization and access (_ensureState, _bb)

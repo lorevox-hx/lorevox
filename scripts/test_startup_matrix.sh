@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# Lorevox 8.0 — Startup Matrix Test Runner
+# Lorevox 9.0 — Startup Matrix Test Runner
 # Tests full start/stop/restart cycles, service isolation, and
 # rapid-restart behavior. Run from repo root.
 #
@@ -51,7 +51,7 @@ wait_healthy() {
 
 echo ""
 echo "═══════════════════════════════════════════════════"
-echo " Lorevox 8.0 — Startup Matrix Tests"
+echo " Lorevox 9.0 — Startup Matrix Tests"
 echo " WARNING: Services will be cycled during this run."
 echo "═══════════════════════════════════════════════════"
 echo ""

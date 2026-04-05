@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lorevox 8.0 — API Smoke Test Suite
+Lorevox 9.0 — API Smoke Test Suite
 Tests all active REST endpoints against a running API on port 8000.
 
 Usage:
@@ -476,6 +476,6 @@ if __name__ == "__main__":
         print("Make sure the Lorevox API is running before running this test suite.")
         sys.exit(1)
 
-    print(f"\nLorevox 8.0 — API Smoke Tests")
+    print(f"\nLorevox 9.0 — API Smoke Tests")
     print(f"API: {BASE}  |  TTS: {TTS_BASE}\n")
     unittest.main(verbosity=2)

@@ -4,7 +4,7 @@
 
 Lorevox captures a person's memories through guided interview conversations, organises them into a verified timeline, and drafts a human-readable memoir. The AI is a scribe — it structures, prompts, and drafts. The human is the author. Every word they speak is the ground truth.
 
-**Lorevox 8.0 — pre-production ready. Phase D complete. Full test harness active.**
+**Lorevox 9.0 — pre-production ready. Phase N complete. Full test harness active.**
 
 ---
 
@@ -73,7 +73,7 @@ No video ever leaves the browser. No landmarks are logged. No raw emotion labels
 ### Camera consent and preview
 Before the camera activates, a dedicated consent modal requires the narrator to read an explicit explanation of facial expression analysis, check an acknowledgment box, and confirm. The button is disabled until the checkbox is ticked. Once consented, a draggable floating camera preview panel shows the narrator exactly what the camera sees. The preview can be hidden and re-opened. Closing the consent modal or declining disables emotion-aware mode for the session.
 
-### Transparency rule (v8.0)
+### Transparency rule (v8.0+)
 If the narrator directly asks whether Lorevox is using their camera, recording their voice, tracking their location, or sensing their emotions — Lori answers truthfully based on the actual runtime state. Never denies an active capability. Never asserts an inactive one. This is enforced by a dedicated directive in `prompt_composer.py`, anchored to LORI_RUNTIME, not to model heuristics.
 
 ### Cognitive mode intelligence
@@ -90,8 +90,14 @@ Every interview answer is scanned before Lori's next question is served. The sca
 ### Meaning engine
 Every turn is scanned for narrative significance using local regex and pattern matching. Turning points ("that was when everything changed"), reflections ("looking back…"), loss, identity, and change events are detected, tagged, and fed into memoir section routing. The model receives emotional theme context so memoir sections receive appropriate narrative weight.
 
-### Bio Builder (Phases D / E / F)
-A structured candidate pipeline that extracts biographical facts from conversation and surfaces them for narrator review. Phase D extracts candidates. Phase E presents them in a review queue — approve, edit, or reject. Phase F orchestrates the downstream sync: only approved items flow into the Life Map, Timeline, and Memoir Preview. No raw candidates ever reach downstream systems. Anti-leakage is enforced in code, not convention.
+### Bio Builder (Phases D / E / F / M)
+A structured candidate pipeline that extracts biographical facts from conversation and surfaces them for narrator review. Phase D extracts candidates. Phase E presents them in a review queue — approve, edit, or reject. Phase F orchestrates the downstream sync: only approved items flow into the Life Map, Timeline, and Memoir Preview. No raw candidates ever reach downstream systems. Anti-leakage is enforced in code, not convention. Phase M adds a six-tab Bio Builder control center (Quick Capture, Questionnaire, Source Inbox, Candidates, Family Tree, Life Threads) with per-narrator state isolation and localStorage draft persistence.
+
+### Focus Canvas (Phase N)
+A full-screen overlay for narrator storytelling, triggered by clicking the chat input or mic button. The Focus Canvas includes a Lori context header (eyebrow) showing the last Lori prompt with an icon and "Lori asked:" label, a textarea for story input, and Voice/Type mode toggle. Auto-scroll with pause-on-user-scroll keeps the chat anchored during TTS playback. A "See new messages" button appears when scrolled up. Narrator identity labels use resolved display names from the people cache instead of hardcoded "You".
+
+### Clean-restart flow (Phase O)
+Shutdown writes a `reset_on_start` flag file. On next startup, the URL is appended with `?lorevox_reset=clean`. An inline script in the HTML shell detects this param, clears all Lorevox-scoped localStorage, sessionStorage, caches, and Service Workers (keys prefixed `lorevox_`, `lvx_`, `bb_`, `lorevox.spine.`), then strips the param. This ensures every restart cycle begins with clean browser state.
 
 ### Life Map navigator
 A mind-map canvas (powered by a local vendored Mind Elixir library) showing people, memories, events, and places derived from approved Bio Builder items. Updates on every Phase F run.
@@ -202,7 +208,7 @@ bash scripts/start_tts_visible.sh    # Terminal 2 — TTS (port 8001)
 bash scripts/start_ui_visible.sh     # Terminal 3 — UI  (port 8080)
 ```
 
-Then open: **http://localhost:8080/ui/lori8.0.html**
+Then open: **http://localhost:8080/ui/lori9.0.html**
 
 The UI server provides cross-origin isolation headers (COOP/COEP) required for reliable camera access and the multi-threaded WASM path.
 
@@ -245,7 +251,7 @@ Prints a table showing each service's PID, process state, and health endpoint re
 Open the browser console. Send a message to Lori. You should see:
 
 ```
-[Lori 8.0] runtime71 → model: { "current_pass": ..., "fatigue_score": ..., ... }
+[Lori 9.0] runtime71 → model: { "current_pass": ..., "fatigue_score": ..., ... }
 ```
 
 On narrator switch, the console should show:
@@ -306,7 +312,8 @@ DB_PATH  = DB_DIR / DB_NAME
 ```
 lorevox/
 ├── ui/
-│   ├── lori8.0.html                 # Active shell — 8.0 UI, Bio Builder, Media Builder
+│   ├── lori9.0.html                 # Active shell — 9.0 UI, Focus Canvas, Bio Builder, Media Builder
+│   ├── lori8.0.html                 # Legacy 8.0 shell (reference only)
 │   ├── lori7.5.html                 # Legacy 7.5 shell (reference only)
 │   ├── css/
 │   │   ├── tailwind.min.css         # Utility CSS base
@@ -314,7 +321,9 @@ lorevox/
 │   │   ├── layout.css               # Shell layout
 │   │   ├── safety.css               # Crisis overlay styles
 │   │   ├── affect.css               # Emotion toggle / affect arc
-│   │   ├── lori80.css               # Primary 8.0 styles (chat, tabs, media builder, camera preview)
+│   │   ├── lori80.css               # Primary styles (chat, tabs, media builder, camera preview)
+│   ├── assets/
+│   │   └── icons/lori/smile.svg     # Lori context header icon
 │   │   ├── bio-review.css           # Bio Builder candidate cards
 │   │   ├── bio-phase-f-*.css        # Phase F debug / report / test / control center styles
 │   │   └── bio-control-center.css   # Bio Builder control center
@@ -333,6 +342,7 @@ lorevox/
 │   │   ├── interview.js             # Interview session, pass / era routing
 │   │   ├── app.js                   # Core: buildRuntime71, meaning engine, send flow, memoir export
 │   │   ├── cognitive-auto.js        # Auto cognitive mode selection per turn
+│   │   ├── focus-canvas.js           # Focus Canvas — narrator storytelling overlay
 │   │   ├── life-map.js              # Life Map navigator canvas
 │   │   ├── narrator-preload.js      # Narrator preload / template loader
 │   │   ├── projection-map.js        # Projection map renderer
@@ -431,7 +441,7 @@ lorevox/
 │   ├── test_api_smoke.py            # API endpoint smoke tests (31 tests)
 │   ├── test_db_smoke.py             # DB persistence/isolation tests (14 tests)
 │   └── e2e/
-│       ├── test_lori80_smoke.spec.ts    # Browser smoke + regression (15 tests)
+│       ├── test_lori90_smoke.spec.ts    # Browser smoke + regression (15 tests)
 │       ├── test_narrator_switch.spec.ts # Narrator isolation (6 tests)
 │       ├── test_bio_builder.spec.ts     # Bio Builder contracts (9 tests)
 │       ├── lorevox-smoke-flow.spec.ts   # Legacy backend contract test
@@ -476,8 +486,8 @@ lorevox/
 ### Active routers (all registered in `main.py`)
 `chat_ws` · `people` · `profiles` · `media` · `timeline` · `interview` · `sessions` · `facts` · `extract` · `stt` · `affect` · `memoir_export` · `db_inspector` · `ping` · `stream_bus` · `calendar` · `tts` *(optional)*
 
-### Active frontend JavaScript (loaded by `lori8.0.html`)
-`state.js` · `data.js` · `api.js` · `tabs.js` · `safety-ui.js` · `permissions.js` · `emotion.js` · `facial-consent.js` · `affect-bridge.js` · `emotion-ui.js` · `timeline-ui.js` · `interview.js` · `app.js` · `cognitive-auto.js` · `life-map.js` · `narrator-preload.js` · `projection-map.js` · `projection-sync.js` · `bio-builder.js` · `bio-builder-core.js` · `bio-builder-candidates.js` · `bio-builder-family-tree.js` · `bio-builder-life-threads.js` · `bio-builder-questionnaire.js` · `bio-builder-sources.js` · `bio-review.js` · `bio-promotion-adapters.js` · `bio-phase-f.js` · `bio-phase-f-report.js` · `bio-phase-f-test-harness.js` · `bio-phase-f-debug.js` · `bio-control-center.js` + Media Builder IIFE + Camera Preview IIFE (both inline in `lori8.0.html`)
+### Active frontend JavaScript (loaded by `lori9.0.html`)
+`state.js` · `data.js` · `api.js` · `tabs.js` · `safety-ui.js` · `permissions.js` · `emotion.js` · `facial-consent.js` · `affect-bridge.js` · `emotion-ui.js` · `timeline-ui.js` · `interview.js` · `app.js` · `cognitive-auto.js` · `focus-canvas.js` · `life-map.js` · `narrator-preload.js` · `projection-map.js` · `projection-sync.js` · `bio-builder.js` · `bio-builder-core.js` · `bio-builder-candidates.js` · `bio-builder-family-tree.js` · `bio-builder-life-threads.js` · `bio-builder-questionnaire.js` · `bio-builder-sources.js` · `bio-builder-qc-pipeline.js` · `bio-review.js` · `bio-promotion-adapters.js` · `bio-phase-f.js` · `bio-phase-f-report.js` · `bio-phase-f-test-harness.js` · `bio-phase-f-debug.js` · `bio-control-center.js` + Media Builder IIFE + Camera Preview IIFE (both inline in `lori9.0.html`)
 
 ### Vendored dependencies (all local, no CDN)
 `mediapipe/face_mesh/face_mesh.js` · `mediapipe/camera_utils/camera_utils.js` · `floating-ui/core.min.js` · `floating-ui/dom.min.js` · `mind-elixir/mind-elixir.js`
@@ -486,7 +496,7 @@ lorevox/
 
 ## Shipped vs Pending
 
-### Shipped (v8.0 — confirmed active)
+### Shipped (v9.0 — confirmed active)
 
 - Identity-first onboarding
 - Three-pass interview model (Pass 1, Pass 2A, Pass 2B)
@@ -497,7 +507,7 @@ lorevox/
 - Transparency Rule — trust-question truthful answers
 - Safety scan (local, no LLM, 7 categories)
 - Meaning engine (turning points, reflections, loss, identity)
-- Bio Builder D / E / F (candidate pipeline → review → Phase F sync)
+- Bio Builder D / E / F / M (candidate pipeline → review → Phase F sync → six-tab control center)
 - Phase F orchestration (approved-only downstream; Life Map / Timeline / Memoir preview)
 - Life Map navigator
 - Media Builder (upload / gallery / lightbox / attach / DOCX embed)
@@ -505,6 +515,10 @@ lorevox/
 - Paired interview mode (Harold and June pattern)
 - TTS voice (Coqui XTTS-v2 / Kokoro)
 - Voice input (browser speech recognition)
+- Focus Canvas — narrator storytelling overlay with Lori context header, auto-scroll, narrator identity labels
+- Clean-restart flow — shutdown flag → startup URL param → client-side auto-reset of browser state
+- Per-narrator Bio Builder state isolation with localStorage draft persistence
+- Narrator template preload system (JSON → profile + questionnaire + candidates)
 - Debug Timeline Inspector (`tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html`)
 - 20-run deep runtime test — 20/20 PASS, 0 critical failures
 
@@ -542,17 +556,17 @@ lorevox/
 | Tool | How |
 |---|---|
 | Live runtime overlay | `Ctrl+Shift+D` in browser — shows pass, era, mode, affect, fatigue bar, cognitive log |
-| runtime71 per turn | Browser console: `[Lori 8.0] runtime71 → model: {...}` |
+| runtime71 per turn | Browser console: `[Lori 9.0] runtime71 → model: {...}` |
 | Compact server log | Always on: `[chat_ws] turn: conv=...` with affect/fatigue summary |
 | Full system prompt | Set `LV_DEV_MODE=1` in `.env` and restart backend |
 | DB inspector | `python scripts/inspect_db.py` from repo root |
-| **8.0 Runtime Inspector** | `http://localhost:8080/tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html` — drag-drop or paste a `window.__lv80TurnDebug` JSON export to render a visual session timeline |
+| **Runtime Inspector** | `http://localhost:8080/tools/LOREVOX_80_DEBUG_TIMELINE_INSPECTOR.html` — drag-drop or paste a `window.__lv80TurnDebug` JSON export to render a visual session timeline |
 
-### Lori 8.0 — Runtime Inspector
+### Runtime Inspector
 
 The Debug Timeline Inspector is a standalone dev tool for visualising `window.__lv80TurnDebug` session exports.
 
-1. Open a Lori 8.0 session and run some turns
+1. Open a Lori 9.0 session and run some turns
 2. In the browser console: `copy(JSON.stringify(window.__lv80TurnDebug))`
 3. Paste into the inspector and click **Render Timeline**
 
@@ -583,7 +597,7 @@ The inspector renders a vertical event timeline colour-coded by posture (indigo 
 
 ## Testing
 
-Lorevox 8.0 ships with a layered test harness covering startup, API, DB, and browser behavior.
+Lorevox 9.0 ships with a layered test harness covering startup, API, DB, and browser behavior.
 
 ### Run all tests
 
@@ -623,7 +637,7 @@ npx playwright test tests/e2e/
 | `scripts/test_startup_matrix.sh` | SM-01 to SM-08 | Start/stop cycles, restart isolation, SO_REUSEADDR |
 | `tests/test_api_smoke.py` | AS-01 to AS-31 | REST endpoints, CRUD, chat, narrator isolation |
 | `tests/test_db_smoke.py` | DB-01 to DB-14 | Persistence, cross-narrator isolation, cascades, soft delete |
-| `tests/e2e/test_lori80_smoke.spec.ts` | E2E-01 to E2E-15 | UI load, status, modules, chat, interview |
+| `tests/e2e/test_lori90_smoke.spec.ts` | E2E-01 to E2E-15 | UI load, status, modules, chat, interview |
 | `tests/e2e/test_narrator_switch.spec.ts` | NS-01 to NS-06 | Cross-narrator isolation, rapid switching |
 | `tests/e2e/test_bio_builder.spec.ts` | BB-01 to BB-09 | Bio Builder contracts, meaning engine, UI modules |
 
@@ -665,18 +679,20 @@ Phase D addressed four operational risk areas. All fixes are verified and active
 
 **Startup Orchestration:** `kill_stale_lorevox()` is scoped to API processes only — TTS and UI survive API restarts. `kill_all_lorevox()` handles full-stack teardown. `lorevox-serve.py` uses `ReusableTCPServer` (SO_REUSEADDR) for instant port rebind.
 
-**Repo Cleanup:** 40 dead files removed (versioned copies: v1-v16 Python, old HTML/JS/CSS). Active import chain verified: `main.py → api.py → db.py → chat_ws.py`. UI entry: `lori8.0.html`.
+**Repo Cleanup:** 40 dead files removed (versioned copies: v1-v16 Python, old HTML/JS/CSS). Active import chain verified: `main.py → api.py → db.py → chat_ws.py`. UI entry: `lori9.0.html`.
 
 ---
 
-## Status — v8.0
+## Status — v9.0
 
 ### Pre-production ready
 
 - 20-run deep runtime test: 20/20 PASS, 0 critical failures
 - Phase D work orders complete (VRAM guard, identity handshake)
-- Startup orchestration verified (service isolation, rapid restart)
+- Phase N complete (Focus Canvas, clean-restart, narrator identity labels, Bio Builder isolation)
+- Startup orchestration verified (service isolation, rapid restart, clean-restart flow)
 - Full test harness active (health, API, DB, E2E)
+- All startup scripts, shortcuts, and test scripts updated for 9.0
 - No drift across repeated runs
 - Architecture integrity confirmed (Phase F anti-leakage, meaning engine, affect pipeline, identity gate)
 - All core invariants holding
@@ -702,4 +718,4 @@ See [LICENSE](LICENSE) for complete terms. For permissions: dev@lorevox.com
 
 ---
 
-*Lorevox 8.0 — local-first, privacy-first, human-first. Every word they speak is the ground truth. Lori is the app.*
+*Lorevox 9.0 — local-first, privacy-first, human-first. Every word they speak is the ground truth. Lori is the app.*

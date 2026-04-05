@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   narrator-preload.js — Lorevox 8.0 Narrator Preload Utility
+   narrator-preload.js — Lorevox 9.0 Narrator Preload Utility
 
    Loads a narrator template JSON file and populates:
    1. API person record (display_name, date_of_birth, place_of_birth)

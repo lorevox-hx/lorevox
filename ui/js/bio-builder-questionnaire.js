@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    bio-builder-questionnaire.js — Structured questionnaire intake
-   Lorevox 8.0 — Phase 2 module split
+   Lorevox 9.0 — Phase 2 module split
 
    Owns:
      - SECTIONS definitions and option constants

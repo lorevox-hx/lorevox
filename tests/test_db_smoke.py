@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lorevox 8.0 — DB Smoke Test Suite
+Lorevox 9.0 — DB Smoke Test Suite
 Tests database persistence, isolation, and integrity by exercising
 the DB layer through the REST API.
 
@@ -351,6 +351,6 @@ if __name__ == "__main__":
         print("Make sure the Lorevox API is running before running this test suite.")
         sys.exit(1)
 
-    print(f"\nLorevox 8.0 — DB Smoke Tests")
+    print(f"\nLorevox 9.0 — DB Smoke Tests")
     print(f"API: {BASE}\n")
     unittest.main(verbosity=2)

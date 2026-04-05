@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    bio-builder-life-threads.js — Life Threads draft staging module
-   Lorevox 8.0 — Phase 6 module extraction
+   Lorevox 9.0 — Phase 6 module extraction
 
    Extracted from bio-builder.js to match the modular architecture
    established in Phases 1-5 (core, questionnaire, sources,

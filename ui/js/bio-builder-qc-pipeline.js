@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    bio-builder-qc-pipeline.js — Quick Capture processing pipeline
-   Lorevox 8.0 — Phase M
+   Lorevox 9.0 — Phase M
 
    Owns:
      - Atomic splitting of compound Quick Capture text (M2)

@@ -27,8 +27,8 @@
   <link rel="stylesheet" href="css/bio-control-center.css">
   <link rel="stylesheet" href="vendor/mind-elixir/mind-elixir.css">
 
-  <!-- 8.0 layout stubs — tailwind.min.css is a minimal pre-compiled build;
-       utility classes used only in 8.0 need explicit definitions here -->
+  <!-- 9.0 layout stubs — tailwind.min.css is a minimal pre-compiled build;
+       utility classes used only in 9.0 need explicit definitions here -->
   <style>
     /* ── Core shell layout ── */
     html, body { height: 100%; margin: 0; }
@@ -1834,7 +1834,7 @@
     <input id="bio_pob" type="text"/>
     <input id="bio_culture" type="text"/>
     <input id="bio_phonetic" type="text"/>
-    <!-- v8.0 Bio Builder extended fields -->
+    <!-- v9.0 Bio Builder extended fields -->
     <input id="bio_legalFirstName" type="text"/>
     <input id="bio_legalMiddleName" type="text"/>
     <input id="bio_legalLastName" type="text"/>
@@ -2341,7 +2341,7 @@ function _lv80GetOverrideReason() {
 // Logs an explicit mode transition edge — critical for debugging state flow.
 function lv80LogModeTransition(from, to, reason) {
   lv80LogTurnDebug({ event: "mode_transition", from, to, reason });
-  console.log(`[Lori 8.0] mode_transition: ${from} → ${to} (${reason})`);
+  console.log(`[Lori 9.0] mode_transition: ${from} → ${to} (${reason})`);
 }
 
 function lv80SetMemoryMode(mode) {
@@ -2371,7 +2371,7 @@ function lv80SetMemoryMode(mode) {
 
   lv80LogModeTransition(prev, mode, "manual_switch");
   lv80UpdatePostureBadge();
-  console.log("[Lori 8.0] Interaction mode →", mode);
+  console.log("[Lori 9.0] Interaction mode →", mode);
 }
 
 // Updates the header posture badge to reflect the EFFECTIVE posture,
@@ -2491,7 +2491,7 @@ async function lv80LoadPeople() {
   lv80RenderNarratorCards();
   lv80UpdateActiveNarratorCard();
 
-  console.log("[Lori 8.0] Loaded", people.length, "people.");
+  console.log("[Lori 9.0] Loaded", people.length, "people.");
 }
 
 async function lv80SwitchPerson(personId) {
@@ -2932,7 +2932,7 @@ function _lv80OnSafetyDetected() {
   _lv80IdleWasThinking = false;
   lv80LogModeTransition(prev, "safety", "safety_pattern");
   lv80UpdatePostureBadge();
-  console.log("[Lori 8.0] Safety mode ACTIVE — idle suppressed.");
+  console.log("[Lori 9.0] Safety mode ACTIVE — idle suppressed.");
 }
 
 function _lv80SafetyClearIdle() {
@@ -2943,7 +2943,7 @@ function _lv80SafetyClearIdle() {
 function _lv80InstallSafetyHook() {
   const _origSend = window.sendUserMessage;
   if (typeof _origSend !== "function") {
-    console.warn("[Lori 8.0] sendUserMessage not found — safety hook skipped.");
+    console.warn("[Lori 9.0] sendUserMessage not found — safety hook skipped.");
     return;
   }
 
@@ -2968,7 +2968,7 @@ function _lv80InstallSafetyHook() {
       _lv80NonMemoirModeActive = false;
       lv80LogModeTransition("companion", _lv80InteractionMode, "memoir_answer_detected");
       lv80UpdatePostureBadge();
-      console.log("[Lori 8.0] Companion override cleared — memoir answer detected.");
+      console.log("[Lori 9.0] Companion override cleared — memoir answer detected.");
     }
 
     // ── Memory Exercise fact-seed detection ──────────────────────
@@ -3124,7 +3124,7 @@ function _lv80InstallSafetyHook() {
           const parsed = JSON.parse(data);
           if (parsed.type === "start_turn" && parsed.message) {
             parsed.message += _wsContextBlock;
-            console.log(`[Lori 8.0] WS context injected — posture: ${_wsPosture}`);
+            console.log(`[Lori 9.0] WS context injected — posture: ${_wsPosture}`);
           }
           _origWsSend(JSON.stringify(parsed));
         } catch (e) {
@@ -3136,7 +3136,7 @@ function _lv80InstallSafetyHook() {
     return _origSend.apply(this, arguments);
   };
 
-  console.log("[Lori 8.0] Safety hook installed on sendUserMessage.");
+  console.log("[Lori 9.0] Safety hook installed on sendUserMessage.");
 }
 
 /* ── 6b. NON-MEMOIR CONCERN DETECTION ───────────────────────── */
@@ -3273,7 +3273,7 @@ function _lv80OnNonMemoirDetected(matchedPattern) {
     memoir_state:    _memoirState,
   });
   lv80UpdatePostureBadge();
-  console.log("[Lori 8.0] Non-memoir concern — companion posture active, extraction + idle suppressed.");
+  console.log("[Lori 9.0] Non-memoir concern — companion posture active, extraction + idle suppressed.");
 }
 
 /* ── 7. GOLDEN THREAD / MEMOIR SCROLL ───────────────────────── */
@@ -4498,7 +4498,7 @@ async function lv80Init() {
       if (event.newState === "open") {
         window.LorevoxBioBuilder?.render();
       } else if (event.newState === "closed") {
-        // v8.0 sync bridge: apply Bio Builder personal data to profile on close
+        // v9.0 sync bridge: apply Bio Builder personal data to profile on close
         // Does NOT auto-save — just updates hidden inputs so next saveProfile() picks them up
         if (typeof applyBioBuilderPersonalToProfile === "function") {
           applyBioBuilderPersonalToProfile();
@@ -4534,7 +4534,7 @@ async function lv80Init() {
   //    The welcome-back prompt is handled by lv80SwitchPerson() when the
   //    user explicitly picks a narrator from the selector.
 
-  console.log("[Lori 8.0] Shell initialised.");
+  console.log("[Lori 9.0] Shell initialised.");
 }
 </script>
 
