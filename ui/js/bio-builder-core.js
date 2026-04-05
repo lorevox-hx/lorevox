@@ -183,7 +183,8 @@
       };
     }
 
-    var sections = ["parents", "grandparents", "siblings", "children", "earlyMemories"];
+    // Phase Q+: added spouse to candidate rehydration pipeline
+    var sections = ["parents", "grandparents", "siblings", "children", "spouse", "earlyMemories"];
     var before = bb.candidates.people.length + bb.candidates.relationships.length + bb.candidates.memories.length;
     sections.forEach(function (s) {
       if (qq[s]) qqMod._extractQuestionnaireCandidates(s);

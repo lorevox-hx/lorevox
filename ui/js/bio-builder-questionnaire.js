@@ -71,6 +71,12 @@
     "Adoptive son", "Adoptive daughter", "Foster child", "Other"
   ];
 
+  /* Phase Q+: Unified relationship type options for spouse/partner section */
+  var RELATIONSHIP_TYPE_OPTIONS = [
+    "", "Spouse", "Partner", "Former Spouse", "Domestic Partner",
+    "Life Partner", "Common-Law Spouse", "Chosen Family", "Other"
+  ];
+
   /* ── Birth-order normalization map ──────────────────────────
      Maps numeric template values to the UI select labels.
      Also handles ordinals like "1st", "2nd", etc.
@@ -173,6 +179,7 @@
         { id: "birthDate",         label: "Birth Date",                    type: "text",     placeholder: "Enter birth date", helperText: "Use YYYY-MM-DD when known.", inputHelper: "normalizeDob" },
         { id: "birthPlace",        label: "Birth Place",                   type: "text",     inputHelper: "normalizePlace" },
         { id: "occupation",        label: "Occupation",                    type: "text" },
+        { id: "deceased",          label: "Deceased",                      type: "select",   options: ["No","Yes"] },
         { id: "notableLifeEvents", label: "Notable Life Events / Stories", type: "textarea" },
         { id: "notes",             label: "Additional Notes",              type: "textarea" }
       ]
@@ -182,8 +189,13 @@
       hint: "Ancestry, cultural background, memorable stories",
       repeatable: true, repeatLabel: "grandparent",
       fields: [
+        { id: "side",                label: "Side",                type: "select",   options: ["Paternal","Maternal","Paternal-maternal","Paternal-paternal","Maternal-maternal","Maternal-paternal","Unknown"] },
         { id: "firstName",           label: "First Name",          type: "text" },
+        { id: "middleName",          label: "Middle Name",         type: "text" },
         { id: "lastName",            label: "Last Name",           type: "text" },
+        { id: "maidenName",          label: "Maiden / Birth Name", type: "text",     placeholder: "if different from last name" },
+        { id: "birthDate",           label: "Birth Date",          type: "text",     placeholder: "Enter birth date", helperText: "Use YYYY-MM-DD when known.", inputHelper: "normalizeDob" },
+        { id: "birthPlace",          label: "Birth Place",         type: "text",     inputHelper: "normalizePlace" },
         { id: "ancestry",            label: "Ancestry",            type: "text" },
         { id: "culturalBackground",  label: "Cultural Background", type: "text" },
         { id: "memorableStories",    label: "Memorable Stories",   type: "textarea" }
@@ -198,6 +210,7 @@
         { id: "firstName",             label: "First Name",             type: "text" },
         { id: "middleName",            label: "Middle Name",            type: "text" },
         { id: "lastName",              label: "Last Name",              type: "text" },
+        { id: "maidenName",            label: "Maiden / Birth Name",    type: "text",     placeholder: "if different from last name" },
         { id: "birthOrder",            label: "Birth Order",            type: "select",   options: BIRTH_ORDER_OPTIONS },
         { id: "uniqueCharacteristics", label: "Unique Characteristics", type: "textarea" },
         { id: "sharedExperiences",     label: "Shared Experiences",     type: "textarea" },
@@ -217,6 +230,75 @@
         { id: "birthDate",  label: "Birth Date",   type: "text",     placeholder: "Enter birth date", helperText: "Use YYYY-MM-DD when known.", inputHelper: "normalizeDob" },
         { id: "birthPlace", label: "Birth Place",  type: "text",     inputHelper: "normalizePlace" },
         { id: "narrative",  label: "Notes / Narrative", type: "textarea" }
+      ]
+    },
+    /* ── Phase Q+: New sections ─── spouse, marriage, familyTraditions, pets, health, technology ─── */
+    {
+      id: "spouse", label: "Spouse / Partner", icon: "\u{1F491}",
+      hint: "Spouses, partners, and significant relationships",
+      repeatable: true, repeatLabel: "partner",
+      fields: [
+        { id: "relationshipType", label: "Relationship Type",    type: "select",   options: RELATIONSHIP_TYPE_OPTIONS },
+        { id: "firstName",        label: "First Name",           type: "text" },
+        { id: "middleName",       label: "Middle Name",          type: "text" },
+        { id: "lastName",         label: "Last Name",            type: "text" },
+        { id: "maidenName",       label: "Maiden / Birth Name",  type: "text",     placeholder: "if different from last name" },
+        { id: "birthDate",        label: "Birth Date",           type: "text",     placeholder: "Exact or approximate (e.g. around 1945)", helperText: "Exact dates normalized to YYYY-MM-DD. Approximate dates preserved as-is.", inputHelper: "normalizeDateSafe" },
+        { id: "birthPlace",       label: "Birth Place",          type: "text",     inputHelper: "normalizePlace" },
+        { id: "occupation",       label: "Occupation",           type: "text" },
+        { id: "deceased",         label: "Deceased",             type: "select",   options: ["","No","Yes"] },
+        { id: "narrative",        label: "Narrative / Notes",    type: "textarea" }
+      ]
+    },
+    {
+      id: "marriage", label: "Marriage & Union Details", icon: "\u{1F48D}",
+      hint: "Proposal stories, wedding details, partnership milestones",
+      repeatable: true, repeatLabel: "marriage/union",
+      fields: [
+        { id: "spouseReference",  label: "Spouse / Partner Name", type: "text",    placeholder: "Who is this marriage/union with?" },
+        { id: "marriageDate",     label: "Date",                  type: "text",    placeholder: "Exact or approximate", inputHelper: "normalizeDateSafe" },
+        { id: "proposalStory",    label: "Proposal Story",        type: "textarea" },
+        { id: "weddingDetails",   label: "Wedding / Union Details", type: "textarea" }
+      ]
+    },
+    {
+      id: "familyTraditions", label: "Family Traditions", icon: "\u{1F38A}",
+      hint: "Holiday customs, recipes, cultural practices, family rituals",
+      repeatable: true, repeatLabel: "tradition",
+      fields: [
+        { id: "description",  label: "Tradition Description",  type: "textarea" },
+        { id: "occasion",     label: "Occasion / Context",     type: "text" }
+      ]
+    },
+    {
+      id: "pets", label: "Pets & Animals", icon: "\u{1F43E}",
+      hint: "Beloved animals throughout life",
+      repeatable: true, repeatLabel: "pet",
+      fields: [
+        { id: "name",         label: "Name",          type: "text" },
+        { id: "species",      label: "Species",       type: "text",     placeholder: "Dog, Cat, Horse, etc." },
+        { id: "breed",        label: "Breed",         type: "text" },
+        { id: "birthDate",    label: "Birth Date",    type: "text",     inputHelper: "normalizeDateSafe" },
+        { id: "adoptionDate", label: "Adoption Date", type: "text",     inputHelper: "normalizeDateSafe" },
+        { id: "notes",        label: "Notes / Memories", type: "textarea" }
+      ]
+    },
+    {
+      id: "health", label: "Health & Wellness", icon: "\u{1FA7A}",
+      hint: "Health milestones, lifestyle changes, wellness reflections",
+      fields: [
+        { id: "healthMilestones", label: "Health Milestones",   type: "textarea" },
+        { id: "lifestyleChanges", label: "Lifestyle Changes",   type: "textarea" },
+        { id: "wellnessTips",     label: "Wellness Tips",       type: "textarea" }
+      ]
+    },
+    {
+      id: "technology", label: "Technology & Beliefs", icon: "\u{1F4F1}",
+      hint: "Tech experiences, gadgets, cultural practices, beliefs",
+      fields: [
+        { id: "firstTechExperience", label: "First Tech Experience",  type: "textarea" },
+        { id: "favoriteGadgets",     label: "Favorite Gadgets",       type: "textarea" },
+        { id: "culturalPractices",   label: "Cultural Practices",     type: "textarea" }
       ]
     },
     {
@@ -395,6 +477,28 @@
     if ((mm===10 && dd>=23) || (mm===11 && dd<=21)) return "Scorpio";
     if ((mm===11 && dd>=22) || (mm===12 && dd<=21)) return "Sagittarius";
     return "";
+  }
+
+  /* Phase Q+: Uncertainty-safe date normalizer
+     Normalizes exact dates (YYYY-MM-DD, MM/DD/YYYY etc.) but preserves
+     approximate/uncertain dates like "around 1945", "early 1960s",
+     "approximately 1914", "mid-1970s", year-only values like "1966" etc.
+  */
+  function normalizeDateSafe(raw) {
+    if (!raw) return "";
+    var s = raw.trim();
+    if (!s) return "";
+    // Already ISO? pass through
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // Approximate markers — preserve as-is
+    if (/^(around|about|approximately|approx\.?|circa|ca\.?|c\.?|early|mid|late|before|after)\s/i.test(s)) return s;
+    // Decade references — preserve as-is
+    if (/\d{4}s/.test(s)) return s;
+    // Year-only — preserve as-is (don't force to YYYY-01-01)
+    if (/^\d{4}$/.test(s)) return s;
+    // Try exact normalization
+    var normalized = normalizeDobInput(s);
+    return normalized;
   }
 
   function _splitFullName(full) {
@@ -590,13 +694,16 @@
     if (sectionId === "grandparents") {
       var gps = Array.isArray(q) ? q : [q];
       gps.forEach(function (gp) {
-        var name = [gp.firstName, gp.lastName].filter(Boolean).join(" ");
+        // Phase P: include middleName in candidate name, add enriched fields
+        var name = [gp.firstName, gp.middleName, gp.lastName].filter(Boolean).join(" ");
         if (!name) return;
         if (_candidateExists(bb, "people", name, "questionnaire:grandparents")) return;
         bb.candidates.people.push({
           id: _uid(), type: "person", source: "questionnaire:grandparents",
           sourceId: sectionId, sourceFilename: null,
-          data: { name: name, ancestry: gp.ancestry || "",
+          data: { name: name, side: gp.side || "", maidenName: gp.maidenName || "",
+                  birthDate: gp.birthDate || "", birthPlace: gp.birthPlace || "",
+                  ancestry: gp.ancestry || "",
                   culturalBackground: gp.culturalBackground || "",
                   notes: gp.memorableStories || "" },
           status: "pending"
@@ -642,6 +749,36 @@
               id: _uid(), type: "relationship", source: "questionnaire:children",
               sourceId: sectionId, sourceFilename: null,
               data: { personA: narratorName, personB: name, relation: ch.relation || "Child" },
+              status: "pending"
+            });
+          }
+        }
+      });
+    }
+
+    // Phase Q+: Spouse/Partner candidate extraction
+    if (sectionId === "spouse") {
+      var spouses = Array.isArray(q) ? q : [q];
+      spouses.forEach(function (sp) {
+        var name = [sp.firstName, sp.middleName, sp.lastName].filter(Boolean).join(" ");
+        if (!name) return;
+        if (_candidateExists(bb, "people", name, "questionnaire:spouse")) return;
+        bb.candidates.people.push({
+          id: _uid(), type: "person", source: "questionnaire:spouse",
+          sourceId: sectionId, sourceFilename: null,
+          data: { name: name, relationshipType: sp.relationshipType || "Spouse",
+                  maidenName: sp.maidenName || "",
+                  birthDate: sp.birthDate || "", birthPlace: sp.birthPlace || "",
+                  occupation: sp.occupation || "", notes: sp.narrative || "" },
+          status: "pending"
+        });
+        var narratorName = _currentPersonName();
+        if (narratorName && name) {
+          if (!_relCandidateExists(bb, narratorName, name)) {
+            bb.candidates.relationships.push({
+              id: _uid(), type: "relationship", source: "questionnaire:spouse",
+              sourceId: sectionId, sourceFilename: null,
+              data: { personA: narratorName, personB: name, relation: sp.relationshipType || "Spouse" },
               status: "pending"
             });
           }
@@ -723,9 +860,10 @@
 
     var sectionCards = SECTIONS.map(function (s) {
       var fillCount = _sectionFillCount(s);
+      // Phase Q+: sparse-safe rendering — "No information yet" instead of hidden/broken
       var progressHtml = s.repeatable
-        ? (fillCount > 0 ? '<span class="bb-pill bb-pill--has">' + fillCount + ' entr' + (fillCount === 1 ? "y" : "ies") + '</span>' : '<span class="bb-pill bb-pill--empty">Empty</span>')
-        : (fillCount > 0 ? '<span class="bb-pill bb-pill--has">' + fillCount + " / " + s.fields.length + ' filled</span>' : '<span class="bb-pill bb-pill--empty">Not started</span>');
+        ? (fillCount > 0 ? '<span class="bb-pill bb-pill--has">' + fillCount + ' entr' + (fillCount === 1 ? "y" : "ies") + '</span>' : '<span class="bb-pill bb-pill--empty">No information yet</span>')
+        : (fillCount > 0 ? '<span class="bb-pill bb-pill--has">' + fillCount + " / " + s.fields.length + ' filled</span>' : '<span class="bb-pill bb-pill--empty">No information yet</span>');
       return '<div class="bb-section-card" onclick="window.LorevoxBioBuilder._openSection(\'' + s.id + '\')">'
         + '<div class="bb-section-card-icon">' + s.icon + '</div>'
         + '<div class="bb-section-card-body">'
@@ -803,6 +941,8 @@
       blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'time\')"';
     } else if (field.inputHelper === "normalizePlace") {
       blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'place\')"';
+    } else if (field.inputHelper === "normalizeDateSafe") {
+      blurAttr = ' onblur="window.LorevoxBioBuilder._onNormalizeBlur(this,\'dateSafe\')"';
     }
 
     var deriveAttr = "";
@@ -834,6 +974,10 @@
       inputEl.value = normalized;
     } else if (kind === "place") {
       normalized = normalizePlaceInput(raw);
+      inputEl.value = normalized;
+    } else if (kind === "dateSafe") {
+      // Phase Q+: uncertainty-safe date normalization
+      normalized = normalizeDateSafe(raw);
       inputEl.value = normalized;
     }
   }
@@ -982,6 +1126,7 @@
     normalizeDobInput:             normalizeDobInput,
     normalizeTimeOfBirthInput:     normalizeTimeOfBirthInput,
     normalizePlaceInput:           normalizePlaceInput,
+    normalizeDateSafe:             normalizeDateSafe,
     normalizeBirthOrder:           normalizeBirthOrder,
     deriveZodiacFromDob:           deriveZodiacFromDob,
     buildCanonicalBasicsFromBioBuilder: buildCanonicalBasicsFromBioBuilder,

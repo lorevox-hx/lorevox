@@ -123,7 +123,7 @@
       zodiacSign:    p.zodiacSign    || ""
     };
 
-    // Parents (repeatable)
+    // Parents (repeatable) — Phase P: added deceased
     qq.d.parents = (tpl.parents || []).map(function (pr) {
       return {
         relation:          pr.relation          || "",
@@ -134,29 +134,39 @@
         birthDate:         pr.birthDate         || "",
         birthPlace:        pr.birthPlace        || "",
         occupation:        pr.occupation        || "",
+        deceased:          pr.deceased ? "Yes" : "No",
         notableLifeEvents: pr.notableLifeEvents || "",
         notes:             pr.notes             || ""
       };
     });
 
-    // Grandparents (repeatable)
+    // Grandparents (repeatable) — Phase P: added side, middleName, maidenName, birthDate, birthPlace
     qq.d.grandparents = (tpl.grandparents || []).map(function (gp) {
+      // Normalize side to title case (e.g. "maternal-maternal" → "Maternal-maternal")
+      var rawSide = (gp.side || "").trim();
+      var normSide = rawSide ? rawSide.charAt(0).toUpperCase() + rawSide.slice(1) : "";
       return {
+        side:               normSide,
         firstName:          gp.firstName          || "",
+        middleName:         gp.middleName         || "",
         lastName:           gp.lastName           || "",
+        maidenName:         gp.maidenName         || "",
+        birthDate:          gp.birthDate          || "",
+        birthPlace:         gp.birthPlace         || "",
         ancestry:           gp.ancestry           || "",
         culturalBackground: gp.culturalBackground || "",
         memorableStories:   gp.memorableStories   || ""
       };
     });
 
-    // Siblings (repeatable)
+    // Siblings (repeatable) — Phase P: added maidenName
     qq.d.siblings = (tpl.siblings || []).map(function (sb) {
       return {
         relation:              sb.relation              || "",
         firstName:             sb.firstName             || "",
         middleName:            sb.middleName            || "",
         lastName:              sb.lastName              || "",
+        maidenName:            sb.maidenName            || "",
         birthOrder:            _normBirthOrder(sb.birthOrder),
         uniqueCharacteristics: sb.uniqueCharacteristics || "",
         sharedExperiences:     sb.sharedExperiences     || "",
@@ -177,6 +187,86 @@
         narrative:  ch.narrative || ch.notes || ""
       };
     });
+
+    // Phase Q+: Spouse/Partner (repeatable, array-first)
+    // Normalize to array form: tpl.spouse may be object (single) or array (multiple)
+    var spouseArr = Array.isArray(tpl.spouse) ? tpl.spouse : (tpl.spouse ? [tpl.spouse] : []);
+    qq.d.spouse = spouseArr.filter(function (sp) {
+      // Skip entirely empty spouse objects (sparse narrators)
+      return sp.firstName || sp.lastName || sp.narrative;
+    }).map(function (sp) {
+      return {
+        relationshipType: sp.relationshipType || "Spouse",
+        firstName:        sp.firstName        || "",
+        middleName:       sp.middleName       || "",
+        lastName:         sp.lastName          || "",
+        maidenName:       sp.maidenName        || "",
+        birthDate:        sp.birthDate         || "",
+        birthPlace:       sp.birthPlace        || "",
+        occupation:       sp.occupation        || "",
+        deceased:         sp.deceased ? "Yes" : (sp.deceased === false ? "No" : ""),
+        narrative:        sp.narrative          || ""
+      };
+    });
+
+    // Phase Q+: Marriage / Union Details (repeatable, array-first)
+    // Normalize: tpl.marriage may be object (single) or array (multiple)
+    var marriageArr = Array.isArray(tpl.marriage) ? tpl.marriage : (tpl.marriage ? [tpl.marriage] : []);
+    qq.d.marriage = marriageArr.filter(function (m) {
+      return m.proposalStory || m.weddingDetails;
+    }).map(function (m, idx) {
+      // Try to derive spouseReference from the corresponding spouse entry
+      var spRef = "";
+      if (spouseArr[idx]) {
+        spRef = [spouseArr[idx].firstName, spouseArr[idx].lastName].filter(Boolean).join(" ");
+      }
+      return {
+        spouseReference: m.spouseReference || spRef || "",
+        marriageDate:    m.marriageDate    || "",
+        proposalStory:   m.proposalStory   || "",
+        weddingDetails:  m.weddingDetails  || ""
+      };
+    });
+
+    // Phase Q+: Family Traditions (repeatable)
+    qq.d.familyTraditions = (tpl.familyTraditions || []).filter(function (ft) {
+      return ft.description || ft.occasion;
+    }).map(function (ft) {
+      return {
+        description: ft.description || "",
+        occasion:    ft.occasion    || ""
+      };
+    });
+
+    // Phase Q+: Pets (repeatable) — also goes into questionnaire for editing
+    qq.d.pets = (tpl.pets || []).filter(function (pt) {
+      return pt.name || pt.species || pt.notes;
+    }).map(function (pt) {
+      return {
+        name:         pt.name         || "",
+        species:      pt.species      || "",
+        breed:        pt.breed        || "",
+        birthDate:    pt.birthDate    || "",
+        adoptionDate: pt.adoptionDate || "",
+        notes:        pt.notes        || ""
+      };
+    });
+
+    // Phase Q+: Health & Wellness
+    var hl = tpl.health || {};
+    qq.d.health = {
+      healthMilestones: hl.healthMilestones || "",
+      lifestyleChanges: hl.lifestyleChanges || "",
+      wellnessTips:     hl.wellnessTips     || ""
+    };
+
+    // Phase Q+: Technology & Beliefs
+    var tech = tpl.technology || {};
+    qq.d.technology = {
+      firstTechExperience: tech.firstTechExperience || "",
+      favoriteGadgets:     tech.favoriteGadgets     || "",
+      culturalPractices:   tech.culturalPractices   || ""
+    };
 
     // Early Memories
     var em = tpl.earlyMemories || {};
@@ -317,16 +407,20 @@
       kinship.push(entry);
     });
 
-    // Spouse — Phase L: normalize to array-form for multi-spouse templates
+    // Spouse — Phase Q+: unified relationship model with type support
     var spouseArr = Array.isArray(tpl.spouse) ? tpl.spouse : (tpl.spouse ? [tpl.spouse] : []);
     spouseArr.forEach(function (sp) {
-      if (!sp.firstName) return;
+      if (!sp.firstName && !sp.lastName && !sp.narrative) return;
       kinship.push({
-        name:       [sp.firstName, sp.middleName, sp.lastName].filter(Boolean).join(" "),
-        relation:   "Spouse",
-        pob:        sp.birthPlace || "",
-        occupation: sp.occupation || "",
-        deceased:   !!sp.deceased
+        name:             [sp.firstName, sp.middleName, sp.lastName].filter(Boolean).join(" "),
+        relation:         sp.relationshipType || "Spouse",
+        relationshipType: sp.relationshipType || "Spouse",
+        pob:              sp.birthPlace  || "",
+        occupation:       sp.occupation  || "",
+        deceased:         !!sp.deceased,
+        birthDate:        sp.birthDate   || "",
+        maidenName:       sp.maidenName  || "",
+        narrative:        sp.narrative   || ""
       });
     });
 
@@ -365,14 +459,15 @@
       });
     });
 
-    // Pets
+    // Pets — Phase P: added notes
     var pets = (tpl.pets || []).map(function (pt) {
       return {
         name:     pt.name    || "",
         species:  pt.species || "",
         breed:    pt.breed   || "",
         born:     pt.birthDate    || "",
-        adopted:  pt.adoptionDate || ""
+        adopted:  pt.adoptionDate || "",
+        notes:    pt.notes        || ""
       };
     });
 
@@ -400,7 +495,8 @@
         if (bb) {
           // Hydrate bb.questionnaire from the just-saved sections
           if (!bb.questionnaire) bb.questionnaire = {};
-          var sectionsToExtract = ["parents", "grandparents", "siblings", "children", "earlyMemories"];
+          // Phase Q+: added spouse to candidate extraction pipeline
+          var sectionsToExtract = ["parents", "grandparents", "siblings", "children", "spouse", "earlyMemories"];
           sectionsToExtract.forEach(function (sectionId) {
             if (qqSections[sectionId]) {
               bb.questionnaire[sectionId] = qqSections[sectionId];
@@ -523,6 +619,16 @@
       // localStorage format: { v:1, d:{flat sections} }
       localStorage.setItem("lorevox_qq_draft_" + pid, JSON.stringify({ v: 1, d: qqSections }));
 
+      // Phase Q+: hydrate in-memory bb.questionnaire so UI reflects new data immediately
+      var coreMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.core;
+      if (coreMod && typeof coreMod._bb === "function") {
+        var bb = coreMod._bb();
+        if (bb) {
+          bb.questionnaire = qqSections;
+          console.log("[preload] ✅ In-memory bb.questionnaire hydrated with " + Object.keys(qqSections).length + " sections");
+        }
+      }
+
       // Phase L: Post-preload candidate extraction —
       // Run the same extraction pipeline that manual section save uses,
       // so preloaded narrators have usable candidates immediately.
@@ -593,6 +699,17 @@
         console.warn("[preload] ⚠ Backend QQ save failed (existing)", e);
       }
       localStorage.setItem("lorevox_qq_draft_" + pid, JSON.stringify({ v: 1, d: qqSections }));
+
+      // Phase Q+: hydrate in-memory bb.questionnaire so UI reflects new data immediately
+      // Without this, the stale backend data from loadPerson() would remain in memory.
+      var coreMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.core;
+      if (coreMod && typeof coreMod._bb === "function") {
+        var bb = coreMod._bb();
+        if (bb) {
+          bb.questionnaire = qqSections;
+          console.log("[preload] ✅ In-memory bb.questionnaire hydrated with " + Object.keys(qqSections).length + " sections");
+        }
+      }
 
       // Phase L: post-preload candidate extraction
       _postPreloadExtractCandidates(pid, qqSections);
