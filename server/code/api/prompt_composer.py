@@ -215,6 +215,65 @@ def _safe_json(obj: Any) -> str:
         return "{}"
 
 
+def _known_identity_facts_block(runtime71: Optional[Dict[str, Any]]) -> str:
+    """Compact verified identity facts for the current turn.
+
+    BUG-LG-01 fix: These facts are rendered at prompt-level so the LLM
+    treats them as authoritative ground truth rather than inventing
+    alternatives (e.g. saying 'Abilene, Kansas' when POB is Spokane, WA).
+    """
+    rt = runtime71 or {}
+
+    speaker_name = (rt.get("speaker_name") or "").strip()
+    dob = str(rt.get("dob") or "").strip()
+    pob = str(rt.get("pob") or rt.get("place_of_birth") or "").strip()
+
+    facts: list[str] = []
+    if speaker_name:
+        facts.append(f"- Name: {speaker_name}")
+    if dob:
+        facts.append(f"- Date of birth: {dob}")
+    if pob:
+        facts.append(f"- Place of birth: {pob}")
+
+    if not facts:
+        return "KNOWN IDENTITY FACTS:\n- none yet"
+
+    return "KNOWN IDENTITY FACTS:\n" + "\n".join(facts)
+
+
+def _identity_grounding_rules_block(runtime71: Optional[Dict[str, Any]]) -> str:
+    """Hard anti-hallucination rules for narrator identity facts.
+
+    BUG-LG-01 fix: Prevents Lori from inventing alternate birthplace,
+    birth date, or name when verified facts exist in runtime71.
+    """
+    rt = runtime71 or {}
+
+    speaker_name = (rt.get("speaker_name") or "").strip()
+    dob = str(rt.get("dob") or "").strip()
+    pob = str(rt.get("pob") or rt.get("place_of_birth") or "").strip()
+
+    if not (speaker_name or dob or pob):
+        return (
+            "IDENTITY GROUNDING RULES:\n"
+            "- No verified identity facts are available yet.\n"
+            "- Do not guess the narrator's name, birthplace, birth date, age, or other core identity facts.\n"
+            "- If you need a missing identity fact, ask for it gently instead of inventing it."
+        )
+
+    return (
+        "IDENTITY GROUNDING RULES:\n"
+        "- Verified identity facts in KNOWN IDENTITY FACTS are authoritative for this turn.\n"
+        "- If you mention the narrator's name, birthplace, or birth date, use the verified fact exactly as written.\n"
+        "- Never substitute a different city, state, year, age, or biographical detail when a verified fact exists.\n"
+        "- Never 'improve', normalize, or guess a more likely birthplace or personal detail.\n"
+        "- If a fact is missing, ask warmly and briefly instead of guessing.\n"
+        "- You may mention a verified identity fact naturally, but only when it helps the conversation.\n"
+        "- Do not sound mechanical or repetitive; stay warm and conversational."
+    )
+
+
 def compose_system_prompt(
     conv_id: str,
     ui_system: Optional[str] = None,
@@ -308,6 +367,12 @@ def compose_system_prompt(
 
     # v7.1 — inject runtime directive block when the UI supplies runtime context
     if runtime71:
+        # BUG-LG-01 — Identity grounding: inject verified narrator facts and
+        # anti-hallucination rules BEFORE any role/pass directives so the model
+        # sees them first and treats them as ground truth.
+        parts.append(_known_identity_facts_block(runtime71))
+        parts.append(_identity_grounding_rules_block(runtime71))
+
         current_pass   = runtime71.get("current_pass", "pass1") or "pass1"
         current_era    = runtime71.get("current_era") or "not yet set"
         current_mode   = runtime71.get("current_mode", "open") or "open"
@@ -526,6 +591,7 @@ def compose_system_prompt(
                 "RULES:\n"
                 "  - Ask for exactly ONE thing per turn. Do not combine questions.\n"
                 "  - Do NOT skip ahead. Follow the sequence strictly.\n"
+                "  - If a verified identity fact already exists in KNOWN IDENTITY FACTS, use it exactly — do not invent an alternative.\n"
                 "  - Do NOT ask about memories, childhood, family, or life events.\n"
                 "  - Be warm, patient, and conversational — one question at a time."
             )
@@ -612,6 +678,9 @@ def compose_system_prompt(
                     "The identity anchors are confirmed. Now build a warm conversational profile "
                     "BEFORE beginning the deeper life-story interview.\n"
                     f"{_known_str}\n"
+                    "GROUNDING RULE:\n"
+                    "  - When greeting or referring to known narrator facts, use only the verified facts from KNOWN IDENTITY FACTS.\n"
+                    "  - Never invent an alternate birthplace, birth date, or personal fact.\n"
                     "GOAL: Gather the following 10 facts, one per turn, in natural conversation. "
                     "Check the conversation history — do NOT re-ask anything already answered.\n"
                     "\n"
