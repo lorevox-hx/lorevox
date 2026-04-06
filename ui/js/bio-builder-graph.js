@@ -178,9 +178,56 @@
      GRAPH RELATIONSHIP OPERATIONS
   ─────────────────────────────────────────────────────────── */
 
+  /**
+   * Phase Q.2: Detect impossible lineage cycles.
+   * Returns true if adding an edge of relType from→to would create
+   * a direct parent-child cycle (A is both parent and child of B).
+   */
+  function _wouldCreateCycle(g, fromId, toId, relType) {
+    if (!g || !fromId || !toId) return false;
+    // Self-loop: a person cannot be their own parent or child
+    if (fromId === toId && (relType === "parent" || relType === "child")) return true;
+    // Only check lineage-sensitive types
+    if (relType !== "parent" && relType !== "child") return false;
+
+    var rels = Object.values(g.relationships);
+    if (relType === "parent") {
+      // Adding fromId as parent of toId — check if toId is already a parent of fromId
+      var reverse = rels.some(function (r) {
+        return r.relationshipType === "parent" && r.fromPersonId === toId && r.toPersonId === fromId;
+      });
+      if (reverse) return true;
+      // Also check child direction: is fromId already a child of toId?
+      var childReverse = rels.some(function (r) {
+        return r.relationshipType === "child" && r.fromPersonId === toId && r.toPersonId === fromId;
+      });
+      if (childReverse) return true;
+    }
+    if (relType === "child") {
+      // Adding fromId as parent-of-child toId — check reverse
+      var reverse = rels.some(function (r) {
+        return r.relationshipType === "child" && r.fromPersonId === toId && r.toPersonId === fromId;
+      });
+      if (reverse) return true;
+      var parentReverse = rels.some(function (r) {
+        return r.relationshipType === "parent" && r.fromPersonId === toId && r.toPersonId === fromId;
+      });
+      if (parentReverse) return true;
+    }
+    return false;
+  }
+
   function upsertRelationship(opts) {
     var g = _ensureGraph(); if (!g) return null;
     var id = opts.id || _stableRelId(opts.fromPersonId, opts.toPersonId, opts.relationshipType);
+
+    // Phase Q.2: Block impossible lineage cycles
+    if (_wouldCreateCycle(g, opts.fromPersonId, opts.toPersonId, opts.relationshipType)) {
+      console.warn("[bb-graph] ⚠ BLOCKED: impossible cycle detected — " +
+        opts.fromPersonId + " → " + opts.toPersonId + " as " + opts.relationshipType +
+        ". A direct parent-child cycle is not allowed.");
+      return null;
+    }
 
     var existing = g.relationships[id] || {};
     g.relationships[id] = {

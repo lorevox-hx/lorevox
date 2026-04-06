@@ -1,0 +1,274 @@
+{
+  "_template": "Lorevox 9.0 Narrator Preload",
+  "_narrator": "Donald John Trump",
+  "_version": 2,
+
+  "personal": {
+    "fullName": "Donald John Trump",
+    "preferredName": "Donald",
+    "legalFirstName": "Donald",
+    "legalMiddleName": "John",
+    "legalLastName": "Trump",
+    "dateOfBirth": "1946-06-14",
+    "timeOfBirth": "",
+    "placeOfBirth": "Jamaica Hospital, Queens, New York",
+    "birthOrder": "4",
+    "zodiacSign": "Gemini",
+    "pronouns": "he/him",
+    "culture": "German-Scottish American",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Father",
+      "firstName": "Frederick",
+      "middleName": "Christ",
+      "lastName": "Trump",
+      "maidenName": "",
+      "birthDate": "1905-10-11",
+      "birthPlace": "The Bronx, New York",
+      "occupation": "Real estate developer",
+      "deceased": true,
+      "notableLifeEvents": "Built middle-income housing in Queens and Brooklyn. Founded Elizabeth Trump & Son. Became one of the largest landlords in New York City.",
+      "notes": "Son of German immigrant Friedrich Trump."
+    },
+    {
+      "relation": "Mother",
+      "firstName": "Mary",
+      "middleName": "Anne",
+      "lastName": "Trump",
+      "maidenName": "MacLeod",
+      "birthDate": "1912-05-10",
+      "birthPlace": "Tong, Isle of Lewis, Scotland",
+      "occupation": "Homemaker, philanthropist",
+      "deceased": true,
+      "notableLifeEvents": "Emigrated from Scotland to New York in 1930. Met Fred Trump at a dance. Active in charity work throughout her life. Naturalized citizen in 1942.",
+      "notes": "Scottish immigrant. Gaelic speaker in childhood."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "paternal",
+      "firstName": "Friedrich",
+      "lastName": "Trump",
+      "ancestry": "German (Bavarian)",
+      "culturalBackground": "Emigrated from Kallstadt, Bavaria, Germany to the United States in 1885",
+      "memorableStories": "Emigrated at age 16, ran restaurants and boarding houses in the Pacific Northwest during the Klondike Gold Rush before settling in New York."
+    },
+    {
+      "side": "maternal",
+      "firstName": "Malcolm",
+      "lastName": "MacLeod",
+      "ancestry": "Scottish",
+      "culturalBackground": "Gaelic-speaking fisherman from the Isle of Lewis, Scotland",
+      "memorableStories": "Worked as a fisherman in the Scottish Outer Hebrides."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Sister",
+      "firstName": "Maryanne",
+      "middleName": "",
+      "lastName": "Trump Barry",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "Became a federal judge on the U.S. Court of Appeals",
+      "sharedExperiences": "Grew up together in Jamaica Estates, Queens",
+      "memories": "",
+      "notes": "Eldest sibling"
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Frederick",
+      "middleName": "Christ",
+      "lastName": "Trump Jr.",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Wanted to be a pilot, worked briefly for Trans World Airlines",
+      "sharedExperiences": "Fred Jr. was seven years older. His struggles with alcoholism deeply affected the family.",
+      "memories": "",
+      "notes": "Deceased 1981. His death shaped Donald's views on alcohol — Donald has said he does not drink."
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Elizabeth",
+      "middleName": "",
+      "lastName": "Trump Grau",
+      "birthOrder": "3",
+      "uniqueCharacteristics": "Worked as a banker at Chase Manhattan",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": ""
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Robert",
+      "middleName": "Stewart",
+      "lastName": "Trump",
+      "birthOrder": "5",
+      "uniqueCharacteristics": "Worked in real estate and business",
+      "sharedExperiences": "Robert worked in the Trump Organization",
+      "memories": "",
+      "notes": "Deceased 2020"
+    }
+  ],
+
+  "spouse": [
+    {
+      "relationshipType": "Former Spouse",
+      "firstName": "Ivana",
+      "middleName": "Marie",
+      "lastName": "Trump",
+      "maidenName": "Zelnickova",
+      "birthDate": "1949-02-20",
+      "birthPlace": "Gottwaldov, Czechoslovakia",
+      "occupation": "Businesswoman, fashion designer, author",
+      "narrative": "Married in 1977. Ivana was a competitive skier and model from Czechoslovakia. She worked within the Trump Organization, managing the Plaza Hotel and other properties. They had three children together. Divorced in 1992.",
+      "deceased": true
+    },
+    {
+      "relationshipType": "Former Spouse",
+      "firstName": "Marla",
+      "middleName": "Ann",
+      "lastName": "Maples",
+      "maidenName": "",
+      "birthDate": "1963-10-27",
+      "birthPlace": "Dalton, Georgia",
+      "occupation": "Actress, television personality",
+      "narrative": "Married December 1993. Marla was an actress and TV personality from Georgia. They had one daughter together. Divorced in 1999.",
+      "deceased": false
+    },
+    {
+      "relationshipType": "Spouse",
+      "firstName": "Melania",
+      "middleName": "",
+      "lastName": "Trump",
+      "maidenName": "Knauss",
+      "birthDate": "1970-04-26",
+      "birthPlace": "Novo Mesto, Slovenia",
+      "occupation": "Former model, businesswoman",
+      "narrative": "Met at a Fashion Week party in 1998. Married January 2005 at Mar-a-Lago. Melania is a former model from Slovenia who speaks five languages. They have one son together.",
+      "deceased": false
+    }
+  ],
+
+  "marriage": [
+    {
+      "spouseReference": "Ivana Trump",
+      "marriageDate": "1977-04-07",
+      "proposalStory": "",
+      "weddingDetails": "Married in 1977 at Marble Collegiate Church in Manhattan."
+    },
+    {
+      "spouseReference": "Marla Maples",
+      "marriageDate": "1993-12-20",
+      "proposalStory": "",
+      "weddingDetails": "Married December 1993 at the Plaza Hotel in New York City."
+    },
+    {
+      "spouseReference": "Melania Trump",
+      "marriageDate": "2005-01-22",
+      "proposalStory": "",
+      "weddingDetails": "Married January 22, 2005, at the Episcopal Church of Bethesda-by-the-Sea in Palm Beach, reception at Mar-a-Lago."
+    }
+  ],
+
+  "children": [
+    {
+      "firstName": "Donald",
+      "middleName": "John",
+      "lastName": "Trump Jr.",
+      "birthDate": "1977-12-31",
+      "birthPlace": "New York City",
+      "notes": "Eldest son, from first marriage to Ivana. Business executive."
+    },
+    {
+      "firstName": "Ivanka",
+      "middleName": "Marie",
+      "lastName": "Trump",
+      "birthDate": "1981-10-30",
+      "birthPlace": "New York City",
+      "notes": "From first marriage to Ivana. Businesswoman and former White House adviser."
+    },
+    {
+      "firstName": "Eric",
+      "middleName": "Frederick",
+      "lastName": "Trump",
+      "birthDate": "1984-01-06",
+      "birthPlace": "New York City",
+      "notes": "From first marriage to Ivana. Business executive."
+    },
+    {
+      "firstName": "Tiffany",
+      "middleName": "Ariana",
+      "lastName": "Trump",
+      "birthDate": "1993-10-13",
+      "birthPlace": "West Palm Beach, Florida",
+      "notes": "From second marriage to Marla Maples."
+    },
+    {
+      "firstName": "Barron",
+      "middleName": "William",
+      "lastName": "Trump",
+      "birthDate": "2006-03-20",
+      "birthPlace": "New York City",
+      "notes": "From third marriage to Melania."
+    }
+  ],
+
+  "familyTraditions": [
+    {
+      "description": "Holiday gatherings at Mar-a-Lago in Palm Beach, Florida",
+      "occasion": "Christmas and New Year's"
+    }
+  ],
+
+  "pets": [],
+
+  "earlyMemories": {
+    "firstMemory": "Growing up in the Trump family home in Jamaica Estates, Queens, a large Tudor-style house.",
+    "favoriteToy": "",
+    "significantEvent": "Attending the New York Military Academy at age 13 after behavioral issues at Kew-Forest School."
+  },
+
+  "education": {
+    "schooling": "Kew-Forest School in Forest Hills, Queens. New York Military Academy in Cornwall-on-Hudson from 1959 to 1964.",
+    "higherEducation": "Fordham University for two years, then transferred to the Wharton School at the University of Pennsylvania. Graduated 1968 with a BS in Economics.",
+    "earlyCareer": "Joined father Fred Trump's real estate business, Elizabeth Trump & Son, after graduation.",
+    "careerProgression": "Expanded from residential real estate in Brooklyn and Queens to Manhattan development. Built Trump Tower (1983), casinos in Atlantic City, and expanded into branding, media, and politics. Elected 45th President of the United States in 2016.",
+    "communityInvolvement": "",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "",
+    "lifeLessons": "",
+    "adviceForFutureGenerations": ""
+  },
+
+  "hobbies": {
+    "hobbies": "Golf, media, real estate",
+    "worldEvents": "",
+    "personalChallenges": "",
+    "travel": "Residences in New York City, Palm Beach, and Bedminster, New Jersey."
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "Does not drink alcohol or smoke. Has attributed this to the impact of his brother Fred Jr.'s death from alcoholism.",
+    "wellnessTips": ""
+  },
+
+  "technology": {
+    "firstTechExperience": "",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "",
+    "messagesForFutureGenerations": ""
+  }
+}

@@ -8,7 +8,14 @@
     "audit:smoke": "playwright test tests/e2e/lorevox-smoke-flow.spec.ts",
     "audit:all": "playwright test",
     "audit:headed": "playwright test --headed",
-    "audit:report": "playwright show-report"
+    "audit:report": "playwright show-report",
+    "test:break": "playwright test tests/e2e/relationship-graph-break.spec.ts",
+    "test:break:headed": "playwright test tests/e2e/relationship-graph-break.spec.ts --headed",
+    "test:timeline": "playwright test tests/e2e/timeline-integrity.spec.ts",
+    "test:memory": "playwright test tests/e2e/focus-canvas-behavior.spec.ts",
+    "test:projection": "playwright test tests/e2e/projection-integrity.spec.ts",
+    "test:q3": "playwright test tests/e2e/timeline-integrity.spec.ts tests/e2e/focus-canvas-behavior.spec.ts tests/e2e/projection-integrity.spec.ts",
+    "test:q3:headed": "playwright test tests/e2e/timeline-integrity.spec.ts tests/e2e/focus-canvas-behavior.spec.ts tests/e2e/projection-integrity.spec.ts --headed"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

@@ -6,6 +6,132 @@
 ═══════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════
+   CHAT READINESS GATE — Phase Q.4
+   Ensures Lori never speaks before the LLM is actually loaded and warm.
+   The gate blocks onboarding, system prompts, and user chat sends
+   until /api/warmup confirms the model can generate tokens.
+═══════════════════════════════════════════════════════════════ */
+let _llmReady = false;
+let _llmWarmupPolling = false;
+
+/** True once the model has completed warmup and can generate. */
+function isLlmReady() { return _llmReady; }
+// Expose for tests and console inspection
+window.isLlmReady = isLlmReady;
+
+/** Allow tests to force the readiness flag (e.g., for offline/headless testing). */
+function _forceModelReady() {
+  _llmReady = true;
+  _setWarmupBanner(false);
+  pill("pillChat", true);
+  const ci = document.getElementById("chatInput");
+  if (ci) { ci.disabled = false; ci.placeholder = "Type or speak…"; }
+  const sendBtn = document.getElementById("lv80SendBtn");
+  if (sendBtn) sendBtn.disabled = false;
+  console.log("[readiness] _forceModelReady — gate forced open.");
+}
+window._forceModelReady = _forceModelReady;
+
+/** Show/hide the warmup banner overlay. */
+function _setWarmupBanner(visible, message) {
+  const banner = document.getElementById("lv80WarmupBanner");
+  if (!banner) return;
+  if (visible) {
+    banner.querySelector(".warmup-msg").textContent = message || "Lorevox is warming up…";
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
+/**
+ * Poll /api/warmup until the model is loaded and can generate.
+ * Resolves when ready. Shows UI feedback during the wait.
+ */
+async function pollModelReady() {
+  if (_llmReady) return;
+  if (_llmWarmupPolling) return; // prevent duplicate poll loops
+  _llmWarmupPolling = true;
+
+  const POLL_INTERVAL = 5000;  // 5s between attempts
+  const MAX_WAIT      = 300000; // 5 minutes max
+  const startedAt     = Date.now();
+
+  _setWarmupBanner(true, "Lorevox is warming up — model loading…");
+  pill("pillChat", false);
+
+  // Disable chat input during warmup
+  const ci = document.getElementById("chatInput");
+  if (ci) { ci.disabled = true; ci.placeholder = "Model loading — chat will be available shortly…"; }
+  const sendBtn = document.getElementById("lv80SendBtn");
+  if (sendBtn) sendBtn.disabled = true;
+
+  while (!_llmReady && (Date.now() - startedAt) < MAX_WAIT) {
+    try {
+      const res = await fetch(API.WARMUP, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "Hello", max_new_tokens: 4 }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (res.ok) {
+        const j = await res.json();
+        if (j.ok) {
+          _llmReady = true;
+          console.log("[readiness] Model warm and ready.", j.latency ? `Latency: ${j.latency}s` : "");
+          break;
+        }
+      } else if (res.status === 507) {
+        // CUDA OOM — fatal, stop polling
+        console.error("[readiness] CUDA OOM during warmup — model cannot load.");
+        _setWarmupBanner(true, "GPU memory error — please restart the backend.");
+        _llmWarmupPolling = false;
+        return;
+      }
+    } catch (e) {
+      // Network error or timeout — backend not up yet, keep polling
+      console.log("[readiness] Warmup poll failed (backend likely still loading):", e.message || e);
+    }
+
+    // Update banner with elapsed time
+    const elapsed = Math.round((Date.now() - startedAt) / 1000);
+    _setWarmupBanner(true, `Lorevox is warming up — model loading… (${elapsed}s)`);
+
+    await new Promise(r => setTimeout(r, POLL_INTERVAL));
+  }
+
+  _llmWarmupPolling = false;
+
+  if (_llmReady) {
+    _setWarmupBanner(false);
+    pill("pillChat", true);
+    // Re-enable chat input
+    if (ci) { ci.disabled = false; ci.placeholder = "Type or speak…"; }
+    if (sendBtn) sendBtn.disabled = false;
+    // Fire deferred startup actions
+    _onModelReady();
+  } else {
+    console.warn("[readiness] Model did not become ready within 5 minutes.");
+    _setWarmupBanner(true, "Model warmup timed out — please check the backend.");
+  }
+}
+
+/** Called once when model transitions to ready. Triggers deferred onboarding/narrator flow. */
+function _onModelReady() {
+  console.log("[readiness] _onModelReady — firing deferred startup.");
+  const _deviceOnboarded = localStorage.getItem("lorevox_device_onboarded");
+  if (!_deviceOnboarded) {
+    console.log("[readiness] New device detected — starting welcome onboarding (deferred).");
+    setTimeout(startIdentityOnboarding, 400);
+  } else {
+    console.log("[readiness] Returning device — opening narrator selector (deferred).");
+    setTimeout(() => {
+      if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
+    }, 400);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════ */
 window.onload = async () => {
@@ -44,21 +170,11 @@ window.onload = async () => {
   _enforceBlankStartupState();
   console.log("[startup] v8.1 — blank state enforced. User must select a narrator.");
 
-  // v8.1 NEW-USER DETECTION: Check per-device onboarding flag.
-  // If this device has never completed onboarding, show the welcome flow
-  // regardless of how many narrators exist in the backend (preloaded templates etc.)
-  const _deviceOnboarded = localStorage.getItem("lorevox_device_onboarded");
-  if (!_deviceOnboarded) {
-    console.log("[startup] New device detected — starting welcome onboarding.");
-    setTimeout(startIdentityOnboarding, 800);
-  } else {
-    // Returning device — open narrator selector so they can pick who to talk to.
-    // lv80Init() → lv80LoadPeople() will render the narrator cards.
-    console.log("[startup] Returning device — narrator selector will open.");
-    setTimeout(() => {
-      if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
-    }, 800);
-  }
+  // Phase Q.4: READINESS GATE — defer onboarding/narrator-selection until
+  // the LLM is actually loaded and warm. This prevents trust-breaking behavior
+  // where Lori speaks with raw-model identity before the fine-tuned model is ready.
+  // _onModelReady() will fire the appropriate startup flow once warm.
+  pollModelReady();
 
   // Step 3 — log device context block on every session start for diagnostics.
   const _dc = {
@@ -117,6 +233,10 @@ function _enforceBlankStartupState() {
 
   // v8.0 FIX: Also scan for and remove orphaned narrator-scoped keys
   // that point to narrators no longer in the backend.
+  // NOTE: lorevox.spine.* keys are intentionally PRESERVED here so that
+  // loadPerson → loadSpineLocal can restore the timeline after reload.
+  // Spine cleanup for deleted/stale narrators is handled by
+  // _invalidateStaleNarrator() and the narrator-delete flow.
   try {
     const keys = Object.keys(localStorage);
     for (let i = 0; i < keys.length; i++) {
@@ -124,7 +244,6 @@ function _enforceBlankStartupState() {
       if (k.startsWith("lorevox_offline_profile_") ||
           k.startsWith("lorevox_proj_draft_") ||
           k.startsWith("lorevox_qq_draft_") ||
-          k.startsWith("lorevox.spine.") ||
           k.startsWith("lv_done_") ||
           k.startsWith("lv_segs_") ||
           // FIX-9: Also clean up FT draft, LT draft, deleted narrator backup, and draft PIDs
@@ -1947,6 +2066,11 @@ function _isHelpIntent(text){
 async function sendUserMessage(){
   unlockAudio();
   const text=getv("chatInput").trim(); if(!text) return;
+  // Phase Q.4: Block user sends while model is still warming up
+  if (!_llmReady) {
+    appendBubble("ai", "Lorevox is still warming up — please wait a moment for the model to finish loading.");
+    return;
+  }
   // v7.4D — Phase 7: capture for post-reply fact extraction.
   _lastUserTurn = text;
   // v7.4D — stop recording immediately on send so we don't capture background
@@ -2046,6 +2170,11 @@ async function sendUserMessage(){
 }
 
 async function sendSystemPrompt(instruction){
+  // Phase Q.4: Block system prompts (onboarding, interview) while model is warming
+  if (!_llmReady) {
+    console.warn("[readiness] sendSystemPrompt blocked — model not ready yet.");
+    return;
+  }
   const bubble=appendBubble("ai","…");
   if(ws&&wsReady&&!usingFallback){
     const _rt71sys = buildRuntime71(); // capture before thinking resets badge

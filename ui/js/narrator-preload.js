@@ -620,12 +620,14 @@
       localStorage.setItem("lorevox_qq_draft_" + pid, JSON.stringify({ v: 1, d: qqSections }));
 
       // Phase Q+: hydrate in-memory bb.questionnaire so UI reflects new data immediately
+      // Phase Q.2 FIX: also set bb.personId so syncFromQuestionnaire() can generate stable IDs
       var coreMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.core;
       if (coreMod && typeof coreMod._bb === "function") {
         var bb = coreMod._bb();
         if (bb) {
+          bb.personId = pid;  // Q.2: required for graph sync — was missing, causing silent no-op
           bb.questionnaire = qqSections;
-          console.log("[preload] ✅ In-memory bb.questionnaire hydrated with " + Object.keys(qqSections).length + " sections");
+          console.log("[preload] ✅ In-memory bb.personId + bb.questionnaire hydrated with " + Object.keys(qqSections).length + " sections");
         }
       }
 
@@ -635,8 +637,11 @@
       _postPreloadExtractCandidates(pid, qqSections);
 
       // Phase Q.1: Build relationship graph from preloaded data
+      // Phase Q.2 FIX: clear graph before fullSync to prevent cross-narrator accumulation
       var graphMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.graph;
       if (graphMod && typeof graphMod.fullSync === "function") {
+        var _bb2 = coreMod && typeof coreMod._bb === "function" ? coreMod._bb() : null;
+        if (_bb2) _bb2.graph = { persons: {}, relationships: {} };
         graphMod.fullSync();
       }
 
@@ -708,12 +713,14 @@
 
       // Phase Q+: hydrate in-memory bb.questionnaire so UI reflects new data immediately
       // Without this, the stale backend data from loadPerson() would remain in memory.
+      // Phase Q.2 FIX: also set bb.personId so syncFromQuestionnaire() can generate stable IDs
       var coreMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.core;
       if (coreMod && typeof coreMod._bb === "function") {
         var bb = coreMod._bb();
         if (bb) {
+          bb.personId = pid;  // Q.2: required for graph sync — was missing, causing silent no-op
           bb.questionnaire = qqSections;
-          console.log("[preload] ✅ In-memory bb.questionnaire hydrated with " + Object.keys(qqSections).length + " sections");
+          console.log("[preload] ✅ In-memory bb.personId + bb.questionnaire hydrated with " + Object.keys(qqSections).length + " sections");
         }
       }
 
@@ -721,8 +728,11 @@
       _postPreloadExtractCandidates(pid, qqSections);
 
       // Phase Q.1: Build relationship graph from preloaded data
+      // Phase Q.2 FIX: clear graph before fullSync to prevent cross-narrator accumulation
       var graphMod = window.LorevoxBioBuilderModules && window.LorevoxBioBuilderModules.graph;
       if (graphMod && typeof graphMod.fullSync === "function") {
+        var _bb2 = coreMod && typeof coreMod._bb === "function" ? coreMod._bb() : null;
+        if (_bb2) _bb2.graph = { persons: {}, relationships: {} };
         graphMod.fullSync();
       }
 

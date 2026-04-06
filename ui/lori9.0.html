@@ -147,6 +147,31 @@
       flex-direction: column;
       gap: 24px;
     }
+    /* ── Phase Q.4: Warmup Banner ─────────────────────────── */
+    #lv80WarmupBanner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 9999;
+      background: linear-gradient(135deg, rgba(30,41,59,0.97), rgba(15,15,26,0.97));
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(99,102,241,0.3);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    #lv80WarmupBanner.hidden { display: none; }
+    .warmup-inner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #94a3b8;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .warmup-msg { color: #cbd5e1; }
+
     #lv80Thinking {
       max-width: 800px;
       margin: 0 auto;
@@ -1666,6 +1691,14 @@
 <body>
 
 <div id="lv80Shell">
+
+  <!-- ── WARMUP BANNER — Phase Q.4 Chat Readiness Gate ──────── -->
+  <div id="lv80WarmupBanner" class="hidden">
+    <div class="warmup-inner">
+      <span class="dot-bounce"><span></span><span></span><span></span></span>
+      <span class="warmup-msg">Lorevox is warming up…</span>
+    </div>
+  </div>
 
   <!-- ── HEADER ─────────────────────────────────────────────── -->
   <header id="lv80Header">

@@ -159,7 +159,8 @@ test.describe("Bio Builder — UI Module Check", () => {
     const errors: string[] = [];
     page.on("pageerror", (err) => errors.push(err.message));
 
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await page.goto(`${UI_URL}/ui/lori9.0.html`, { waitUntil: "networkidle" });
+    await page.evaluate(() => { if (typeof (window as any)._forceModelReady === "function") (window as any)._forceModelReady(); });
     await page.waitForTimeout(2000);
 
     // Verify bio builder scripts loaded (check for global references)
@@ -178,7 +179,7 @@ test.describe("Bio Builder — UI Module Check", () => {
   });
 
   test("BB-08: Family Tree script is loaded", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await page.goto(`${UI_URL}/ui/lori9.0.html`, { waitUntil: "networkidle" });
 
     const hasScript = await page.evaluate(() =>
       document.querySelector("script[src*='family-tree']") !== null ||
@@ -189,7 +190,7 @@ test.describe("Bio Builder — UI Module Check", () => {
   });
 
   test("BB-09: Life Threads script is loaded", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await page.goto(`${UI_URL}/ui/lori9.0.html`, { waitUntil: "networkidle" });
 
     const hasScript = await page.evaluate(() =>
       document.querySelector("script[src*='life-threads']") !== null ||

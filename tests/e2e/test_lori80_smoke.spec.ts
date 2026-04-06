@@ -4,19 +4,30 @@ const API_URL = process.env.LOREVOX_BASE_URL || "http://127.0.0.1:8000";
 const UI_URL  = process.env.LOREVOX_UI_URL   || "http://127.0.0.1:8080";
 
 /**
- * Lorevox 8.0 — Browser Smoke & Regression Suite
- * Tests the active lori8.0.html shell against a running stack.
+ * Lorevox 9.0 — Browser Smoke & Regression Suite
+ * Tests the active lori9.0.html shell against a running stack.
  *
  * Run:  npx playwright test tests/e2e/test_lori80_smoke.spec.ts
  */
 
+/** Navigate to lori9.0.html and force the readiness gate open for testing. */
+async function gotoUI(page: Page): Promise<void> {
+  await page.goto(`${UI_URL}/ui/lori9.0.html`, { waitUntil: "networkidle" });
+  // Phase Q.4: Force model ready so chat gate doesn't block test interactions
+  await page.evaluate(() => {
+    if (typeof (window as any)._forceModelReady === "function") {
+      (window as any)._forceModelReady();
+    }
+  });
+}
+
 test.describe("Lori 8.0 — Browser Smoke", () => {
 
-  test("E2E-01: lori8.0.html loads without JS errors", async ({ page }) => {
+  test("E2E-01: lori9.0.html loads without JS errors", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (err) => errors.push(err.message));
 
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     await expect(page).toHaveTitle(/.*/);
 
     // Allow minor non-fatal errors but flag critical ones
@@ -28,7 +39,7 @@ test.describe("Lori 8.0 — Browser Smoke", () => {
   });
 
   test("E2E-02: API status pill turns green", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     // Wait for status check to complete (pillApi or similar)
     await page.waitForTimeout(3000);
 
@@ -46,7 +57,7 @@ test.describe("Lori 8.0 — Browser Smoke", () => {
   });
 
   test("E2E-03: TTS status pill turns green", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     await page.waitForTimeout(3000);
 
     const ttsPill = page.locator("#pillTts, [data-pill='tts'], .pill-tts").first();
@@ -62,7 +73,7 @@ test.describe("Lori 8.0 — Browser Smoke", () => {
   });
 
   test("E2E-04: WebSocket status pill turns green", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     await page.waitForTimeout(3000);
 
     const wsPill = page.locator("#pillWs, [data-pill='ws'], .pill-ws").first();
@@ -118,7 +129,7 @@ test.describe("Lori 8.0 — People & Narrator", () => {
   });
 
   test("E2E-05: Narrator list is visible", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     await page.waitForTimeout(2000);
 
     // Look for the narrator/person selector
@@ -131,7 +142,7 @@ test.describe("Lori 8.0 — People & Narrator", () => {
   });
 
   test("E2E-06: Selecting a narrator loads their identity", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     await page.waitForTimeout(2000);
 
     // Try to select the test narrator
@@ -156,7 +167,7 @@ test.describe("Lori 8.0 — People & Narrator", () => {
   });
 
   test("E2E-07: Chat input is present and enabled", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     await page.waitForTimeout(3000);
 
     const chatInput = page.locator(
@@ -280,7 +291,7 @@ test.describe("Lori 8.0 — UI Modules Loaded", () => {
     const errors: string[] = [];
     page.on("pageerror", (err) => errors.push(err.message));
 
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     await page.waitForTimeout(2000);
 
     // Check key global functions/objects exist.
@@ -298,7 +309,7 @@ test.describe("Lori 8.0 — UI Modules Loaded", () => {
   });
 
   test("E2E-12: Bio Builder tab exists in UI", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
     await page.waitForTimeout(2000);
 
     // Look for Bio Builder tab/button
@@ -317,7 +328,7 @@ test.describe("Lori 8.0 — UI Modules Loaded", () => {
   });
 
   test("E2E-13: Interview roadmap data is loaded", async ({ page }) => {
-    await page.goto(`${UI_URL}/ui/lori8.0.html`, { waitUntil: "networkidle" });
+    await gotoUI(page);
 
     // INTERVIEW_ROADMAP is declared with `const` in data.js — not a `window` property.
     // Use string-based evaluate to access the global lexical scope directly.

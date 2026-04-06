@@ -1,0 +1,226 @@
+{
+  "_template": "Lorevox 9.0 Narrator Preload",
+  "_narrator": "Elena Maria Rivera Quinn",
+  "_version": 2,
+
+  "personal": {
+    "fullName": "Elena Maria Rivera Quinn",
+    "preferredName": "Elena",
+    "legalFirstName": "Elena",
+    "legalMiddleName": "Maria",
+    "legalLastName": "Quinn",
+    "dateOfBirth": "1974-03-15",
+    "timeOfBirth": "",
+    "placeOfBirth": "San Antonio, Texas",
+    "birthOrder": "2",
+    "zodiacSign": "Pisces",
+    "pronouns": "she/her",
+    "culture": "Mexican-American",
+    "country": "US",
+    "language": "English, Spanish"
+  },
+
+  "parents": [
+    {
+      "relation": "Father",
+      "firstName": "Carlos",
+      "middleName": "Antonio",
+      "lastName": "Rivera",
+      "maidenName": "",
+      "birthDate": "1948-07-22",
+      "birthPlace": "Laredo, Texas",
+      "occupation": "Electrician, later foreman at a construction company",
+      "deceased": true,
+      "notableLifeEvents": "Carlos was a quiet, hardworking man who raised his family in San Antonio. He served in Vietnam and rarely spoke about it. He died in 2019 of heart failure.",
+      "notes": "Second-generation Mexican-American. His parents crossed into Texas in the 1920s."
+    },
+    {
+      "relation": "Mother",
+      "firstName": "Rosa",
+      "middleName": "Elena",
+      "lastName": "Rivera",
+      "maidenName": "Gutierrez",
+      "birthDate": "1950-11-08",
+      "birthPlace": "San Antonio, Texas",
+      "occupation": "School cafeteria worker, later school secretary",
+      "deceased": false,
+      "notableLifeEvents": "Rosa has lived in San Antonio her entire life. She worked at Elena's elementary school for 25 years. She is the center of the family — everyone comes to her house on Sundays.",
+      "notes": "Strong Catholic faith. Matriarch of the Rivera family."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "paternal",
+      "firstName": "Miguel",
+      "lastName": "Rivera",
+      "ancestry": "Mexican",
+      "culturalBackground": "Crossed from Nuevo Laredo, Mexico into Laredo, Texas in the 1920s",
+      "memorableStories": "Miguel worked in the railroads and later opened a small grocery store. He spoke Spanish at home and insisted his grandchildren learn both languages."
+    },
+    {
+      "side": "maternal",
+      "firstName": "Carmen",
+      "lastName": "Gutierrez",
+      "maidenName": "Flores",
+      "ancestry": "Mexican-American",
+      "culturalBackground": "San Antonio, Texas — deep roots in the Westside barrio",
+      "memorableStories": "Carmen was known for her tamales at Christmas. She made hundreds every year and delivered them to neighbors."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "Marco",
+      "middleName": "Carlos",
+      "lastName": "Rivera",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "Protective older brother, became a firefighter",
+      "sharedExperiences": "Marco and Elena were close growing up. He was the first person she came out to.",
+      "memories": "Marco drove Elena to her first date with a woman and waited in the parking lot in case she needed an escape.",
+      "notes": "Oldest sibling. Married with three kids."
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Isabella",
+      "middleName": "Rosa",
+      "lastName": "Rivera",
+      "birthOrder": "3",
+      "uniqueCharacteristics": "Artistic, free-spirited, studied graphic design",
+      "sharedExperiences": "Elena and Isabella share a love of art. They painted a mural together in their mother's garage in 2015.",
+      "memories": "Isabella was the one who told their mother about Elena's relationship with Sarah. She did it gently and well.",
+      "notes": "Youngest sibling."
+    }
+  ],
+
+  "spouse": [
+    {
+      "relationshipType": "Former Spouse",
+      "firstName": "Daniel",
+      "middleName": "James",
+      "lastName": "Rivera",
+      "maidenName": "",
+      "birthDate": "1972-09-03",
+      "birthPlace": "Austin, Texas",
+      "occupation": "Software engineer",
+      "narrative": "Elena married Daniel in 1998. They were college sweethearts at UT Austin. They had one daughter together. Elena came out as queer in 2008, and they divorced amicably in 2009. Daniel remains a supportive co-parent and they share holidays when possible.",
+      "deceased": false
+    },
+    {
+      "relationshipType": "Partner",
+      "firstName": "Sarah",
+      "middleName": "Anne",
+      "lastName": "Quinn",
+      "maidenName": "",
+      "birthDate": "1976-01-20",
+      "birthPlace": "Portland, Oregon",
+      "occupation": "Social worker, later clinical therapist",
+      "narrative": "Elena met Sarah at a community organizing event in 2010. They moved in together in 2012. Sarah is a clinical therapist who works with LGBTQ youth. They consider themselves life partners. Elena took Quinn as part of her legal name in 2016. They have not formally married but consider their commitment permanent.",
+      "deceased": false
+    },
+    {
+      "relationshipType": "Chosen Family",
+      "firstName": "Marisol",
+      "middleName": "",
+      "lastName": "Vega",
+      "maidenName": "",
+      "birthDate": "1975-06-12",
+      "birthPlace": "San Antonio, Texas",
+      "occupation": "Nurse",
+      "narrative": "Marisol has been Elena's closest friend since childhood. When Elena came out, Marisol was unwavering in her support. She is godmother to Elena's daughter Sofia. Elena and Sarah consider Marisol family — she has a key to their house and her own place at every holiday table.",
+      "deceased": false
+    }
+  ],
+
+  "marriage": [
+    {
+      "spouseReference": "Daniel Rivera",
+      "marriageDate": "1998-06-20",
+      "proposalStory": "Daniel proposed after graduation at their favorite taco stand on South Congress in Austin.",
+      "weddingDetails": "Catholic ceremony at San Fernando Cathedral in San Antonio. Large traditional wedding with both families."
+    }
+  ],
+
+  "children": [
+    {
+      "firstName": "Sofia",
+      "middleName": "Rosa",
+      "lastName": "Rivera",
+      "birthDate": "2003-04-11",
+      "birthPlace": "San Antonio, Texas",
+      "notes": "From Elena's marriage to Daniel. Sofia splits time between both parents. She is close to Sarah and calls her by her first name. Sofia is in college studying environmental science."
+    }
+  ],
+
+  "familyTraditions": [
+    {
+      "description": "Sunday dinner at Rosa's house — the entire family gathers, including Sarah and Marisol. Rosa makes enchiladas and everyone brings something.",
+      "occasion": "Weekly"
+    },
+    {
+      "description": "Tamale-making marathon every December with Rosa, Elena, Isabella, Sarah, and Marisol. They make 300 tamales and deliver them to neighbors, just like Carmen used to.",
+      "occasion": "Christmas"
+    },
+    {
+      "description": "Annual camping trip with Sarah, Sofia, and Marisol to Big Bend National Park",
+      "occasion": "Spring break"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Frida",
+      "species": "Dog",
+      "breed": "Chihuahua mix",
+      "birthDate": "",
+      "adoptionDate": "2018",
+      "notes": "Named after Frida Kahlo. Tiny but fierce."
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Sitting in her grandmother Carmen's kitchen watching her make tamales. The smell of masa and chili.",
+    "favoriteToy": "A set of colored pencils her father gave her for her 6th birthday. She drew everything.",
+    "significantEvent": "Her father returning from a long construction job when she was 7. She ran down the driveway and he picked her up."
+  },
+
+  "education": {
+    "schooling": "Attended public schools in San Antonio. Graduated from Jefferson High School in 1992.",
+    "higherEducation": "BA in Social Work from the University of Texas at Austin, 1996. MSW from UT Austin, 2005.",
+    "earlyCareer": "Case worker at a family services nonprofit in San Antonio after college.",
+    "careerProgression": "Became a licensed clinical social worker in 2007. Now runs a small practice focused on LGBTQ families and blended family dynamics. Serves on the board of a local LGBTQ youth center.",
+    "communityInvolvement": "Active in LGBTQ advocacy and immigrant rights organizations in San Antonio. Co-founded a support group for queer parents.",
+    "mentorship": "Mentors young social workers and queer professionals in the community."
+  },
+
+  "laterYears": {
+    "retirement": "",
+    "lifeLessons": "You can love someone fully and still realize the life you were building together is not the life you were meant to live. That does not erase the love. It transforms it.",
+    "adviceForFutureGenerations": "Be honest with yourself first. The rest follows. And always, always keep your family close — even when they have to learn who you really are."
+  },
+
+  "hobbies": {
+    "hobbies": "Painting, hiking, cooking Mexican food, reading, community organizing",
+    "worldEvents": "Marriage equality, immigrant rights movement, LGBTQ family recognition",
+    "personalChallenges": "Coming out to her mother in 2009 was the hardest thing Elena ever did. Rosa was silent for three months. Then she set an extra place at Sunday dinner for Sarah.",
+    "travel": "Born and raised in San Antonio. Studied in Austin. Traveled to Mexico City and Oaxaca to explore her heritage."
+  },
+
+  "health": {
+    "healthMilestones": "Went through a period of depression after her divorce. Therapy changed her life — which is part of why she became a therapist herself.",
+    "lifestyleChanges": "Started running in 2011 with Sarah. They did a half-marathon together in 2014.",
+    "wellnessTips": "Talk to someone. Keeping everything inside is not strength — it is just silence."
+  },
+
+  "technology": {
+    "firstTechExperience": "First computer was a shared family PC in 1994. Used it mostly for college papers.",
+    "favoriteGadgets": "Her phone camera — she takes photos of everything, especially food and family.",
+    "culturalPractices": "Mexican-American traditions, Catholic upbringing (now non-practicing), quinceañera tradition passed to her daughter Sofia"
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "Wants to write a children's book about blended families — one that includes families like hers.",
+    "messagesForFutureGenerations": "The family you build is just as real as the family you were born into. Both deserve your full heart."
+  }
+}

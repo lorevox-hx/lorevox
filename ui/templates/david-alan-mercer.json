@@ -87,6 +87,7 @@
   ],
 
   "spouse": {
+    "relationshipType": "Partner",
     "firstName": "Michael",
     "middleName": "Thomas",
     "lastName": "Bennett",

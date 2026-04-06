@@ -52,4 +52,6 @@ const API = {
   GRAPH_REL:        (nid) => `${ORIGIN}/api/graph/${encodeURIComponent(nid)}/relationship`,
   GRAPH_DEL_PERSON: (pid) => `${ORIGIN}/api/graph/person/${encodeURIComponent(pid)}`,
   GRAPH_DEL_REL:    (rid) => `${ORIGIN}/api/graph/relationship/${encodeURIComponent(rid)}`,
+  // Phase Q.4 — Chat Readiness Gate
+  WARMUP:           ORIGIN + "/api/warmup",
 };
