@@ -15,7 +15,7 @@
     "birthOrder": "3",
     "zodiacSign": "Capricorn",
     "pronouns": "he/him",
-    "culture": "Germans from Russia (maternal), North Dakota",
+    "culture": "Germans from Russia (maternal), French Alsace-Lorraine and German Hanover (paternal, via Shong and Bolley families), North Dakota",
     "country": "US",
     "language": "English"
   },
@@ -44,8 +44,8 @@
       "birthPlace": "Stanley, North Dakota",
       "occupation": "Construction and trades",
       "deceased": false,
-      "notableLifeEvents": "Born in Stanley, ND, second child of Ervin Horne. Married Janice Josephine Zarr on October 10, 1959 — Kent was 19, Janice was 20. Career in construction and trades. Family lived in Germany where oldest son Vincent was born, then across multiple states. Shares Christmas Eve birthday with youngest son Christopher.",
-      "notes": "Son of Ervin Horne. Ervin's wedding anniversary was June 29."
+      "notableLifeEvents": "Born in Stanley, ND, second of three children of Ervin Horne (1909-1967) and Leila Myrtle Carkuff (1915-1985). Kent's siblings are Sharon Horne (1937, married Ed Woodmansee) and Linda Horne (1942). His father Ervin was the son of Elizabeth Shong (1877-1952) and George Horne (1875-1914). George died when Ervin was only four. Elizabeth later married William Mc Raith (1872-1918). Ervin's siblings included Margaret (married Irvyl Reynolds), James (married Evelyn Mills), Arthur (married Edith Vachal), and half-sister Alice Mc Raith. The Shong family came from Lorraine, France; the Bolley family from Hanover, Germany. Married Janice Josephine Zarr on October 10, 1959 — Kent was 19, Janice was 20. Career in construction and trades. Family lived in Germany where oldest son Vincent was born, then across multiple states. Shares Christmas Eve birthday with youngest son Christopher.",
+      "notes": "Son of Ervin Horne and Leila Myrtle Carkuff. Ervin's wedding anniversary was June 29. Kent's paternal grandmother Elizabeth Shong was the youngest of eight children of John Michael Shong (1829-1891) from Lorraine, France and Christine Bolley (1842-1909) from Hanover, Germany."
     }
   ],
 
@@ -54,9 +54,22 @@
       "side": "paternal",
       "firstName": "Ervin",
       "lastName": "Horne",
+      "birthDate": "1909-11-12",
+      "birthPlace": "North Dakota",
+      "ancestry": "French (Alsace-Lorraine via Shong), German (via Bolley)",
+      "culturalBackground": "North Dakota homesteader family. Father's side (Shong) from Lorraine, France; mother's side (Bolley) from Hanover, Germany. Family settled in Fall Creek, Wisconsin before moving to North Dakota around 1900.",
+      "memorableStories": "Born November 12, 1909, third child of Elizabeth Shong and George Horne. His father George died April 12, 1914 when Ervin was only four years old. His mother Elizabeth then married William Mc Raith in 1916, who also died May 2, 1918. Ervin grew up in the Ross, North Dakota area. Married Leila Myrtle Carkuff (1915-1985). They had three children: Sharon (1937), Kent (1939), and Linda (1942). Ervin died December 23, 1967. His siblings: Margaret Horne (1904, married Irvyl Reynolds, no children), Phyllis Horne (1907-1908, died in infancy), Isabel Horne (1910, died in infancy), James Horne (1911, married Evelyn Mills; children Suzanne and Martha), Arthur Horne (1912, married Edith Vachal; children Joan, Jean, Judy, Jill), and half-sister Alice Mc Raith (1917, never married). Wedding anniversary June 29."
+    },
+    {
+      "side": "paternal",
+      "firstName": "Leila",
+      "middleName": "Myrtle",
+      "lastName": "Horne",
+      "maidenName": "Carkuff",
+      "birthDate": "1915-11-18",
       "ancestry": "American",
       "culturalBackground": "North Dakota",
-      "memorableStories": "Wedding anniversary June 29."
+      "memorableStories": "Born November 18, 1915. Married Ervin Horne. Mother of Sharon (1937), Kent (1939), and Linda (1942). Died December 1, 1985."
     },
     {
       "side": "maternal",
@@ -83,6 +96,24 @@
   ],
 
   "greatGrandparents": [
+    {
+      "side": "paternal-paternal",
+      "firstName": "George",
+      "lastName": "Horne",
+      "birthDate": "1875-03-19",
+      "ancestry": "American",
+      "memorableStories": "George Horne arrived in Ross, North Dakota in 1902. He walked north from Ross in search of satisfactory land, filed on a claim, and received title June 16, 1904. He married Elizabeth Shong on December 29, 1903 in Fall Creek, Wisconsin. They had six children: Margaret (1904), Phyllis (1907), Ervin (1909), Isabel (1910), James (1911), and Arthur (1912). George died April 12, 1914, leaving Elizabeth a widow with six young children."
+    },
+    {
+      "side": "paternal-paternal",
+      "firstName": "Elizabeth",
+      "lastName": "Horne",
+      "maidenName": "Shong",
+      "birthDate": "1877-06-01",
+      "birthPlace": "Fall Creek, Wisconsin",
+      "ancestry": "French (Alsace-Lorraine), German",
+      "memorableStories": "Known as 'Lizzie Shong,' youngest of eight children of John Michael Shong (1829-1891) and Christine Bolley (1842-1909). Her father was born near Nancy, Lorraine, France, came to America around 1848, served in the Civil War (Company G, 28th Infantry), and owned 200 acres east of Fall Creek, Wisconsin. Her mother Christine Bolley was born in Hanover, Germany and came to America in 1850. Elizabeth's siblings: Charlie Shong (1864-1940, married Tillie Welke, ran a hotel in Penn, ND), Sarah Shong (1866-1927, married Gustav Glenz), Maggie (1868, died in infancy), Christie Shong (1869-1936, married Henry Graichen, worked as a cook across the Midwest), Nicholas Shong (1871-1915, married Adone Voechting), Henry 'Hank' Shong (1873-1931, married Lola Archer), and Cora (1875-1876, died in infancy). Around 1900, Lizzie went to Penn, North Dakota to visit brother Charlie and find work as a seamstress. She married George Horne December 29, 1903. After George died in 1914, she married William Mc Raith (1872-1918) on May 1, 1916. William also died, in 1918. She had one child from her second marriage: Alice Mc Raith (1917, never married). The Shong name was originally Schong, with the C dropped upon arrival in America. John Michael Shong definitely claimed to be French; after his death, letters still came from his people in France. Elizabeth died April 26, 1952."
+    },
     {
       "side": "maternal-maternal",
       "firstName": "Anna",
@@ -230,7 +261,7 @@
   "technology": {
     "firstTechExperience": "Early computing and later deep involvement in AI systems",
     "favoriteGadgets": "Computers, AI tools",
-    "culturalPractices": "Germans from Russia heritage through maternal grandparents (Zarr/Schaaf families from Dodge and Glen Ulin, ND). Family roots in Ukraine through great-grandfather Mathias Schaaf."
+    "culturalPractices": "Germans from Russia heritage through maternal grandparents (Zarr/Schaaf families from Dodge and Glen Ulin, ND). Family roots in Ukraine through great-grandfather Mathias Schaaf. Paternal heritage traces to Lorraine, France through the Shong family (originally Schong — the C was dropped in America) and Hanover, Germany through the Bolley family. Great-great-grandfather John Michael Shong (1829-1891) was born near Nancy, France and served in the Civil War. The Shong family was Catholic and settled at Fall Creek, Wisconsin before most moved to North Dakota around 1900-1905."
   },
 
   "additionalNotes": {
