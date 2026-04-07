@@ -119,16 +119,13 @@ async function pollModelReady() {
 /** Called once when model transitions to ready. Triggers deferred onboarding/narrator flow. */
 function _onModelReady() {
   console.log("[readiness] _onModelReady — firing deferred startup.");
-  const _deviceOnboarded = localStorage.getItem("lorevox_device_onboarded");
-  if (!_deviceOnboarded) {
-    console.log("[readiness] New device detected — starting welcome onboarding (deferred).");
-    setTimeout(startIdentityOnboarding, 400);
-  } else {
-    console.log("[readiness] Returning device — opening narrator selector (deferred).");
-    setTimeout(() => {
-      if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
-    }, 400);
-  }
+  // v9: Startup neutrality — always open narrator selector on ready.
+  // New devices AND returning devices both start with "Choose a narrator."
+  // Onboarding only begins when user explicitly clicks "+ New" or "Open".
+  console.log("[readiness] v9 — startup neutral. Opening narrator selector.");
+  setTimeout(() => {
+    if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
+  }, 400);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -774,6 +771,26 @@ async function lvxSwitchNarratorSafe(pid){
   if (window.LorevoxBioBuilder?.refresh) window.LorevoxBioBuilder.refresh();
   if (window.LorevoxLifeMap?.render)     window.LorevoxLifeMap.render(true);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v9 NARRATOR OPEN GATING — readiness classification
+   Returns "ready" | "incomplete" | "missing" | "new"
+   Single source of truth for narrator conversation-readiness.
+═══════════════════════════════════════════════════════════════ */
+function getNarratorOpenState(pid) {
+  if (!pid) return "new";
+  if (!state.person_id || state.person_id !== pid) return "missing";
+
+  const basics = state.profile?.basics || {};
+  const hasName = !!(basics.preferred || basics.fullname);
+  const hasDob  = !!basics.dob;
+
+  if (hasName && hasDob) return "ready";
+  return "incomplete";
+}
+
+/* Expose globally for lori9.0.html */
+window.getNarratorOpenState = getNarratorOpenState;
 
 /* ═══════════════════════════════════════════════════════════════
    v8 NARRATOR DELETE FLOW

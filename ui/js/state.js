@@ -23,6 +23,14 @@ let state = {
     }
   },
 
+  /* ── v9 Narrator open gating ─────────────────────────────── */
+  narratorOpen: {
+    loadingPid: null,      // pid currently being loaded, null if idle
+    openStatus: "idle",    // "idle" | "loading" | "ready" | "incomplete" | "error"
+    incompletePid: null,   // pid that was classified incomplete
+    openError: null,       // error message if load failed
+  },
+
   /* ── v8 Narrator delete workflow ──────────────────────────── */
   narratorDelete: {
     targetId: null,

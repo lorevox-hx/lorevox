@@ -2531,6 +2531,15 @@ async function lv80LoadPeople() {
 async function lv80SwitchPerson(personId) {
   if (!personId) return;
 
+  /* ── v9: GATED NARRATOR OPEN FLOW ────────────────────────── */
+
+  // 1. Mark loading state
+  state.narratorOpen.loadingPid = personId;
+  state.narratorOpen.openStatus = "loading";
+  state.narratorOpen.openError = null;
+  state.narratorOpen.incompletePid = null;
+  console.log("[v9-gate] Opening narrator:", personId);
+
   // Clear idle timers and all automatic overrides on narrator switch
   lv80ClearIdle();
   const _prevPosture = _lv80GetInteractionMode();
@@ -2541,18 +2550,34 @@ async function lv80SwitchPerson(personId) {
   }
   lv80UpdatePostureBadge();
 
-  // v8: route through safe narrator switch (hard reset + hydration)
-  await lvxSwitchNarratorSafe(personId);
+  // 2. Load narrator safely (hard reset + backend hydration)
+  try {
+    // v9-dev: one-shot error simulation for testing the error path
+    if (window.__lv9_simulateOpenError) {
+      window.__lv9_simulateOpenError = false;
+      throw new Error("Simulated narrator load failure (dev test)");
+    }
+    await lvxSwitchNarratorSafe(personId);
+  } catch (err) {
+    console.error("[v9-gate] Narrator load failed:", err);
+    state.narratorOpen.openStatus = "error";
+    state.narratorOpen.openError = String(err.message || err);
+    state.narratorOpen.loadingPid = null;
+    lv80ShowNarratorOpenError(personId, state.narratorOpen.openError);
+    return;
+  }
   _memoirLoadStoredFacts(personId);
 
-  // v8: update narrator card UI
+  // 3. Update narrator card UI
   lv80UpdateActiveNarratorCard();
 
-  const basics = state.profile?.basics || {};
-  const hasName = !!(basics.preferred || basics.fullname);
-  const hasDob  = !!basics.dob;
+  // 4. Classify narrator readiness
+  const openState = getNarratorOpenState(personId);
+  console.log("[v9-gate] Narrator classified as:", openState);
 
-  if (hasName && hasDob) {
+  if (openState === "ready") {
+    // 5a. READY — open normal conversation/resume path
+    const basics = state.profile?.basics || {};
     const name = basics.preferred || basics.fullname;
     const pob  = basics.pob || null;
 
@@ -2582,9 +2607,15 @@ async function lv80SwitchPerson(personId) {
       "next most meaningful interview question. Do not re-introduce yourself. " +
       "Do not repeat the onboarding flow. Do not ask for name or DOB again.]"
     );
+
+    state.narratorOpen.openStatus = "ready";
   } else {
+    // 5b. INCOMPLETE — do NOT auto-start onboarding. Show explicit UI.
+    state.narratorOpen.openStatus = "incomplete";
+    state.narratorOpen.incompletePid = personId;
+
     state.session = {
-      currentPass: "pass1", identityPhase: "incomplete", assistantRole: "onboarding",
+      currentPass: "pass1", identityPhase: "incomplete", assistantRole: "interviewer",
       identityCapture: { name: null, dob: null, birthplace: null },
       profileSeed: {
         childhood_home: null, siblings: null, parents_work: null,
@@ -2593,8 +2624,118 @@ async function lv80SwitchPerson(personId) {
       },
     };
     lv80ResetCaptureBar();
-    startIdentityOnboarding();
+
+    // v9: Show incomplete narrator UI instead of auto-onboarding
+    lv80ShowIncompleteNarratorUi(personId);
   }
+
+  // 6. Clear loading state
+  state.narratorOpen.loadingPid = null;
+  console.log("[v9-gate] Narrator open complete. Status:", state.narratorOpen.openStatus);
+}
+
+/* ── v9: Incomplete narrator explicit UI ─────────────────────────
+   Shown when a narrator record exists but lacks required identity
+   basics (name + DOB). Does NOT auto-start onboarding.
+   User must take a deliberate action.
+──────────────────────────────────────────────────────────────── */
+function lv80ShowIncompleteNarratorUi(personId) {
+  const chat = document.getElementById("chatMessages");
+  if (!chat) return;
+  chat.innerHTML = "";
+
+  const basics = state.profile?.basics || {};
+  const label  = basics.preferred || basics.fullname || "This narrator";
+  const hasName = !!(basics.preferred || basics.fullname);
+  const hasDob  = !!basics.dob;
+
+  // Build status summary
+  const missing = [];
+  if (!hasName) missing.push("name");
+  if (!hasDob)  missing.push("date of birth");
+
+  const card = document.createElement("div");
+  card.className = "bubble bubble-sys";
+  card.style.cssText = "text-align:center; padding:1.5rem; margin:2rem auto; max-width:420px;";
+  card.innerHTML = `
+    <div style="font-size:1.1rem; font-weight:600; margin-bottom:.6rem;">
+      Narrator record incomplete
+    </div>
+    <div style="margin-bottom:1rem; opacity:.85;">
+      ${hasName ? `<strong>${label}</strong> is` : "This narrator is"} missing:
+      <strong>${missing.join(" and ")}</strong>.
+      <br>Lori can't start a session until identity basics are set.
+    </div>
+    <div style="display:flex; gap:.5rem; justify-content:center; flex-wrap:wrap;">
+      <button class="bb-btn-sm" onclick="lv80BeginOnboardingFromIncomplete('${personId}')"
+        style="padding:.45rem 1rem;">
+        Complete profile basics
+      </button>
+      <button class="bb-btn-sm" onclick="lv80OpenNarratorSwitcher()"
+        style="padding:.45rem 1rem; opacity:.7;">
+        Back to narrators
+      </button>
+    </div>
+  `;
+  chat.appendChild(card);
+  chat.scrollTop = chat.scrollHeight;
+
+  console.log("[v9-gate] Showing incomplete UI for", personId, "— missing:", missing.join(", "));
+}
+
+/** v9: Deliberate user action to start onboarding from the incomplete UI card. */
+function lv80BeginOnboardingFromIncomplete(personId) {
+  console.log("[v9-gate] User chose to complete basics for", personId);
+  // Ensure we're still on the right narrator
+  if (state.person_id !== personId) {
+    console.warn("[v9-gate] Person ID mismatch — aborting onboarding start");
+    return;
+  }
+  state.narratorOpen.openStatus = "idle";
+  state.narratorOpen.incompletePid = null;
+  // Clear the incomplete card before starting onboarding
+  const chat = document.getElementById("chatMessages");
+  if (chat) chat.innerHTML = "";
+  startIdentityOnboarding();
+}
+
+/* ── v9: Narrator open error UI ──────────────────────────────────
+   Shown when lvxSwitchNarratorSafe throws during load.
+──────────────────────────────────────────────────────────────── */
+function lv80ShowNarratorOpenError(personId, errorMsg) {
+  const chat = document.getElementById("chatMessages");
+  if (!chat) return;
+  chat.innerHTML = "";
+
+  const card = document.createElement("div");
+  card.className = "bubble bubble-sys";
+  card.style.cssText = "text-align:center; padding:1.5rem; margin:2rem auto; max-width:420px;";
+  card.innerHTML = `
+    <div style="font-size:1.1rem; font-weight:600; margin-bottom:.6rem; color:#c0392b;">
+      Could not open narrator
+    </div>
+    <div style="margin-bottom:.6rem; opacity:.85;">
+      Something went wrong loading this narrator record.
+    </div>
+    <div style="font-size:.82rem; background:rgba(0,0,0,.05); padding:.5rem .7rem;
+                border-radius:6px; margin-bottom:1rem; word-break:break-word;">
+      ${typeof errorMsg === "string" ? errorMsg.replace(/</g,"&lt;") : "Unknown error"}
+    </div>
+    <div style="display:flex; gap:.5rem; justify-content:center; flex-wrap:wrap;">
+      <button class="bb-btn-sm" onclick="lv80SwitchPerson('${personId}')"
+        style="padding:.45rem 1rem;">
+        Retry
+      </button>
+      <button class="bb-btn-sm" onclick="state.narratorOpen.openStatus='idle'; state.narratorOpen.openError=null; lv80OpenNarratorSwitcher()"
+        style="padding:.45rem 1rem; opacity:.7;">
+        Back to narrators
+      </button>
+    </div>
+  `;
+  chat.appendChild(card);
+  chat.scrollTop = chat.scrollHeight;
+
+  console.log("[v9-gate] Showing error UI for", personId, ":", errorMsg);
 }
 
 function lv80NewPerson() {
@@ -2680,9 +2821,27 @@ function lv80GetNarratorDeceased() {
   return { deceased: false, dod: "" };
 }
 
+/** v9: format DOB as readable date (e.g. "Sep 10, 1982") or return raw string if unparseable. */
+function _lv80FormatDob(dob) {
+  if (!dob) return "";
+  try {
+    const d = new Date(dob + "T00:00:00");
+    if (isNaN(d.getTime())) return dob;
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  } catch (_) { return dob; }
+}
+
 function lv80UpdateActiveNarratorCard(){
   const basics = state?.profile?.basics || {};
-  const name = basics.preferred || basics.preferredName || basics.fullname || basics.fullName || "Choose a narrator";
+  let name = basics.preferred || basics.preferredName || basics.fullname || basics.fullName || null;
+  // v9: fall back to people cache display_name when profile basics are empty (incomplete narrators)
+  if (!name && state.person_id) {
+    const cached = (state?.narratorUi?.peopleCache || []).find(
+      p => (p.person_id || p.id || p.uuid) === state.person_id
+    );
+    name = cached?.display_name || cached?.name || null;
+  }
+  if (!name) name = "Choose a narrator";
   const full = basics.fullname || basics.fullName || name;
   const dob  = basics.dob || "";
   const pob  = basics.pob || "";
@@ -2695,7 +2854,7 @@ function lv80UpdateActiveNarratorCard(){
   if (nameEl) nameEl.textContent = name;
   if (subEl) {
     const parts = [full !== name ? full : ""];
-    if (dob) parts.push(dob);
+    if (dob) parts.push(_lv80FormatDob(dob));
     if (pob) parts.push(pob);
     if (age !== null) parts.push(decInfo.deceased ? `age ${age} (deceased)` : `age ${age}`);
     else if (decInfo.deceased) parts.push("(deceased)");
@@ -2725,7 +2884,7 @@ function lv80RenderNarratorCards(){
           <span class="lv80-narrator-badge ${kind}">${kind === "real" ? "REAL" : "TEST"}</span>
         </div>
         <div style="font-size:12px;color:#94a3b8;margin-top:3px;">
-          ${esc((person.date_of_birth || "").toString()) || "DOB unknown"}${person.place_of_birth ? " · " + esc(person.place_of_birth) : ""}${(() => { const _a = lv80CalcAge(person.date_of_birth, null); return _a !== null ? " · age " + _a : ""; })()}
+          ${person.date_of_birth ? esc(_lv80FormatDob(person.date_of_birth.toString())) : "DOB unknown"}${person.place_of_birth ? " · " + esc(person.place_of_birth) : ""}${(() => { const _a = lv80CalcAge(person.date_of_birth, null); return _a !== null ? " · age " + _a : ""; })()}
         </div>
         <div class="lv80-narrator-card-actions">
           <button class="bb-btn-sm" onclick="lv80ConfirmNarratorSwitch('${pid}')">Open</button>
@@ -2756,6 +2915,16 @@ function lv80OpenNarratorSwitcher(){
 }
 
 function lv80ConfirmNarratorSwitch(pid){
+  // v9: debounce — if already loading this pid, ignore repeated clicks
+  if (state.narratorOpen.loadingPid === pid) {
+    console.log("[v9-gate] Open click ignored — already loading", pid);
+    return;
+  }
+  // v9: if any load is in progress, ignore
+  if (state.narratorOpen.openStatus === "loading") {
+    console.log("[v9-gate] Open click ignored — load in progress");
+    return;
+  }
   const pop = document.getElementById("lv80NarratorSwitcher");
   try{ if (pop?.matches(":popover-open")) pop.hidePopover(); }catch(_){}
   lv80SwitchPerson(pid);
