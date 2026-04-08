@@ -716,6 +716,39 @@ async function lvxSwitchNarratorSafe(pid){
   if (!pid) return;
   if (pid === state.person_id) return;
 
+  // ── v9.0 HARD RESET on narrator switch ──────────────────────
+  // Purge ALL narrator-scoped state so nothing bleeds across narrators.
+
+  // 1. Clear conversation session — this is the #1 source of context bleed.
+  //    The backend loads turn history by conv_id; if we reuse it, Lori sees
+  //    the OLD narrator's entire conversation.
+  // v9.0 FIX: Generate a FRESH conv_id instead of null.
+  // null falls back to "default" which is shared by ALL narrators.
+  state.chat.conv_id = "switch_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,6);
+
+  // 2. Clear interview session — prevents stale interview questions
+  state.interview = state.interview || {};
+  state.interview.session_id  = null;
+  state.interview.question_id = null;
+  state.interview.plan_id     = null;
+
+  // 3. Clear identity onboarding state
+  state.session.identityPhase   = null;
+  state.session.identityCapture = { name: null, dob: null, birthplace: null };
+  state.session.speakerName     = null;
+  state.session.assistantRole   = "interviewer";
+
+  // 4. Clear runtime signals that are narrator-specific
+  state.session.currentPass = "pass1";
+  state.session.currentEra  = null;
+  state.session.currentMode = "open";
+  state.session.confusionTurnCount = 0;
+
+  // 5. Clear in-memory text state
+  lastAssistantText = "";
+  currentAssistantBubble = null;
+  _lastUserTurn = "";
+
   // hard clear narrator-scoped UI before profile hydration
   if (window.LorevoxBioBuilder?.onNarratorSwitch) {
     window.LorevoxBioBuilder.onNarratorSwitch(pid);
@@ -733,6 +766,7 @@ async function lvxSwitchNarratorSafe(pid){
 
   if (typeof _memoirClearContent === "function") _memoirClearContent();
 
+  console.log("[narrator-switch] Hard reset complete — loading new narrator:", pid);
   await loadPerson(pid);
 
   // Phase G: hydrate canonical state from backend state-snapshot
@@ -1832,7 +1866,6 @@ async function _advanceIdentityPhase(text){
     }
     state.session.identityCapture.name = name;
     state.session.speakerName = name;  // v7.4E — persist for runtime71 anchor
-    state.session.identityPhase = "askDob";
 
     // v8.0 FIX: Immediately project name into profile and projection state
     if(!state.profile) state.profile = {basics:{}, kinship:[], pets:[]};
@@ -1848,7 +1881,38 @@ async function _advanceIdentityPhase(text){
     }
     // v8.0 FIX: Update narrator header card immediately
     if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
-    // Lori acknowledges and asks for DOB
+
+    // v9.0 FIX: Check if the user also provided DOB in the same message.
+    // e.g. "tom and i was born july 3 1942" — extract both, skip the DOB question.
+    const _embeddedDob = _parseDob(text);
+    if (_embeddedDob) {
+      state.session.identityCapture.dob = _embeddedDob;
+      state.session.identityPhase = "askBirthplace";
+      if(!state.profile) state.profile = {basics:{}, kinship:[], pets:[]};
+      state.profile.basics.dob = _embeddedDob;
+      if (typeof LorevoxProjectionSync !== "undefined" && state.interviewProjection) {
+        LorevoxProjectionSync.projectValue("personal.dateOfBirth", _embeddedDob, {
+          source: "interview", turnId: "identity-dob", confidence: 0.9
+        });
+      }
+      if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
+      // Check for embedded birthplace too: "born july 3 1942 in Rugby ND"
+      const _pobInName = text.match(/\bin\s+([A-Z][a-zA-Z\s,]+?)(?:\.|$)/i);
+      if (_pobInName && _pobInName[1] && _pobInName[1].trim().length >= 3) {
+        state.session.identityCapture._embeddedPob = _pobInName[1].trim().replace(/[,.\s]+$/, "");
+      }
+      console.log("[identity] Name + DOB extracted from single message:", name, _embeddedDob);
+      sendSystemPrompt(
+        `[SYSTEM: SPEAKER IDENTITY — The person is named "${name}", born ${_embeddedDob}. ` +
+        `You are Lori, the interviewer. Use "${name}" when addressing the speaker. ` +
+        `Acknowledge their name and date of birth warmly. ` +
+        `Then ask where they were born — town, city, or region. One question only.]`
+      );
+      return true;
+    }
+
+    // No embedded DOB — ask for it separately
+    state.session.identityPhase = "askDob";
     sendSystemPrompt(
       `[SYSTEM: SPEAKER IDENTITY — The person you are interviewing is named "${name}". ` +
       `You are Lori, the interviewer. These are two different people. ` +
@@ -1972,7 +2036,7 @@ async function _resolveOrCreatePerson(){
     // when the identity gate runs on an already-selected narrator.
     if (state.person_id) {
       pid = state.person_id;
-      await fetch(API.PERSON(pid), {
+      const patchResp = await fetch(API.PERSON(pid), {
         method: "PATCH",
         headers: ctype(),
         body: JSON.stringify({
@@ -1981,7 +2045,8 @@ async function _resolveOrCreatePerson(){
           place_of_birth: pob  || undefined,
         }),
       });
-      console.log("[identity] Patched existing person:", pid);
+      if (!patchResp.ok) console.warn("[identity] PATCH failed:", patchResp.status);
+      else console.log("[identity] Patched existing person:", pid);
     } else {
       const r = await fetch(API.PEOPLE, {
         method: "POST",
@@ -1993,12 +2058,18 @@ async function _resolveOrCreatePerson(){
           place_of_birth: pob || null,
         }),
       });
-      const j = await r.json();
-      pid = j.id || j.person_id;
-      console.log("[identity] Created new person:", pid);
+      if (!r.ok) {
+        console.error("[identity] POST /api/people failed:", r.status, await r.text().catch(()=>""));
+        sysBubble("Could not save narrator to the server — please check the API backend.");
+      } else {
+        const j = await r.json();
+        pid = j.id || j.person_id;
+        console.log("[identity] Created new person:", pid);
+      }
     }
   }catch(e){
-    console.warn("[identity] create/patch person failed:", e);
+    console.error("[identity] create/patch person failed:", e);
+    sysBubble("Could not reach the server to save this narrator. The API may be down.");
   }
 
   state.session.identityPhase = "complete";
@@ -2817,20 +2888,65 @@ function _ensureRecognition(){
   };
   // v7.4D — only auto-restart if user explicitly left mic on AND Lori is not speaking.
   // This prevents the engine from restarting mid-TTS and catching Lori's audio.
-  recognition.onend=()=>{ if(isRecording && !isLoriSpeaking){ recognition.start(); } };
+  recognition.onend=()=>{ if(isRecording && !isLoriSpeaking){ try{ recognition.start(); }catch(e){ console.warn("[STT] auto-restart failed:",e.message); } } };
+  // v8.0 — error handler: surface recognition failures to the user.
+  recognition.onerror=e=>{
+    console.error("[STT] recognition error:",e.error,e.message);
+    if(e.error==="not-allowed"){
+      stopRecording();
+      sysBubble("🎤 Microphone access was denied. Please allow microphone in your browser settings and try again.");
+    } else if(e.error==="no-speech"){
+      // Benign — no speech detected, recognition will auto-restart via onend
+      console.log("[STT] no speech detected — waiting…");
+    } else if(e.error==="network"){
+      stopRecording();
+      sysBubble("🎤 Speech recognition requires an internet connection (Chrome sends audio to Google's servers). Please check your connection.");
+    } else if(e.error==="service-not-allowed"){
+      stopRecording();
+      sysBubble("🎤 Speech recognition service is not available. This may happen on non-HTTPS pages or in some browser configurations.");
+    } else if(e.error==="aborted"){
+      // User or code called stop() — normal, no action needed
+    } else {
+      sysBubble("🎤 Speech recognition error: "+e.error);
+    }
+  };
   return recognition;
 }
 function startRecording(){
   const r=_ensureRecognition(); if(!r) return;
-  r.start(); isRecording=true;
-  document.getElementById("btnMic").textContent="🔴";
-  setLoriState("listening");
+  try{
+    r.start(); isRecording=true;
+    _setMicVisual(true);
+    setLoriState("listening");
+    console.log("[STT] recognition started");
+  }catch(e){
+    console.error("[STT] start() failed:",e.message);
+    // "already started" — just update state
+    if(e.message&&e.message.includes("already started")){
+      isRecording=true; _setMicVisual(true); setLoriState("listening");
+    } else {
+      sysBubble("🎤 Could not start voice input: "+e.message);
+    }
+  }
 }
 function stopRecording(){
   isRecording=false;
   if(recognition){ try{ recognition.stop(); }catch(e){} }
-  document.getElementById("btnMic").textContent="🎤";
+  _setMicVisual(false);
   setLoriState("ready");
+}
+// v8.0 — mic button visual state. Adds/removes a CSS class instead of
+// replacing innerHTML (which destroyed the SVG icon).
+function _setMicVisual(active){
+  const btn=document.getElementById("btnMic");
+  if(!btn) return;
+  if(active){
+    btn.classList.add("mic-active");
+    btn.title="Microphone is on — click to stop";
+  } else {
+    btn.classList.remove("mic-active");
+    btn.title="Click to toggle microphone";
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════

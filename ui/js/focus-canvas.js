@@ -36,7 +36,8 @@
   // ── Open / Close ──────────────────────────────────────────────
 
   function open(trigger) {
-    if (_open) return;
+    console.log("[FocusCanvas] open() called, trigger:", trigger);
+    if (_open) { console.log("[FocusCanvas] already open — returning"); return; }
     _open = true;
     _inputText = "";
     _interimText = "";
@@ -44,7 +45,7 @@
 
     var canvas = _el("fcCanvas");
     var scrim = _el("fcScrim");
-    if (!canvas || !scrim) return;
+    if (!canvas || !scrim) { console.warn("[FocusCanvas] DOM missing — canvas:", !!canvas, "scrim:", !!scrim); return; }
 
     // Populate context labels
     _updateContextLabels();
@@ -255,13 +256,17 @@
   // ── Voice / Listening ─────────────────────────────────────────
 
   function _startListening() {
+    console.log("[FocusCanvas] _startListening() — window.isRecording:", window.isRecording, "typeof toggleRecording:", typeof toggleRecording);
     // Use the existing app.js recognition engine
     if (typeof window.isRecording !== "undefined" && !window.isRecording) {
       // Intercept recognition results to feed into our canvas
       _hookRecognition();
       if (typeof toggleRecording === "function") {
         toggleRecording();
+        console.log("[FocusCanvas] toggleRecording() called — isRecording now:", window.isRecording);
       }
+    } else {
+      console.warn("[FocusCanvas] _startListening skipped — isRecording:", window.isRecording, "(undefined means bridge missing)");
     }
   }
 
@@ -277,10 +282,12 @@
   function _hookRecognition() {
     // Wait for recognition to exist, then intercept onresult
     var attempts = 0;
+    console.log("[FocusCanvas] _hookRecognition — polling for window.recognition...");
     var interval = setInterval(function () {
       attempts++;
       if (window.recognition) {
         clearInterval(interval);
+        console.log("[FocusCanvas] recognition found after", attempts, "attempts — hooking onresult");
         _originalOnResult = window.recognition.onresult;
         _originalOnEnd = window.recognition.onend;
 
@@ -290,7 +297,10 @@
           if (_originalOnResult) _originalOnResult.call(window.recognition, e);
         };
       }
-      if (attempts > 30) clearInterval(interval);
+      if (attempts > 30) {
+        clearInterval(interval);
+        console.warn("[FocusCanvas] gave up waiting for window.recognition after 30 attempts");
+      }
     }, 100);
   }
 
@@ -340,8 +350,11 @@
       text = ta ? ta.value.trim() : "";
     }
 
+    console.log("[FocusCanvas] _onDone — mode:", _mode, "text length:", text.length, "text:", text.slice(0, 80));
+
     if (!text) {
       // Nothing to save — just close
+      console.warn("[FocusCanvas] _onDone — no text captured, closing");
       close();
       return;
     }
@@ -352,12 +365,16 @@
     var chatInput = _el("chatInput");
     if (chatInput) {
       chatInput.value = text;
+      console.log("[FocusCanvas] chatInput.value set to:", text.slice(0, 80));
     }
 
     // Brief processing animation, then send
     setTimeout(function () {
       if (typeof sendUserMessage === "function") {
+        console.log("[FocusCanvas] calling sendUserMessage()");
         sendUserMessage();
+      } else {
+        console.error("[FocusCanvas] sendUserMessage not found!");
       }
 
       // Show done state

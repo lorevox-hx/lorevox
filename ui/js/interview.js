@@ -468,11 +468,16 @@ function setInterviewMode(mode){
 async function ivStart(){
   if(!state.person_id){ sysBubble("Select or create a person first."); return; }
 
-  // v6.1: Show permission card on first interview start of the session
+  // v8.0: The old permCard is hidden (display:none shim) in lori8.0.html.
+  // Permissions (mic, camera, location) are now managed via the
+  // lv80SettingsPopover opened from the gear icon.  On first interview
+  // start we show a brief nudge about the settings, then proceed directly.
   if(!permCardShown){
-    document.getElementById("permCard").classList.remove("hidden");
     permCardShown=true;
-    return; // actual start happens in confirmPermCard()
+    // Gentle reminder — don't block the interview on it
+    if(typeof sysBubble==="function"){
+      sysBubble("💡 Tip: Open Settings (⚙️) to enable voice input, camera, or location sharing.");
+    }
   }
   await _ivStartActual();
 }

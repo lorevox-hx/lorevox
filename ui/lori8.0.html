@@ -204,6 +204,17 @@
       cursor: pointer;
       transition: all 0.2s;
     }
+    #btnMic.mic-active {
+      background: #7f1d1d;
+      border-color: #ef4444;
+      color: #fca5a5;
+      box-shadow: 0 0 12px rgba(239,68,68,0.4);
+      animation: mic-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes mic-pulse {
+      0%, 100% { box-shadow: 0 0 12px rgba(239,68,68,0.4); }
+      50%      { box-shadow: 0 0 24px rgba(239,68,68,0.7); }
+    }
     #chatInput {
       flex: 1;
       background: rgba(30,41,59,0.5);
@@ -1569,6 +1580,40 @@
       <div class="lv80-settings-header">
         <h2 class="lv80-settings-title">⚙️ Settings &amp; Privacy</h2>
         <p class="lv80-settings-subtitle">These settings are optional and session-scoped only. Nothing here is saved between sessions unless noted.</p>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h3 class="lv80-settings-section-title">🎤 Microphone</h3>
+        <p class="lv80-settings-desc">
+          Enable voice input so you can speak to Lori instead of typing. Your browser will ask permission the first time.
+          <strong>Voice input is optional.</strong> You can always type instead.
+        </p>
+        <div class="lv80-settings-row">
+          <div>
+            <div class="lv80-settings-label" id="lv80MicStatus">Off</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="lv80-settings-btn" id="lv80MicToggleBtn" onclick="lv80ToggleMic()">🎤 Enable microphone</button>
+          </div>
+        </div>
+        <p class="lv80-settings-note">Audio is processed in your browser — nothing is recorded or stored.</p>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h3 class="lv80-settings-section-title">📷 Camera (Optional)</h3>
+        <p class="lv80-settings-desc">
+          Enable the camera for affect-aware mode. Lori can read facial cues to adjust her interview style — slowing down during emotional moments or offering a gentler follow-up.
+          <strong>Camera is completely optional.</strong> Lori works normally without it.
+        </p>
+        <div class="lv80-settings-row">
+          <div>
+            <div class="lv80-settings-label" id="lv80CamStatus">Off</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="lv80-settings-btn" id="lv80CamToggleBtn" onclick="lv80ToggleCam()">📷 Enable camera</button>
+          </div>
+        </div>
+        <p class="lv80-settings-note">Video is processed locally and never leaves your device.</p>
       </div>
 
       <div class="lv80-settings-section">
@@ -3826,8 +3871,10 @@ function _lv80MirrorStatus(active) {
 function toggleSettings() {
   const popover = document.getElementById("lv80SettingsPopover");
   if (!popover) return;
-  // Sync location status label before opening
+  // Sync status labels before opening
   if (typeof _lv80UpdateLocStatus === "function") _lv80UpdateLocStatus();
+  _lv80SyncMicStatus();
+  _lv80SyncCamStatus();
   try {
     if (popover.matches(":popover-open")) popover.hidePopover();
     else popover.showPopover();
@@ -3835,6 +3882,99 @@ function toggleSettings() {
     popover.hidden = !popover.hidden;
   }
 }
+
+/* ── 8.0 Mic/Camera settings toggles ──────────────────────────────
+   These replace the old permCard shim that was hidden with display:none.
+   The mic toggle starts/stops Web Speech API recognition.
+   The camera toggle enables/disables affect-aware mode.
+   ────────────────────────────────────────────────────────────────── */
+
+function _lv80SyncMicStatus() {
+  const label = document.getElementById("lv80MicStatus");
+  const btn   = document.getElementById("lv80MicToggleBtn");
+  if (!label) return;
+  if (permMicOn && isRecording) {
+    label.textContent = "Listening...";
+    if (btn) { btn.textContent = "🔴 Disable microphone"; }
+  } else if (permMicOn) {
+    label.textContent = "Enabled (click mic to start)";
+    if (btn) { btn.textContent = "🔇 Disable microphone"; }
+  } else {
+    label.textContent = "Off";
+    if (btn) { btn.textContent = "🎤 Enable microphone"; }
+  }
+}
+
+function lv80ToggleMic() {
+  permMicOn = !permMicOn;
+  // Also update the old permCard toggle state for compatibility
+  const oldToggle = document.getElementById("permMicToggle");
+  if (oldToggle) oldToggle.classList.toggle("on", permMicOn);
+
+  if (permMicOn) {
+    // Test that Web Speech API is available
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      permMicOn = false;
+      const label = document.getElementById("lv80MicStatus");
+      if (label) label.textContent = "Not supported in this browser";
+      return;
+    }
+  } else {
+    // Turn off — stop any active recording
+    if (isRecording && typeof stopRecording === "function") stopRecording();
+  }
+  _lv80SyncMicStatus();
+}
+
+function _lv80SyncCamStatus() {
+  const label = document.getElementById("lv80CamStatus");
+  const btn   = document.getElementById("lv80CamToggleBtn");
+  if (!label) return;
+  if (permCamOn) {
+    label.textContent = "Enabled";
+    if (btn) { btn.textContent = "📷 Disable camera"; }
+  } else {
+    label.textContent = "Off";
+    if (btn) { btn.textContent = "📷 Enable camera"; }
+  }
+}
+
+function lv80ToggleCam() {
+  permCamOn = !permCamOn;
+  const oldToggle = document.getElementById("permCamToggle");
+  if (oldToggle) oldToggle.classList.toggle("on", permCamOn);
+  if (permCamOn) {
+    emotionAware = true;
+    if (typeof updateEmotionAwareBtn === "function") updateEmotionAwareBtn();
+  }
+  _lv80SyncCamStatus();
+}
+
+/* ── window.* bridge for Focus Canvas ─────────────────────────────
+   state.js declares isRecording and recognition with `let`, so they
+   are NOT available as window properties. Focus Canvas (an IIFE with
+   "use strict") accesses them via window.isRecording, window.recognition
+   etc. — which silently returns undefined, breaking voice input.
+
+   This bridge exposes getters/setters on window that proxy to the
+   real lexical-scope variables, so Focus Canvas works correctly.
+   ────────────────────────────────────────────────────────────────── */
+Object.defineProperty(window, "isRecording", {
+  get() { return isRecording; },
+  set(v) { isRecording = v; },
+  configurable: true
+});
+Object.defineProperty(window, "recognition", {
+  get() { return recognition; },
+  set(v) { recognition = v; },
+  configurable: true
+});
+Object.defineProperty(window, "isLoriSpeaking", {
+  get() { return isLoriSpeaking; },
+  set(v) { isLoriSpeaking = v; },
+  configurable: true
+});
 
 async function lv80Init() {
   // 1. Wrap setLoriState before anything tries to use it

@@ -472,11 +472,21 @@
    * map node, mirroring the exact behaviour of memoir chapter row clicks.
    */
   function _jumpToInterview() {
-    // lori8.0 popover path
+    // lori9.0 / lori8.0 popover path
+    // The Popover API uses the :popover-open pseudo-class, NOT an "open" attribute.
+    // Use matches(":popover-open") to detect open state correctly.
     var popover = _el("lifeMapPopover");
-    if (popover && typeof popover.hidePopover === "function" && popover.hasAttribute("open")) {
-      popover.hidePopover();
-      return;
+    if (popover && typeof popover.hidePopover === "function") {
+      try {
+        if (popover.matches(":popover-open")) {
+          popover.hidePopover();
+          console.log("[life-map] Popover closed via hidePopover()");
+          return;
+        }
+      } catch (_) {
+        // Fallback for browsers without :popover-open support
+        try { popover.hidePopover(); return; } catch (_2) {}
+      }
     }
     // lori7.4c tab path
     if (typeof showTab === "function") showTab("interview");
@@ -521,7 +531,22 @@
       console.log("[life-map] Era changed to: " + data.era + " (" + prettyName + ")");
 
       // ⑤ Dismiss popover / switch tab (delayed slightly so user sees the update)
-      setTimeout(function () { _jumpToInterview(); }, 400);
+      setTimeout(function () {
+        _jumpToInterview();
+        // ⑥ v9.0: After closing the popover, send a system prompt so Lori
+        // asks her first question about the selected era. Without this,
+        // the era is set in state but Lori stays silent until the user types.
+        setTimeout(function () {
+          if (typeof sendSystemPrompt === "function") {
+            sendSystemPrompt(
+              "[SYSTEM: The narrator just selected the '" + prettyName +
+              "' era from the Life Map. Begin exploring this period with them. " +
+              "Ask ONE warm, open question about this time in their life.]"
+            );
+            console.log("[life-map] System prompt sent for era:", prettyName);
+          }
+        }, 300);
+      }, 400);
       return;
     }
 
@@ -551,7 +576,23 @@
       try { if (typeof renderInterview       === "function") renderInterview();       } catch (_) {}
       try { if (typeof updateContextTriggers === "function") updateContextTriggers(); } catch (_) {}
       // Brief pause so user sees the "navigating…" cue, then jump
-      setTimeout(function () { _jumpToInterview(); }, 220);
+      var memTitle = data.title || "a memory";
+      var memEra = data.era;
+      setTimeout(function () {
+        _jumpToInterview();
+        // v9.0: Trigger Lori to ask about the selected memory's era
+        setTimeout(function () {
+          if (typeof sendSystemPrompt === "function") {
+            var prettyEra = _prettyEra(memEra);
+            sendSystemPrompt(
+              "[SYSTEM: The narrator just selected '" + memTitle +
+              "' from the Life Map (era: " + prettyEra +
+              "). Ask ONE warm follow-up question about this memory or this period.]"
+            );
+            console.log("[life-map] System prompt sent for memory:", memTitle, "era:", prettyEra);
+          }
+        }, 300);
+      }, 220);
     }
   }
 
@@ -717,6 +758,18 @@
       try { if (typeof renderTimeline        === "function") renderTimeline();        } catch (_) {}
     }
     _jumpToInterview();
+    // v9.0: Trigger Lori to ask about the current era
+    if (era) {
+      var prettyName = _prettyEra(era);
+      setTimeout(function () {
+        if (typeof sendSystemPrompt === "function") {
+          sendSystemPrompt(
+            "[SYSTEM: The narrator clicked 'Continue in Interview' for the '" + prettyName +
+            "' era. Ask ONE warm, open question about this time in their life.]"
+          );
+        }
+      }, 300);
+    }
   }
 
   /* ── Register global ──────────────────────────────────────── */
