@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Lorevox — LLM server (port 8000)
-# Loads model from MODEL_PATH (local folder) if set, otherwise falls back to MODEL_ID (HuggingFace).
-# All config lives in .env at the repo root — edit that file, not this script.
+# Hornelore — LLM server (port 8000)
+# Uses Hornelore repo config and hornelore_data.
 set -e
 
-REPO_DIR=/mnt/c/Users/chris/lorevox
+REPO_DIR=/mnt/c/Users/chris/lorevox/hornelore
+PARENT_REPO_DIR=/mnt/c/Users/chris/lorevox
 
-# ── Load .env (repo root) ──────────────────────────────────────────────────
+# ── Load Hornelore .env (repo root) ───────────────────────────────────────
 if [ -f "$REPO_DIR/.env" ]; then
   set -a
   source "$REPO_DIR/.env"
   set +a
-  echo "[launcher] Loaded .env"
+  echo "[launcher] Loaded Hornelore .env"
 fi
 
-# ── Defaults (only apply if not already set by .env) ──────────────────────
+# ── Defaults (only apply if not already set by Hornelore .env) ───────────
 export USE_TTS=${USE_TTS:-0}
-export DATA_DIR=${DATA_DIR:-/mnt/c/lorevox_data}
+export DATA_DIR=${DATA_DIR:-/mnt/c/hornelore_data}
 export HOST=${HOST:-0.0.0.0}
 export PORT=${PORT:-8000}
 
@@ -34,14 +34,14 @@ export STT_GPU=${STT_GPU:-1}
 fuser -k ${PORT}/tcp 2>/dev/null || true
 
 # ── Create data dirs ──────────────────────────────────────────────────────
-mkdir -p "$DATA_DIR"/{db,voices,cache_audio,memory,projects,interview,logs}
+mkdir -p "$DATA_DIR"/{db,voices,cache_audio,memory,projects,interview,logs,templates}
 
 # ── Start server ──────────────────────────────────────────────────────────
-cd "$REPO_DIR"
+cd "$PARENT_REPO_DIR"
 source .venv-gpu/bin/activate
 cd server
 
-echo "[launcher] Starting LLM server on port $PORT"
+echo "[launcher] Starting Hornelore LLM server on port $PORT"
 echo "[launcher] DATA_DIR=$DATA_DIR"
 echo "[launcher] MODEL_PATH=${MODEL_PATH:-<not set — will use MODEL_ID>}"
 echo "[launcher] STT_MODEL=$STT_MODEL  STT_GPU=$STT_GPU"
