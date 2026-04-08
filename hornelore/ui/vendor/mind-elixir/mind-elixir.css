@@ -1,0 +1,57 @@
+/*
+ * mind-elixir.css — Lorevox vendored stub
+ *
+ * This is a compatibility shim for the Mind Elixir Life Map prototype.
+ * If you replace mind-elixir.js with the real Mind Elixir UMD build,
+ * replace this file with the matching official mind-elixir.css.
+ *
+ * Real library: https://github.com/SSShooter/mind-elixir-core
+ * Install:      npm install mind-elixir
+ * Dist files:   node_modules/mind-elixir/dist/mind-elixir.umd.js
+ *               node_modules/mind-elixir/dist/mind-elixir.css
+ */
+
+/* ── Stub styles used by the SVG renderer in the shim ─────────── */
+.lv-me-root {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.lv-me-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lv-me-node {
+  cursor: pointer;
+}
+
+.lv-me-node:hover rect,
+.lv-me-node:hover ellipse {
+  filter: brightness(1.35);
+}
+
+.lv-me-node text {
+  pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.lv-me-node.lv-me-selected rect,
+.lv-me-node.lv-me-selected ellipse {
+  filter: brightness(1.5);
+  stroke-width: 2.5px !important;
+}
+
+.lv-me-hint {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 11px;
+  fill: rgba(148,163,184,.5);
+}

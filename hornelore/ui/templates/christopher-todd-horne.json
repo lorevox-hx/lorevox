@@ -1,0 +1,271 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "Christopher Todd Horne — Creator of Lorevox",
+  "_version": 2,
+
+  "personal": {
+    "fullName": "Christopher Todd Horne",
+    "preferredName": "Chris",
+    "legalFirstName": "Christopher",
+    "legalMiddleName": "Todd",
+    "legalLastName": "Horne",
+    "dateOfBirth": "1962-12-24",
+    "timeOfBirth": "05:30",
+    "placeOfBirth": "Williston, North Dakota",
+    "birthOrder": "3",
+    "zodiacSign": "Capricorn",
+    "pronouns": "he/him",
+    "culture": "Germans from Russia (maternal), French Alsace-Lorraine and German Hanover (paternal, via Shong and Bolley families), North Dakota",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Janice",
+      "middleName": "Josephine",
+      "lastName": "Horne",
+      "maidenName": "Zarr",
+      "birthDate": "1939-09-30",
+      "birthPlace": "Spokane, Washington",
+      "occupation": "Homemaker",
+      "deceased": false,
+      "notableLifeEvents": "Born in Spokane while father Pete worked at an aluminum factory. Raised in Dodge, Glen Ulin, and Strasburg, ND. Advanced reader as a child — teacher had her read aloud to the class. Attended Sacred Hearts in Glen Ulin, then Strasburg where Lawrence Welk was from. Started college at Bismarck Junior College studying Speech and History, credits transferred to UND. Germans from Russia heritage through both parents (Zarr and Schaaf families). Married Kent on October 10, 1959. Raised three sons including time living in Germany. Strong, independent woman who grew up milking cows and riding her horse Grey.",
+      "notes": "Daughter of Peter Zarr (Dodge, ND) and Josephine Schaaf (Glen Ulin, ND). Siblings: Verene Marie Schnieder (older sister), James Peter Zarr (younger brother, born in a car on the way to Richardton Hospital)."
+    },
+    {
+      "relation": "Father",
+      "firstName": "Kent",
+      "middleName": "James",
+      "lastName": "Horne",
+      "maidenName": "",
+      "birthDate": "1939-12-24",
+      "birthPlace": "Stanley, North Dakota",
+      "occupation": "Construction and trades",
+      "deceased": false,
+      "notableLifeEvents": "Born in Stanley, ND, second of three children of Ervin Horne (1909-1967) and Leila Myrtle Carkuff (1915-1985). Kent's siblings are Sharon Horne (1937, married Ed Woodmansee) and Linda Horne (1942). His father Ervin was the son of Elizabeth Shong (1877-1952) and George Horne (1875-1914). George died when Ervin was only four. Elizabeth later married William Mc Raith (1872-1918). Ervin's siblings included Margaret (married Irvyl Reynolds), James (married Evelyn Mills), Arthur (married Edith Vachal), and half-sister Alice Mc Raith. The Shong family came from Lorraine, France; the Bolley family from Hanover, Germany. Married Janice Josephine Zarr on October 10, 1959 — Kent was 19, Janice was 20. Career in construction and trades. Family lived in Germany where oldest son Vincent was born, then across multiple states. Shares Christmas Eve birthday with youngest son Christopher.",
+      "notes": "Son of Ervin Horne and Leila Myrtle Carkuff. Ervin's wedding anniversary was June 29. Kent's paternal grandmother Elizabeth Shong was the youngest of eight children of John Michael Shong (1829-1891) from Lorraine, France and Christine Bolley (1842-1909) from Hanover, Germany."
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "paternal",
+      "firstName": "Ervin",
+      "lastName": "Horne",
+      "birthDate": "1909-11-12",
+      "birthPlace": "North Dakota",
+      "ancestry": "French (Alsace-Lorraine via Shong), German (via Bolley)",
+      "culturalBackground": "North Dakota homesteader family. Father's side (Shong) from Lorraine, France; mother's side (Bolley) from Hanover, Germany. Family settled in Fall Creek, Wisconsin before moving to North Dakota around 1900.",
+      "memorableStories": "Born November 12, 1909, third child of Elizabeth Shong and George Horne. His father George died April 12, 1914 when Ervin was only four years old. His mother Elizabeth then married William Mc Raith in 1916, who also died May 2, 1918. Ervin grew up in the Ross, North Dakota area. Married Leila Myrtle Carkuff (1915-1985). They had three children: Sharon (1937), Kent (1939), and Linda (1942). Ervin died December 23, 1967. His siblings: Margaret Horne (1904, married Irvyl Reynolds, no children), Phyllis Horne (1907-1908, died in infancy), Isabel Horne (1910, died in infancy), James Horne (1911, married Evelyn Mills; children Suzanne and Martha), Arthur Horne (1912, married Edith Vachal; children Joan, Jean, Judy, Jill), and half-sister Alice Mc Raith (1917, never married). Wedding anniversary June 29."
+    },
+    {
+      "side": "paternal",
+      "firstName": "Leila",
+      "middleName": "Myrtle",
+      "lastName": "Horne",
+      "maidenName": "Carkuff",
+      "birthDate": "1915-11-18",
+      "ancestry": "American",
+      "culturalBackground": "North Dakota",
+      "memorableStories": "Born November 18, 1915. Married Ervin Horne. Mother of Sharon (1937), Kent (1939), and Linda (1942). Died December 1, 1985."
+    },
+    {
+      "side": "maternal",
+      "firstName": "Peter",
+      "lastName": "Zarr",
+      "birthDate": "1909-09-19",
+      "birthPlace": "Dodge, ND",
+      "ancestry": "German-Russian",
+      "culturalBackground": "Germans from Russia, North Dakota",
+      "memorableStories": "Born at home, delivered by Mrs. Steve Dodenheffer. Worked on the Garrison Dam as a foreman of a finishing crew for cement forms. Lost his birth certificate when the ND state Capitol burned down. Steam boiler operator and carpenter. Siblings in order: Tillie Dodenheffer (oldest sister), Peter, Steven, Joe, August, Johnny (youngest)."
+    },
+    {
+      "side": "maternal",
+      "firstName": "Josephine",
+      "middleName": "Eugenia, Susanna",
+      "lastName": "Zarr",
+      "maidenName": "Schaaf",
+      "birthDate": "1914-10-22",
+      "birthPlace": "Glen Ulin, ND",
+      "ancestry": "German-Russian",
+      "culturalBackground": "Germans from Russia, North Dakota",
+      "memorableStories": "Called Josie. Gifted musician who played the organ at silent movie theaters to make money. Attended Capitol Business College in Bismarck (worked as housekeeper for owners to help pay, didn't like accounting). Her mother Anna was 50 when she had Josie and was embarrassed. Sent by train alone to Mount Marty in 7th grade, returned to Glen Ulin for 8th grade at Sacred Heart, then went to Mount Marty high school for 3 years in Yankton, SD. Hated boarding school and told her kids she would never send them. Worked in the kitchen at Mount Marty and learned to cook — expert with a knife, could dice an onion with great skill. Youngest child in her family, oldest sibling was Mike Schaaf."
+    }
+  ],
+
+  "greatGrandparents": [
+    {
+      "side": "paternal-paternal",
+      "firstName": "George",
+      "lastName": "Horne",
+      "birthDate": "1875-03-19",
+      "ancestry": "American",
+      "memorableStories": "George Horne arrived in Ross, North Dakota in 1902. He walked north from Ross in search of satisfactory land, filed on a claim, and received title June 16, 1904. He married Elizabeth Shong on December 29, 1903 in Fall Creek, Wisconsin. They had six children: Margaret (1904), Phyllis (1907), Ervin (1909), Isabel (1910), James (1911), and Arthur (1912). George died April 12, 1914, leaving Elizabeth a widow with six young children."
+    },
+    {
+      "side": "paternal-paternal",
+      "firstName": "Elizabeth",
+      "lastName": "Horne",
+      "maidenName": "Shong",
+      "birthDate": "1877-06-01",
+      "birthPlace": "Fall Creek, Wisconsin",
+      "ancestry": "French (Alsace-Lorraine), German",
+      "memorableStories": "Known as 'Lizzie Shong,' youngest of eight children of John Michael Shong (1829-1891) and Christine Bolley (1842-1909). Her father was born near Nancy, Lorraine, France, came to America around 1848, served in the Civil War (Company G, 28th Infantry), and owned 200 acres east of Fall Creek, Wisconsin. Her mother Christine Bolley was born in Hanover, Germany and came to America in 1850. Elizabeth's siblings: Charlie Shong (1864-1940, married Tillie Welke, ran a hotel in Penn, ND), Sarah Shong (1866-1927, married Gustav Glenz), Maggie (1868, died in infancy), Christie Shong (1869-1936, married Henry Graichen, worked as a cook across the Midwest), Nicholas Shong (1871-1915, married Adone Voechting), Henry 'Hank' Shong (1873-1931, married Lola Archer), and Cora (1875-1876, died in infancy). Around 1900, Lizzie went to Penn, North Dakota to visit brother Charlie and find work as a seamstress. She married George Horne December 29, 1903. After George died in 1914, she married William Mc Raith (1872-1918) on May 1, 1916. William also died, in 1918. She had one child from her second marriage: Alice Mc Raith (1917, never married). The Shong name was originally Schong, with the C dropped upon arrival in America. John Michael Shong definitely claimed to be French; after his death, letters still came from his people in France. Elizabeth died April 26, 1952."
+    },
+    {
+      "side": "maternal-maternal",
+      "firstName": "Anna",
+      "lastName": "Schaaf",
+      "maidenName": "Gustin",
+      "ancestry": "Germans from Russia",
+      "memorableStories": "Gustins were considered the arrogant ones. Arno Gustin was one of the founders of College of Mary. Ag reporter Al Gustin. Was 50 years old when she had Josie (Chris's maternal grandmother)."
+    },
+    {
+      "side": "maternal-maternal",
+      "firstName": "Mathias",
+      "lastName": "Schaaf",
+      "ancestry": "Ukraine — Germans from Russia",
+      "memorableStories": "Family emigrated from Ukraine as part of the Germans from Russia migration. Hated the Russians."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Brother",
+      "firstName": "Vincent",
+      "middleName": "Edward",
+      "lastName": "Horne",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "Born in Germany while the family was living abroad",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": ""
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Jason",
+      "middleName": "Richard",
+      "lastName": "Horne",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Family-oriented",
+      "sharedExperiences": "Grew up together in North Dakota and surrounding areas",
+      "memories": "",
+      "notes": ""
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Melanie",
+    "middleName": "C",
+    "lastName": "Zollner",
+    "birthPlace": "",
+    "occupation": "College professor",
+    "narrative": "Married December 22, 2010; shares family-centered life including grandchildren",
+    "deceased": false
+  },
+
+  "children": [
+    {
+      "firstName": "Vincent",
+      "middleName": "Edward",
+      "lastName": "Horne",
+      "birthDate": "",
+      "narrative": "Oldest child, born in Germany"
+    },
+    {
+      "firstName": "Gretchen",
+      "middleName": "Jo",
+      "lastName": "Horne",
+      "birthDate": "1991-10-04",
+      "narrative": "Lives in Austin, TX; experienced major life challenges in 2024; attends ACA meetings"
+    },
+    {
+      "firstName": "Amelia",
+      "middleName": "Fay",
+      "lastName": "Horne",
+      "birthDate": "1994-08-05",
+      "narrative": "MSW; lived in multiple states including NM, CO, HI; works in social services"
+    },
+    {
+      "firstName": "Cole",
+      "middleName": "Harber",
+      "lastName": "Horne",
+      "birthDate": "2002-04-10",
+      "narrative": "Works in medical billing; studies computer science; interests in AI, cybersecurity, and accounting"
+    }
+  ],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "Married Melanie C. Zollner on December 22, 2010"
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Frequent family dinners and gatherings with extended family",
+      "occasion": "Weekly meals and holidays"
+    },
+    {
+      "description": "Germans from Russia cultural heritage from the Zarr and Schaaf families on mother's side",
+      "occasion": ""
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Ivan",
+      "species": "Dog",
+      "breed": "Golden Retriever",
+      "birthDate": "1964-01-12",
+      "adoptionDate": "1965-01-12",
+      "notes": "Family dog growing up"
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Growing up in North Dakota with rural surroundings and family-centered life",
+    "favoriteToy": "",
+    "significantEvent": "Born on Christmas Eve in Williston, ND — shares birthday with father Kent"
+  },
+
+  "education": {
+    "schooling": "Graduated from Bismarck High School, 1981",
+    "higherEducation": "Occupational Therapy training",
+    "earlyCareer": "Began working in occupational therapy",
+    "careerProgression": "Occupational Therapist at West Las Vegas Schools since 1997",
+    "communityInvolvement": "School-based therapy services and student support",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "Planned retirement January 1, 2026",
+    "lifeLessons": "Focus on family, persistence, and building something meaningful",
+    "adviceForFutureGenerations": ""
+  },
+
+  "hobbies": {
+    "hobbies": "Technology development, AI systems, genealogy, travel",
+    "worldEvents": "Experienced major historical shifts including Cold War era, digital revolution",
+    "personalChallenges": "Complex family dynamics and relationships",
+    "travel": "United States, France, Hawaii, upcoming Europe travel"
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "",
+    "wellnessTips": ""
+  },
+
+  "technology": {
+    "firstTechExperience": "Early computing and later deep involvement in AI systems",
+    "favoriteGadgets": "Computers, AI tools",
+    "culturalPractices": "Germans from Russia heritage through maternal grandparents (Zarr/Schaaf families from Dodge and Glen Ulin, ND). Family roots in Ukraine through great-grandfather Mathias Schaaf. Paternal heritage traces to Lorraine, France through the Shong family (originally Schong — the C was dropped in America) and Hanover, Germany through the Bolley family. Great-great-grandfather John Michael Shong (1829-1891) was born near Nancy, France and served in the Civil War. The Shong family was Catholic and settled at Fall Creek, Wisconsin before most moved to North Dakota around 1900-1905."
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "Building Lorevox into a lasting memory archive system",
+    "messagesForFutureGenerations": ""
+  }
+}

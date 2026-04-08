@@ -1,0 +1,434 @@
+/* ═══════════════════════════════════════════════════════════════
+   lori80.css — Lorevox 8.0 UI Updates
+   Includes: Accessibility fixes, Segmented Control, Mic Animations,
+             and the Memoir Parchment Scroll.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── FONT-SIZE SCALE (Step 3 — accessibility pass for older eyes)
+   Main conversation bubbles (.bubble, .bubble-body): 18px  [layout.css, unchanged]
+   Primary body / system bubble text:                16px  (was 13px)
+   Primary action buttons / labels:                 15px  (was 13px)
+   Secondary / meta / timestamp / label text:       14px  (was 10–12px)
+   Heading / title text:                            19px+ [unchanged — already proportional]
+   Memoir parchment body (.scroll-body):            17px  [unchanged — already good]
+   ────────────────────────────────────────────────────────────
+   Nothing below 14px in any text the user reads.
+   Pure decorative / icon elements are excluded.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Accessibility & Demographic Alignment ── */
+.bubble.sys, .bubble-sys {
+  font-size: 16px !important;
+  color: #94a3b8 !important;
+  font-style: normal !important;
+}
+/* Step 3 — speaker label bump (was 11px in layout.css) */
+.bubble-speaker {
+  font-size: 14px;
+}
+#lv80IdleCue {
+  color: #cbd5e1; 
+  background: rgba(30, 41, 59, 0.95); 
+  font-size: 14px;
+}
+::-webkit-scrollbar { width: 6px; transition: width 0.2s; }
+::-webkit-scrollbar:hover { width: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3); 
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.7); }
+
+/* ── 2. Responsive Header (Mobile Fix) ── */
+@media (max-width: 650px) {
+  .memory-segmented-control { 
+    order: 3; 
+    width: 100%; 
+    justify-content: center; 
+    margin-top: 8px;
+  }
+}
+
+/* ── 3. Memory Care Segmented Control ── */
+.memory-segmented-control {
+  display: flex; 
+  background: rgba(15,23,42,0.6);
+  border: 1px solid rgba(99,102,241,0.3); 
+  border-radius: 20px;
+  padding: 3px; 
+  margin: 0; 
+  gap: 2px;
+}
+.seg-label input { display: none; }
+.seg-pill {
+  padding: 4px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #94a3b8; 
+  border-radius: 16px; 
+  cursor: pointer;
+  transition: all 0.2s; 
+  display: inline-block;
+}
+.seg-label:hover .seg-pill { 
+  color: #e2e8f0; 
+  background: rgba(99,102,241,0.1); 
+}
+.seg-label input:checked + .seg-pill {
+  background: #6366f1; 
+  color: #ffffff; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* ── 4. STT Mic Gentle Animation (Replaces red pulse) ── */
+.mic-listening-active {
+  background: rgba(99,102,241,0.2) !important; 
+  border-color: #818cf8 !important;
+  color: #c7d2fe !important;
+  animation: gentle-breathe 3s infinite ease-in-out;
+}
+@keyframes gentle-breathe {
+  0%, 100% { box-shadow: 0 0 10px rgba(99,102,241,0.3); }
+  50% { box-shadow: 0 0 20px rgba(99,102,241,0.6); }
+}
+
+/* ── 5. The Parchment Scroll & Golden Thread ── */
+#lv80PeekBtn {
+  background: rgba(30, 35, 60, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #c7d2fe;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  z-index: 50;
+}
+#lv80PeekBtn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.6);
+  color: #ffffff;
+}
+
+.golden-thread-badge {
+  display: flex; align-items: center; gap: 6px;
+  align-self: flex-end; margin-top: 10px; margin-left: auto; 
+  padding: 5px 12px; background: #fcfaf5; 
+  border: 1px solid #cbd5e1; color: #475569;
+  border-radius: 16px; font-size: 14px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.2s ease; font-family: 'Inter', system-ui, sans-serif;
+}
+.golden-thread-badge:hover {
+  border-color: #6366f1; color: #1e293b;
+  transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.parchment-scroll {
+  background: #fcfaf5; color: #1e293b;      
+  font-family: 'Georgia', serif; margin: 0; padding: 0; border: none;
+}
+#memoirScrollPopover {
+  top: 0; bottom: 0; right: 0; left: auto;
+  width: 450px; max-width: 90vw; height: 100dvh;
+  border-left: 1px solid #cbd5e1; box-shadow: -12px 0 40px rgba(0,0,0,0.4);
+  transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+}
+#memoirScrollPopover:popover-open { transform: translateX(0); }
+#memoirScrollPopover::backdrop { background: transparent; }
+
+#memoirEditModal {
+  width: 800px; max-width: 95vw; height: 85vh;
+  border-radius: 12px; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  border: 1px solid #cbd5e1; z-index: 200;
+}
+#memoirEditModal::backdrop {
+  background: rgba(10, 10, 16, 0.85); backdrop-filter: blur(4px); 
+}
+
+.scroll-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 24px; background: #f8f6f0; border-bottom: 1px solid #e2e8f0;
+}
+.scroll-header h3 { margin: 0; font-size: 19px; color: #0f172a; font-weight: 500; letter-spacing: 0.01em; }
+.scroll-body {
+  padding: 32px 24px; font-size: 17px; line-height: 1.65; 
+  height: calc(100% - 70px); overflow-y: auto; box-sizing: border-box;
+}
+textarea.edit-mode {
+  width: 100%; background: transparent; border: none; 
+  resize: none; outline: none; font-family: 'Georgia', serif; color: #1e293b;
+}
+mark.new-fact { background: #fef08a; padding: 2px 4px; border-radius: 4px; color: #1e293b; }
+
+/* Meaning Engine Phase C — section-based memoir rendering */
+.memoir-section { margin-bottom: 28px; }
+.memoir-section-heading {
+  font-size: 14px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.09em; color: #94a3b8;
+  margin: 0 0 10px 0; padding-bottom: 6px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.memoir-section p { margin: 0 0 8px 0; }
+.memoir-placeholder {
+  font-size: 14px; color: #94a3b8; font-style: italic;
+  line-height: 1.55; margin: 0;
+}
+
+.scroll-action-btn {
+  background: #6366f1; color: white; border: none; padding: 8px 16px;
+  border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer;
+  font-family: 'Inter', sans-serif; transition: background 0.2s;
+}
+.scroll-action-btn:hover { background: #4f46e5; }
+
+/* ── 6. Memory Exercise — fact-seed fragment visual ── */
+mark.fragment-fact {
+  background: #d1fae5;
+  color: #064e3b;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-style: italic;
+}
+.memoir-fragment-note {
+  font-size: 14px;
+  color: #94a3b8;
+  font-style: italic;
+  margin-left: 6px;
+}
+
+/* ── 7. Camera preview (lv74) ── */
+#lv74-cam-preview {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  width: 180px;
+  background: #0f1117;
+  border: 1px solid rgba(99,102,241,.45);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.55);
+  overflow: hidden;
+  cursor: move;
+  user-select: none;
+}
+#lv74-cam-preview.lv74-preview-hidden { display: none; }
+#lv74-cam-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(99,102,241,.18);
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .04em;
+}
+#lv74-cam-preview-bar span { pointer-events: none; }
+#lv74-cam-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.45);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color .15s;
+}
+#lv74-cam-close:hover { color: #fff; }
+#lv74-cam-video {
+  display: block;
+  width: 180px;
+  height: 135px;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror — natural self-view */
+  background: #000;
+}
+#lv74-cam-reopen {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  display: none;
+  align-items: center;
+  gap: 5px;
+  background: #0f1117;
+  border: 1px solid rgba(99,102,241,.45);
+  border-radius: 20px;
+  padding: 4px 10px 4px 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  transition: border-color .15s, color .15s;
+}
+#lv74-cam-reopen:hover { border-color: rgba(99,102,241,.8); color: #fff; }
+#lv74-cam-reopen.lv74-reopen-visible { display: flex; }
+
+/* ── 8. Media Builder — Photo Gallery ── */
+
+/* Photos tab button in memoir header */
+#lv80PhotosTabBtn {
+  background: none;
+  border: 1px solid rgba(99,102,241,.35);
+  color: rgba(255,255,255,.6);
+  font-size: 14px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+#lv80PhotosTabBtn:hover,
+#lv80PhotosTabBtn.lv80-photos-active {
+  background: rgba(99,102,241,.18);
+  color: #e0e7ff;
+  border-color: rgba(99,102,241,.7);
+}
+
+/* Gallery panel container */
+#lv80PhotoGallery { padding: 12px 0 8px; }
+.lv80-gallery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.lv80-gallery-title { font-size: 14px; color: rgba(255,255,255,.55); letter-spacing: .04em; }
+#lv80AddPhotoBtn {
+  background: rgba(99,102,241,.22);
+  border: 1px solid rgba(99,102,241,.5);
+  color: #e0e7ff;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s;
+}
+#lv80AddPhotoBtn:hover { background: rgba(99,102,241,.38); }
+
+/* Upload preview card */
+#lv80UploadCard {
+  background: rgba(255,255,255,.04);
+  border: 1px dashed rgba(99,102,241,.4);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+#lv80UploadCard img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.lv80-upload-meta { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.lv80-upload-meta input[type="text"] {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 5px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 5px 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.lv80-upload-meta input[type="text"]::placeholder { color: rgba(255,255,255,.3); }
+.lv80-upload-actions { display: flex; gap: 8px; margin-top: 4px; }
+.lv80-upload-actions button { font-size: 13px; padding: 5px 12px; border-radius: 5px; cursor: pointer; border: none; }
+#lv80UploadSubmitBtn { background: #6366f1; color: #fff; transition: background .15s; }
+#lv80UploadSubmitBtn:hover { background: #4f46e5; }
+#lv80UploadSubmitBtn:disabled { opacity: .5; cursor: default; }
+#lv80UploadCancelBtn { background: rgba(255,255,255,.07); color: rgba(255,255,255,.6); transition: background .15s; }
+#lv80UploadCancelBtn:hover { background: rgba(255,255,255,.14); }
+
+/* Gallery grid */
+.lv80-gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.lv80-gallery-empty { font-size: 13px; color: rgba(255,255,255,.35); text-align: center; padding: 24px 0; }
+.lv80-gallery-thumb {
+  position: relative;
+  border-radius: 7px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #0f1117;
+  border: 1px solid rgba(255,255,255,.08);
+  transition: border-color .15s;
+}
+.lv80-gallery-thumb:hover { border-color: rgba(99,102,241,.55); }
+.lv80-gallery-thumb img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.lv80-thumb-caption {
+  font-size: 11px;
+  color: rgba(255,255,255,.5);
+  padding: 3px 6px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(0,0,0,.4);
+}
+.lv80-attach-badge {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(99,102,241,.85);
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 1px 6px;
+  color: #fff;
+  pointer-events: none;
+}
+
+/* Lightbox overlay */
+#lv80Lightbox {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,.82);
+  display: flex; align-items: center; justify-content: center;
+}
+#lv80Lightbox[hidden] { display: none; }
+.lv80-lightbox-inner {
+  position: relative;
+  background: #111318;
+  border: 1px solid rgba(99,102,241,.35);
+  border-radius: 12px;
+  max-width: min(560px, 90vw);
+  width: 100%;
+  overflow: hidden;
+}
+#lv80LbClose {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none;
+  color: rgba(255,255,255,.55); font-size: 18px;
+  cursor: pointer; z-index: 1; line-height: 1;
+  transition: color .15s;
+}
+#lv80LbClose:hover { color: #fff; }
+#lv80LbImg { display: block; width: 100%; max-height: 55vh; object-fit: contain; background: #000; }
+.lv80-lb-meta { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.lv80-lb-meta input,
+.lv80-lb-meta select {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 6px 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.lv80-lb-meta input::placeholder { color: rgba(255,255,255,.3); }
+.lv80-lb-meta select option { background: #1e2030; }
+.lv80-lb-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.lv80-lb-actions button { font-size: 13px; padding: 6px 14px; border-radius: 6px; cursor: pointer; border: none; transition: background .15s; }
+#lv80LbAttach { background: rgba(99,102,241,.28); color: #e0e7ff; border: 1px solid rgba(99,102,241,.5) !important; }
+#lv80LbAttach:hover { background: rgba(99,102,241,.5); }
+#lv80LbDelete { background: rgba(220,38,38,.18); color: #fca5a5; border: 1px solid rgba(220,38,38,.4) !important; }
+#lv80LbDelete:hover { background: rgba(220,38,38,.35); }
+#lv80LbAttachStatus { font-size: 12px; color: rgba(99,241,150,.8); min-height: 16px; }
+
+/* Section photo thumbnails inline in memoir scroll */
+.lv80-section-thumbs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
+.lv80-section-thumb {
+  width: 40px; height: 40px;
+  border-radius: 5px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 1px solid rgba(99,102,241,.35);
+  transition: border-color .15s, transform .1s;
+}
+.lv80-section-thumb:hover { border-color: rgba(99,102,241,.75); transform: scale(1.08); }

@@ -1,0 +1,37 @@
+{
+  "name": "lorevox",
+  "version": "9.0.0",
+  "description": "Lorevox — local-first memoir and life-story platform",
+  "private": true,
+  "scripts": {
+    "audit:ui": "playwright test tests/e2e/lorevox-ui-audit.spec.ts",
+    "audit:smoke": "playwright test tests/e2e/lorevox-smoke-flow.spec.ts",
+    "audit:all": "playwright test",
+    "audit:headed": "playwright test --headed",
+    "audit:report": "playwright show-report",
+    "test:break": "playwright test tests/e2e/relationship-graph-break.spec.ts",
+    "test:break:headed": "playwright test tests/e2e/relationship-graph-break.spec.ts --headed",
+    "test:timeline": "playwright test tests/e2e/timeline-integrity.spec.ts",
+    "test:memory": "playwright test tests/e2e/focus-canvas-behavior.spec.ts",
+    "test:projection": "playwright test tests/e2e/projection-integrity.spec.ts",
+    "test:q3": "playwright test tests/e2e/timeline-integrity.spec.ts tests/e2e/focus-canvas-behavior.spec.ts tests/e2e/projection-integrity.spec.ts",
+    "test:q3:headed": "playwright test tests/e2e/timeline-integrity.spec.ts tests/e2e/focus-canvas-behavior.spec.ts tests/e2e/projection-integrity.spec.ts --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "@tailwindcss/cli": "^4.2.2",
+    "tailwindcss": "^4.2.2"
+  },
+  "main": "tailwind.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2",
+    "playwright-core": "^1.58.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

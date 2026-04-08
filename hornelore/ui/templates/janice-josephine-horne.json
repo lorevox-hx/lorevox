@@ -1,0 +1,217 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload",
+  "_narrator": "Janice Josephine Horne",
+  "_version": 2,
+
+  "personal": {
+    "fullName": "Janice Josephine Horne",
+    "preferredName": "Janice",
+    "legalFirstName": "Janice",
+    "legalMiddleName": "Josephine",
+    "legalLastName": "Horne",
+    "dateOfBirth": "1939-09-30",
+    "timeOfBirth": "10:20",
+    "placeOfBirth": "Spokane, Washington",
+    "birthOrder": "2",
+    "zodiacSign": "Libra",
+    "pronouns": "she/her",
+    "culture": "Germans from Russia",
+    "country": "US",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Josephine",
+      "middleName": "Eugenia, Susanna",
+      "lastName": "Zarr",
+      "maidenName": "Schaaf",
+      "birthDate": "1914-10-22",
+      "birthPlace": "Glen Ulin, ND",
+      "occupation": "Housewife",
+      "deceased": true,
+      "notableLifeEvents": "Josie was a gifted musician. During the silent movie era she played the organ at movie theaters to make money. She had 2 years of college at Capitol Business College in Bismarck, ND. Her mom had sent her there and she worked as a housekeeper for the owners of the school to help pay for it. She did not like it. She didn't like accounting and didn't like the business part. Josie's mom was 50 when she had her and was a bit embarrassed of Josie. When she was in 7th grade her parents sent her down by train by herself to Mount Marty and she was there in the summer because she was so active. She did go back to Glen Ulin to finish 8th grade from Sacred Heart school. After she graduated, she went to high school at Mount Marty for 3 years in Yankton SD. She did not like the experience. She told her kids she would never send them to boarding school. She worked in the kitchen there and learned how to make things like potatoes Florentine. She was an expert with the knife and could dice an onion with great skill. Josie was the youngest child of the family and the oldest was Mike Schaaf.",
+      "notes": "Daughter of Anna Schaaf (née Gustin) and Mathias Schaaf"
+    },
+    {
+      "relation": "Father",
+      "firstName": "Peter",
+      "middleName": "",
+      "lastName": "Zarr",
+      "maidenName": "",
+      "birthDate": "1909-09-19",
+      "birthPlace": "Dodge, ND",
+      "occupation": "Steam Boiler operator license, carpenter",
+      "deceased": true,
+      "notableLifeEvents": "Pete was born at home, delivered by Mrs. Steve Dodenheffer. When Janice was born he worked in an aluminum factory in the state of Washington. He did many things including working on the Garrison Dam as a foreman of a finishing crew for cement forms. Tillie Dodenheffer was the oldest of the siblings, she was the oldest sister then it was Peter, Steven, Joe, August, Johnny was the youngest. Pete lost his birth certificate when the state Capitol of ND burned down.",
+      "notes": "Born in Dodge, ND. Siblings in order: Tillie (oldest sister), Peter, Steven, Joe, August, Johnny (youngest)"
+    }
+  ],
+
+  "grandparents": [
+    {
+      "side": "maternal",
+      "firstName": "Anna",
+      "lastName": "Schaaf",
+      "maidenName": "Gustin",
+      "ancestry": "Germans from Russia",
+      "culturalBackground": "North Dakota",
+      "memorableStories": "Gustins were the arrogant ones. Arno Gustin one of the founders of College of Mary. Ag reporter Al Gustin. Was 50 years old when she had Josie (Janice's mother), which embarrassed her."
+    },
+    {
+      "side": "maternal",
+      "firstName": "Mathias",
+      "lastName": "Schaaf",
+      "maidenName": "",
+      "ancestry": "Ukraine",
+      "culturalBackground": "Germans from Russia",
+      "memorableStories": "Hated the Russians. Family emigrated from Ukraine as part of the Germans from Russia migration."
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Sister",
+      "firstName": "Verene",
+      "middleName": "Marie",
+      "lastName": "Schnieder",
+      "maidenName": "Zarr",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "Did not like to be outside (opposite of Janice)",
+      "sharedExperiences": "Grew up together on farms in North Dakota",
+      "memories": "She was mad because her confirmation name was Gertrude",
+      "notes": "Oldest sibling"
+    },
+    {
+      "relation": "Brother",
+      "firstName": "James",
+      "middleName": "Peter",
+      "lastName": "Zarr",
+      "birthOrder": "3",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "",
+      "memories": "Born June 29 — on Kent's parents' (Ervin Horne's) wedding anniversary. Born in a car on the way to Richardton Hospital.",
+      "notes": "Youngest sibling"
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Kent",
+    "middleName": "James",
+    "lastName": "Horne",
+    "birthDate": "1939-12-24",
+    "birthPlace": "Stanley, North Dakota",
+    "occupation": "Construction and trades",
+    "narrative": "Kent James Horne, born December 24, 1939 in Stanley, North Dakota. Second of three children of Ervin Horne (1909-1967) and Leila Myrtle Carkuff (1915-1985). Kent's siblings are Sharon Horne (1937, married Ed Woodmansee) and Linda Horne (1942). Kent's father Ervin was the son of Elizabeth Shong (1877-1952) and George Horne (1875-1914), homesteaders in Ross, North Dakota. George died when Ervin was only four years old. Elizabeth then married William Mc Raith (1872-1918), who also died two years later. Ervin's siblings included Margaret (married Irvyl Reynolds), James (married Evelyn Mills), and Arthur (married Edith Vachal). Elizabeth was the youngest of eight children of John Michael Shong (1829-1891), a Frenchman from Lorraine who served in the Civil War, and Christine Bolley (1842-1909) from Hanover, Germany. The Shong family originated from Fall Creek, Wisconsin before moving to North Dakota around 1900. Kent married Janice on October 10, 1959. Worked in construction and trades throughout his career. The family lived in Germany (where first son Vincent was born) and across multiple states. Kent and his youngest son Christopher share a birthday — both born on Christmas Eve.",
+    "deceased": false
+  },
+
+  "children": [
+    {
+      "firstName": "Vincent",
+      "middleName": "Edward",
+      "lastName": "Horne",
+      "birthDate": "",
+      "narrative": "Oldest son, born in Germany while the family was living abroad"
+    },
+    {
+      "firstName": "Jason",
+      "middleName": "Richard",
+      "lastName": "Horne",
+      "birthDate": "",
+      "narrative": "Second son, family-oriented, grew up in North Dakota and surrounding areas"
+    },
+    {
+      "firstName": "Christopher",
+      "middleName": "Todd",
+      "lastName": "Horne",
+      "birthDate": "1962-12-24",
+      "narrative": "Third son, born in Williston, North Dakota on Christmas Eve — shares his birthday with his father Kent. Graduated Bismarck High School 1981. Occupational Therapist. Creator of Lorevox."
+    }
+  ],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "Married Kent James Horne on October 10, 1959. Janice was 20, Kent was 19."
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Germans from Russia cultural heritage and traditions from the Zarr and Schaaf families",
+      "occasion": ""
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "Grey",
+      "species": "Horse",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": "",
+      "notes": "Childhood horse, Janice loved horses as a girl"
+    },
+    {
+      "name": "Spot",
+      "species": "Dog",
+      "breed": "",
+      "birthDate": "",
+      "adoptionDate": "",
+      "notes": "Last dog Janice had as a kid. Uncle Johnny got Spot when he had rented a farm."
+    },
+    {
+      "name": "Ivan",
+      "species": "Dog",
+      "breed": "Golden Retriever",
+      "birthDate": "",
+      "adoptionDate": "",
+      "notes": "Family dog when raising sons"
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Liked to be outside and her sister Verene did not like to be outside. Milked cows when they were living in Dodge and liked to do it.",
+    "favoriteToy": "Her horse Grey. She hated men because uncle August was mean to her. Spot was the last dog she had as a kid — Uncle Johnny got him when he had rented a farm.",
+    "significantEvent": "Family moved several times during childhood: Dodge ND, Glen Ulin ND, Strasburg ND. Father Pete worked various jobs including at an aluminum factory in Washington state and as a foreman on the Garrison Dam."
+  },
+
+  "education": {
+    "schooling": "Elementary: Dodge, ND for 1st and 2nd grade (could read big books, teacher had her read aloud to the class, sat alone which she thought was punishment). Sacred Hearts school in Glen Ulin for 3rd, 4th, 5th grade. Strasburg, ND for 6th grade — teacher was a nun Janice called 'a nut' who falsely accused Janice over a note from a classmate and made class clown Johnny Baumgartner wear a dunce hat. Lawrence Welk was from Strasburg and his wife was a nurse at the local hospital.",
+    "higherEducation": "Started college at Bismarck Junior College studying Speech and History. Those credits transferred to UND (University of North Dakota).",
+    "earlyCareer": "",
+    "careerProgression": "Homemaker, raised three sons",
+    "communityInvolvement": "",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "",
+    "lifeLessons": "",
+    "adviceForFutureGenerations": ""
+  },
+
+  "hobbies": {
+    "hobbies": "",
+    "worldEvents": "",
+    "personalChallenges": "",
+    "travel": "Born in Spokane WA, grew up across North Dakota (Dodge, Glen Ulin, Strasburg, Bismarck), lived in Germany with Kent, raised family across multiple states"
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "",
+    "wellnessTips": ""
+  },
+
+  "technology": {
+    "firstTechExperience": "",
+    "favoriteGadgets": "",
+    "culturalPractices": "Germans from Russia heritage through both parents. Father's family from Dodge, ND. Mother's family (Schaaf) originally from Ukraine."
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "",
+    "messagesForFutureGenerations": ""
+  }
+}

@@ -1,0 +1,48 @@
+/* ═══════════════════════════════════════════════════════════════
+   affect.css — camera indicator dot, affect arc, emotion-aware btn
+   Lorevox v6.1 Track B
+═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   TRACK B — CAMERA INDICATOR DOT
+═══════════════════════════════════════════════════════════════ */
+.camera-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:#4ade80;flex-shrink:0;
+  animation:cam-pulse 2s infinite;}
+@keyframes cam-pulse{
+  0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(74,222,128,.5)}
+  50%{opacity:.7;box-shadow:0 0 0 4px rgba(74,222,128,.0)}
+}
+.camera-dot.off{background:#334155;animation:none;}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRACK B — AFFECT ARC (TIMELINE)
+═══════════════════════════════════════════════════════════════ */
+.affect-dot{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin-left:5px;flex-shrink:0;vertical-align:middle;opacity:.85;}
+.affect-dot.steady    {background:#475569;}
+.affect-dot.engaged   {background:#6ee7a8;}
+.affect-dot.reflective{background:#93c5fd;}
+.affect-dot.moved     {background:#c6a7ff;}
+.affect-dot.distressed{background:#f6c453;}
+.affect-dot.overwhelmed{background:#ff9b6b;}
+.affect-arc-label{
+  font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;
+  background:rgba(198,167,255,.13);color:#c6a7ff;margin-left:4px;}
+.tl-affect-row{
+  display:flex;align-items:center;gap:6px;padding:4px 0 4px 52px;
+  font-size:10px;color:#475569;font-style:italic;}
+
+/* ═══════════════════════════════════════════════════════════════
+   EMOTION-AWARE TOGGLE BUTTON
+═══════════════════════════════════════════════════════════════ */
+.emotion-btn{
+  padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);color:var(--muted);
+  transition:all .15s;display:flex;align-items:center;gap:5px;}
+.emotion-btn.active{
+  background:rgba(198,167,255,.14);color:#c6a7ff;
+  border-color:rgba(198,167,255,.35);}

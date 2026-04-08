@@ -1,0 +1,107 @@
+/* ═══════════════════════════════════════════════════════════════
+   layout.css — shell, grid, sidebar, main-stage, chat panel, tabs
+   Lorevox v6.1
+═══════════════════════════════════════════════════════════════ */
+
+/* ── SHELL ───────────────────────────────────────────────────── */
+.shell{height:100vh;display:flex;flex-direction:column;}
+.top-bar{flex-shrink:0;height:46px;background:var(--panel);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 14px;gap:10px;}
+
+/* ── GRID — CSS variable driven ── */
+.grid-layout{
+  flex:1;display:grid;min-height:0;
+  grid-template-columns:var(--sb-w) 1fr var(--chat-w);
+  transition:grid-template-columns .22s ease;}
+.grid-layout.sb-closed  { --sb-w:0px; }
+.grid-layout.chat-closed{ --chat-w:0px; }
+.grid-layout.focus-mode { --sb-w:0px; --chat-w:0px; }
+
+/* ── SIDEBAR ─────────────────────────────────────────────────── */
+.sidebar-left{background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .22s ease;}
+.sb-body{flex:1;overflow-y:auto;padding:10px;}
+.sb-section-title{font-size:10px;color:#94a3b8;font-weight:800;
+  letter-spacing:.18em;text-transform:uppercase;margin-bottom:6px;}
+.sb-item{padding:7px 9px;border-radius:6px;border:1px solid transparent;
+  cursor:pointer;transition:background .15s;}
+.sb-item:hover{background:rgba(255,255,255,.05);}
+.sb-item.active{background:var(--accent-dim);border-color:rgba(124,156,255,.35);}
+.sb-meta{font-size:10px;color:var(--muted);}
+
+/* ── ROADMAP ITEMS (sidebar) ─────────────────────────────────── */
+.roadmap-item{display:flex;align-items:center;gap:7px;padding:4px 7px;
+  border-radius:5px;border:1px solid transparent;cursor:pointer;transition:background .12s;}
+.roadmap-item:hover{background:rgba(255,255,255,.04);}
+.roadmap-item.active-section{background:var(--accent-dim);border-color:rgba(124,156,255,.35);}
+.roadmap-item.done .rm-label{color:#4ade80;}
+.rm-label{font-size:11px;flex:1;color:var(--muted);transition:color .12s;}
+.roadmap-item.active-section .rm-label{color:var(--accent);font-weight:700;}
+
+/* ── MAIN STAGE ──────────────────────────────────────────────── */
+.main-stage{display:flex;flex-direction:column;overflow:hidden;
+  background:radial-gradient(circle at 50% 0%,rgba(124,156,255,.06),transparent 44%),
+             radial-gradient(circle at 100% 100%,rgba(198,167,255,.04),transparent 36%);}
+
+/* ── TAB BAR ─────────────────────────────────────────────────── */
+.tab-bar{flex-shrink:0;display:flex;align-items:stretch;
+  border-bottom:1px solid var(--border);background:var(--panel);
+  padding:0 14px;gap:1px;overflow-x:auto;}
+.tab-btn{padding:0 14px;font-size:12px;font-weight:600;color:var(--muted);
+  border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;
+  transition:color .15s,border-color .15s;display:flex;align-items:center;gap:5px;
+  flex-shrink:0;}
+.tab-btn:hover{color:var(--ink);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-pane{flex:1;overflow-y:auto;padding:18px;}
+
+/* ── CHAT PANEL ──────────────────────────────────────────────── */
+.chat-panel{background:var(--panel);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+/* v7.4D — chat bubbles: aging-first sizing + clear speaker separation */
+.bubble{padding:14px 18px;border-radius:12px;font-size:18px;
+  line-height:1.7;max-width:88%;word-break:break-word;margin-bottom:4px;}
+.bubble-speaker{font-size:11px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;opacity:.55;margin-bottom:6px;}
+.bubble-body{font-size:18px;line-height:1.7;}
+.bubble-ai{background:rgba(198,167,255,.10);border:1px solid rgba(198,167,255,.22);
+  align-self:flex-start;}
+.bubble-ai .bubble-speaker{color:#c6a7ff;}
+.bubble-user{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);
+  align-self:flex-end;}
+.bubble-user .bubble-speaker{color:#94a3b8;}
+.bubble-sys{background:rgba(100,100,110,.12);border:1px solid rgba(255,255,255,.07);
+  align-self:center;text-align:center;font-size:13px;color:var(--muted);
+  max-width:80%;padding:8px 14px;}
+/* Tighter gap between messages in the container */
+.chat-messages{flex:1;overflow-y:auto;padding:14px;
+  display:flex;flex-direction:column;gap:14px;}
+.chat-input-bar{flex-shrink:0;padding:9px 11px;
+  border-top:1px solid var(--border);display:flex;gap:7px;align-items:flex-end;}
+
+/* ── FOCUS MODE HINT ─────────────────────────────────────────── */
+.focus-hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.75);border:1px solid var(--border);border-radius:8px;
+  padding:6px 14px;font-size:11px;color:var(--muted);pointer-events:none;
+  opacity:0;transition:opacity .3s;z-index:100;}
+.focus-hint.show{opacity:1;}
+
+/* ── KIN GROUP LABELS ───────────────────────────────────────── */
+.kin-group-row{font-size:9px;font-weight:800;color:#374151;
+  text-transform:uppercase;letter-spacing:.15em;padding:4px 2px 1px;
+  border-bottom:1px solid rgba(255,255,255,.04);margin-bottom:3px;}
+
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+@media(max-width:1100px){
+  .grid-layout:not(.sb-closed):not(.focus-mode){ --sb-w:240px; }
+  .grid-layout:not(.chat-closed):not(.focus-mode){ --chat-w:340px; }
+}
+@media(max-width:820px){
+  .grid-layout{ --sb-w:0px !important; --chat-w:0px !important; }
+  #btnToggleSb,#btnToggleChat{ display:none; }
+}
+
+/* Prevent layout shift — give sidebar items a stable height during scale */
+.sb-body, .roadmap-list { overflow-x: hidden; }

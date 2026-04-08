@@ -1,0 +1,157 @@
+/* ═══════════════════════════════════════════════════════════════
+   bio-phase-f-tests.css — Lorevox Phase F test harness styles
+   Local CSS only. No Tailwind. No CDN.
+═══════════════════════════════════════════════════════════════ */
+
+.bio-phasef-test-empty {
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 12px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.bio-phasef-test-card {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 14px;
+  color: #e5edf8;
+}
+
+.bio-phasef-test-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bio-phasef-test-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.bio-phasef-test-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Overall status chip */
+.bio-phasef-test-overall {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,.10);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bio-phasef-test-overall.ok {
+  color: #4ade80;
+  background: rgba(74,222,128,.10);
+}
+
+.bio-phasef-test-overall.partial {
+  color: #fbbf24;
+  background: rgba(251,191,36,.10);
+}
+
+.bio-phasef-test-overall.empty {
+  color: #94a3b8;
+  background: rgba(148,163,184,.10);
+}
+
+/* Summary stats row */
+.bio-phasef-test-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.bio-phasef-test-stat {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+/* Actions */
+.bio-phasef-test-actions {
+  margin-bottom: 12px;
+}
+
+.bio-phasef-test-btn {
+  appearance: none;
+  border: 1px solid rgba(124,156,255,.22);
+  background: rgba(124,156,255,.10);
+  color: #7c9cff;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.bio-phasef-test-btn:hover {
+  background: rgba(124,156,255,.18);
+  border-color: rgba(124,156,255,.40);
+}
+
+/* Results table */
+.bio-phasef-test-table-wrap {
+  overflow: auto;
+}
+
+.bio-phasef-test-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.bio-phasef-test-table th,
+.bio-phasef-test-table td {
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.bio-phasef-test-table th {
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+/* Status badges */
+.bio-phasef-test-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,.08);
+  white-space: nowrap;
+}
+
+.bio-phasef-test-badge.verified {
+  color: #4ade80;
+  background: rgba(74,222,128,.10);
+}
+
+.bio-phasef-test-badge.inspected {
+  color: #fbbf24;
+  background: rgba(251,191,36,.10);
+}
+
+.bio-phasef-test-badge.not-executed {
+  color: #94a3b8;
+  background: rgba(148,163,184,.10);
+}
