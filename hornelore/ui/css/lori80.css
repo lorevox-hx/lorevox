@@ -176,6 +176,13 @@ mark.new-fact { background: #fef08a; padding: 2px 4px; border-radius: 4px; color
   font-size: 14px; color: #94a3b8; font-style: italic;
   line-height: 1.55; margin: 0;
 }
+/* Structured memoir preview (from Bio Builder questionnaire data) */
+.memoir-structured { border-left: 3px solid #6366f1; padding-left: 14px; }
+.memoir-structured .memoir-section-heading { color: #6366f1; }
+.memoir-structured-item {
+  font-size: 14px; color: #334155; line-height: 1.6;
+  margin: 0 0 6px 0; padding: 0;
+}
 
 .scroll-action-btn {
   background: #6366f1; color: white; border: none; padding: 8px 16px;

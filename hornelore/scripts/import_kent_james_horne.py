@@ -84,7 +84,7 @@ def main() -> None:
             print(f"[import] Questionnaire stored: {result.get('hasQuestionnaire')}")
             print("")
             print("Next step:")
-            print("1. In Lorevox, select Kent James Horne")
+            print("1. In Hornelore, select Kent James Horne")
             print("2. Open Bio Builder")
             print("3. Confirm questionnaire fields are filled")
         finally:

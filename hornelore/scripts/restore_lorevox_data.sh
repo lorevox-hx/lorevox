@@ -6,12 +6,12 @@
 #   bash scripts/restore_lorevox_data.sh "2026-04-04_1815_label"   # restore named
 #
 # Behaviour:
-#   1. Verifies Lorevox services are stopped (refuses if running)
+#   1. Verifies Hornelore services are stopped (refuses if running)
 #   2. Moves current live data to a timestamped safety copy
 #   3. Copies snapshot into live data location
 #   4. Reports what was done
 #
-# RULE: Restore only happens with Lorevox stopped.
+# RULE: Restore only happens with Hornelore stopped.
 #
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
@@ -56,14 +56,14 @@ if [[ ! -d "$SNAPSHOT_DIR" ]]; then
   exit 1
 fi
 
-# ── Safety check: Lorevox must be stopped ────────────────────────────────────
+# ── Safety check: Hornelore must be stopped ──────────────────────────────────
 _services_running=0
 if api_up 2>/dev/null; then _services_running=1; fi
 if tts_up 2>/dev/null; then _services_running=1; fi
 if ui_up 2>/dev/null; then _services_running=1; fi
 
 if [[ "$_services_running" -eq 1 ]]; then
-  printf 'ERROR: Lorevox services are still running.\n' >&2
+  printf 'ERROR: Hornelore services are still running.\n' >&2
   printf 'Stop all services first:\n' >&2
   printf '  bash scripts/stop_all.sh\n' >&2
   printf 'Then retry the restore.\n' >&2
@@ -124,5 +124,5 @@ else
   printf '  WARNING: No DB file in restored data.\n'
 fi
 
-printf '\nYou can now restart Lorevox:\n'
+printf '\nYou can now restart Hornelore:\n'
 printf '  bash scripts/start_all.sh\n'

@@ -14,6 +14,40 @@
 let _llmReady = false;
 let _llmWarmupPolling = false;
 
+/* ── Hornelore operator mode flag ───────────────────────────── */
+window.HORNELORE_OPERATOR_MODE = window.HORNELORE_OPERATOR_MODE || false;
+
+/* ── Hornelore: deleted-narrator skip list ──────────────────── */
+function _horneloreGetDeletedLabels() {
+  try {
+    return JSON.parse(localStorage.getItem("hornelore_deleted_labels") || "[]");
+  } catch (_) {
+    return [];
+  }
+}
+
+function _horneloreMarkDeletedNarrator(label) {
+  if (!label) return;
+  try {
+    var arr = _horneloreGetDeletedLabels();
+    if (arr.indexOf(label) < 0) arr.push(label);
+    localStorage.setItem("hornelore_deleted_labels", JSON.stringify(arr));
+  } catch (_) {}
+}
+
+function _horneloreClearDeletedNarrator(label) {
+  if (!label) return;
+  try {
+    var arr = _horneloreGetDeletedLabels().filter(function(x) { return x !== label; });
+    localStorage.setItem("hornelore_deleted_labels", JSON.stringify(arr));
+  } catch (_) {}
+}
+
+// Expose for operator UI
+window._horneloreMarkDeletedNarrator  = _horneloreMarkDeletedNarrator;
+window._horneloreClearDeletedNarrator = _horneloreClearDeletedNarrator;
+window._horneloreGetDeletedLabels     = _horneloreGetDeletedLabels;
+
 /** True once the model has completed warmup and can generate. */
 function isLlmReady() { return _llmReady; }
 // Expose for tests and console inspection
@@ -885,6 +919,11 @@ async function lvxDeleteNarratorConfirmed(){
 
   // Store deleted person_id for undo (backend restore uses original ID)
   state.narratorDelete.deletedPid = pid;
+
+  // Hornelore: remember deleted label so auto-seed does not immediately recreate
+  if (state.narratorDelete && state.narratorDelete.targetLabel) {
+    _horneloreMarkDeletedNarrator(state.narratorDelete.targetLabel);
+  }
 
   // clear active pointer if needed
   if (state.person_id === pid) {

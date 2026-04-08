@@ -634,7 +634,10 @@
       // Phase L: Post-preload candidate extraction —
       // Run the same extraction pipeline that manual section save uses,
       // so preloaded narrators have usable candidates immediately.
-      _postPreloadExtractCandidates(pid, qqSections);
+      // Hornelore: skip if preload is treated as baseline truth.
+      if (!window.HORNELORE_TRUST_PRELOAD_AS_TRUTH) {
+        _postPreloadExtractCandidates(pid, qqSections);
+      }
 
       // Phase Q.1: Build relationship graph from preloaded data
       // Phase Q.2 FIX: clear graph before fullSync to prevent cross-narrator accumulation
@@ -725,7 +728,10 @@
       }
 
       // Phase L: post-preload candidate extraction
-      _postPreloadExtractCandidates(pid, qqSections);
+      // Hornelore: skip if preload is treated as baseline truth.
+      if (!window.HORNELORE_TRUST_PRELOAD_AS_TRUTH) {
+        _postPreloadExtractCandidates(pid, qqSections);
+      }
 
       // Phase Q.1: Build relationship graph from preloaded data
       // Phase Q.2 FIX: clear graph before fullSync to prevent cross-narrator accumulation
@@ -764,11 +770,52 @@
     reader.readAsText(file);
   }
 
+  /* ── Import-or-update: match by name, update existing or create new ── */
+
+  async function lv80ImportNarratorTemplate(tpl) {
+    var p = tpl && tpl.personal ? tpl.personal : {};
+    var fullName = (p.fullName || "").trim();
+    var preferredName = (p.preferredName || "").trim();
+
+    var people = (typeof state !== "undefined" && state.narratorUi && state.narratorUi.peopleCache)
+      ? state.narratorUi.peopleCache
+      : [];
+
+    // Match against display_name, name, AND Hornelore altNames for robustness
+    var hnConfig = window.HORNELORE_NARRATORS || [];
+    var altNames = [];
+    for (var h = 0; h < hnConfig.length; h++) {
+      var hn = hnConfig[h];
+      if (hn.displayName && hn.displayName.toLowerCase() === fullName.toLowerCase()) {
+        altNames = (hn.altNames || []).map(function(n) { return n.toLowerCase(); });
+        break;
+      }
+    }
+
+    var match = people.find(function(person) {
+      var label = ((person.display_name || person.name || "") + "").trim().toLowerCase();
+      if (label === fullName.toLowerCase() || label === preferredName.toLowerCase()) return true;
+      // Check altNames from Hornelore config
+      for (var a = 0; a < altNames.length; a++) {
+        if (label === altNames[a]) return true;
+      }
+      return false;
+    });
+
+    if (match) {
+      var pid = match.id || match.person_id || match.uuid;
+      return await lv80PreloadIntoExisting(pid, tpl);
+    }
+
+    return await lv80PreloadNarrator(tpl);
+  }
+
   /* ── Expose globally ──────────────────────────────────────── */
 
-  window.lv80PreloadNarrator      = lv80PreloadNarrator;
-  window.lv80PreloadIntoExisting  = lv80PreloadIntoExisting;
-  window.lv80PreloadFromFile      = lv80PreloadFromFile;
+  window.lv80PreloadNarrator          = lv80PreloadNarrator;
+  window.lv80PreloadIntoExisting      = lv80PreloadIntoExisting;
+  window.lv80PreloadFromFile          = lv80PreloadFromFile;
+  window.lv80ImportNarratorTemplate   = lv80ImportNarratorTemplate;
 
   console.log("[Lorevox] Narrator preload utility loaded.");
 

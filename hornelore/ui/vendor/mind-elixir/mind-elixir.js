@@ -326,7 +326,7 @@
     hint.setAttribute("y",           H - 8);
     hint.setAttribute("text-anchor", "end");
     hint.setAttribute("aria-hidden", "true");
-    hint.textContent = "Click a life period to navigate · Lorevox Life Map";
+    hint.textContent = "Click a life period to navigate · Hornelore Life Map";
     svg.appendChild(hint);
 
     // Edges (behind nodes)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-scripts/warm_tts.py — Lorevox TTS warmup (v7.4D)
+scripts/warm_tts.py — Hornelore TTS warmup
 
 Sends a minimal dummy utterance to the TTS server so Coqui/VITS loads its
 model weights into GPU/CPU memory before the first real speech request.

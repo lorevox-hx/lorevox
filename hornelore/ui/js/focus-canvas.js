@@ -28,6 +28,17 @@
   var _originalOnResult = null;
   var _originalOnEnd = null;
 
+  // ── Memory type (hybrid capture model) ─────────────────────────
+  var _memoryType = "memory"; // memory | story | person | place | feeling
+
+  var _HELPER_TEXT = {
+    memory:  "Share a memory from this time in your life.",
+    story:   "Tell a story — something that happened, how it unfolded.",
+    person:  "Describe someone important — who they were, what they meant to you.",
+    place:   "Describe a place — where it was, what it felt like to be there.",
+    feeling: "Share how you felt — an emotion, a mood, a moment of clarity."
+  };
+
   // ── N.1-02: Anchor-bottom scroll state ────────────────────────
   var _autoScroll = true;
   var _scrollPauseByUser = false;
@@ -466,6 +477,44 @@
     _startListening();
   }
 
+  // ── Memory type chip handling ──────────────────────────────────
+
+  function _setMemoryType(type) {
+    if (!_HELPER_TEXT[type]) return;
+    _memoryType = type;
+    // Update active chip
+    var chips = document.querySelectorAll("#fcMemoryChips .fc-chip");
+    for (var i = 0; i < chips.length; i++) {
+      var chip = chips[i];
+      if (chip.dataset.type === type) {
+        chip.classList.add("fc-chip-active");
+      } else {
+        chip.classList.remove("fc-chip-active");
+      }
+    }
+    // Update helper text
+    var helper = _el("fcHelperText");
+    if (helper) helper.textContent = _HELPER_TEXT[type];
+    // Update placeholder
+    var ta = _el("fcTextarea");
+    if (ta) {
+      var placeholders = {
+        memory: "Share your memory...",
+        story: "Tell the story...",
+        person: "Tell me about this person...",
+        place: "Describe this place...",
+        feeling: "Share how you felt..."
+      };
+      ta.placeholder = placeholders[type] || "Share your story...";
+    }
+    console.log("[FocusCanvas] Memory type set:", type);
+  }
+
+  function _updateEraLabel(era) {
+    var eraLabel = _el("fcEraLabel");
+    if (eraLabel && era) eraLabel.textContent = era;
+  }
+
   // ── Public API ────────────────────────────────────────────────
 
   window.FocusCanvas = {
@@ -473,6 +522,9 @@
     close: close,
     isOpen: function () { return _open; },
     getMode: function () { return _mode; },
+    getMemoryType: function () { return _memoryType; },
+    setMemoryType: _setMemoryType,
+    updateEraLabel: _updateEraLabel,
     // Internal handlers exposed for HTML onclick
     _onDone: _onDone,
     _switchToTyping: _switchToTyping,

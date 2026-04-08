@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# scripts/status_all.sh — Lorevox 7.4C
-# Prints process state and health for all three services.
+# scripts/status_all.sh — Hornelore 1.0
+# Prints process state and health for all three Hornelore services.
 #
 # Usage:
 #   bash scripts/status_all.sh
@@ -20,7 +20,7 @@ print_status() {
 
 printf '%-14s  %-18s  %s\n' "Service" "Process" "Health"
 printf '%-14s  %-18s  %s\n' "--------------" "------------------" "--------"
-print_status "Lorevox API" "$API_PID_FILE" api_up
-print_status "Lorevox TTS" "$TTS_PID_FILE" tts_up
-print_status "Lorevox UI"  "$UI_PID_FILE"  ui_up
+print_status "Hornelore API" "$API_PID_FILE" api_up
+print_status "Hornelore TTS" "$TTS_PID_FILE" tts_up
+print_status "Hornelore UI"  "$UI_PID_FILE"  ui_up
 printf '\nLogs: %s\n' "$LOG_DIR"

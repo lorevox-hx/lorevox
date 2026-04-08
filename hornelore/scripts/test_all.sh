@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# Lorevox 9.0 — Unified Test Runner
+# Hornelore 1.0 — Unified Test Runner
 # Runs all test layers in sequence and produces a summary.
 #
 # Usage:
@@ -50,7 +50,7 @@ skip_layer() {
 
 echo ""
 echo "╔═══════════════════════════════════════════╗"
-echo "║   Lorevox 9.0 — Full Test Suite           ║"
+echo "║   Hornelore 1.0 — Full Test Suite          ║"
 echo "║   $(date '+%Y-%m-%d %H:%M:%S')                    ║"
 echo "╚═══════════════════════════════════════════╝"
 

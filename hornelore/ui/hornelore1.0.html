@@ -1356,6 +1356,45 @@
       border-color: rgba(239, 68, 68, 0.3);
     }
 
+    /* ── Memory type chips ── */
+    .fc-memory-chips {
+      display: flex;
+      gap: 8px;
+      padding: 10px 28px 0;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .fc-chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(30, 41, 59, 0.4);
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .fc-chip:hover {
+      background: rgba(99, 102, 241, 0.15);
+      color: #a5b4fc;
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+    .fc-chip-active {
+      background: rgba(99, 102, 241, 0.25);
+      color: #c7d2fe;
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+    .fc-helper-text {
+      padding: 4px 28px 0;
+      margin: 0;
+      font-size: 13px;
+      color: #64748b;
+      font-style: italic;
+      flex-shrink: 0;
+    }
+
     /* ── N.2: Lori context header ── */
     .fc-last-reply {
       padding: 14px 24px 16px;
@@ -1780,6 +1819,13 @@
       <button id="lv80PeekBtn" popovertarget="memoirScrollPopover" title="Read your story so far">
         📖 Peek at Memoir
       </button>
+      <button id="lv80OperatorBtn"
+              class="settings-btn dev-only hidden"
+              type="button"
+              popovertarget="lv80OperatorPopover"
+              title="Hornelore operator tools">
+        &#x1F6E0;
+      </button>
       <button class="settings-btn" onclick="toggleSettings()" title="Settings">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -2058,6 +2104,70 @@
     </div>
   </div>
 
+  <!-- ── OPERATOR POPOVER (Hornelore) ────────────────────────
+       Triggered by the wrench button. Hidden by default (dev-only).
+       JSON import, narrator delete, projection debug.
+  ──────────────────────────────────────────────────────────────-->
+  <div id="lv80OperatorPopover" popover>
+    <div class="lv80-settings-shell">
+      <div class="lv80-settings-header">
+        <h3 class="lv80-settings-title">Hornelore Operator Tools</h3>
+        <p class="lv80-settings-subtitle">
+          Trusted JSON import, narrator maintenance, and debug tools.
+        </p>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h4 class="lv80-settings-section-title">JSON Import / Update</h4>
+        <p class="lv80-settings-desc">
+          Import a narrator JSON file. If the narrator exists, update them. If not, create them.
+        </p>
+        <input id="lv80OperatorJsonFile" type="file" accept=".json,application/json">
+        <div style="margin-top:10px">
+          <button class="lv80-settings-btn" onclick="lv80OperatorImportJson()">Import / Update JSON</button>
+        </div>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h4 class="lv80-settings-section-title">Narrator Delete</h4>
+        <p class="lv80-settings-desc">
+          Delete the currently selected narrator through the existing soft-delete workflow.
+        </p>
+        <div class="lv80-settings-row">
+          <span class="lv80-settings-label" id="lv80OperatorDeleteLabel">No narrator selected</span>
+          <button class="lv80-settings-btn secondary" onclick="lv80OperatorDeleteCurrent()">Delete Current Narrator</button>
+        </div>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h4 class="lv80-settings-section-title">Clear Preload Candidates</h4>
+        <p class="lv80-settings-desc">
+          Remove candidates created by the preload extraction pipeline.
+          Keeps interview-derived and manually added candidates intact.
+        </p>
+        <pre id="lv80OperatorCandidateCount" style="font-size:12px; color:#94a3b8; margin:6px 0;"></pre>
+        <button class="lv80-settings-btn secondary" onclick="lv80OperatorClearPreloadCandidates()">Clear Preload Candidates</button>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h4 class="lv80-settings-section-title">Seeder Skip List</h4>
+        <p class="lv80-settings-desc">
+          Narrators you deleted that the auto-seeder will skip on reload.
+        </p>
+        <pre id="lv80OperatorSkipList" style="font-size:12px; color:#94a3b8; margin:6px 0;"></pre>
+        <button class="lv80-settings-btn secondary" onclick="lv80OperatorClearSkipList()">Clear Skip List</button>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h4 class="lv80-settings-section-title">Projection Debug</h4>
+        <p class="lv80-settings-desc">
+          Open a read-only view of projection writes, candidates, and suggestions.
+        </p>
+        <button class="lv80-settings-btn" onclick="lv80ToggleProjectionDebug()">Toggle Debug Panel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── SETTINGS POPOVER (Step 3) ───────────────────────────
        Triggered by the gear icon in the header via toggleSettings().
        Contains location opt-in and future settings expansion.
@@ -2190,6 +2300,16 @@
     </div>
     <button class="fc-close-btn" onclick="FocusCanvas.close()" title="Close capture mode" aria-label="Close">✕</button>
   </div>
+
+  <!-- Memory type chips — memoir-connected capture context -->
+  <div id="fcMemoryChips" class="fc-memory-chips">
+    <button class="fc-chip fc-chip-active" data-type="memory" onclick="FocusCanvas.setMemoryType('memory')">Memory</button>
+    <button class="fc-chip" data-type="story" onclick="FocusCanvas.setMemoryType('story')">Story</button>
+    <button class="fc-chip" data-type="person" onclick="FocusCanvas.setMemoryType('person')">Person</button>
+    <button class="fc-chip" data-type="place" onclick="FocusCanvas.setMemoryType('place')">Place</button>
+    <button class="fc-chip" data-type="feeling" onclick="FocusCanvas.setMemoryType('feeling')">Feeling</button>
+  </div>
+  <p id="fcHelperText" class="fc-helper-text">Share a memory from this time in your life.</p>
 
   <!-- N.1-01 + N.2: Lori context header — pinned last prompt with icon -->
   <div id="fcLastReply" class="fc-last-reply fc-hidden" aria-live="polite">
@@ -3528,7 +3648,289 @@ let _goldenThreadCleanup = null;
 
 /* ── 7a. MEMOIR STATE MACHINE ────────────────────────────────── */
 
-let _memoirState = "empty"; // "empty" | "threads" | "draft"
+let _memoirState = "empty"; // "empty" | "structured" | "threads" | "draft"
+
+/* ── 7a.1 MEMOIR SPINE RENDERER — structured data → memoir preview ────────
+   Builds memoir sections from Bio Builder questionnaire + profile basics +
+   timeline spine, WITHOUT requiring /api/facts/list to return anything.
+   This is the "data spine" that makes Peek at Memoir useful from day one.
+──────────────────────────────────────────────────────────────────────────── */
+
+// Safely read the questionnaire for the current narrator
+function lv80GetQuestionnaire() {
+  try { return state?.bioBuilder?.questionnaire || {}; } catch (_) { return {}; }
+}
+
+// Extract narrator basics from profile + questionnaire personal section
+function lv80GetNarratorBasics() {
+  const profile = state?.profile?.basics || {};
+  const qq = lv80GetQuestionnaire();
+  const personal = qq.personal || {};
+  return {
+    fullName:      personal.fullName  || profile.fullname  || profile.preferred || "",
+    preferredName: personal.preferredName || profile.preferred || "",
+    dob:           personal.dateOfBirth || profile.dob || "",
+    pob:           personal.placeOfBirth || profile.pob || "",
+    birthOrder:    personal.birthOrder || "",
+    zodiac:        personal.zodiacSign || ""
+  };
+}
+
+// Check if enough structured data exists to render a memoir preview
+function lv80HasStructuredMemoirData() {
+  const basics = lv80GetNarratorBasics();
+  const qq = lv80GetQuestionnaire();
+  // Minimum: we need a name and at least one of DOB/POB, or any filled questionnaire section
+  if (basics.fullName && (basics.dob || basics.pob)) return true;
+  // Check if any questionnaire section has real data
+  for (const key of Object.keys(qq)) {
+    const val = qq[key];
+    if (!val) continue;
+    if (Array.isArray(val) && val.length > 0) return true;
+    if (typeof val === "object" && Object.values(val).some(v => v && String(v).trim())) return true;
+  }
+  return false;
+}
+
+// ── Section renderers — each returns { label, items[] } or null ──
+
+function lv80RenderLegend() {
+  const b = lv80GetNarratorBasics();
+  if (!b.fullName) return null;
+  const items = [];
+  const nameStr = b.preferredName && b.preferredName !== b.fullName
+    ? `${b.fullName}, known as ${b.preferredName}`
+    : b.fullName;
+  let origin = "";
+  if (b.dob && b.pob) origin = `Born ${_formatDate(b.dob)} in ${b.pob}`;
+  else if (b.dob) origin = `Born ${_formatDate(b.dob)}`;
+  else if (b.pob) origin = `Born in ${b.pob}`;
+  if (origin) items.push(`${nameStr}. ${origin}.`);
+  else items.push(`${nameStr}.`);
+  if (b.birthOrder) items.push(`Birth order: ${b.birthOrder}.`);
+  return items.length ? { label: "The Legend Begins", items } : null;
+}
+
+function lv80RenderFormativeYears() {
+  const qq = lv80GetQuestionnaire();
+  const items = [];
+  // Parents
+  const parents = Array.isArray(qq.parents) ? qq.parents : [];
+  for (const p of parents) {
+    if (!p.firstName && !p.lastName) continue;
+    const name = [p.firstName, p.middleName, p.lastName].filter(Boolean).join(" ");
+    const parts = [p.relation ? `${p.relation}: ${name}` : name];
+    if (p.occupation) parts.push(`occupation: ${p.occupation}`);
+    if (p.birthPlace) parts.push(`from ${p.birthPlace}`);
+    items.push(parts.join(" — "));
+  }
+  // Grandparents
+  const gp = Array.isArray(qq.grandparents) ? qq.grandparents : [];
+  for (const g of gp) {
+    if (!g.firstName && !g.lastName) continue;
+    const name = [g.firstName, g.middleName, g.lastName].filter(Boolean).join(" ");
+    const parts = [];
+    if (g.side) parts.push(`${g.side} side`);
+    parts.push(name);
+    if (g.ancestry) parts.push(`ancestry: ${g.ancestry}`);
+    items.push(parts.join(" — "));
+  }
+  // Siblings
+  const sibs = Array.isArray(qq.siblings) ? qq.siblings : [];
+  for (const s of sibs) {
+    if (!s.firstName) continue;
+    const name = [s.firstName, s.lastName].filter(Boolean).join(" ");
+    items.push(s.relation ? `${s.relation}: ${name}` : `Sibling: ${name}`);
+  }
+  // Early memories
+  const em = qq.earlyMemories || {};
+  if (em.firstMemory) items.push(`First memory: ${_truncate(em.firstMemory, 120)}`);
+  if (em.favoriteToy) items.push(`Favorite toy: ${_truncate(em.favoriteToy, 80)}`);
+  if (em.significantEvent) items.push(`Significant early event: ${_truncate(em.significantEvent, 120)}`);
+  return items.length ? { label: "Formative Years", items } : null;
+}
+
+function lv80RenderCrossroads() {
+  const qq = lv80GetQuestionnaire();
+  const items = [];
+  // Education & career
+  const ed = qq.education || {};
+  if (ed.schooling) items.push(`Schooling: ${_truncate(ed.schooling, 120)}`);
+  if (ed.higherEducation) items.push(`Higher education: ${_truncate(ed.higherEducation, 120)}`);
+  if (ed.earlyCareer) items.push(`Early career: ${_truncate(ed.earlyCareer, 120)}`);
+  if (ed.careerProgression) items.push(`Career: ${_truncate(ed.careerProgression, 120)}`);
+  // Spouse / partner
+  const spouses = Array.isArray(qq.spouse) ? qq.spouse : [];
+  for (const sp of spouses) {
+    if (!sp.firstName) continue;
+    const name = [sp.firstName, sp.lastName].filter(Boolean).join(" ");
+    const parts = [sp.relationshipType ? `${sp.relationshipType}: ${name}` : name];
+    if (sp.occupation) parts.push(`occupation: ${sp.occupation}`);
+    items.push(parts.join(" — "));
+  }
+  // Marriage details
+  const marriages = Array.isArray(qq.marriage) ? qq.marriage : [];
+  for (const m of marriages) {
+    if (m.proposalStory) items.push(`Proposal: ${_truncate(m.proposalStory, 120)}`);
+    if (m.weddingDetails) items.push(`Wedding: ${_truncate(m.weddingDetails, 120)}`);
+  }
+  return items.length ? { label: "Crossroads", items } : null;
+}
+
+function lv80RenderPeaksAndValleys() {
+  const qq = lv80GetQuestionnaire();
+  const items = [];
+  // Children
+  const kids = Array.isArray(qq.children) ? qq.children : [];
+  for (const c of kids) {
+    if (!c.firstName) continue;
+    const name = [c.firstName, c.lastName].filter(Boolean).join(" ");
+    items.push(c.relation ? `${c.relation}: ${name}` : `Child: ${name}`);
+    if (c.narrative) items.push(`  ${_truncate(c.narrative, 100)}`);
+  }
+  // Health milestones
+  const health = qq.health || {};
+  if (health.healthMilestones) items.push(`Health: ${_truncate(health.healthMilestones, 120)}`);
+  // Personal challenges
+  const hobbies = qq.hobbies || {};
+  if (hobbies.personalChallenges) items.push(`Challenges: ${_truncate(hobbies.personalChallenges, 120)}`);
+  if (hobbies.worldEvents) items.push(`World events: ${_truncate(hobbies.worldEvents, 120)}`);
+  return items.length ? { label: "Peaks & Valleys", items } : null;
+}
+
+function lv80RenderCurrentHorizon() {
+  const qq = lv80GetQuestionnaire();
+  const items = [];
+  // Later years
+  const later = qq.laterYears || {};
+  if (later.retirement) items.push(`Retirement: ${_truncate(later.retirement, 120)}`);
+  if (later.lifeLessons) items.push(`Life lessons: ${_truncate(later.lifeLessons, 120)}`);
+  if (later.adviceForFutureGenerations) items.push(`Advice: ${_truncate(later.adviceForFutureGenerations, 120)}`);
+  // Family traditions
+  const traditions = Array.isArray(qq.familyTraditions) ? qq.familyTraditions : [];
+  for (const t of traditions) {
+    if (t.description) items.push(`Tradition: ${_truncate(t.description, 100)}`);
+  }
+  // Hobbies
+  const hobbies = qq.hobbies || {};
+  if (hobbies.hobbies) items.push(`Hobbies: ${_truncate(hobbies.hobbies, 100)}`);
+  if (hobbies.travel) items.push(`Travel: ${_truncate(hobbies.travel, 100)}`);
+  return items.length ? { label: "Current Horizon", items } : null;
+}
+
+function lv80RenderCompass() {
+  const qq = lv80GetQuestionnaire();
+  const items = [];
+  // Additional notes / legacy
+  const notes = qq.additionalNotes || {};
+  if (notes.unfinishedDreams) items.push(`Unfinished dreams: ${_truncate(notes.unfinishedDreams, 120)}`);
+  if (notes.messagesForFutureGenerations) items.push(`Message: ${_truncate(notes.messagesForFutureGenerations, 120)}`);
+  // Technology & beliefs
+  const tech = qq.technology || {};
+  if (tech.culturalPractices) items.push(`Cultural practices: ${_truncate(tech.culturalPractices, 120)}`);
+  // Pets
+  const pets = Array.isArray(qq.pets) ? qq.pets : [];
+  for (const p of pets) {
+    if (p.name) items.push(`Pet: ${p.name}${p.species ? ` (${p.species})` : ""}`);
+  }
+  return items.length ? { label: "The Compass", items } : null;
+}
+
+// Build all memoir sections from structured data
+function lv80BuildMemoirSections() {
+  const renderers = [
+    lv80RenderLegend,
+    lv80RenderFormativeYears,
+    lv80RenderCrossroads,
+    lv80RenderPeaksAndValleys,
+    lv80RenderCurrentHorizon,
+    lv80RenderCompass
+  ];
+  return renderers.map(fn => fn()).filter(Boolean);
+}
+
+// Render the structured memoir preview into the DOM
+function lv80RenderStructuredMemoirPreview() {
+  const content = document.getElementById("memoirScrollContent");
+  if (!content) return;
+  const sections = lv80BuildMemoirSections();
+  if (!sections.length) return;
+
+  // Clear existing content and render structured sections
+  content.innerHTML = "";
+  for (const sec of sections) {
+    const sectionEl = document.createElement("section");
+    sectionEl.className = "memoir-section memoir-structured";
+    sectionEl.dataset.section = sec.label.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+
+    const h4 = document.createElement("h4");
+    h4.className = "memoir-section-heading";
+    h4.textContent = sec.label;
+    sectionEl.appendChild(h4);
+
+    for (const item of sec.items) {
+      const p = document.createElement("p");
+      p.className = "memoir-structured-item";
+      p.textContent = item;
+      sectionEl.appendChild(p);
+    }
+    content.appendChild(sectionEl);
+  }
+  console.log(`[memoir] Rendered structured preview: ${sections.length} sections from questionnaire/profile data.`);
+}
+
+// ── Helpers ──
+function _formatDate(d) {
+  if (!d) return "";
+  // Handle YYYY-MM-DD
+  const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const mo = parseInt(m[2], 10);
+    const day = parseInt(m[3], 10);
+    return `${months[mo - 1] || m[2]} ${day}, ${m[1]}`;
+  }
+  return String(d);
+}
+function _truncate(s, max) {
+  if (!s) return "";
+  const t = String(s).trim();
+  return t.length <= max ? t : t.slice(0, max - 1) + "…";
+}
+
+/* ── 7a.2 CAPTURE TYPE → MEMOIR SECTION MAPPING ──────────────────────────
+   Maps Focus Canvas memory type + current era to the best memoir section.
+   Used when saving captures to route them to the correct memoir bucket.
+──────────────────────────────────────────────────────────────────────────── */
+
+function lv80MapCaptureTypeToMemoirSection(memoryType, era) {
+  // Era-based routing for memories
+  const eraMap = {
+    "early_childhood": "formative_years",
+    "school_years":    "formative_years",
+    "young_adult":     "crossroads",
+    "career_family":   "peaks_and_valleys",
+    "middle_years":    "peaks_and_valleys",
+    "later_years":     "current_horizon",
+    "present":         "current_horizon"
+  };
+
+  // Type-based routing takes priority for non-memory types
+  const typeMap = {
+    story:   "crossroads",
+    person:  "formative_years",
+    place:   "crossroads",
+    feeling: "the_compass"
+  };
+
+  if (memoryType && memoryType !== "memory" && typeMap[memoryType]) {
+    return typeMap[memoryType];
+  }
+  if (era && eraMap[era]) {
+    return eraMap[era];
+  }
+  return "peaks_and_valleys"; // default bucket
+}
 
 // ── MEMOIR TXT EXPORT ─────────────────────────────────────────────────────
 
@@ -3816,26 +4218,20 @@ function _memoirEvaluateState() {
   if (!content || !intro || !heading || !editBtn) return;
 
   const prevState    = _memoirState;
-  // "hasContent" means real facts (threads), memory fragments, or real prose (draft) —
-  // not just placeholder sections
+
+  // Check for fact-based content (threads/draft) from /api/facts/list
   const hasRealFacts  = content.querySelectorAll("mark.new-fact").length > 0;
   const hasFragments  = content.querySelectorAll("mark.fragment-fact").length > 0;
   const hasDraftProse = !hasRealFacts && !hasFragments &&
-    Array.from(content.querySelectorAll("p:not(.memoir-placeholder)"))
+    Array.from(content.querySelectorAll("p:not(.memoir-placeholder):not(.memoir-structured-item)"))
       .some(p => !p.querySelector("mark") && p.textContent.trim().length >= 20);
-  const hasContent    = hasRealFacts || hasFragments || hasDraftProse;
+  const hasFactContent = hasRealFacts || hasFragments || hasDraftProse;
 
-  if (!hasContent) {
-    _memoirState             = "empty";
-    heading.textContent      = "Your Story";
-    if (subtitle) subtitle.textContent = "Getting Started";
-    intro.hidden             = false;
-    content.hidden           = true;
-    if (threadsHint) threadsHint.hidden = true;
-    editBtn.disabled         = true;
-    editBtn.setAttribute("aria-disabled", "true");
-    editBtn.textContent      = "✏️ Draft Not Ready Yet";
-  } else if (_memoirIsDraft(content)) {
+  // Check for structured data from Bio Builder questionnaire / profile
+  const hasStructured = lv80HasStructuredMemoirData();
+
+  if (hasFactContent && _memoirIsDraft(content)) {
+    // Full draft state — substantial prose from facts
     _memoirState             = "draft";
     heading.textContent      = "Emerging Memoir Draft";
     if (subtitle) subtitle.textContent = "Your Words, Taking Shape";
@@ -3845,7 +4241,8 @@ function _memoirEvaluateState() {
     editBtn.disabled         = false;
     editBtn.setAttribute("aria-disabled", "false");
     editBtn.textContent      = "✏️ Edit Draft";
-  } else {
+  } else if (hasFactContent) {
+    // Threads state — fact markers exist from interview/extraction
     _memoirState             = "threads";
     heading.textContent      = "Story Threads";
     if (subtitle) subtitle.textContent = "Building Blocks Collected";
@@ -3855,6 +4252,32 @@ function _memoirEvaluateState() {
     editBtn.disabled         = false;
     editBtn.setAttribute("aria-disabled", "false");
     editBtn.textContent      = "✏️ Refine Details";
+  } else if (hasStructured) {
+    // NEW: Structured state — Bio Builder / profile data renders a memoir spine
+    _memoirState             = "structured";
+    heading.textContent      = "Your Story So Far";
+    if (subtitle) subtitle.textContent = "From What We Know";
+    intro.hidden             = true;
+    content.hidden           = false;
+    if (threadsHint) threadsHint.hidden = true;
+    editBtn.disabled         = true;
+    editBtn.setAttribute("aria-disabled", "true");
+    editBtn.textContent      = "✏️ Keep Sharing to Unlock";
+    // Render structured preview if not already rendered by _memoirLoadStoredFacts
+    if (!content.querySelector(".memoir-structured")) {
+      lv80RenderStructuredMemoirPreview();
+    }
+  } else {
+    // Empty state — nothing yet
+    _memoirState             = "empty";
+    heading.textContent      = "Your Story";
+    if (subtitle) subtitle.textContent = "Getting Started";
+    intro.hidden             = false;
+    content.hidden           = true;
+    if (threadsHint) threadsHint.hidden = true;
+    editBtn.disabled         = true;
+    editBtn.setAttribute("aria-disabled", "true");
+    editBtn.textContent      = "✏️ Draft Not Ready Yet";
   }
 
   if (popover) popover.dataset.memoirState = _memoirState;
@@ -3864,7 +4287,7 @@ function _memoirEvaluateState() {
     _memoirShowPromotionCue();
   }
 
-  // Export buttons — TXT enabled in all states; DOCX enabled in threads/draft only
+  // Export buttons — TXT enabled in all states; DOCX enabled in non-empty states
   const exportTxtBtn  = document.getElementById("memoirExportTxtBtn");
   const exportDocxBtn = document.getElementById("memoirExportDocxBtn");
   if (exportTxtBtn) {
@@ -3875,7 +4298,6 @@ function _memoirEvaluateState() {
     const docxEnabled = (_memoirState !== "empty");
     exportDocxBtn.disabled = !docxEnabled;
     exportDocxBtn.setAttribute("aria-disabled", String(!docxEnabled));
-    // Update label to reflect photo attachment status
     const photoCount = (typeof window._lv80GetAttachments === "function")
       ? window._lv80GetAttachments().filter(a => a.entity_type === "memoir_section").length
       : 0;
@@ -4020,11 +4442,20 @@ async function _memoirLoadStoredFacts(personId) {
 
   try {
     const r = await fetch(API.FACTS_LIST(personId));
-    if (!r.ok) { _memoirEvaluateState(); return; }
+    if (!r.ok) {
+      // API error — fall back to structured preview
+      const cnt = document.getElementById("memoirScrollContent");
+      if (cnt && lv80HasStructuredMemoirData()) { cnt.innerHTML = ""; lv80RenderStructuredMemoirPreview(); }
+      _memoirEvaluateState(); return;
+    }
     const data  = await r.json();
     const facts = data?.items || data?.facts || data || [];
     if (!Array.isArray(facts) || facts.length === 0) {
       content.innerHTML = "";
+      // No facts from API — try structured preview from Bio Builder data
+      if (lv80HasStructuredMemoirData()) {
+        lv80RenderStructuredMemoirPreview();
+      }
       _memoirEvaluateState();
       return;
     }
@@ -4088,6 +4519,12 @@ async function _memoirLoadStoredFacts(personId) {
     console.log(`[memoir] Loaded ${seen.size} quality-filtered fact(s) across ${_LV80_MEMOIR_SECTIONS.length} sections.`);
   } catch (e) {
     console.warn("[memoir] Failed to load stored facts:", e);
+    // API failed — try structured preview from Bio Builder data
+    const content2 = document.getElementById("memoirScrollContent");
+    if (content2 && !content2.querySelector(".memoir-structured") && lv80HasStructuredMemoirData()) {
+      content2.innerHTML = "";
+      lv80RenderStructuredMemoirPreview();
+    }
     _memoirEvaluateState();
     _memoirRenderFragments();
   }
@@ -4623,10 +5060,14 @@ function _lv80MirrorStatus(active) {
    Protects identity basics from chat overwrite.
 ═══════════════════════════════════════════════════════════════ */
 
+/* ── Hornelore truth mode flags ──────────────────────────────── */
+window.HORNELORE_TRUST_PRELOAD_AS_TRUTH = true;
+window.HORNELORE_OPERATOR_MODE = false;
+
 const HORNELORE_NARRATORS = [
-  { templateFile: "christopher-todd-horne.json", displayName: "Christopher Todd Horne" },
-  { templateFile: "kent-james-horne.json",       displayName: "Kent James Horne" },
-  { templateFile: "janice-josephine-horne.json",  displayName: "Janice Josephine Horne" },
+  { templateFile: "christopher-todd-horne.json", displayName: "Christopher Todd Horne", altNames: ["chris", "christopher", "christopher horne"] },
+  { templateFile: "kent-james-horne.json",       displayName: "Kent James Horne",       altNames: ["kent", "kent horne"] },
+  { templateFile: "janice-josephine-horne.json",  displayName: "Janice Josephine Horne",  altNames: ["janice", "janice horne"] },
 ];
 
 /**
@@ -4635,14 +5076,31 @@ const HORNELORE_NARRATORS = [
  */
 async function _horneloreEnsureNarrators() {
   const people = state?.narratorUi?.peopleCache || [];
-  const existingNames = new Set(people.map(p => (p.display_name || p.name || "").toLowerCase()));
+  // Build a set of all existing names (lowercase) for matching
+  const existingNames = new Set(people.map(p => (p.display_name || p.name || "").toLowerCase().trim()));
+
+  // Get skip list of deliberately deleted narrators
+  const deletedLabels = (typeof _horneloreGetDeletedLabels === "function")
+    ? _horneloreGetDeletedLabels().map(l => l.toLowerCase())
+    : [];
 
   let seeded = false;
   for (const hn of HORNELORE_NARRATORS) {
-    if (existingNames.has(hn.displayName.toLowerCase())) {
-      console.log("[Hornelore] Narrator exists:", hn.displayName);
+    // Check primary displayName AND all altNames (preferred names, short names)
+    const allNames = [hn.displayName.toLowerCase(), ...(hn.altNames || [])];
+    const found = allNames.some(n => existingNames.has(n));
+    if (found) {
+      console.log("[Hornelore] Narrator exists:", hn.displayName, "(matched from:", allNames.find(n => existingNames.has(n)), ")");
       continue;
     }
+
+    // Skip if narrator was deliberately deleted by operator
+    const inSkipList = allNames.some(n => deletedLabels.indexOf(n) >= 0);
+    if (inSkipList) {
+      console.log("[Hornelore] Narrator in delete skip list — not re-seeding:", hn.displayName);
+      continue;
+    }
+
     // Narrator missing — load template and preload
     console.log("[Hornelore] Seeding narrator:", hn.displayName);
     try {
@@ -4670,6 +5128,15 @@ async function _horneloreEnsureNarrators() {
  */
 const _origStageDelete = window.lvxStageDeleteNarrator;
 window.lvxStageDeleteNarrator = function(pid) {
+  // Allow deletion in operator mode (set by operator panel)
+  if (window.HORNELORE_OPERATOR_MODE) {
+    console.log("[Hornelore] Operator mode — allowing delete for:", pid);
+    window.HORNELORE_OPERATOR_MODE = false; // reset after use
+    if (typeof _origStageDelete === "function") {
+      _origStageDelete(pid);
+    }
+    return;
+  }
   console.warn("[Hornelore] Narrator deletion is disabled for safety.");
   if (typeof sysBubble === "function") {
     sysBubble("Narrator deletion is disabled in Hornelore to protect family data.");
@@ -4691,6 +5158,8 @@ if (typeof _origSwitchPerson === "function") {
       state.session.identityPhase = "complete";
       console.log("[Hornelore] Identity phase set to complete for known narrator:", pid);
     }
+    // Update operator panel label
+    if (typeof lv80UpdateOperatorDeleteLabel === "function") lv80UpdateOperatorDeleteLabel();
   };
 }
 
@@ -4929,6 +5398,18 @@ async function lv80Init() {
     });
   }
 
+  // 5e. Operator popover — sync labels on open
+  const operatorPopover = document.getElementById("lv80OperatorPopover");
+  if (operatorPopover) {
+    operatorPopover.addEventListener("toggle", (event) => {
+      if (event.newState === "open") {
+        if (typeof lv80UpdateOperatorDeleteLabel === "function") lv80UpdateOperatorDeleteLabel();
+        if (typeof lv80UpdateOperatorSkipList === "function") lv80UpdateOperatorSkipList();
+        if (typeof lv80UpdateOperatorCandidateCount === "function") lv80UpdateOperatorCandidateCount();
+      }
+    });
+  }
+
   // 6. Load people into selector
   await lv80LoadPeople();
 
@@ -4958,7 +5439,166 @@ async function lv80Init() {
 
   console.log("[Hornelore 1.0] Shell initialised.");
 }
+
+/* ── OPERATOR FUNCTIONS ─────────────────────────────────────── */
+
+function lv80OperatorImportJson() {
+  var input = document.getElementById("lv80OperatorJsonFile");
+  var file = input && input.files && input.files[0];
+  if (!file) {
+    if (typeof sysBubble === "function") sysBubble("Choose a JSON file first.");
+    return;
+  }
+
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      var tpl = JSON.parse(e.target.result);
+      if (typeof lv80ImportNarratorTemplate === "function") {
+        await lv80ImportNarratorTemplate(tpl);
+        var p = tpl && tpl.personal ? tpl.personal : {};
+        var label = p.preferredName || p.fullName || "";
+        if (typeof _horneloreClearDeletedNarrator === "function" && label) {
+          _horneloreClearDeletedNarrator(label);
+        }
+        if (typeof refreshPeople === "function") await refreshPeople();
+        if (typeof sysBubble === "function") sysBubble("Narrator JSON imported.");
+      }
+    } catch (err) {
+      console.error("[hornelore] JSON import failed", err);
+      if (typeof sysBubble === "function") sysBubble("Invalid JSON file.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function lv80OperatorDeleteCurrent() {
+  if (!state || !state.person_id) {
+    if (typeof sysBubble === "function") sysBubble("No active narrator selected.");
+    return;
+  }
+  // Temporarily enable operator mode so Hornelore's delete override allows it
+  window.HORNELORE_OPERATOR_MODE = true;
+  // Call the ORIGINAL delete staging function, bypassing Hornelore's override
+  if (typeof _origStageDelete === "function") {
+    _origStageDelete(state.person_id);
+  } else if (typeof lvxStageDeleteNarrator === "function") {
+    lvxStageDeleteNarrator(state.person_id);
+  }
+}
+
+function lv80OperatorClearSkipList() {
+  try {
+    localStorage.removeItem("hornelore_deleted_labels");
+    if (typeof sysBubble === "function") sysBubble("Seeder skip list cleared.");
+    lv80UpdateOperatorSkipList();
+  } catch (_) {}
+}
+
+function lv80OperatorClearPreloadCandidates() {
+  if (!state || !state.bioBuilder || !state.bioBuilder.candidates) {
+    if (typeof sysBubble === "function") sysBubble("No candidate data available.");
+    return;
+  }
+  var cands = state.bioBuilder.candidates;
+  var removed = 0;
+  var kept = 0;
+  Object.keys(cands).forEach(function(type) {
+    var before = cands[type].length;
+    cands[type] = cands[type].filter(function(c) {
+      // Keep candidates NOT from questionnaire preload
+      var src = (c.source || "").toLowerCase();
+      if (src.startsWith("questionnaire:")) { removed++; return false; }
+      kept++;
+      return true;
+    });
+  });
+  if (typeof sysBubble === "function") {
+    sysBubble("Cleared " + removed + " preload candidate" + (removed !== 1 ? "s" : "") +
+              ". " + kept + " interview/manual candidate" + (kept !== 1 ? "s" : "") + " kept.");
+  }
+  lv80UpdateOperatorCandidateCount();
+}
+
+function lv80UpdateOperatorCandidateCount() {
+  var el = document.getElementById("lv80OperatorCandidateCount");
+  if (!el) return;
+  if (!state || !state.bioBuilder || !state.bioBuilder.candidates) { el.textContent = "(no data)"; return; }
+  var cands = state.bioBuilder.candidates;
+  var preload = 0;
+  var other = 0;
+  Object.keys(cands).forEach(function(type) {
+    cands[type].forEach(function(c) {
+      var src = (c.source || "").toLowerCase();
+      if (src.startsWith("questionnaire:")) preload++;
+      else other++;
+    });
+  });
+  el.textContent = preload + " preload, " + other + " interview/manual";
+}
+
+function lv80UpdateOperatorDeleteLabel() {
+  var el = document.getElementById("lv80OperatorDeleteLabel");
+  if (!el) return;
+  var label = state?.profile?.basics?.preferred || state?.profile?.basics?.fullname || "No narrator selected";
+  el.textContent = label;
+}
+
+function lv80UpdateOperatorSkipList() {
+  var el = document.getElementById("lv80OperatorSkipList");
+  if (!el) return;
+  var arr = (typeof _horneloreGetDeletedLabels === "function") ? _horneloreGetDeletedLabels() : [];
+  el.textContent = arr.length ? arr.join(", ") : "(empty)";
+}
+
+/* ── PROJECTION DEBUG PANEL ─────────────────────────────────── */
+
+function lv80ToggleProjectionDebug() {
+  var panel = document.getElementById("lv80ProjectionDebug");
+  if (!panel) return;
+  var open = panel.style.display !== "none";
+  panel.style.display = open ? "none" : "block";
+  if (!open) lv80RenderProjectionDebug();
+}
+
+function lv80RenderProjectionDebug() {
+  var body = document.getElementById("lv80ProjectionDebugBody");
+  if (!body) return;
+
+  var proj = state && state.interviewProjection ? state.interviewProjection : null;
+  var bb = state && state.bioBuilder ? state.bioBuilder : null;
+
+  var out = [];
+  out.push("Narrator: " + ((state.profile?.basics?.preferred || state.profile?.basics?.fullname || "\u2014")));
+  out.push("PID: " + (state.person_id || "\u2014"));
+  out.push("Conv: " + (state.chat?.conv_id || "\u2014"));
+  out.push("");
+
+  out.push("== Pending Suggestions ==");
+  out.push(JSON.stringify(proj?.pendingSuggestions || [], null, 2));
+  out.push("");
+
+  out.push("== Candidates ==");
+  out.push(JSON.stringify(bb?.candidates || {}, null, 2));
+  out.push("");
+
+  out.push("== Recent Sync Log (last 20) ==");
+  out.push(JSON.stringify((proj?.syncLog || []).slice(-20), null, 2));
+
+  body.textContent = out.join("\n");
+}
 </script>
+
+<!-- ── Projection Debug Drawer (Hornelore) ────────────────────── -->
+<aside id="lv80ProjectionDebug"
+       style="display:none; position:fixed; top:70px; right:16px; width:420px; max-height:80vh; overflow:auto; z-index:9999; background:#0f172a; border:1px solid rgba(99,102,241,.35); border-radius:12px; padding:14px; box-shadow:0 24px 60px rgba(0,0,0,.6);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <h3 style="margin:0; color:#c7d2fe;">Projection Debug</h3>
+    <button onclick="lv80ToggleProjectionDebug()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:18px;">&times;</button>
+  </div>
+  <button onclick="lv80RenderProjectionDebug()" style="margin-bottom:8px; padding:4px 10px; background:#1e293b; border:1px solid #334155; border-radius:6px; color:#94a3b8; cursor:pointer; font-size:12px;">Refresh</button>
+  <pre id="lv80ProjectionDebugBody" style="white-space:pre-wrap; font-size:12px; color:#cbd5e1;"></pre>
+</aside>
 
 <!-- ── Media Builder Lightbox ─────────────────────────────────────────────── -->
 <div id="lv80Lightbox" hidden>

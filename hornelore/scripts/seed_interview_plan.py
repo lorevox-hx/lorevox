@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-seed_interview_plan.py — Seeds interview_plan.json into the Lorevox SQLite DB.
+seed_interview_plan.py — Seeds interview_plan.json into the Hornelore SQLite DB.
 
 Reads PLAN_PATH (default: ../interview_plan.json relative to this script) and
 inserts all sections + questions into interview_sections / interview_questions

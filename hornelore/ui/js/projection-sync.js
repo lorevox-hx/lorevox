@@ -156,6 +156,10 @@
      SYNC TO BIO BUILDER — Applies write mode rules
   ─────────────────────────────────────────────────────────── */
 
+  function _isTrustedSource(source) {
+    return source === "human_edit" || source === "preload" || source === "profile_hydrate";
+  }
+
   function _syncToBioBuilder(fieldPath, value, source, confidence) {
     var writeMode = _map.getWriteMode(fieldPath);
     var parsed    = _map.parsePath(fieldPath);
@@ -164,6 +168,15 @@
     var bb = _bb();
     if (!bb) return;
 
+    // Hornelore rule:
+    // trusted sources write directly into questionnaire,
+    // even for repeatable people sections that are candidate_only in generic Lorevox.
+    if (_isTrustedSource(source)) {
+      _syncDirectTrustedWrite(parsed, value, source, bb);
+      return;
+    }
+
+    // Provisional interview/LLM-derived sources keep existing review flow
     if (writeMode === "prefill_if_blank") {
       _syncPrefillIfBlank(parsed, value, source, bb);
     } else if (writeMode === "candidate_only") {
@@ -204,6 +217,85 @@
     _triggerBBPersist();
   }
 
+  /* ── trusted_direct: write directly for trusted sources (human_edit, preload, profile_hydrate) ── */
+  function _syncDirectTrustedWrite(parsed, value, source, bb) {
+    if (!bb.questionnaire) bb.questionnaire = {};
+
+    if (parsed.index !== null) {
+      if (!Array.isArray(bb.questionnaire[parsed.section])) {
+        bb.questionnaire[parsed.section] = [];
+      }
+      while (bb.questionnaire[parsed.section].length <= parsed.index) {
+        bb.questionnaire[parsed.section].push({});
+      }
+
+      var entry = bb.questionnaire[parsed.section][parsed.index];
+      var oldVal = entry[parsed.field];
+
+      // Preserve meaningful existing value unless this is an explicit human edit
+      if (source !== "human_edit" && oldVal && String(oldVal).trim() !== "") {
+        _logSync(
+          parsed.section + "[" + parsed.index + "]." + parsed.field,
+          "trusted_skip_existing",
+          oldVal,
+          value,
+          {
+            source: source,
+            writeMode: "trusted_direct",
+            resultBucket: "skip_existing"
+          }
+        );
+        return;
+      }
+
+      entry[parsed.field] = value;
+      _logSync(
+        parsed.section + "[" + parsed.index + "]." + parsed.field,
+        "bb_trusted_write",
+        oldVal || "",
+        value,
+        {
+          source: source,
+          writeMode: "trusted_direct",
+          resultBucket: "bb"
+        }
+      );
+    } else {
+      if (!bb.questionnaire[parsed.section]) bb.questionnaire[parsed.section] = {};
+      var oldVal2 = bb.questionnaire[parsed.section][parsed.field];
+
+      if (source !== "human_edit" && oldVal2 && String(oldVal2).trim() !== "") {
+        _logSync(
+          parsed.section + "." + parsed.field,
+          "trusted_skip_existing",
+          oldVal2,
+          value,
+          {
+            source: source,
+            writeMode: "trusted_direct",
+            resultBucket: "skip_existing"
+          }
+        );
+        return;
+      }
+
+      bb.questionnaire[parsed.section][parsed.field] = value;
+      _logSync(
+        parsed.section + "." + parsed.field,
+        "bb_trusted_write",
+        oldVal2 || "",
+        value,
+        {
+          source: source,
+          writeMode: "trusted_direct",
+          resultBucket: "bb"
+        }
+      );
+    }
+
+    _triggerBBPersist();
+  }
+
   /* ── candidate_only: create candidate entry, never write to BB directly ── */
   function _syncCandidateOnly(parsed, value, source, confidence, bb) {
     if (!bb.candidates) return;
@@ -236,7 +328,12 @@
       existing.data[parsed.field] = value;
       existing.confidence = Math.max(existing.confidence || 0, confidence);
       existing.ts = Date.now();
-      _logSync(candidateId + "." + parsed.field, "candidate_updated", "", value);
+      _logSync(candidateId + "." + parsed.field, "candidate_updated", "", value, {
+        source: source,
+        writeMode: "candidate_only",
+        resultBucket: "candidate",
+        confidence: confidence
+      });
     }
   }
 
@@ -258,7 +355,12 @@
       ts:         Date.now()
     });
 
-    _logSync(fieldPath, "suggestion_queued", "", value);
+    _logSync(fieldPath, "suggestion_queued", "", value, {
+      source: "interview",
+      writeMode: "suggest_only",
+      resultBucket: "suggestion",
+      confidence: confidence
+    });
   }
 
   /* ───────────────────────────────────────────────────────────
@@ -521,17 +623,25 @@
      SYNC LOG — Audit trail for debugging and transparency
   ─────────────────────────────────────────────────────────── */
 
-  function _logSync(fieldPath, action, fromValue, toValue) {
+  function _logSync(fieldPath, action, fromValue, toValue, meta) {
     var proj = _proj();
     if (!proj) return;
+    meta = meta || {};
+
     proj.syncLog.push({
       fieldPath: fieldPath,
       action:    action,
       fromValue: fromValue || "",
       toValue:   toValue || "",
-      ts:        Date.now()
+      ts:        Date.now(),
+      source:       meta.source || null,
+      writeMode:    meta.writeMode || null,
+      resultBucket: meta.resultBucket || null,
+      confidence:   meta.confidence != null ? meta.confidence : null,
+      personId: (typeof state !== "undefined" ? state.person_id : null),
+      convId:   (typeof state !== "undefined" && state.chat ? state.chat.conv_id : null)
     });
-    // Cap log size
+
     if (proj.syncLog.length > SYNC_LOG_CAP) {
       proj.syncLog = proj.syncLog.slice(-SYNC_LOG_CAP);
     }

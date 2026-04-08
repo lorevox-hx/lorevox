@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-scripts/warm_llm.py — Lorevox LLM warmup (v9.0)
+scripts/warm_llm.py — Hornelore LLM warmup
 
 Sends a minimal dummy message to the LLM backend via HTTP (SSE chat endpoint)
 so that the model is fully loaded and cached before the first real user turn.

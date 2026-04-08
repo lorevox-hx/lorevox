@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────
-# Lorevox 9.0 — Stack Health Test Runner
+# Hornelore 1.0 — Stack Health Test Runner
 # Tests service health, port binding, PID accuracy, and isolation.
 # Run from the repo root:  bash scripts/test_stack_health.sh
 # ─────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ wait_port_free() {
 # ── Test Group: Service Health ───────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════"
-echo " Lorevox 9.0 — Stack Health Tests"
+echo " Hornelore 1.0 — Stack Health Tests"
 echo "═══════════════════════════════════════════"
 echo ""
 
@@ -223,31 +223,31 @@ fi
 echo ""
 echo "── Group 9: Startup Script Scoping ──"
 
-# Verify kill_stale_lorevox only targets API
-if grep -q 'kill_stale_lorevox' "$SCRIPT_DIR/common.sh" 2>/dev/null; then
-  # Check that kill_stale_lorevox does NOT match tts or lorevox-serve patterns
-  STALE_BODY=$(sed -n '/^kill_stale_lorevox/,/^}/p' "$SCRIPT_DIR/common.sh")
-  if echo "$STALE_BODY" | grep -q "8001\|lorevox-serve\|tts"; then
-    fail "SH-20: kill_stale_lorevox scoped to API only" "still references TTS/UI patterns"
+# Verify kill_stale_hornelore only targets API
+if grep -q 'kill_stale_hornelore' "$SCRIPT_DIR/common.sh" 2>/dev/null; then
+  # Check that kill_stale_hornelore does NOT match tts or hornelore-serve patterns
+  STALE_BODY=$(sed -n '/^kill_stale_hornelore/,/^}/p' "$SCRIPT_DIR/common.sh")
+  if echo "$STALE_BODY" | grep -q "8001\|hornelore-serve\|tts"; then
+    fail "SH-20: kill_stale_hornelore scoped to API only" "still references TTS/UI patterns"
   else
-    pass "SH-20: kill_stale_lorevox scoped to API only"
+    pass "SH-20: kill_stale_hornelore scoped to API only"
   fi
 else
-  fail "SH-20: kill_stale_lorevox exists" "function not found"
+  fail "SH-20: kill_stale_hornelore exists" "function not found"
 fi
 
-# Verify kill_all_lorevox exists for full teardown
-if grep -q 'kill_all_lorevox' "$SCRIPT_DIR/common.sh" 2>/dev/null; then
-  pass "SH-21: kill_all_lorevox function exists for full-stack teardown"
+# Verify kill_all_hornelore exists for full teardown
+if grep -q 'kill_all_hornelore' "$SCRIPT_DIR/common.sh" 2>/dev/null; then
+  pass "SH-21: kill_all_hornelore function exists for full-stack teardown"
 else
-  fail "SH-21: kill_all_lorevox function exists for full-stack teardown" "not found"
+  fail "SH-21: kill_all_hornelore function exists for full-stack teardown" "not found"
 fi
 
-# Verify SO_REUSEADDR in lorevox-serve.py
-if grep -q "allow_reuse_address\|ReusableTCPServer" "$REPO_ROOT/lorevox-serve.py" 2>/dev/null; then
-  pass "SH-22: SO_REUSEADDR enabled in lorevox-serve.py"
+# Verify SO_REUSEADDR in hornelore-serve.py
+if grep -q "allow_reuse_address\|ReusableTCPServer" "$REPO_ROOT/hornelore-serve.py" 2>/dev/null; then
+  pass "SH-22: SO_REUSEADDR enabled in hornelore-serve.py"
 else
-  fail "SH-22: SO_REUSEADDR enabled in lorevox-serve.py" "not found"
+  fail "SH-22: SO_REUSEADDR enabled in hornelore-serve.py" "not found"
 fi
 
 # ── Summary ──────────────────────────────────────────────────────

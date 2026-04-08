@@ -7,17 +7,26 @@ PID_DIR="$RUNTIME_DIR/pids"
 LOG_DIR="$RUNTIME_DIR/logs"
 mkdir -p "$PID_DIR" "$LOG_DIR"
 
+# ── Load .env if present ─────────────────────────────────────────
+if [[ -f "$ROOT_DIR/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env"
+  set +a
+fi
+
 API_PORT="${LOREVOX_API_PORT:-8000}"
 TTS_PORT="${LOREVOX_TTS_PORT:-8001}"
-UI_PORT="${LOREVOX_UI_PORT:-8080}"
+UI_PORT="${HORNELORE_UI_PORT:-8082}"
 
 API_PID_FILE="$PID_DIR/api.pid"
 TTS_PID_FILE="$PID_DIR/tts.pid"
 UI_PID_FILE="$PID_DIR/ui.pid"
 
-API_CMD_DEFAULT="bash launchers/run_gpu_8000.sh"
-TTS_CMD_DEFAULT="bash launchers/run_tts_8001.sh"
-UI_CMD_DEFAULT="python3 lorevox-serve.py"
+# Hornelore uses its own launcher copies in hornelore/launchers.
+API_CMD_DEFAULT="bash launchers/hornelore_run_gpu_8000.sh"
+TTS_CMD_DEFAULT="bash launchers/hornelore_run_tts_8001.sh"
+UI_CMD_DEFAULT="python3 hornelore-serve.py"
 
 API_CMD="${LOREVOX_API_CMD:-$API_CMD_DEFAULT}"
 TTS_CMD="${LOREVOX_TTS_CMD:-$TTS_CMD_DEFAULT}"
@@ -25,7 +34,7 @@ UI_CMD="${LOREVOX_UI_CMD:-$UI_CMD_DEFAULT}"
 
 api_up() { curl -fsS "http://127.0.0.1:${API_PORT}/api/ping" >/dev/null 2>&1; }
 tts_up() { curl -fsS "http://127.0.0.1:${TTS_PORT}/api/tts/voices" >/dev/null 2>&1; }
-ui_up()  { curl -fsS "http://127.0.0.1:${UI_PORT}/ui/lori9.0.html" >/dev/null 2>&1; }
+ui_up()  { curl -fsS "http://127.0.0.1:${UI_PORT}/ui/hornelore1.0.html" >/dev/null 2>&1; }
 
 pid_is_running() {
   local pid="${1:-}"
@@ -122,25 +131,20 @@ wait_for_health() {
 }
 
 open_ui_in_windows() {
-  local url="${1:-http://localhost:${UI_PORT}/ui/lori9.0.html}"
-  # If a clean-start reset flag exists, append ?lorevox_reset=clean to the URL
-  # so the browser page auto-clears Lorevox storage on load.
+  local url="${1:-http://localhost:${UI_PORT}/ui/hornelore1.0.html}"
   if [[ -f "$RUNTIME_DIR/reset_on_start" ]]; then
     url="${url}?lorevox_reset=clean"
     rm -f "$RUNTIME_DIR/reset_on_start"
-    printf '[startup] Clean-start flag detected — browser will auto-clear Lorevox state.\n'
+    printf '[startup] Clean-start flag detected — browser will auto-clear state.\n'
   fi
   if command -v powershell.exe >/dev/null 2>&1; then
     powershell.exe -NoProfile -Command "Start-Process '$url'" >/dev/null 2>&1 || true
   fi
 }
 
-# Kill stale API processes that may be holding GPU memory.
-# Does NOT touch TTS or UI — those are independent services that
-# should survive an API restart without port conflicts.
-kill_stale_lorevox() {
+kill_stale_hornelore() {
   local killed=0
-  for pattern in "run_gpu_8000" "uvicorn.*8000"; do
+  for pattern in "hornelore_run_gpu_8000|run_gpu_8000" "uvicorn.*8000"; do
     if pgrep -f "$pattern" >/dev/null 2>&1; then
       printf 'Killing stale process: %s\n' "$pattern"
       pkill -f "$pattern" 2>/dev/null || true
@@ -149,8 +153,6 @@ kill_stale_lorevox() {
   done
   if [[ "$killed" -eq 1 ]]; then
     printf 'Waiting for GPU memory to release...\n'
-    # CUDA driver needs time to reclaim memory after process death.
-    # Poll nvidia-smi until VRAM usage drops below 1 GB (or 15 seconds max).
     local _waited=0
     while [[ "$_waited" -lt 15 ]]; do
       sleep 1
@@ -166,13 +168,12 @@ kill_stale_lorevox() {
           printf '  Still waiting... (%s MB used, %ds)\n' "$_used" "$_waited"
         fi
       else
-        sleep 4  # no nvidia-smi — just wait 5s total
+        sleep 4
         break
       fi
     done
     printf 'Stale processes cleaned up.\n'
   fi
-  # Clear stale API PID file (TTS/UI PIDs left alone)
   for f in "$API_PID_FILE"; do
     if [[ -f "$f" ]]; then
       local pid
@@ -184,10 +185,9 @@ kill_stale_lorevox() {
   done
 }
 
-# Kill ALL Lorevox processes (API, TTS, UI). Used by start_all and stop_all.
-kill_all_lorevox() {
+kill_all_hornelore() {
   local killed=0
-  for pattern in "run_gpu_8000" "uvicorn.*8000" "run_tts_8001" "uvicorn.*8001" "lorevox-serve"; do
+  for pattern in "hornelore_run_gpu_8000|run_gpu_8000" "uvicorn.*8000" "hornelore_run_tts_8001|run_tts_8001" "uvicorn.*8001" "hornelore-serve"; do
     if pgrep -f "$pattern" >/dev/null 2>&1; then
       printf 'Killing stale process: %s\n' "$pattern"
       pkill -f "$pattern" 2>/dev/null || true
@@ -199,7 +199,6 @@ kill_all_lorevox() {
     sleep 2
     printf 'Stale processes cleaned up.\n'
   fi
-  # Clear all PID files
   for f in "$API_PID_FILE" "$TTS_PID_FILE" "$UI_PID_FILE"; do
     if [[ -f "$f" ]]; then
       local pid
@@ -211,14 +210,12 @@ kill_all_lorevox() {
   done
 }
 
-# Show GPU VRAM usage (if nvidia-smi is available).
 show_vram() {
   if command -v nvidia-smi >/dev/null 2>&1; then
     printf '\n--- GPU VRAM ---\n'
     nvidia-smi --query-gpu=name,memory.used,memory.free,memory.total --format=csv,noheader,nounits \
       | while IFS=',' read -r name used free total; do
-          printf '  %s: %s MB used / %s MB free / %s MB total\n' \
-            "$(echo "$name" | xargs)" "$(echo "$used" | xargs)" "$(echo "$free" | xargs)" "$(echo "$total" | xargs)"
+          printf '  %s: %s MB used / %s MB free / %s MB total\n' "$name" "$used" "$free" "$total"
         done
   fi
 }

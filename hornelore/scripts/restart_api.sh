@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/restart_api.sh — Lorevox 9.0
+# scripts/restart_api.sh — Hornelore 1.0
 # Shell-native API restart: stops the API, restarts it, runs health check
 # and LLM warmup. For the visible Windows Terminal version, use
 # reload_api.bat instead.
@@ -9,15 +9,15 @@
 set -euo pipefail
 source "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
-printf '\n=== Restarting Lorevox API ===\n\n'
+printf '\n=== Restarting Hornelore API ===\n\n'
 
-stop_named_process "Lorevox API" "$API_PID_FILE" "run_gpu_8000.sh|uvicorn.*8000"
+stop_named_process "Hornelore API" "$API_PID_FILE" "hornelore_run_gpu_8000|run_gpu_8000|uvicorn.*${API_PORT}"
 sleep 1
 
-start_named_process "Lorevox API" "$API_CMD" "$API_PID_FILE" "$LOG_DIR/api.log"
+start_named_process "Hornelore API" "$API_CMD" "$API_PID_FILE" "$LOG_DIR/api.log"
 
 printf '\nWaiting for API health...\n'
-wait_for_health "Lorevox API" api_up 90 || true
+wait_for_health "Hornelore API" api_up 90 || true
 
 if [[ -f "$ROOT_DIR/scripts/warm_llm.py" ]]; then
   printf '\nRe-warming LLM...\n'

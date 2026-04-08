@@ -207,8 +207,16 @@
 
   /* ───────────────────────────────────────────────────────────
      REPEATABLE SECTION TEMPLATES — Parents, Grandparents, Siblings
-     These are candidate_only: interview answers create candidate
-     entries in state.bioBuilder.candidates.people (and .relationships).
+
+     Generic Lorevox behavior:
+     - interview-derived answers create candidates for review
+
+     Hornelore behavior:
+     - projection-sync.js applies a source-aware trust override
+     - trusted sources (preload, human_edit, profile_hydrate)
+       may write these sections directly into bb.questionnaire
+     - interview / backend_extract still route to candidates
+
      Conversational questions are templates with {ordinal} placeholders.
   ─────────────────────────────────────────────────────────── */
 
