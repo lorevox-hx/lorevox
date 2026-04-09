@@ -27,6 +27,7 @@
     s.style = null;
     s.stepIndex = 0;
     s.completed = false;
+    _renderPanel();
   }
   function _steps() {
     return [

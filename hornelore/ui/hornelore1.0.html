@@ -3019,6 +3019,9 @@ async function lv80SwitchPerson(personId) {
       if (state.session) {
         state.session.assistantRole = "interviewer";
       }
+      // Reset open gating so future switches aren't blocked by debounce
+      state.narratorOpen.openStatus = "ready";
+      state.narratorOpen.loadingPid = null;
       window.LorevoxTrainerNarrators.start(personId, trainerMeta.style || "structured");
       return;
     } else if (window.LorevoxTrainerNarrators) {
