@@ -248,6 +248,82 @@ def _ensure_person_index(person_id: Optional[str]) -> None:
         )
 
 
+def update_thread_anchor(
+    *,
+    person_id: Optional[str],
+    session_id: str,
+    topic_label: str = "",
+    topic_summary: str = "",
+    active_era: str = "",
+    last_turn_ids: Optional[List[str]] = None,
+    last_narrator_turns: Optional[List[str]] = None,
+) -> None:
+    """
+    Store or update the thread anchor for a session.
+    This records the most recent conversational topic so that
+    resume logic can continue from the real last thread instead
+    of falling back to generic identity grounding.
+    """
+    root = session_root(person_id, session_id)
+    root.mkdir(parents=True, exist_ok=True)
+    anchor_path = root / "thread_anchor.json"
+    anchor: Dict[str, Any] = {
+        "updated_at": _now_iso(),
+        "topic_label": topic_label or "",
+        "topic_summary": topic_summary or "",
+        "active_era": active_era or "",
+        "last_turn_ids": last_turn_ids or [],
+        "last_narrator_turns": (last_narrator_turns or [])[-5:],  # keep last 5
+    }
+    anchor_path.write_text(
+        json.dumps(anchor, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
+def read_thread_anchor(
+    *, person_id: Optional[str], session_id: str
+) -> Optional[Dict[str, Any]]:
+    """Read the thread anchor for a session, or None if not set."""
+    root = session_root(person_id, session_id)
+    anchor_path = root / "thread_anchor.json"
+    if not anchor_path.exists():
+        return None
+    try:
+        return json.loads(anchor_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def get_latest_session_id(person_id: Optional[str]) -> Optional[str]:
+    """Return the most recently created session_id for a person."""
+    sessions = list_sessions(person_id)
+    if not sessions:
+        return None
+    # Sort by started_at descending
+    sessions.sort(key=lambda s: s.get("started_at", ""), reverse=True)
+    return sessions[0].get("session_id")
+
+
+def export_transcript_txt(*, person_id: Optional[str], session_id: str) -> str:
+    """Return a formatted plain-text transcript for export."""
+    events = read_transcript(person_id=person_id, session_id=session_id)
+    lines: List[str] = []
+    for ev in events:
+        role = (ev.get("role") or "").upper()
+        ts = ev.get("ts") or ""
+        content = (ev.get("content") or "").strip()
+        if not content:
+            continue
+        # Format timestamp to human-readable if possible
+        try:
+            dt = datetime.fromisoformat(ts)
+            ts_display = dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            ts_display = ts
+        lines.append(f"[{ts_display}] {role}:\n{content}")
+    return "\n\n".join(lines) + "\n" if lines else ""
+
+
 def _register_session_in_index(
     *,
     person_id: Optional[str],

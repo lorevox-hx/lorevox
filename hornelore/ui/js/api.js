@@ -54,4 +54,13 @@ const API = {
   GRAPH_DEL_REL:    (rid) => `${ORIGIN}/api/graph/relationship/${encodeURIComponent(rid)}`,
   // Phase Q.4 — Chat Readiness Gate
   WARMUP:           ORIGIN + "/api/warmup",
+  // WO-8 — Transcript History & Thread Anchor
+  TRANSCRIPT_HISTORY: (pid, sid) => `${ORIGIN}/api/transcript/history?person_id=${encodeURIComponent(pid)}${sid ? '&session_id=' + encodeURIComponent(sid) : ''}`,
+  TRANSCRIPT_SESSIONS: (pid) => `${ORIGIN}/api/transcript/sessions?person_id=${encodeURIComponent(pid)}`,
+  TRANSCRIPT_EXPORT_TXT: (pid, sid) => `${ORIGIN}/api/transcript/export/txt?person_id=${encodeURIComponent(pid)}${sid ? '&session_id=' + encodeURIComponent(sid) : ''}`,
+  TRANSCRIPT_EXPORT_JSON: (pid, sid) => `${ORIGIN}/api/transcript/export/json?person_id=${encodeURIComponent(pid)}${sid ? '&session_id=' + encodeURIComponent(sid) : ''}`,
+  THREAD_ANCHOR_GET: (pid, sid) => `${ORIGIN}/api/transcript/thread-anchor?person_id=${encodeURIComponent(pid)}${sid ? '&session_id=' + encodeURIComponent(sid) : ''}`,
+  THREAD_ANCHOR_PUT: ORIGIN + "/api/transcript/thread-anchor",
+  // WO-8 — Multi-field extraction
+  EXTRACT_FIELDS: ORIGIN + "/api/extract-fields",
 };

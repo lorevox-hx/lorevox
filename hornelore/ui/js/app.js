@@ -838,6 +838,11 @@ async function lvxSwitchNarratorSafe(pid){
 
   if (window.LorevoxBioBuilder?.refresh) window.LorevoxBioBuilder.refresh();
   if (window.LorevoxLifeMap?.render)     window.LorevoxLifeMap.render(true);
+
+  // WO-8: Load transcript history and fire resume prompt
+  if (typeof wo8OnNarratorReady === "function") {
+    wo8OnNarratorReady(pid).catch(e => console.log("[WO-8] narrator ready hook failed:", e.message));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3090,6 +3095,544 @@ function update71RuntimeUI() {
   const sumSeed = document.getElementById("summarySeed");
   if (sumSeed) sumSeed.classList.toggle("hidden", !spineReady);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-8 — TRANSCRIPT HISTORY, THREAD ANCHOR, VOICE TURN
+           IMPROVEMENTS, AND RESUME LOGIC
+   Kent Interaction Fixes: Voice Continuity, Transcript History,
+   Resume, and Long-Turn Reliability.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── WO-8 Phase 2: Transcript History ────────────────────────── */
+
+/**
+ * Load and display archived transcript history when a narrator is opened.
+ * Replaces the blank chat area with prior conversation turns.
+ * Each turn shows speaker label and timestamp.
+ */
+async function wo8LoadTranscriptHistory(pid) {
+  if (!pid) return;
+  try {
+    const url = API.TRANSCRIPT_HISTORY(pid, "");
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) { console.log("[WO-8] No transcript history for", pid); return; }
+    const data = await res.json();
+    const events = data.events || [];
+    if (!events.length) { console.log("[WO-8] Transcript empty for", pid); return; }
+
+    const chatEl = document.getElementById("chatMessages");
+    if (!chatEl) return;
+
+    // Clear existing bubbles before loading history
+    chatEl.innerHTML = "";
+
+    // Add session divider
+    const divider = document.createElement("div");
+    divider.className = "wo8-session-divider";
+    divider.innerHTML = '<span class="wo8-divider-label">Prior conversation</span>';
+    chatEl.appendChild(divider);
+
+    // Render each archived turn
+    events.forEach(ev => {
+      const role = (ev.role || "").toLowerCase();
+      const content = (ev.content || "").trim();
+      if (!content) return;
+
+      const bubbleRole = role === "assistant" ? "ai" : role === "user" ? "user" : "sys";
+      const bubble = appendBubble(bubbleRole, content);
+
+      // Add timestamp badge if available
+      if (ev.ts && bubble) {
+        try {
+          const dt = new Date(ev.ts);
+          const timeStr = dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          const dateStr = dt.toLocaleDateString([], { month: "short", day: "numeric" });
+          const tsBadge = document.createElement("div");
+          tsBadge.className = "wo8-timestamp";
+          tsBadge.textContent = `${dateStr} ${timeStr}`;
+          bubble.appendChild(tsBadge);
+        } catch (_) {}
+      }
+    });
+
+    // Add a separator before new conversation
+    const newDiv = document.createElement("div");
+    newDiv.className = "wo8-session-divider";
+    newDiv.innerHTML = '<span class="wo8-divider-label">Continuing</span>';
+    chatEl.appendChild(newDiv);
+
+    // Scroll to bottom
+    if (typeof window._scrollChatToBottom === "function") {
+      window._scrollChatToBottom();
+    } else {
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    console.log("[WO-8] Loaded", events.length, "transcript events for", pid.slice(0, 8));
+  } catch (e) {
+    console.log("[WO-8] Transcript history load failed:", e.message);
+  }
+}
+
+/**
+ * Export transcript for current narrator.
+ * Opens download link for .txt or .json format.
+ */
+function wo8ExportTranscript(format) {
+  const pid = state.person_id;
+  if (!pid) { sysBubble("No narrator selected."); return; }
+  const url = format === "json"
+    ? API.TRANSCRIPT_EXPORT_JSON(pid, "")
+    : API.TRANSCRIPT_EXPORT_TXT(pid, "");
+  window.open(url, "_blank");
+}
+window.wo8ExportTranscript = wo8ExportTranscript;
+
+/* ── WO-8 Phase 3: Voice Turn Improvements ───────────────────── */
+
+/**
+ * WO-8 voice turn state.
+ * Tracks long-turn capture mode with operator controls.
+ */
+let _wo8VoicePaused = false;
+let _wo8VoiceTurnChunks = [];  // accumulate speech chunks for the current turn
+let _wo8VoiceTurnStart = null;
+let _wo8LongTurnMode = false;  // true when narrator is in extended speech
+
+/**
+ * WO-8: Enhanced recognition result handler that accumulates speech
+ * chunks without auto-sending, allowing long natural pauses.
+ * The narrator must explicitly end their turn (Done button or voice command).
+ */
+function _wo8HandleRecognitionResult(e) {
+  // Guard: if Lori is speaking, discard
+  if (isLoriSpeaking) {
+    console.warn("[WO-8 STT] Recognition while Lori speaking — discarded.");
+    return;
+  }
+  // Guard: if paused
+  if (_wo8VoicePaused) return;
+
+  let fin = "";
+  let interim = "";
+  for (let i = e.resultIndex; i < e.results.length; i++) {
+    if (e.results[i].isFinal) {
+      fin += e.results[i][0].transcript;
+    } else {
+      interim += e.results[i][0].transcript;
+    }
+  }
+
+  // Update interim display
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl && interim) {
+    statusEl.textContent = interim;
+    statusEl.className = "wo8-voice-status wo8-listening";
+  }
+
+  if (!fin) return;
+
+  const normalized = _normalisePunctuation(fin);
+  const trimmed = normalized.trim().toLowerCase();
+
+  // Check for voice commands
+  if (_SEND_COMMANDS.has(trimmed)) {
+    _wo8FinalizeTurn();
+    return;
+  }
+
+  // Accumulate the chunk
+  _wo8VoiceTurnChunks.push({
+    text: normalized,
+    ts: Date.now(),
+  });
+  if (!_wo8VoiceTurnStart) _wo8VoiceTurnStart = Date.now();
+  _wo8LongTurnMode = true;
+
+  // Update the chat input with accumulated text
+  const fullText = _wo8VoiceTurnChunks.map(c => c.text).join(" ");
+  setv("chatInput", fullText);
+
+  // Update the live transcript scroll area
+  const transcriptEl = document.getElementById("wo8LiveTranscript");
+  if (transcriptEl) {
+    transcriptEl.textContent = fullText;
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  // Clear interim display
+  if (statusEl) {
+    statusEl.textContent = "Listening…";
+    statusEl.className = "wo8-voice-status wo8-listening";
+  }
+
+  console.log("[WO-8] Voice chunk accumulated. Total chunks:", _wo8VoiceTurnChunks.length,
+    "Total chars:", fullText.length);
+}
+
+/**
+ * WO-8: Finalize the voice turn — send the accumulated text.
+ */
+function _wo8FinalizeTurn() {
+  if (!_wo8VoiceTurnChunks.length) return;
+
+  const fullText = _wo8VoiceTurnChunks.map(c => c.text).join(" ");
+  setv("chatInput", fullText);
+
+  // Stop recording before sending
+  if (isRecording) stopRecording();
+
+  // Reset turn state
+  _wo8VoiceTurnChunks = [];
+  _wo8VoiceTurnStart = null;
+  _wo8LongTurnMode = false;
+
+  // Clear live transcript
+  const transcriptEl = document.getElementById("wo8LiveTranscript");
+  if (transcriptEl) transcriptEl.textContent = "";
+
+  // Update status
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Processing…";
+    statusEl.className = "wo8-voice-status wo8-processing";
+  }
+
+  // Send
+  sendUserMessage();
+}
+window._wo8FinalizeTurn = _wo8FinalizeTurn;
+
+/**
+ * WO-8: Pause voice capture without ending the turn.
+ */
+function wo8PauseListening() {
+  _wo8VoicePaused = true;
+  window._wo8VoicePaused = true;           // expose for lv80FireCheckIn guard
+  if (recognition) { try { recognition.stop(); } catch (_) {} }
+  // WO-8 fix: suppress Lori's idle nudge timer while paused
+  if (typeof lv80ClearIdle === "function") lv80ClearIdle();
+  console.log("[WO-8] Paused — mic stopped, idle nudge suppressed.");
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Paused";
+    statusEl.className = "wo8-voice-status wo8-paused";
+  }
+  _updateWo8Controls();
+}
+window.wo8PauseListening = wo8PauseListening;
+
+/**
+ * WO-8: Resume voice capture after pause.
+ */
+function wo8ResumeListening() {
+  _wo8VoicePaused = false;
+  window._wo8VoicePaused = false;          // sync window flag
+  if (!isRecording) startRecording();
+  else { try { recognition.start(); } catch (_) {} }
+  // WO-8 fix: re-arm Lori's idle nudge timer on resume
+  if (typeof lv80ArmIdle === "function") lv80ArmIdle("resume_from_pause");
+  console.log("[WO-8] Resumed — mic active, idle nudge re-armed.");
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Listening…";
+    statusEl.className = "wo8-voice-status wo8-listening";
+  }
+  _updateWo8Controls();
+}
+window.wo8ResumeListening = wo8ResumeListening;
+
+/**
+ * WO-8: Send now button — end turn immediately.
+ */
+function wo8SendNow() {
+  _wo8FinalizeTurn();
+}
+window.wo8SendNow = wo8SendNow;
+
+/**
+ * WO-8: Update visibility of voice controls.
+ */
+function _updateWo8Controls() {
+  const pauseBtn = document.getElementById("wo8PauseBtn");
+  const resumeBtn = document.getElementById("wo8ResumeBtn");
+  const sendBtn = document.getElementById("wo8SendNowBtn");
+
+  if (pauseBtn) pauseBtn.classList.toggle("hidden", _wo8VoicePaused || !isRecording);
+  if (resumeBtn) resumeBtn.classList.toggle("hidden", !_wo8VoicePaused);
+  if (sendBtn) sendBtn.classList.toggle("hidden", !_wo8VoiceTurnChunks.length);
+}
+
+/* ── WO-8 Phase 4: Chunked extraction for long turns ─────────── */
+
+/**
+ * WO-8: Chunk a long text into extraction-friendly segments.
+ * Each chunk is roughly sentence-bounded and under maxLen tokens.
+ */
+function _wo8ChunkText(text, maxLen) {
+  maxLen = maxLen || 1500; // ~1500 chars per chunk
+  if (text.length <= maxLen) return [text];
+
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+  const chunks = [];
+  let current = "";
+
+  for (const s of sentences) {
+    if ((current + s).length > maxLen && current.length > 0) {
+      chunks.push(current.trim());
+      current = s;
+    } else {
+      current += s;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+}
+
+/* ── WO-8 Phase 5: Thread Anchor & Resume ────────────────────── */
+
+/**
+ * WO-8: Save the current thread anchor after each meaningful exchange.
+ * Called from onAssistantReply when a real conversation turn completes.
+ */
+async function _wo8SaveThreadAnchor(userText, loriText) {
+  const pid = state.person_id;
+  if (!pid) return;
+
+  // Build a topic summary from the last exchange
+  const combined = (userText || "").slice(0, 500) + " " + (loriText || "").slice(0, 500);
+
+  // Simple topic extraction — look for era/subject signals
+  let topicLabel = "";
+  let topicSummary = "";
+
+  // Try to detect the active topic from the user's words
+  const topicPatterns = [
+    { rx: /\b(army|military|service|enlist|deploy|stationed)\b/i, label: "Military service" },
+    { rx: /\b(leav|left|moved|moving|went)\s+(home|away|out)\b/i, label: "Leaving home" },
+    { rx: /\b(school|college|university|graduate|diploma)\b/i, label: "Education" },
+    { rx: /\b(married|wedding|wife|husband|spouse|partner)\b/i, label: "Marriage & family" },
+    { rx: /\b(job|work|career|hired|company|boss|retire)\b/i, label: "Career" },
+    { rx: /\b(child|kids|son|daughter|baby|born|pregnant)\b/i, label: "Children & family" },
+    { rx: /\b(church|faith|god|religion|pray)\b/i, label: "Faith & spirituality" },
+    { rx: /\b(sick|hospital|health|surgery|doctor|cancer|heart)\b/i, label: "Health" },
+    { rx: /\b(farm|ranch|land|crop|cattle|harvest)\b/i, label: "Farm & rural life" },
+    { rx: /\b(brother|sister|sibling|twin)\b/i, label: "Siblings" },
+    { rx: /\b(mom|mother|dad|father|parent|grandma|grandpa)\b/i, label: "Parents & family" },
+    { rx: /\b(passed away|died|death|funeral|burial|cemetery)\b/i, label: "Loss & grief" },
+  ];
+
+  for (const p of topicPatterns) {
+    if (p.rx.test(combined)) {
+      topicLabel = p.label;
+      break;
+    }
+  }
+
+  // Build a brief summary from the user's turn
+  topicSummary = (userText || "").slice(0, 300);
+
+  const activeEra = getCurrentEra() || "";
+
+  try {
+    await fetch(API.THREAD_ANCHOR_PUT, {
+      method: "POST",
+      headers: ctype(),
+      body: JSON.stringify({
+        person_id: pid,
+        session_id: state.chat?.conv_id || "",
+        topic_label: topicLabel,
+        topic_summary: topicSummary,
+        active_era: activeEra,
+        last_narrator_turns: [userText || ""],
+      }),
+    });
+    console.log("[WO-8] Thread anchor saved:", topicLabel || "(general)", "era:", activeEra || "(none)");
+  } catch (e) {
+    console.log("[WO-8] Thread anchor save failed:", e.message);
+  }
+}
+
+/**
+ * WO-8: Load thread anchor and construct a resume system prompt.
+ * Called when a narrator is opened and identity is already complete.
+ * Returns null if no anchor exists (first session).
+ */
+async function _wo8BuildResumePrompt(pid) {
+  if (!pid) return null;
+  try {
+    const res = await fetch(API.THREAD_ANCHOR_GET(pid, ""), { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const anchor = data.anchor;
+    if (!anchor || !anchor.topic_summary) return null;
+
+    const topicLabel = anchor.topic_label || "your conversation";
+    const era = anchor.active_era || "";
+    const lastNarrator = (anchor.last_narrator_turns || []).slice(-2).join(" ").slice(0, 400);
+    const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
+
+    let resumeText = `[SYSTEM: RESUME SESSION — ${name} is returning to continue their interview. `;
+    resumeText += `The last conversation topic was: "${topicLabel}". `;
+    if (lastNarrator) {
+      resumeText += `Their most recent words were about: "${lastNarrator.slice(0, 200)}…" `;
+    }
+    if (era) {
+      resumeText += `They were exploring the "${era.replace(/_/g, " ")}" era of their life. `;
+    }
+    resumeText += `Continue from this topic — do NOT restart with generic identity questions about birthplace or childhood `;
+    resumeText += `unless "${topicLabel}" was specifically about those topics. `;
+    resumeText += `Welcome them back warmly and naturally, referencing what they were telling you last time. `;
+    resumeText += `Ask ONE follow-up question that continues the thread.]`;
+
+    console.log("[WO-8] Resume prompt built from anchor:", topicLabel, "era:", era);
+    return resumeText;
+  } catch (e) {
+    console.log("[WO-8] Resume prompt build failed:", e.message);
+    return null;
+  }
+}
+
+/**
+ * WO-8: Fire resume system prompt when narrator is opened.
+ * Hooks into the narrator load flow after identity is confirmed ready.
+ */
+async function wo8OnNarratorReady(pid) {
+  if (!pid) return;
+
+  // Phase 2: Load transcript history
+  await wo8LoadTranscriptHistory(pid);
+
+  // Phase 5: Send resume prompt if we have a thread anchor
+  if (hasIdentityBasics74()) {
+    const resumePrompt = await _wo8BuildResumePrompt(pid);
+    if (resumePrompt) {
+      // Wait a beat for UI to settle, then send resume
+      setTimeout(() => {
+        if (_llmReady) {
+          sendSystemPrompt(resumePrompt);
+        }
+      }, 800);
+    }
+  }
+}
+window.wo8OnNarratorReady = wo8OnNarratorReady;
+
+/* ── WO-8 Phase 6: Anti-drift for identity extraction ────────── */
+
+/**
+ * WO-8: Check if a system prompt is drifting toward identity grounding
+ * when the active thread is elsewhere.
+ * Returns the corrected prompt if drift is detected, null otherwise.
+ */
+function _wo8CheckContinuityDrift(prompt) {
+  if (!prompt) return null;
+  // If we have no thread anchor, no drift detection needed
+  if (!state._wo8LastTopicLabel) return null;
+
+  const lowerPrompt = prompt.toLowerCase();
+  const identityPatterns = /\b(birthplace|born in|hometown|grew up in|childhood home|where.*born|stanley|north dakota|fargo)\b/i;
+  const topicLabel = state._wo8LastTopicLabel || "";
+
+  // If prompt is pulling toward identity AND the last topic was different
+  if (identityPatterns.test(lowerPrompt) && topicLabel &&
+      !topicLabel.toLowerCase().includes("childhood") &&
+      !topicLabel.toLowerCase().includes("birth")) {
+    console.log("[WO-8] Continuity drift detected — suppressing identity grounding in favor of:", topicLabel);
+    return true; // Signal drift — caller should prefer thread-based question
+  }
+  return null;
+}
+
+/* ── WO-8: Inject into existing hooks ────────────────────────── */
+
+// Store the original onAssistantReply to chain our hook
+const _wo8OrigOnAssistantReply = onAssistantReply;
+onAssistantReply = function(text) {
+  // Call original
+  _wo8OrigOnAssistantReply(text);
+
+  // WO-8: Save thread anchor after each real reply
+  if (text && state.person_id && _lastUserTurn) {
+    _wo8SaveThreadAnchor(_lastUserTurn, text).catch(() => {});
+  }
+
+  // WO-8: Update voice status
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl && statusEl.className.includes("wo8-processing")) {
+    statusEl.textContent = "Ready";
+    statusEl.className = "wo8-voice-status wo8-ready";
+  }
+};
+
+// Store topic label in state for drift detection
+state._wo8LastTopicLabel = "";
+
+/* ── WO-8: Override recognition result for enhanced long-turn mode ── */
+
+/**
+ * WO-8: Install enhanced recognition handler.
+ * Call after _ensureRecognition() to replace the default onresult.
+ */
+function _wo8InstallEnhancedVoice() {
+  if (!recognition) return;
+
+  // Save original for fallback
+  const origOnResult = recognition.onresult;
+
+  recognition.onresult = function(e) {
+    // If in long-turn mode (mic is on and chunks are accumulating), use WO-8 handler
+    if (_wo8LongTurnMode || _wo8VoiceTurnChunks.length > 0) {
+      _wo8HandleRecognitionResult(e);
+      return;
+    }
+    // Otherwise, use the WO-8 handler for all voice input (it also handles send commands)
+    _wo8HandleRecognitionResult(e);
+  };
+
+  // Enhanced onend: don't auto-restart if paused
+  recognition.onend = function() {
+    if (isRecording && !isLoriSpeaking && !_wo8VoicePaused) {
+      try { recognition.start(); } catch (e) {
+        console.warn("[WO-8 STT] auto-restart failed:", e.message);
+      }
+    }
+  };
+
+  console.log("[WO-8] Enhanced voice handlers installed.");
+}
+
+// Patch startRecording to install enhanced handlers
+const _wo8OrigStartRecording = startRecording;
+startRecording = function() {
+  _wo8VoiceTurnChunks = [];
+  _wo8VoiceTurnStart = null;
+  _wo8LongTurnMode = false;
+  _wo8VoicePaused = false;
+  _wo8OrigStartRecording();
+  // Install enhanced handlers after recognition is created
+  setTimeout(() => _wo8InstallEnhancedVoice(), 100);
+  _updateWo8Controls();
+  // Update status display
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Listening…";
+    statusEl.className = "wo8-voice-status wo8-listening";
+  }
+};
+
+// Patch stopRecording to clean up
+const _wo8OrigStopRecording = stopRecording;
+stopRecording = function() {
+  _wo8OrigStopRecording();
+  _wo8VoicePaused = false;
+  _updateWo8Controls();
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Mic off";
+    statusEl.className = "wo8-voice-status";
+  }
+};
 
 /* ═══════════════════════════════════════════════════════════════
    UTILITIES

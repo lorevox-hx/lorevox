@@ -54,8 +54,8 @@ LORA_ADAPTER_ID = (os.getenv("LORA_ADAPTER_ID", "") or "").strip()
 LOAD_IN_4BIT = (os.getenv("LOAD_IN_4BIT", "1").strip().lower() in ("1", "true", "yes", "y"))
 ATTN_IMPL = (os.getenv("ATTN_IMPL", "flash_attention_2") or "flash_attention_2").strip()
 TORCH_DTYPE = (os.getenv("TORCH_DTYPE", "bfloat16") or "bfloat16").strip().lower()
-MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS", "2048"))
-MAX_CONTEXT_WINDOW = int(os.getenv("MAX_CONTEXT_WINDOW", "4096"))
+MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS", "3072"))
+MAX_CONTEXT_WINDOW = int(os.getenv("MAX_CONTEXT_WINDOW", "8192"))
 
 # session transcript folder exports (optional, still handy)
 MEMO_DIR = DATA_DIR / "memory" / "agents"

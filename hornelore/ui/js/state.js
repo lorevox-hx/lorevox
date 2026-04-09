@@ -110,6 +110,15 @@ let state = {
        'safety'      : safety companion mode                                        */
     assistantRole: "interviewer",
 
+    /* v10 — Memoir Question Strategy: session-level tracking */
+    memoirStrategy: {
+      askedPaths:      [],   // recently asked field paths (capped at 30)
+      askedKinds:      [],   // recently asked questionKind values (capped at 15)
+      askedEras:       [],   // recently targeted eras (capped at 10)
+      lastQuestionTs:  null, // timestamp of last question
+      consecutiveSameEra: 0, // count of consecutive questions in same era
+    },
+
     /* v7.4D Phase 6B — Identity-first onboarding state machine.
        null  = not yet started (new user before first message, OR returning user with profile)
        'askName' → 'askDob' → 'askBirthplace' → 'resolving' → 'complete'

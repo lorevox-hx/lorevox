@@ -244,6 +244,312 @@ function renderInterview(){
   updateContextTriggers();
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   v10 — MEMOIR QUESTION STRATEGY LAYER
+   Decides what Lori should ask next based on:
+   - background suppression (skip known identity facts)
+   - memoir hooks (use known facts to ask deeper)
+   - thin-zone detection (target weak memoir areas)
+   - session memory (avoid repetitive prompts)
+═══════════════════════════════════════════════════════════════ */
+
+// ── Session memory helpers ───────────────────────────────────
+
+function _memoirStrategyState() {
+  if (!state?.session?.memoirStrategy) {
+    if (state?.session) {
+      state.session.memoirStrategy = {
+        askedPaths: [], askedKinds: [], askedEras: [],
+        lastQuestionTs: null, consecutiveSameEra: 0
+      };
+    }
+  }
+  return state?.session?.memoirStrategy || null;
+}
+
+function _recordAsked(path, kind, era) {
+  var ms = _memoirStrategyState();
+  if (!ms) return;
+  if (path) {
+    ms.askedPaths.push(path);
+    if (ms.askedPaths.length > 30) ms.askedPaths.shift();
+  }
+  if (kind) {
+    ms.askedKinds.push(kind);
+    if (ms.askedKinds.length > 15) ms.askedKinds.shift();
+  }
+  if (era) {
+    if (ms.askedEras.length > 0 && ms.askedEras[ms.askedEras.length - 1] === era) {
+      ms.consecutiveSameEra++;
+    } else {
+      ms.consecutiveSameEra = 1;
+    }
+    ms.askedEras.push(era);
+    if (ms.askedEras.length > 10) ms.askedEras.shift();
+  }
+  ms.lastQuestionTs = Date.now();
+}
+
+function _wasRecentlyAsked(path) {
+  var ms = _memoirStrategyState();
+  return ms ? ms.askedPaths.indexOf(path) >= 0 : false;
+}
+
+function _kindOverused(kind) {
+  var ms = _memoirStrategyState();
+  if (!ms) return false;
+  var recent = ms.askedKinds.slice(-5);
+  var count = recent.filter(function (k) { return k === kind; }).length;
+  return count >= 3; // same kind asked 3+ of last 5 times = overused
+}
+
+function _stuckInEra() {
+  var ms = _memoirStrategyState();
+  return ms ? ms.consecutiveSameEra >= 4 : false;
+}
+
+// ── Thin-zone detection ──────────────────────────────────────
+
+function lv80DetectThinZones(era) {
+  var qq = (state?.bioBuilder?.questionnaire) || {};
+  var thinZones = [];
+
+  // Define memoir zone → questionnaire section mapping with depth checks
+  var zones = [
+    { id: "early_childhood", label: "Early Childhood", sections: ["earlyMemories"], fields: ["firstMemory", "favoriteToy", "significantEvent"] },
+    { id: "formative_family", label: "Family & Roots", sections: ["parents", "grandparents", "siblings"], repeatable: true,
+      hookFields: { parents: ["occupation", "notableLifeEvents"], grandparents: ["memorableStories", "culturalBackground"], siblings: ["sharedExperiences", "memories", "uniqueCharacteristics"] } },
+    { id: "education_career", label: "Education & Career", sections: ["education"], fields: ["schooling", "higherEducation", "earlyCareer", "careerProgression"] },
+    { id: "relationships", label: "Relationships", sections: ["spouse", "marriage", "children"], repeatable: true,
+      hookFields: { spouse: ["narrative"], marriage: ["proposalStory", "weddingDetails"], children: ["narrative"] } },
+    { id: "later_life", label: "Later Years", sections: ["laterYears"], fields: ["retirement", "lifeLessons", "adviceForFutureGenerations"] },
+    { id: "identity", label: "Identity & Interests", sections: ["hobbies"], fields: ["hobbies", "personalChallenges", "worldEvents", "travel"] },
+  ];
+
+  for (var i = 0; i < zones.length; i++) {
+    var zone = zones[i];
+    var structureCount = 0;
+    var narrativeDepth = 0;
+
+    for (var j = 0; j < zone.sections.length; j++) {
+      var sec = zone.sections[j];
+      var data = qq[sec];
+      if (!data) continue;
+
+      if (zone.repeatable && Array.isArray(data)) {
+        structureCount += data.length;
+        // Check hook fields for narrative depth
+        var hf = zone.hookFields && zone.hookFields[sec] || [];
+        for (var k = 0; k < data.length; k++) {
+          for (var h = 0; h < hf.length; h++) {
+            var val = data[k][hf[h]];
+            if (val && String(val).trim().length > 30) narrativeDepth++;
+          }
+        }
+      } else if (typeof data === "object" && !Array.isArray(data)) {
+        var fields = zone.fields || Object.keys(data);
+        for (var f = 0; f < fields.length; f++) {
+          var v = data[fields[f]];
+          if (v && String(v).trim()) {
+            structureCount++;
+            if (String(v).trim().length > 50) narrativeDepth++;
+          }
+        }
+      }
+    }
+
+    // Thin = has structure but lacks narrative depth
+    if (structureCount > 0 && narrativeDepth < Math.max(1, Math.floor(structureCount * 0.3))) {
+      thinZones.push({ id: zone.id, label: zone.label, structure: structureCount, depth: narrativeDepth });
+    }
+  }
+
+  // If era is specified, prioritize zones that match it
+  if (era) {
+    var eraZoneMap = {
+      "early_childhood": ["early_childhood", "formative_family"],
+      "school_years": ["formative_family", "education_career"],
+      "adolescence": ["education_career", "identity"],
+      "early_adulthood": ["education_career", "relationships"],
+      "midlife": ["relationships", "identity"],
+      "later_life": ["later_life", "identity"]
+    };
+    var preferred = eraZoneMap[era] || [];
+    thinZones.sort(function (a, b) {
+      var aP = preferred.indexOf(a.id) >= 0 ? 0 : 1;
+      var bP = preferred.indexOf(b.id) >= 0 ? 0 : 1;
+      return aP - bP;
+    });
+  }
+
+  return thinZones;
+}
+
+// ── Preload-aware prompt enrichment ──────────────────────────
+
+function _buildHookPrompt(config, path) {
+  if (!config || !config.hookPrompt) return null;
+  // Get existing value from questionnaire or projection
+  var value = null;
+  var parsed = LorevoxProjectionMap.parsePath(path);
+  if (parsed) {
+    var qq = state?.bioBuilder?.questionnaire || {};
+    if (parsed.index !== null) {
+      // Repeatable field
+      var entries = qq[parsed.section];
+      if (Array.isArray(entries) && entries[parsed.index]) {
+        value = entries[parsed.index][parsed.field];
+      }
+    } else {
+      // Direct field
+      var sec = qq[parsed.section];
+      if (sec) value = sec[parsed.field];
+    }
+  }
+  if (!value) {
+    var proj = state?.interviewProjection?.fields || {};
+    if (proj[path] && proj[path].value) value = proj[path].value;
+  }
+  if (!value || !String(value).trim()) return null;
+  // Substitute {value} in hookPrompt
+  var prompt = config.hookPrompt.replace(/\{value\}/g, String(value).trim());
+  // Also substitute {ref} if present (for repeatable person references)
+  if (parsed && parsed.index !== null) {
+    var qq2 = state?.bioBuilder?.questionnaire || {};
+    var entries2 = qq2[parsed.section];
+    if (Array.isArray(entries2) && entries2[parsed.index]) {
+      var ref = entries2[parsed.index].firstName || entries2[parsed.index].relation || "this person";
+      prompt = prompt.replace(/\{ref\}/g, ref);
+    }
+  }
+  return prompt;
+}
+
+// ── Main strategy scorer ─────────────────────────────────────
+
+function lv80ScoreMemoirPromptCandidates(era, pass) {
+  if (typeof LorevoxProjectionMap === "undefined") return [];
+  if (!state?.bioBuilder) return [];
+  if (pass === "pass1") return [];
+
+  var projFields = state.interviewProjection ? state.interviewProjection.fields : {};
+  var bbQQ = state.bioBuilder.questionnaire || {};
+  var hasIdentity = !!(state.profile?.basics?.dob && state.profile?.basics?.pob);
+  var candidates = [];
+
+  // Get all fields from the projection map
+  var fieldMap = LorevoxProjectionMap.FIELD_MAP;
+  Object.keys(fieldMap).forEach(function (path) {
+    var config = fieldMap[path];
+
+    // Skip identity fields if already captured
+    if (!hasIdentity && config.priority === 1) { /* include — still need identity */ }
+    else if (config.priority === 1 && hasIdentity && config.skipIfPreloaded) return;
+
+    // Skip auto-derived and non-askable
+    if (config.autoDerive) return;
+    if (!config.conversational) return;
+
+    // Check era relevance
+    if (config.eraTags && config.eraTags.length > 0 && era && config.eraTags.indexOf(era) < 0) return;
+
+    // Check if already answered
+    var isAnswered = false;
+    if (projFields[path] && projFields[path].value) isAnswered = true;
+    var parsed = LorevoxProjectionMap.parsePath(path);
+    if (parsed && bbQQ[parsed.section]) {
+      var existing = bbQQ[parsed.section][parsed.field];
+      if (existing && String(existing).trim()) isAnswered = true;
+    }
+
+    // Score the candidate
+    var score = config.memoirWeight || 3;
+    var prompt = null;
+
+    if (isAnswered) {
+      // Already answered — only include if it's a hook with a hookPrompt
+      if (config.memoirClass === "hook" && config.hookPrompt) {
+        prompt = _buildHookPrompt(config, path);
+        if (prompt) {
+          score += 3; // Hooks on answered fields get bonus
+        } else {
+          return; // No value to build hook from
+        }
+      } else {
+        return; // Background or thin_zone already answered = skip
+      }
+    } else {
+      // Unanswered — use conversational prompt
+      prompt = config.conversational;
+
+      // Background fields with skipIfPreloaded: lower their score drastically
+      if (config.memoirClass === "background" && config.skipIfPreloaded) {
+        score = 1;
+      }
+    }
+
+    // Penalties
+    if (_wasRecentlyAsked(path)) score -= 5;
+    if (config.questionKind && _kindOverused(config.questionKind)) score -= 2;
+
+    // Thin-zone bonus
+    var thinZones = lv80DetectThinZones(era);
+    for (var t = 0; t < thinZones.length; t++) {
+      // If this field's section relates to a thin zone, boost it
+      if (parsed && thinZones[t].id.indexOf(parsed.section) >= 0) {
+        score += 2;
+        break;
+      }
+    }
+
+    if (score > 0 && prompt) {
+      candidates.push({
+        path: path,
+        config: config,
+        prompt: prompt,
+        score: score,
+        isHook: isAnswered && config.memoirClass === "hook",
+        questionKind: config.questionKind || "fact"
+      });
+    }
+  });
+
+  // Sort by score descending
+  candidates.sort(function (a, b) { return b.score - a.score; });
+  return candidates;
+}
+
+// ── Top-level selector ───────────────────────────────────────
+
+function lv80SelectBestMemoirQuestion(era, pass) {
+  var candidates = lv80ScoreMemoirPromptCandidates(era, pass);
+  if (candidates.length === 0) return null;
+
+  // Pick top candidate
+  var best = candidates[0];
+
+  // Record in session memory
+  _recordAsked(best.path, best.questionKind, era);
+
+  // Track for projection
+  if (state.interviewProjection) {
+    if (!best.isHook) {
+      state.interviewProjection._currentTargetPath = best.path;
+    } else {
+      // Hook questions use known data — don't target for overwrite
+      state.interviewProjection._currentTargetPath = null;
+    }
+  }
+
+  console.log("[memoir-strategy] Selected:", best.path,
+    "score:", best.score,
+    "kind:", best.questionKind,
+    "isHook:", best.isHook,
+    "era:", era);
+
+  return best;
+}
+
 /* ── v7.1 — pass-aware prompt builder ───────────────────────── */
 function build71InterviewPrompt(){
   const pass = getCurrentPass();
@@ -251,11 +557,18 @@ function build71InterviewPrompt(){
   const mode = getCurrentMode();
   const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "this person";
 
-  // v8 projection integration — check if there's a specific template question to ask
+  // v10: Try memoir strategy layer first
+  var memoirQ = lv80SelectBestMemoirQuestion(era, pass);
+  if (memoirQ) {
+    var base = memoirQ.prompt;
+    var draftHint = _buildDraftContextHint(era);
+    return draftHint ? base + " " + draftHint : base;
+  }
+
+  // v8: Fall back to projection-based question selection
   var projectionQ = _getNextProjectionQuestion(era, pass);
   if (projectionQ) {
     var base = projectionQ;
-    // Still enrich with draft context for family/theme hints
     var draftHint = _buildDraftContextHint(era);
     return draftHint ? base + " " + draftHint : base;
   }
