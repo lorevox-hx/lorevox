@@ -1,0 +1,212 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_instructions": "Fill in fields below. Repeatable sections (parents, grandparents, siblings, children, pets) are arrays — add as many entries as needed. Leave empty strings for unknown fields. Load via: lv80PreloadNarrator(template) or lv80PreloadFromFile(file)",
+  "personal": {
+    "fullName": "Dolly Rebecca Parton",
+    "preferredName": "Dolly",
+    "legalFirstName": "Dolly",
+    "legalMiddleName": "Rebecca",
+    "legalLastName": "Parton",
+    "dateOfBirth": "1946-01-19",
+    "timeOfBirth": "",
+    "placeOfBirth": "Locust Ridge, Sevier County, Tennessee",
+    "birthOrder": "4 of 12",
+    "zodiacSign": "Capricorn",
+    "pronouns": "she/her",
+    "culture": "Appalachian",
+    "country": "US",
+    "language": "English"
+  },
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Avie",
+      "middleName": "Lee",
+      "lastName": "Parton",
+      "maidenName": "Owens",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Homemaker",
+      "deceased": true,
+      "notableLifeEvents": "Inspired her children's musical talents through storytelling and singing. Created the 'Coat of Many Colors'.",
+      "notes": "She had problems during Randy's birth which meant she wasn't home for one Christmas."
+    },
+    {
+      "relation": "Father",
+      "firstName": "Robert",
+      "middleName": "Lee",
+      "lastName": "Parton",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Farmer / Construction Worker",
+      "deceased": true,
+      "notableLifeEvents": "Unable to read or write, which inspired the Dolly Parton Imagination Library.",
+      "notes": "Often referred to as 'Lee'."
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "Jake",
+      "lastName": "Owens",
+      "ancestry": "",
+      "culturalBackground": "",
+      "memorableStories": "Maternal grandfather who was a Pentecostal preacher."
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "Sister",
+      "firstName": "Willadeene",
+      "middleName": "",
+      "lastName": "Parton",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "The author in the family.",
+      "sharedExperiences": "Wrote books about the Parton family such as 'Smoky Mountain Memories'.",
+      "memories": "Appeared with siblings on the TV series 'Dolly' in 1977.",
+      "notes": "Born in 1940."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "David",
+      "middleName": "Wilburn",
+      "lastName": "Parton",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Stayed out of the spotlight.",
+      "sharedExperiences": "Occasionally escorted Dolly to events.",
+      "memories": "",
+      "notes": "Born in 1942; passed away in November 2024."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Coy",
+      "middleName": "Denver",
+      "lastName": "Parton",
+      "birthOrder": "3",
+      "uniqueCharacteristics": "Stays out of the spotlight.",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": "Born in 1943."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Bobby",
+      "middleName": "Lee",
+      "lastName": "Parton",
+      "birthOrder": "5",
+      "uniqueCharacteristics": "Chose a private life out of the spotlight.",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": "Born in 1948. Father of Danielle Parton who operates a moonshine distillery."
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Stella",
+      "middleName": "Mae",
+      "lastName": "Parton",
+      "birthOrder": "6",
+      "uniqueCharacteristics": "Singer and record label owner.",
+      "sharedExperiences": "Performed 'Break My Mind' with sisters Cassie and Dolly.",
+      "memories": "",
+      "notes": "Born in 1949."
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Cassie",
+      "middleName": "Nan",
+      "lastName": "Parton",
+      "birthOrder": "7",
+      "uniqueCharacteristics": "Actress and singer.",
+      "sharedExperiences": "Featured in the Dollywood show 'My People'.",
+      "memories": "Guest on 'The Porter Wagoner Show' in 1970.",
+      "notes": "Born in 1951."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Randy",
+      "middleName": "",
+      "lastName": "Parton",
+      "birthOrder": "8",
+      "uniqueCharacteristics": "Had his own show at Dollywood.",
+      "sharedExperiences": "",
+      "memories": "Born in the hospital, unlike some older siblings.",
+      "notes": "Passed away in 2021."
+    }
+  ],
+  "spouse": {
+    "firstName": "Carl",
+    "middleName": "Thomas",
+    "lastName": "Dean",
+    "birthPlace": "Nashville, Tennessee",
+    "occupation": "Asphalt Paving Business (Retired)",
+    "narrative": "Met outside the Wishy Washy Laundromat in Nashville when Dolly was 18 and he was 21. He is described as a deep person with a great and warped sense of humor who prefers to stay in the background.",
+    "deceased": false
+  },
+  "children": [
+    {
+      "firstName": "Miley",
+      "middleName": "Ray",
+      "lastName": "Cyrus",
+      "birthDate": "1992-11-23",
+      "narrative": "Famous goddaughter of Dolly Parton."
+    }
+  ],
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "Married May 30, 1966, in Ringgold, GA. A small service attended only by Dolly's mother, the preacher, and his wife."
+  },
+  "familyTraditions": [
+    {
+      "description": "Family gatherings for Christmas with music, fun, and hay rides.",
+      "occasion": "Christmas"
+    }
+  ],
+  "pets": [
+    {
+      "name": "Popeye",
+      "species": "Dog",
+      "breed": "French Bulldog",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+  "earlyMemories": {
+    "firstMemory": "The sounds of her environment and her mother's singing.",
+    "favoriteToy": "Desired a walking and talking doll like her cousin's, but her father called a new baby brother a 'real doll' instead.",
+    "significantEvent": "Receiving a guitar from her uncle at age eight."
+  },
+  "education": {
+    "schooling": "Attended local schools in Sevier County.",
+    "higherEducation": "First in her family to graduate high school (1964).",
+    "earlyCareer": "Sang on local radio stations at age ten and performed at the Grand Ole Opry at age thirteen.",
+    "careerProgression": "Moved to Nashville the day after high school graduation. Between 1964 and 1980, produced many hits and won her first Grammy. Movie debut in '9 to 5' (1980).",
+    "communityInvolvement": "Founded the Dollywood Foundation and Imagination Library (1995) to foster a love of reading.",
+    "mentorship": ""
+  },
+  "laterYears": {
+    "retirement": "Has stated she does not plan to retire, preferring to stay active and inspired.",
+    "lifeLessons": "'Don't get so busy making a living that you forget to make a life'. 'Find out who you are. Then do it on purpose'.",
+    "advice for Future Generations": "'Dream More, Learn More, Care More and Be More'."
+  },
+  "hobbies": {
+    "hobbies": "Reading, cooking, and traveling in an RV.",
+    "worldEvents": "",
+    "personalChallenges": "Growing up in extreme poverty in the Smoky Mountains.",
+    "travel": "Enjoys traveling simply with her husband in their RV."
+  },
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "",
+    "wellnessTips": "'If you want the rainbow, you have to put up with the rain'."
+  },
+  "technology": {
+    "firstTechExperience": "",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "Continuing to expand the Imagination Library to children worldwide.",
+    "messagesForFutureGenerations": "'If you don't like the road you're walking, start paving another one'."
+  }
+}
