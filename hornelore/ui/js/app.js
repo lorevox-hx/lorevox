@@ -14,6 +14,30 @@
 let _llmReady = false;
 let _llmWarmupPolling = false;
 
+/* ── WO-9: Startup race fix — queue system prompts until model ready ── */
+let _wo9QueuedSystemPrompt = null;
+
+function wo9SendOrQueueSystemPrompt(prompt) {
+  if (!_llmReady) {
+    _wo9QueuedSystemPrompt = prompt;
+    console.log("[WO-9] Queued system prompt until model ready. Length:", prompt.length);
+    return false;
+  }
+  sendSystemPrompt(prompt);
+  return true;
+}
+
+function wo9DrainQueuedSystemPrompt() {
+  if (_wo9QueuedSystemPrompt && _llmReady) {
+    const prompt = _wo9QueuedSystemPrompt;
+    _wo9QueuedSystemPrompt = null;
+    console.log("[WO-9] Draining queued system prompt.");
+    sendSystemPrompt(prompt);
+  }
+}
+window.wo9SendOrQueueSystemPrompt = wo9SendOrQueueSystemPrompt;
+window.wo9DrainQueuedSystemPrompt = wo9DrainQueuedSystemPrompt;
+
 /* ── Hornelore operator mode flag ───────────────────────────── */
 window.HORNELORE_OPERATOR_MODE = window.HORNELORE_OPERATOR_MODE || false;
 
@@ -153,9 +177,9 @@ async function pollModelReady() {
 /** Called once when model transitions to ready. Triggers deferred onboarding/narrator flow. */
 function _onModelReady() {
   console.log("[readiness] _onModelReady — firing deferred startup.");
+  // WO-9: Drain any system prompt that was queued during startup race
+  wo9DrainQueuedSystemPrompt();
   // v9: Startup neutrality — always open narrator selector on ready.
-  // New devices AND returning devices both start with "Choose a narrator."
-  // Onboarding only begins when user explicitly clicks "+ New" or "Open".
   console.log("[readiness] v9 — startup neutral. Opening narrator selector.");
   setTimeout(() => {
     if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
@@ -493,7 +517,62 @@ function buildRuntime71() {
         return (fam.parents.length || fam.siblings.length) ? fam : null;
       } catch (_) { return null; }
     })(),
+    /* WO-9: person_id for backend conversation memory context builder */
+    person_id: state.person_id || null,
+    /* WO-10: conversation state for adaptive memory context */
+    conversation_state: _wo10DetectConversationState(),
   };
+}
+
+/**
+ * WO-10 Phase 5: Lightweight conversation state detection.
+ * Returns: storytelling | answering | reflecting | correcting | searching_memory | emotional_pause | null
+ */
+let _wo10LastUserText = "";
+function _wo10DetectConversationState() {
+  const text = _wo10LastUserText || "";
+  if (!text) return null;
+  const lower = text.toLowerCase().trim();
+  const len = lower.length;
+
+  let result = null;
+
+  // Correcting: "no, actually...", "I meant...", "let me correct..."
+  if (/^(no[,.]?\s+(actually|wait|that'?s not|i meant)|let me correct|i should clarify|that'?s wrong)/i.test(lower)) {
+    result = "correcting";
+  }
+  // Emotional pause: very short after long, or explicit emotional markers
+  else if (len < 20 && /\b(yeah|mmm|hmm|oh|sigh)\b/i.test(lower)) {
+    result = "emotional_pause";
+  }
+  else if (/\b(hard to talk about|still miss|tears|crying|breaks my heart)\b/i.test(lower)) {
+    result = "emotional_pause";
+  }
+  // Searching memory: "I'm trying to remember...", "let me think..."
+  else if (/\b(trying to remember|let me think|i can'?t recall|what was|where was)\b/i.test(lower)) {
+    result = "searching_memory";
+  }
+  // Reflecting: thoughtful, measured responses with qualifiers
+  else if (/\b(looking back|in hindsight|when i think about|i realize now|i suppose)\b/i.test(lower)) {
+    result = "reflecting";
+  }
+  // Storytelling: long narrative (>200 chars with conjunctions and temporal markers)
+  else if (len > 200 && /\b(and then|so we|after that|the next|one day|that was when)\b/i.test(lower)) {
+    result = "storytelling";
+  }
+  // Answering: short-to-medium direct responses
+  else if (len < 200) {
+    result = "answering";
+  }
+  // Default for longer text
+  else {
+    result = "storytelling";
+  }
+
+  // WO-10B: Expose state for no-interruption engine
+  _wo10bCurrentConversationState = result;
+  window._wo10bCurrentConversationState = result;
+  return result;
 }
 
 /**
@@ -2205,6 +2284,8 @@ async function sendUserMessage(){
   }
   // v7.4D — Phase 7: capture for post-reply fact extraction.
   _lastUserTurn = text;
+  // WO-10: Update conversation state detector
+  _wo10LastUserText = text;
   // v7.4D — stop recording immediately on send so we don't capture background
   // audio or Lori's incoming response. Mic stays off; user re-enables when ready.
   if(isRecording) stopRecording();
@@ -2600,19 +2681,35 @@ function _extractFacts(userText, loriText){
  */
 async function _extractAndPostFacts(userText, loriText){
   if(!state.person_id) return;
-  const facts = _extractFacts(userText, loriText);
-  if(!facts.length) return;
-  for(const f of facts){
+
+  // WO-9: Chunk long user turns before extraction for better coverage
+  const chunks = (typeof _wo8ChunkText === "function" && userText && userText.length > 1200)
+    ? _wo8ChunkText(userText, 1200) : [userText];
+
+  const allFacts = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const facts = _extractFacts(chunks[i], i === chunks.length - 1 ? loriText : "");
+    allFacts.push(...facts);
+  }
+
+  // WO-9: Deduplicate facts by path+value
+  const seen = new Set();
+  const dedupedFacts = [];
+  for (const f of allFacts) {
+    const key = (f.path || "") + "::" + JSON.stringify(f.value ?? null);
+    if (!seen.has(key)) { seen.add(key); dedupedFacts.push(f); }
+  }
+
+  if(!dedupedFacts.length) return;
+  for(const f of dedupedFacts){
     try{
       await fetch(API.FACTS_ADD, {
         method:"POST", headers: ctype(), body: JSON.stringify(f),
       });
     }catch{ /* silently ignore network errors */ }
   }
-  if(facts.length){
-    console.log(`[facts] extracted ${facts.length} fact(s) from turn.`);
-    // v7.4D ISSUE-15: quietly refresh the archive readiness panel so the user
-    // sees the archive growing without any disruptive notification.
+  if(dedupedFacts.length){
+    console.log(`[facts] extracted ${dedupedFacts.length} fact(s) from ${chunks.length} chunk(s).`);
     if(typeof updateArchiveReadiness === "function") updateArchiveReadiness();
   }
 }
@@ -2905,6 +3002,9 @@ function _normalisePunctuation(t){
 // v7.4D — Voice send commands. Any of these exact phrases (case-insensitive,
 // trimmed) will trigger Send instead of being typed into the input box.
 const _SEND_COMMANDS = new Set(["send","send it","okay send","ok send","go ahead","send message"]);
+// WO-9: Voice send shortcut disabled by default — elderly narrators trigger it accidentally.
+// Set window._wo9VoiceSendEnabled = true in console or config to re-enable.
+let _wo9VoiceSendEnabled = window._wo9VoiceSendEnabled || false;
 
 function _ensureRecognition(){
   if(recognition) return recognition;
@@ -2923,7 +3023,8 @@ function _ensureRecognition(){
     if(!fin) return;
     const trimmed=fin.trim().toLowerCase();
     // v7.4D — check for voice send command before appending to input.
-    if(_SEND_COMMANDS.has(trimmed)){
+    // WO-9: Only if voice send is explicitly enabled
+    if(_wo9VoiceSendEnabled && _SEND_COMMANDS.has(trimmed)){
       stopRecording();
       sendUserMessage();
       return;
@@ -3132,11 +3233,20 @@ async function wo8LoadTranscriptHistory(pid) {
     divider.innerHTML = '<span class="wo8-divider-label">Prior conversation</span>';
     chatEl.appendChild(divider);
 
-    // Render each archived turn
+    // Render each archived turn (WO-9: filter/collapse system messages)
     events.forEach(ev => {
       const role = (ev.role || "").toLowerCase();
       const content = (ev.content || "").trim();
       if (!content) return;
+
+      // WO-9: Classify system messages and skip internal ones
+      const isSystemMsg = content.startsWith("[SYSTEM:") || role === "system";
+      if (isSystemMsg) {
+        // Skip internal system prompts — don't show to narrator
+        // But log for debugging
+        console.log("[WO-9] Skipping system message in transcript render:", content.slice(0, 60));
+        return;
+      }
 
       const bubbleRole = role === "assistant" ? "ai" : role === "user" ? "user" : "sys";
       const bubble = appendBubble(bubbleRole, content);
@@ -3178,17 +3288,310 @@ async function wo8LoadTranscriptHistory(pid) {
  * Export transcript for current narrator.
  * Opens download link for .txt or .json format.
  */
-function wo8ExportTranscript(format) {
+function wo8ExportTranscript(format, allSessions) {
   const pid = state.person_id;
   if (!pid) { sysBubble("No narrator selected."); return; }
-  const url = format === "json"
-    ? API.TRANSCRIPT_EXPORT_JSON(pid, "")
-    : API.TRANSCRIPT_EXPORT_TXT(pid, "");
+  let url;
+  if (allSessions) {
+    // WO-9: Export all sessions combined
+    url = format === "json"
+      ? API.TRANSCRIPT_EXPORT_ALL_JSON(pid)
+      : API.TRANSCRIPT_EXPORT_ALL_TXT(pid);
+  } else {
+    url = format === "json"
+      ? API.TRANSCRIPT_EXPORT_JSON(pid, "")
+      : API.TRANSCRIPT_EXPORT_TXT(pid, "");
+  }
   window.open(url, "_blank");
 }
 window.wo8ExportTranscript = wo8ExportTranscript;
 
+/* ═══════════════════════════════════════════════════════════════
+   WO-10 Phase 6: Transcript Viewer
+   Phase 7: Resume Preview
+   Phase 8: Session Timeline
+   Rendered in #wo10TranscriptPopover tabs.
+═══════════════════════════════════════════════════════════════ */
+
+let _wo10ShowSystem = false;
+
+function wo10SwitchTab(tabName) {
+  document.querySelectorAll(".wo10-tab").forEach(t => t.classList.toggle("active", t.dataset.wo10Tab === tabName));
+  document.getElementById("wo10TabTranscript").style.display = tabName === "transcript" ? "" : "none";
+  document.getElementById("wo10TabResume").style.display = tabName === "resume" ? "" : "none";
+  document.getElementById("wo10TabTimeline").style.display = tabName === "timeline" ? "" : "none";
+  // Load data on tab switch
+  if (tabName === "transcript") wo10LoadTranscriptViewer();
+  if (tabName === "resume") wo10LoadResumePreview();
+  if (tabName === "timeline") wo10LoadSessionTimeline();
+}
+window.wo10SwitchTab = wo10SwitchTab;
+
+function wo10ToggleSystemMessages() {
+  _wo10ShowSystem = !_wo10ShowSystem;
+  const btn = document.getElementById("wo10ToggleSystem");
+  if (btn) btn.textContent = _wo10ShowSystem ? "Hide System" : "Show System";
+  document.querySelectorAll(".wo10-event.system").forEach(el => {
+    el.classList.toggle("show-system", _wo10ShowSystem);
+  });
+}
+window.wo10ToggleSystemMessages = wo10ToggleSystemMessages;
+
+function wo10ClassifyEvent(evt) {
+  const text = String(evt?.content || "");
+  const role = (evt?.role || "").toLowerCase();
+  if (text.startsWith("[SYSTEM:") || role === "system") return "system";
+  if (role === "assistant") return "lori";
+  return "narrator";
+}
+
+async function wo10LoadTranscriptViewer() {
+  const pid = state.person_id;
+  const container = document.getElementById("wo10TranscriptContent");
+  if (!container || !pid) {
+    if (container) container.innerHTML = '<p style="color:#64748b">No narrator selected.</p>';
+    return;
+  }
+  container.innerHTML = '<p style="color:#64748b">Loading transcript...</p>';
+
+  try {
+    // Load sessions list first
+    const sessRes = await fetch(API.TRANSCRIPT_SESSIONS(pid), { signal: AbortSignal.timeout(8000) });
+    if (!sessRes.ok) throw new Error("No sessions");
+    const sessData = await sessRes.json();
+    const sessions = (sessData.sessions || []).sort((a, b) => (a.started_at || "").localeCompare(b.started_at || ""));
+
+    // Load last 2 sessions for display
+    const recentSessions = sessions.slice(-2);
+    let html = "";
+
+    for (const sess of recentSessions) {
+      const sid = sess.session_id;
+      const evtRes = await fetch(API.TRANSCRIPT_HISTORY(pid, sid), { signal: AbortSignal.timeout(8000) });
+      if (!evtRes.ok) continue;
+      const evtData = await evtRes.json();
+      const events = evtData.events || [];
+
+      // Session divider
+      const dateStr = sess.started_at ? new Date(sess.started_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "";
+      html += `<div class="wo10-divider">${sess.title || "Session"} ${dateStr ? " — " + dateStr : ""}</div>`;
+
+      for (const evt of events) {
+        const cls = wo10ClassifyEvent(evt);
+        const roleName = cls === "narrator" ? (state.profile?.basics?.preferred || "Narrator")
+          : cls === "lori" ? "Lori" : "System";
+        let tsStr = "";
+        if (evt.ts) {
+          try { tsStr = new Date(evt.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+          catch (_) {}
+        }
+        const content = (evt.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        html += `<div class="wo10-event ${cls}${_wo10ShowSystem && cls === "system" ? " show-system" : ""}">`;
+        html += `<div class="wo10-event-role">${roleName}${tsStr ? `<span class="wo10-event-ts">${tsStr}</span>` : ""}</div>`;
+        html += `<div class="wo10-event-text">${content}</div></div>`;
+      }
+    }
+
+    container.innerHTML = html || '<p style="color:#64748b">No transcript events found.</p>';
+  } catch (e) {
+    container.innerHTML = `<p style="color:#f87171">Failed to load transcript: ${e.message}</p>`;
+  }
+}
+
+async function wo10LoadResumePreview() {
+  const pid = state.person_id;
+  const container = document.getElementById("wo10ResumeContent");
+  if (!container || !pid) {
+    if (container) container.innerHTML = '<p style="color:#64748b">No narrator selected.</p>';
+    return;
+  }
+  container.innerHTML = '<p style="color:#64748b">Loading resume preview...</p>';
+
+  try {
+    const res = await fetch(API.RESUME_PREVIEW(pid), { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error("No preview data");
+    const data = await res.json();
+
+    const conf = data.confidence || {};
+    const confLevel = conf.level || "low";
+    const confScore = ((conf.score || 0) * 100).toFixed(0);
+    const thread = data.selected_thread;
+    const threads = data.all_threads || [];
+    const scoredItems = data.scored_items || [];
+    const recentTurns = data.recent_turns || [];
+    const narName = state.profile?.basics?.preferred || "Narrator";
+
+    let html = "";
+
+    // Confidence card
+    html += '<div class="wo10-resume-card">';
+    html += `<div class="wo10-resume-label">Resume Confidence</div>`;
+    html += `<span class="wo10-confidence ${confLevel}">${confLevel.toUpperCase()} (${confScore}%)</span>`;
+    if (conf.reasons) {
+      html += `<div style="margin-top:8px;font-size:12px;color:#64748b">${conf.reasons.join(", ")}</div>`;
+    }
+    html += '</div>';
+
+    // Selected thread
+    if (thread) {
+      html += '<div class="wo10-resume-card">';
+      html += '<div class="wo10-resume-label">Selected Thread</div>';
+      html += `<div class="wo10-resume-value">${thread.topic_label || "General"}</div>`;
+      if (thread.subtopic_label) html += `<div style="font-size:12px;color:#94a3b8">Subtopic: ${thread.subtopic_label}</div>`;
+      if (thread.related_era) html += `<div style="font-size:12px;color:#94a3b8">Era: ${thread.related_era}</div>`;
+      if (thread.summary) html += `<div style="margin-top:6px;font-size:13px;color:#e2e8f0">${thread.summary.slice(0, 250)}</div>`;
+      html += '</div>';
+    }
+
+    // All threads (with override buttons)
+    if (threads.length > 0) {
+      html += '<div class="wo10-resume-card">';
+      html += '<div class="wo10-resume-label">Active Threads</div>';
+      for (const t of threads) {
+        const isSelected = thread && t.thread_id === thread.thread_id;
+        html += `<span class="wo10-thread-chip ${t.status || 'active'}"`;
+        html += ` onclick="wo10SelectThread('${t.thread_id}')"`;
+        html += ` title="${t.summary ? t.summary.slice(0, 100) : ''}"`;
+        html += `>${isSelected ? "▶ " : ""}${t.topic_label || "?"} (${(t.score || 0).toFixed(1)})</span>`;
+      }
+      html += '</div>';
+    }
+
+    // Key memory items
+    if (scoredItems.length > 0) {
+      html += '<div class="wo10-resume-card">';
+      html += '<div class="wo10-resume-label">Key Memory</div>';
+      for (const item of scoredItems.slice(0, 6)) {
+        const kind = item.kind || "fact";
+        html += `<div style="font-size:13px;margin-bottom:4px;color:#e2e8f0">[${kind}] ${(item.text || "").slice(0, 120)}</div>`;
+      }
+      html += '</div>';
+    }
+
+    // Recent turns
+    if (recentTurns.length > 0) {
+      html += '<div class="wo10-resume-card">';
+      html += '<div class="wo10-resume-label">Recent Exchange</div>';
+      for (const t of recentTurns) {
+        const role = (t.role || "").toLowerCase() === "user" ? narName : "Lori";
+        html += `<div style="font-size:13px;margin-bottom:4px"><strong>${role}:</strong> ${(t.content || "").slice(0, 150)}</div>`;
+      }
+      html += '</div>';
+    }
+
+    // Operator controls
+    html += '<div style="margin-top:16px">';
+    html += '<button class="wo10-btn primary" onclick="wo10UseResume(\'use\')">Use This Resume</button>';
+    html += '<button class="wo10-btn" onclick="wo10UseResume(\'continue\')">Continue Last Topic</button>';
+    html += '<button class="wo10-btn" onclick="wo10UseResume(\'fresh\')">Start Fresh Gently</button>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<p style="color:#f87171">Failed to load resume preview: ${e.message}</p>`;
+  }
+}
+
+function wo10SelectThread(threadId) {
+  state.wo10 = state.wo10 || {};
+  state.wo10.manualResumeThreadId = threadId;
+  console.log("[WO-10] Operator selected thread:", threadId);
+  // Refresh preview
+  wo10LoadResumePreview();
+}
+window.wo10SelectThread = wo10SelectThread;
+
+function wo10UseResume(action) {
+  const pid = state.person_id;
+  if (!pid) return;
+  const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
+
+  let prompt = "";
+  if (action === "use") {
+    // Build and send the resume prompt immediately
+    _wo9BuildResumePrompt(pid).then(p => {
+      if (p && _llmReady) sendSystemPrompt(p);
+      else if (p) wo9SendOrQueueSystemPrompt(p);
+    });
+    console.log("[WO-10] Operator: use selected resume");
+  } else if (action === "continue") {
+    prompt = `[SYSTEM: ${name} is returning. Continue from whatever topic was active last time. Welcome them warmly and ask ONE follow-up question.]`;
+    if (_llmReady) sendSystemPrompt(prompt); else wo9SendOrQueueSystemPrompt(prompt);
+    console.log("[WO-10] Operator: continue last topic");
+  } else if (action === "fresh") {
+    prompt = `[SYSTEM: ${name} is returning. Start fresh gently — ask where they'd like to begin today without assuming any topic. Be warm and open.]`;
+    if (_llmReady) sendSystemPrompt(prompt); else wo9SendOrQueueSystemPrompt(prompt);
+    console.log("[WO-10] Operator: start fresh");
+  }
+
+  // Close the popover
+  try { document.getElementById("wo10TranscriptPopover")?.hidePopover(); } catch (_) {}
+}
+window.wo10UseResume = wo10UseResume;
+
+async function wo10LoadSessionTimeline() {
+  const pid = state.person_id;
+  const container = document.getElementById("wo10TimelineContent");
+  if (!container || !pid) {
+    if (container) container.innerHTML = '<p style="color:#64748b">No narrator selected.</p>';
+    return;
+  }
+  container.innerHTML = '<p style="color:#64748b">Loading timeline...</p>';
+
+  try {
+    const res = await fetch(API.SESSION_TIMELINE(pid), { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error("No timeline data");
+    const data = await res.json();
+    const sessions = data.sessions || [];
+
+    if (!sessions.length) {
+      container.innerHTML = '<p style="color:#64748b">No sessions yet.</p>';
+      return;
+    }
+
+    let html = '<div style="font-size:12px;color:#64748b;margin-bottom:12px">Session history and dominant threads</div>';
+    for (const s of sessions) {
+      const dateStr = s.started_at ? new Date(s.started_at).toLocaleDateString([], { month: "short", day: "numeric" }) : "?";
+      const topic = s.topic_label || "(no topic detected)";
+      const era = s.active_era ? ` [${s.active_era.replace(/_/g, " ")}]` : "";
+      html += `<div class="wo10-timeline-row">`;
+      html += `<div class="wo10-timeline-date">${dateStr}</div>`;
+      html += `<div class="wo10-timeline-topic">${topic}${era}</div>`;
+      html += `<div class="wo10-timeline-turns">${s.turn_count || 0} turns</div>`;
+      html += `</div>`;
+    }
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<p style="color:#f87171">Failed to load timeline: ${e.message}</p>`;
+  }
+}
+
+// Auto-load transcript when popover opens
+(function() {
+  const pop = document.getElementById("wo10TranscriptPopover");
+  if (pop) {
+    pop.addEventListener("toggle", (e) => {
+      if (e.newState === "open") wo10LoadTranscriptViewer();
+    });
+  }
+})();
+
 /* ── WO-8 Phase 3: Voice Turn Improvements ───────────────────── */
+
+/**
+ * WO-10B: Transcript growth tracker for no-interruption engine.
+ * Updated every time we get a final speech recognition result.
+ * lv80FireCheckIn() checks this to avoid interrupting active speech.
+ */
+let _wo10bLastTranscriptGrowthTs = 0;
+window._wo10bLastTranscriptGrowthTs = 0;  // expose for idle guard
+
+/**
+ * WO-10B: Conversation state tracker for no-interruption engine.
+ * Updated after each narrator turn finalization.
+ */
+let _wo10bCurrentConversationState = null;
+window._wo10bCurrentConversationState = null;  // expose for idle guard
 
 /**
  * WO-8 voice turn state.
@@ -3232,11 +3635,15 @@ function _wo8HandleRecognitionResult(e) {
 
   if (!fin) return;
 
+  // WO-10B: Stamp transcript growth — narrator is actively speaking
+  _wo10bLastTranscriptGrowthTs = Date.now();
+  window._wo10bLastTranscriptGrowthTs = _wo10bLastTranscriptGrowthTs;
+
   const normalized = _normalisePunctuation(fin);
   const trimmed = normalized.trim().toLowerCase();
 
-  // Check for voice commands
-  if (_SEND_COMMANDS.has(trimmed)) {
+  // Check for voice commands — WO-9: only if explicitly enabled
+  if (_wo9VoiceSendEnabled && _SEND_COMMANDS.has(trimmed)) {
     _wo8FinalizeTurn();
     return;
   }
@@ -3434,6 +3841,15 @@ async function _wo8SaveThreadAnchor(userText, loriText) {
 
   const activeEra = getCurrentEra() || "";
 
+  // WO-9: Extract continuation keywords from the exchange
+  const words = combined.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 4);
+  const wordFreq = {};
+  words.forEach(w => { wordFreq[w] = (wordFreq[w] || 0) + 1; });
+  const continuationKeywords = Object.entries(wordFreq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(e => e[0]);
+
   try {
     await fetch(API.THREAD_ANCHOR_PUT, {
       method: "POST",
@@ -3445,50 +3861,236 @@ async function _wo8SaveThreadAnchor(userText, loriText) {
         topic_summary: topicSummary,
         active_era: activeEra,
         last_narrator_turns: [userText || ""],
+        // WO-9 stronger continuity fields
+        subtopic_label: "",
+        continuation_keywords: continuationKeywords,
+        last_meaningful_user_turn: (userText || "").slice(0, 500),
+        last_meaningful_assistant_turn: (loriText || "").slice(0, 500),
       }),
     });
-    console.log("[WO-8] Thread anchor saved:", topicLabel || "(general)", "era:", activeEra || "(none)");
+    console.log("[WO-9] Thread anchor saved:", topicLabel || "(general)", "era:", activeEra || "(none)",
+      "keywords:", continuationKeywords.slice(0, 5).join(", "));
   } catch (e) {
-    console.log("[WO-8] Thread anchor save failed:", e.message);
+    console.log("[WO-9] Thread anchor save failed:", e.message);
+  }
+
+  // WO-9: Save rolling summary after each exchange
+  _wo9SaveRollingSummary(userText, loriText, topicLabel).catch(() => {});
+  // WO-10: Update multi-thread tracker via rolling summary endpoint
+  _wo10UpdateThreads(topicLabel, activeEra, userText, loriText).catch(() => {});
+}
+
+/**
+ * WO-9: Save rolling summary after each meaningful exchange.
+ * Accumulates key facts, tracks emotional tone and open threads.
+ */
+async function _wo9SaveRollingSummary(userText, loriText, topicLabel) {
+  const pid = state.person_id;
+  if (!pid) return;
+
+  // Load existing summary to merge
+  let existing = {};
+  try {
+    const resp = await fetch(API.ROLLING_SUMMARY_GET(pid));
+    if (resp.ok) {
+      const data = await resp.json();
+      existing = data.summary || {};
+    }
+  } catch (_) { /* first time, no summary yet */ }
+
+  // Accumulate key facts from user text (simple extraction: sentences with proper nouns, dates, names)
+  const prevFacts = existing.key_facts_mentioned || [];
+  const newFacts = [];
+  if (userText) {
+    // Extract sentences that contain dates, names, or specific details
+    const sentences = userText.match(/[^.!?]+[.!?]+/g) || [userText];
+    for (const s of sentences) {
+      const trimmed = s.trim();
+      if (trimmed.length > 20 && trimmed.length < 300) {
+        // Look for factual content: dates, proper nouns, numbers
+        if (/\b(19|20)\d{2}\b/.test(trimmed) || /\b[A-Z][a-z]+\b/.test(trimmed) || /\d+/.test(trimmed)) {
+          newFacts.push(trimmed);
+        }
+      }
+    }
+  }
+  const allFacts = [...prevFacts, ...newFacts].slice(-50);
+
+  // Detect emotional tone
+  let tone = existing.emotional_tone || "neutral";
+  if (userText) {
+    const lower = userText.toLowerCase();
+    if (/\b(sad|cried|crying|tears|miss|grief|lost)\b/.test(lower)) tone = "reflective/emotional";
+    else if (/\b(funny|laugh|hilarious|joke|grin)\b/.test(lower)) tone = "lighthearted";
+    else if (/\b(proud|accomplish|achieve|medal|honor)\b/.test(lower)) tone = "proud";
+    else if (/\b(angry|mad|furious|upset|unfair)\b/.test(lower)) tone = "frustrated";
+    else tone = "engaged";
+  }
+
+  // Track the last question Lori asked
+  let lastQuestion = existing.last_question_asked || "";
+  if (loriText) {
+    const questions = loriText.match(/[^.!]+\?/g);
+    if (questions && questions.length > 0) {
+      lastQuestion = questions[questions.length - 1].trim();
+    }
+  }
+
+  // Open threads — topics mentioned but not fully explored
+  const openThreads = existing.open_threads || [];
+  if (topicLabel && !openThreads.includes(topicLabel)) {
+    openThreads.push(topicLabel);
+  }
+
+  try {
+    await fetch(API.ROLLING_SUMMARY_PUT, {
+      method: "POST",
+      headers: ctype(),
+      body: JSON.stringify({
+        person_id: pid,
+        topic_thread: topicLabel || existing.topic_thread || "",
+        key_facts_mentioned: allFacts,
+        emotional_tone: tone,
+        last_question_asked: lastQuestion,
+        narrator_preferences: existing.narrator_preferences || [],
+        open_threads: openThreads.slice(-10),
+      }),
+    });
+    console.log("[WO-9] Rolling summary saved, facts:", allFacts.length, "tone:", tone);
+  } catch (e) {
+    console.log("[WO-9] Rolling summary save failed:", e.message);
   }
 }
 
 /**
- * WO-8: Load thread anchor and construct a resume system prompt.
- * Called when a narrator is opened and identity is already complete.
+ * WO-10: Update multi-thread tracker.
+ * Calls the backend update_active_threads via rolling summary update.
+ * Thread tracking is done server-side in archive.py.
+ */
+async function _wo10UpdateThreads(topicLabel, era, userText, loriText) {
+  const pid = state.person_id;
+  if (!pid || !topicLabel) return;
+  try {
+    // WO-10B: Preserve more of long turns (500 chars instead of 300)
+    // so backend thread scoring can assess narrative richness
+    await fetch(API.UPDATE_THREADS, {
+      method: "POST",
+      headers: ctype(),
+      body: JSON.stringify({
+        person_id: pid,
+        topic_label: topicLabel,
+        era: era || "",
+        user_text: (userText || "").slice(0, 500),
+        lori_text: (loriText || "").slice(0, 500),
+      }),
+    });
+    console.log("[WO-10] Thread update sent for:", topicLabel);
+  } catch (e) {
+    console.log("[WO-10] Thread update failed:", e.message);
+  }
+}
+
+/**
+ * WO-9: Build resume system prompt from archive memory.
+ * Uses: thread anchor + rolling summary + recent archive turns.
+ * Falls back to WO-8 minimal anchor if rolling summary is unavailable.
  * Returns null if no anchor exists (first session).
  */
-async function _wo8BuildResumePrompt(pid) {
+async function _wo9BuildResumePrompt(pid) {
   if (!pid) return null;
   try {
-    const res = await fetch(API.THREAD_ANCHOR_GET(pid, ""), { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const anchor = data.anchor;
+    // Fetch all three memory sources in parallel
+    const [anchorRes, summaryRes, turnsRes] = await Promise.all([
+      fetch(API.THREAD_ANCHOR_GET(pid, ""), { signal: AbortSignal.timeout(5000) }),
+      fetch(API.ROLLING_SUMMARY_GET(pid), { signal: AbortSignal.timeout(5000) }).catch(() => null),
+      fetch(API.RECENT_TURNS(pid, "", 4), { signal: AbortSignal.timeout(5000) }).catch(() => null),
+    ]);
+
+    // Parse anchor (required)
+    if (!anchorRes.ok) return null;
+    const anchorData = await anchorRes.json();
+    const anchor = anchorData.anchor;
     if (!anchor || !anchor.topic_summary) return null;
 
+    // Parse rolling summary (optional)
+    let summary = {};
+    if (summaryRes && summaryRes.ok) {
+      const sData = await summaryRes.json();
+      summary = sData.summary || {};
+    }
+
+    // Parse recent turns (optional)
+    let recentTurns = [];
+    if (turnsRes && turnsRes.ok) {
+      const tData = await turnsRes.json();
+      recentTurns = tData.turns || [];
+    }
+
+    const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
     const topicLabel = anchor.topic_label || "your conversation";
     const era = anchor.active_era || "";
-    const lastNarrator = (anchor.last_narrator_turns || []).slice(-2).join(" ").slice(0, 400);
-    const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
 
-    let resumeText = `[SYSTEM: RESUME SESSION — ${name} is returning to continue their interview. `;
-    resumeText += `The last conversation topic was: "${topicLabel}". `;
-    if (lastNarrator) {
-      resumeText += `Their most recent words were about: "${lastNarrator.slice(0, 200)}…" `;
+    let resumeText = `[SYSTEM: RESUME SESSION — ${name} is returning to continue their interview.\n`;
+
+    // Thread anchor context
+    resumeText += `Last topic: "${topicLabel}".\n`;
+    if (anchor.subtopic_label) {
+      resumeText += `Subtopic: "${anchor.subtopic_label}".\n`;
     }
     if (era) {
-      resumeText += `They were exploring the "${era.replace(/_/g, " ")}" era of their life. `;
+      resumeText += `Active era: "${era.replace(/_/g, " ")}".\n`;
     }
-    resumeText += `Continue from this topic — do NOT restart with generic identity questions about birthplace or childhood `;
+
+    // WO-9: Include last meaningful exchange from anchor
+    if (anchor.last_meaningful_user_turn) {
+      resumeText += `\nLast exchange:\n`;
+      resumeText += `  ${name}: "${anchor.last_meaningful_user_turn.slice(0, 300)}"\n`;
+      if (anchor.last_meaningful_assistant_turn) {
+        resumeText += `  Lori: "${anchor.last_meaningful_assistant_turn.slice(0, 300)}"\n`;
+      }
+    }
+
+    // WO-9: Rolling summary context
+    if (summary.emotional_tone) {
+      resumeText += `\nNarrator mood: ${summary.emotional_tone}.\n`;
+    }
+    if (summary.key_facts_mentioned && summary.key_facts_mentioned.length > 0) {
+      const recentFacts = summary.key_facts_mentioned.slice(-5);
+      resumeText += `Key facts from recent conversation: ${recentFacts.join("; ").slice(0, 400)}.\n`;
+    }
+    if (summary.open_threads && summary.open_threads.length > 0) {
+      resumeText += `Open threads to explore: ${summary.open_threads.join(", ")}.\n`;
+    }
+    if (summary.last_question_asked) {
+      resumeText += `Your last question to ${name}: "${summary.last_question_asked.slice(0, 200)}"\n`;
+    }
+
+    // WO-9: Recent archive turns for richer context
+    if (recentTurns.length > 0) {
+      resumeText += `\nRecent conversation excerpt:\n`;
+      for (const t of recentTurns.slice(-4)) {
+        const role = (t.role || "").toLowerCase();
+        const label = role === "user" ? name : "Lori";
+        resumeText += `  ${label}: "${(t.content || "").slice(0, 150)}"\n`;
+      }
+    }
+
+    // Continuation keywords for context
+    if (anchor.continuation_keywords && anchor.continuation_keywords.length > 0) {
+      resumeText += `\nContext keywords: ${anchor.continuation_keywords.join(", ")}.\n`;
+    }
+
+    resumeText += `\nContinue from this topic — do NOT restart with generic identity questions about birthplace or childhood `;
     resumeText += `unless "${topicLabel}" was specifically about those topics. `;
     resumeText += `Welcome them back warmly and naturally, referencing what they were telling you last time. `;
     resumeText += `Ask ONE follow-up question that continues the thread.]`;
 
-    console.log("[WO-8] Resume prompt built from anchor:", topicLabel, "era:", era);
+    console.log("[WO-9] Resume prompt built from archive memory:",
+      "topic:", topicLabel, "era:", era,
+      "summary:", !!summary.topic_thread, "turns:", recentTurns.length);
     return resumeText;
   } catch (e) {
-    console.log("[WO-8] Resume prompt build failed:", e.message);
+    console.log("[WO-9] Resume prompt build failed:", e.message);
     return null;
   }
 }
@@ -3503,16 +4105,64 @@ async function wo8OnNarratorReady(pid) {
   // Phase 2: Load transcript history
   await wo8LoadTranscriptHistory(pid);
 
-  // Phase 5: Send resume prompt if we have a thread anchor
+  // WO-9/WO-10B: Resume flow — now gated by operator mode and confidence
   if (hasIdentityBasics74()) {
-    const resumePrompt = await _wo8BuildResumePrompt(pid);
+
+    // WO-10B: If operator mode is ON, show Resume Preview instead of auto-resuming
+    if (window.HORNELORE_OPERATOR_MODE) {
+      console.log("[WO-10B] Operator mode ON — showing Resume Preview, blocking auto-resume.");
+      // Open the transcript popover to Resume Preview tab
+      try {
+        const pop = document.getElementById("wo10TranscriptPopover");
+        if (pop && typeof pop.showPopover === "function") pop.showPopover();
+        // Switch to Resume Preview tab
+        if (typeof wo10SwitchTab === "function") wo10SwitchTab("resume");
+      } catch (_) {}
+      // Load the resume preview data
+      if (typeof wo10LoadResumePreview === "function") wo10LoadResumePreview();
+      // DO NOT auto-send — operator must click Use/Continue/Fresh
+      return;
+    }
+
+    // WO-10B: Operator mode OFF — check resume confidence before auto-resume
+    const resumePrompt = await _wo9BuildResumePrompt(pid);
     if (resumePrompt) {
-      // Wait a beat for UI to settle, then send resume
-      setTimeout(() => {
-        if (_llmReady) {
-          sendSystemPrompt(resumePrompt);
+      // Fetch confidence level to decide auto-resume behavior
+      let confLevel = "medium";
+      try {
+        const r = await fetch(`${API.RESUME_PREVIEW}?person_id=${encodeURIComponent(pid)}`);
+        if (r.ok) {
+          const data = await r.json();
+          confLevel = (data.confidence && data.confidence.level) || "medium";
         }
-      }, 800);
+      } catch (_) {}
+
+      if (confLevel === "high") {
+        // HIGH confidence: auto-resume directly
+        console.log("[WO-10B] High confidence — auto-resuming.");
+        setTimeout(() => {
+          if (_llmReady) sendSystemPrompt(resumePrompt);
+          else wo9SendOrQueueSystemPrompt(resumePrompt);
+        }, 800);
+      } else if (confLevel === "medium") {
+        // MEDIUM confidence: use soft confirm prompt instead of strong resume
+        const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
+        const softPrompt = `[SYSTEM: ${name} is returning. You have some context from last time but are not fully sure where you left off. Welcome them warmly and gently check: "Last time I think we were talking about... shall we pick up there, or would you like to go somewhere else?" One sentence only.]`;
+        console.log("[WO-10B] Medium confidence — soft confirm resume.");
+        setTimeout(() => {
+          if (_llmReady) sendSystemPrompt(softPrompt);
+          else wo9SendOrQueueSystemPrompt(softPrompt);
+        }, 800);
+      } else {
+        // LOW confidence: gentle bridge, no assumption about topic
+        const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
+        const bridgePrompt = `[SYSTEM: ${name} is returning. You do not have strong context from last time. Welcome them warmly and ask an open question like "What's on your mind today?" or "Where would you like to start?" Do NOT assume any specific topic. One sentence only.]`;
+        console.log("[WO-10B] Low confidence — gentle bridge.");
+        setTimeout(() => {
+          if (_llmReady) sendSystemPrompt(bridgePrompt);
+          else wo9SendOrQueueSystemPrompt(bridgePrompt);
+        }, 800);
+      }
     }
   }
 }

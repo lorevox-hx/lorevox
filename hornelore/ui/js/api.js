@@ -63,4 +63,15 @@ const API = {
   THREAD_ANCHOR_PUT: ORIGIN + "/api/transcript/thread-anchor",
   // WO-8 — Multi-field extraction
   EXTRACT_FIELDS: ORIGIN + "/api/extract-fields",
+  // WO-9 — Rolling summary & recent turns
+  ROLLING_SUMMARY_GET: (pid) => `${ORIGIN}/api/transcript/rolling-summary?person_id=${encodeURIComponent(pid)}`,
+  ROLLING_SUMMARY_PUT: ORIGIN + "/api/transcript/rolling-summary",
+  RECENT_TURNS: (pid, sid, limit) => `${ORIGIN}/api/transcript/recent-turns?person_id=${encodeURIComponent(pid)}${sid ? '&session_id=' + encodeURIComponent(sid) : ''}${limit ? '&limit=' + limit : ''}`,
+  // WO-9 — All-session export
+  TRANSCRIPT_EXPORT_ALL_TXT: (pid) => `${ORIGIN}/api/transcript/export/all/txt?person_id=${encodeURIComponent(pid)}`,
+  TRANSCRIPT_EXPORT_ALL_JSON: (pid) => `${ORIGIN}/api/transcript/export/all/json?person_id=${encodeURIComponent(pid)}`,
+  // WO-10 — Resume preview, session timeline, thread update
+  RESUME_PREVIEW: (pid) => `${ORIGIN}/api/transcript/resume-preview?person_id=${encodeURIComponent(pid)}`,
+  SESSION_TIMELINE: (pid) => `${ORIGIN}/api/transcript/session-timeline?person_id=${encodeURIComponent(pid)}`,
+  UPDATE_THREADS: ORIGIN + "/api/transcript/update-threads",
 };

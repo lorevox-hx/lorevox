@@ -1,0 +1,65 @@
+{
+  "name": "Multi-thread Kent",
+  "description": "Conversation deliberately switches between Army, marriage, work, and back to Army. Tests multi-thread continuity, thread selection, and resume confidence.",
+  "person_id": "test-multithread-kent",
+  "profile": {
+    "basics": {
+      "fullname": "Kent Robert Vox",
+      "preferred": "Kent",
+      "dob": "1943-05-15",
+      "pob": "Stanley, North Dakota"
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "multi-sess-001",
+      "started_at": "2026-04-03T09:00:00Z",
+      "events": [
+        { "ts": "2026-04-03T09:00:30Z", "role": "assistant", "content": "Kent, where would you like to start today?" },
+        { "ts": "2026-04-03T09:01:00Z", "role": "user", "content": "Let me tell you about the Army. I enlisted in 1961 right out of high school. Fort Leonard Wood for basic, then Fort Sill for artillery school." },
+        { "ts": "2026-04-03T09:02:00Z", "role": "assistant", "content": "Artillery school — what was that training like?" },
+        { "ts": "2026-04-03T09:02:30Z", "role": "user", "content": "Lots of math. Trajectory calculations, wind adjustments. I was good at it because of farm work — calculating yields and such." }
+      ]
+    },
+    {
+      "session_id": "multi-sess-002",
+      "started_at": "2026-04-04T14:00:00Z",
+      "events": [
+        { "ts": "2026-04-04T14:00:30Z", "role": "assistant", "content": "Welcome back, Kent. Last time we talked about your artillery training. Shall we continue there?" },
+        { "ts": "2026-04-04T14:01:00Z", "role": "user", "content": "Actually, I want to talk about when I met Janice. That was at Fort Hood, 1963. USO dance. She was the prettiest girl there — a schoolteacher from Killeen." },
+        { "ts": "2026-04-04T14:02:00Z", "role": "assistant", "content": "Love at a USO dance — how did you two start talking?" },
+        { "ts": "2026-04-04T14:02:30Z", "role": "user", "content": "She was standing by the punch bowl and I asked her to dance. She said 'You don't look like you know how to dance.' I said 'I don't, but I'm willing to learn.' We danced three songs." }
+      ]
+    },
+    {
+      "session_id": "multi-sess-003",
+      "started_at": "2026-04-06T11:00:00Z",
+      "events": [
+        { "ts": "2026-04-06T11:00:30Z", "role": "assistant", "content": "Kent, last time you were telling me about meeting Janice at the USO dance. Would you like to continue?" },
+        { "ts": "2026-04-06T11:01:00Z", "role": "user", "content": "Let me tell you about my teaching career instead. After the Army, I went to college on the GI Bill. Got my degree from Minot State. Started teaching math at Stanley High School in 1968." },
+        { "ts": "2026-04-06T11:02:00Z", "role": "assistant", "content": "From artillery math to teaching math — that's a wonderful connection. What was it like teaching at your old high school?" },
+        { "ts": "2026-04-06T11:02:30Z", "role": "user", "content": "Strange at first. Some of my old teachers were still there. Mrs. Henderson, who taught me English, was in the teachers' lounge my first day. She said 'Well Kent Vox, I never thought I'd see you on this side of the desk.' I taught algebra and geometry for 30 years." }
+      ]
+    },
+    {
+      "session_id": "multi-sess-004",
+      "started_at": "2026-04-07T15:00:00Z",
+      "events": [
+        { "ts": "2026-04-07T15:00:30Z", "role": "assistant", "content": "Welcome back, Kent. You've been telling me about your teaching career. Shall we continue there?" },
+        { "ts": "2026-04-07T15:01:00Z", "role": "user", "content": "Actually, I keep thinking about something from the Army I never told you. When I was in Germany, there was a night exercise that went wrong. Live fire training at Grafenwoehr. A round went short and hit near our position. Nobody was hurt, thank God, but it shook me up bad. I never told Janice about it until years later." },
+        { "ts": "2026-04-07T15:02:00Z", "role": "assistant", "content": "That must have been terrifying. What happened after the incident?" },
+        { "ts": "2026-04-07T15:02:30Z", "role": "user", "content": "They shut down training for two days while they investigated. Turned out it was a calculation error — exactly the kind of thing I was trained to prevent. That's partly why I became so careful with math. Precision matters when lives are on the line." }
+      ]
+    }
+  ],
+  "expected_behaviors": {
+    "resume": "Should reference Army/Germany incident (most recent), with awareness of teaching and marriage as dormant threads",
+    "confidence": "high — four sessions, rich content, clear thread return",
+    "threads_expected": [
+      { "label": "Military service", "status": "active", "reason": "Most recent session returned to Army" },
+      { "label": "Career", "status": "dormant", "reason": "Teaching discussed in session 3, not continued" },
+      { "label": "Marriage & family", "status": "dormant", "reason": "Janice discussed in session 2, not continued" }
+    ],
+    "thread_selection": "Military service should be selected (most recent active thread with open loop about the incident)"
+  }
+}

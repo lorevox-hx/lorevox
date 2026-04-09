@@ -1773,6 +1773,72 @@
       to   { opacity: 1; transform: scale(1); }
     }
 
+    /* ═══════════════════════════════════════════════════
+       WO-10: Transcript Viewer + Resume Preview Popover
+       ═══════════════════════════════════════════════════ */
+    #wo10TranscriptPopover {
+      width: min(92vw, 900px);
+      max-height: 80vh;
+      background: rgba(15,15,26,0.97);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 12px;
+      color: #e2e8f0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #wo10TranscriptPopover:popover-open { display: flex; }
+    #wo10TranscriptPopover::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .wo10-header { display: flex; gap: 4px; padding: 12px 16px 0; border-bottom: 1px solid rgba(99,102,241,0.15); }
+    .wo10-tab { padding: 8px 16px; background: transparent; color: #94a3b8; border: none;
+      border-bottom: 2px solid transparent; cursor: pointer; font: 13px/1 'Inter',sans-serif; transition: all 0.2s; }
+    .wo10-tab.active { color: #a5b4fc; border-bottom-color: #6366f1; }
+    .wo10-tab:hover { color: #e2e8f0; }
+    .wo10-body { flex: 1; overflow-y: auto; padding: 16px; }
+    /* Transcript events */
+    .wo10-event { margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; }
+    .wo10-event.narrator { background: rgba(99,102,241,0.08); border-left: 3px solid #6366f1; }
+    .wo10-event.lori { background: rgba(20,184,166,0.08); border-left: 3px solid #14b8a6; }
+    .wo10-event.system { background: rgba(251,191,36,0.05); border-left: 3px solid rgba(251,191,36,0.3);
+      font-size: 12px; color: #64748b; display: none; }
+    .wo10-event.system.show-system { display: block; }
+    .wo10-event-role { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 4px; color: #94a3b8; }
+    .wo10-event-ts { float: right; font-size: 10px; color: #475569; }
+    .wo10-event-text { white-space: pre-wrap; word-break: break-word; }
+    .wo10-divider { text-align: center; padding: 8px 0; margin: 16px 0; color: #64748b; font-size: 12px;
+      border-top: 1px dashed rgba(99,102,241,0.2); }
+    /* Resume preview panel */
+    .wo10-resume-card { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .wo10-resume-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 4px; }
+    .wo10-resume-value { font-size: 14px; color: #e2e8f0; }
+    .wo10-confidence { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px;
+      font-weight: 600; text-transform: uppercase; }
+    .wo10-confidence.high { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .wo10-confidence.medium { background: rgba(251,191,36,0.15); color: #fbbf24; }
+    .wo10-confidence.low { background: rgba(248,113,113,0.15); color: #f87171; }
+    .wo10-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(99,102,241,0.3);
+      background: rgba(99,102,241,0.1); color: #a5b4fc; cursor: pointer; font-size: 13px;
+      transition: all 0.2s; margin-right: 6px; margin-top: 8px; }
+    .wo10-btn:hover { background: rgba(99,102,241,0.2); }
+    .wo10-btn.primary { background: #6366f1; color: white; border-color: #6366f1; }
+    /* Thread chips */
+    .wo10-thread-chip { display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 12px; margin: 3px 4px 3px 0; cursor: pointer; transition: all 0.2s; }
+    .wo10-thread-chip.active { background: rgba(99,102,241,0.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.4); }
+    .wo10-thread-chip.dormant { background: rgba(71,85,105,0.2); color: #94a3b8; border: 1px solid rgba(71,85,105,0.3); }
+    .wo10-thread-chip:hover { opacity: 0.8; }
+    /* Timeline */
+    .wo10-timeline-row { display: flex; gap: 12px; padding: 8px 12px; border-bottom: 1px solid rgba(99,102,241,0.08); font-size: 13px; }
+    .wo10-timeline-date { flex: 0 0 100px; color: #64748b; }
+    .wo10-timeline-topic { flex: 1; color: #e2e8f0; }
+    .wo10-timeline-turns { flex: 0 0 60px; text-align: right; color: #94a3b8; }
+    .wo10-controls { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid rgba(99,102,241,0.15); }
+    .wo10-toggle { font-size: 12px; color: #64748b; cursor: pointer; padding: 4px 8px;
+      background: rgba(71,85,105,0.1); border: 1px solid rgba(71,85,105,0.2); border-radius: 4px; }
+    .wo10-toggle:hover { color: #94a3b8; }
+
   </style>
 </head>
 <body>
@@ -1854,6 +1920,9 @@
       </button>
       <button id="lv80PeekBtn" popovertarget="memoirScrollPopover" title="Read your story so far">
         📖 Peek at Memoir
+      </button>
+      <button id="wo10TranscriptBtn" popovertarget="wo10TranscriptPopover" title="View transcript and resume preview">
+        📋 Transcript
       </button>
       <button id="lv80OperatorBtn"
               class="settings-btn dev-only hidden"
@@ -2080,6 +2149,38 @@
     </div>
   </div>
 
+  <!-- ── WO-10: TRANSCRIPT VIEWER + RESUME PREVIEW ─────────────
+       Three-tab operator panel:
+       Tab 1: Transcript viewer with role-based color coding, timestamps, session dividers
+       Tab 2: Resume preview with confidence scoring and operator override
+       Tab 3: Session timeline with dominant thread per session
+  -->
+  <div id="wo10TranscriptPopover" popover="auto">
+    <div class="wo10-header">
+      <button class="wo10-tab active" data-wo10-tab="transcript" onclick="wo10SwitchTab('transcript')">Transcript</button>
+      <button class="wo10-tab" data-wo10-tab="resume" onclick="wo10SwitchTab('resume')">Resume Preview</button>
+      <button class="wo10-tab" data-wo10-tab="timeline" onclick="wo10SwitchTab('timeline')">Session Timeline</button>
+    </div>
+    <!-- Tab 1: Transcript Viewer -->
+    <div id="wo10TabTranscript" class="wo10-body">
+      <div id="wo10TranscriptContent"></div>
+    </div>
+    <!-- Tab 2: Resume Preview -->
+    <div id="wo10TabResume" class="wo10-body" style="display:none">
+      <div id="wo10ResumeContent"></div>
+    </div>
+    <!-- Tab 3: Session Timeline -->
+    <div id="wo10TabTimeline" class="wo10-body" style="display:none">
+      <div id="wo10TimelineContent"></div>
+    </div>
+    <!-- Bottom controls -->
+    <div class="wo10-controls">
+      <button class="wo10-toggle" id="wo10ToggleSystem" onclick="wo10ToggleSystemMessages()">Show System</button>
+      <button class="wo10-btn" onclick="wo8ExportTranscript('txt')">Export TXT</button>
+      <button class="wo10-btn" onclick="wo8ExportTranscript('txt', true)">Export All Sessions</button>
+    </div>
+  </div>
+
   <!-- ── BIO BUILDER POPOVER ───────────────────────────────────
        Intake and staging layer — sits between Archive and Structured History.
        Uses the same popover="auto" pattern as Life Map and Peek at Memoir.
@@ -2202,6 +2303,22 @@
         </p>
         <pre id="lv80OperatorSkipList" style="font-size:12px; color:#94a3b8; margin:6px 0;"></pre>
         <button class="lv80-settings-btn secondary" onclick="lv80OperatorClearSkipList()">Clear Skip List</button>
+      </div>
+
+      <div class="lv80-settings-section">
+        <h4 class="lv80-settings-section-title">WO-10B: Resume Control Mode</h4>
+        <p class="lv80-settings-desc">
+          When enabled, Lori will NOT auto-resume on narrator reopen.
+          Instead, the Resume Preview panel opens and you choose the resume action.
+        </p>
+        <div class="lv80-settings-row">
+          <span class="lv80-settings-label">Resume Gate</span>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="wo10bResumeGateToggle"
+                   onchange="window.HORNELORE_OPERATOR_MODE = this.checked; localStorage.setItem('wo10b_operator_resume_gate', this.checked ? '1' : '0'); console.log('[WO-10B] Resume gate:', this.checked ? 'ON' : 'OFF');">
+            <span id="wo10bResumeGateLabel" style="font-size:13px; color:#94a3b8;">Off — auto-resume active</span>
+          </label>
+        </div>
       </div>
 
       <div class="lv80-settings-section">
@@ -2813,7 +2930,8 @@ async function lv80SwitchPerson(personId) {
     const _decFrame = _decR.deceased
       ? ` This narrator is deceased${_decR.dod ? " (d. " + _decR.dod + ")" : ""}. You are speaking with a family member or archivist preserving their story. Use past tense when referring to the narrator's life. Do not address the narrator directly as if they are present.`
       : "";
-    sendSystemPrompt(
+    // WO-9: Use queue-safe sender to survive startup race
+    wo9SendOrQueueSystemPrompt(
       `[SYSTEM: You are resuming a life-archive session with ${name}, ` +
       `born ${basics.dob}${pob ? " in " + pob : ""}.${_decFrame} ` +
       "Welcome them back warmly by name in one sentence, then immediately ask your " +
@@ -3224,6 +3342,12 @@ function lv80ArmIdle(reason) {
 
   _lv80IdleSoftTimer = setTimeout(() => {
     if (window._wo8VoicePaused) return;    // WO-8: no visual cue while paused
+    // WO-10B: No visual cue if narrator is still actively speaking
+    const lastGrowth = window._wo10bLastTranscriptGrowthTs || 0;
+    if (lastGrowth > 0 && (Date.now() - lastGrowth) < 5000) return;
+    // WO-10B: No visual cue during protected conversation states
+    const cs = window._wo10bCurrentConversationState;
+    if (cs === "storytelling" || cs === "reflecting" || cs === "emotional_pause") return;
     document.getElementById("lv80IdleCue")?.classList.add("visible");
   }, LV80_IDLE_SOFT_MS);
 
@@ -3248,6 +3372,48 @@ function lv80FireCheckIn() {
     lv80ClearIdle();
     return;
   }
+
+  // WO-10B: No-interruption engine — narrator still actively speaking
+  // If we received speech recognition results within the last 5 seconds, narrator is talking
+  const lastGrowth = window._wo10bLastTranscriptGrowthTs || 0;
+  const speechSilenceMs = Date.now() - lastGrowth;
+  if (lastGrowth > 0 && speechSilenceMs < 5000) {
+    lv80LogTurnDebug({ event: "idle_fire_blocked", reason: "wo10b_narrator_still_speaking", silence_ms: speechSilenceMs });
+    // Re-arm idle for another check in 10 seconds
+    _lv80IdleCheckInTimer = setTimeout(lv80FireCheckIn, 10000);
+    return;
+  }
+
+  // WO-10B: No-interruption engine — conversation state protection
+  // If narrator is storytelling, reflecting, or in emotional pause, do NOT interrupt
+  const convState = window._wo10bCurrentConversationState;
+  if (convState === "storytelling" || convState === "reflecting" || convState === "emotional_pause") {
+    lv80LogTurnDebug({ event: "idle_fire_blocked", reason: "wo10b_protected_state", state: convState });
+    // Re-arm idle for another check in 15 seconds (give them space)
+    _lv80IdleCheckInTimer = setTimeout(lv80FireCheckIn, 15000);
+    return;
+  }
+
+  // WO-10B: No-interruption engine — visual presence check
+  // If camera shows narrator is present and engaged, extend patience
+  const vs = (typeof buildRuntime71 === "function") ? null : null;  // visual signals from state
+  try {
+    const visualSigs = window.state && window.state.session && window.state.session.visualSignals;
+    if (visualSigs) {
+      const sigAge = Date.now() - (visualSigs.timestamp || 0);
+      if (sigAge < 8000) {
+        // Camera signal is fresh — narrator is present
+        const affect = (visualSigs.affect_state || "").toLowerCase();
+        if (affect === "engaged" || affect === "reflective" || affect === "neutral") {
+          lv80LogTurnDebug({ event: "idle_fire_blocked", reason: "wo10b_visual_engaged", affect: affect });
+          // Re-arm for 20 more seconds — narrator is visibly present
+          _lv80IdleCheckInTimer = setTimeout(lv80FireCheckIn, 20000);
+          return;
+        }
+      }
+    }
+  } catch (_) { /* visual signals not available — proceed normally */ }
+
   _lv80IdleCheckInFired = true;
   lv80ClearIdle();
 
@@ -3257,24 +3423,28 @@ function lv80FireCheckIn() {
 
   const posture = _lv80GetInteractionMode();
 
+  // WO-10B: Forbidden phrases preamble — appended to every idle nudge prompt
+  // These phrases create a "detective effect" that feels invasive to elderly narrators
+  const WO10B_NUDGE_RULES = " FORBIDDEN PHRASES: Never say 'I see you thinking', 'You look confused', 'You seem emotional', 'I notice you paused', 'Are you still there', or any language that observes/labels the narrator's internal state. ALLOWED: 'Take your time', 'I can wait', 'Would you like me to repeat that?', 'No rush at all', or a warm reference to what they were just telling you.";
+
   // Idle prompt varies by deliberate posture and any active override
   const promptsByPosture = {
     life_story: {
-      open:        "[SYSTEM: The narrator has been quiet for a while. Offer a gentle, warm invitation to continue their life story — one short sentence only. Do not repeat your last question verbatim.]",
-      recognition: "[SYSTEM: The narrator has been quiet. Offer a simple, orienting prompt in recognition mode — one short gentle sentence. Use their name if you know it.]",
-      alongside:   "[SYSTEM: The narrator has been quiet. In companionship mode, offer quiet presence — one very soft sentence, no pressure to answer.]",
+      open:        "[SYSTEM: The narrator has been quiet for a while. Offer a gentle, warm invitation to continue their life story — one short sentence only. Do not repeat your last question verbatim." + WO10B_NUDGE_RULES + "]",
+      recognition: "[SYSTEM: The narrator has been quiet. Offer a simple, orienting prompt in recognition mode — one short gentle sentence. Use their name if you know it." + WO10B_NUDGE_RULES + "]",
+      alongside:   "[SYSTEM: The narrator has been quiet. In companionship mode, offer quiet presence — one very soft sentence, no pressure to answer." + WO10B_NUDGE_RULES + "]",
     },
     memory_exercise: {
-      open:        "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer one gentle, open-ended recall prompt — something sensory or familiar. No pressure, no correction. One sentence only.]",
-      recognition: "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer one very simple orienting question. Use their name if you know it. One sentence only.]",
-      alongside:   "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer soft encouragement — something like 'Take your time, whenever you're ready.' One sentence only.]",
+      open:        "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer one gentle, open-ended recall prompt — something sensory or familiar. No pressure, no correction. One sentence only." + WO10B_NUDGE_RULES + "]",
+      recognition: "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer one very simple orienting question. Use their name if you know it. One sentence only." + WO10B_NUDGE_RULES + "]",
+      alongside:   "[SYSTEM: The narrator has been quiet. In Memory Exercise mode, offer soft encouragement — something like 'Take your time, whenever you're ready.' One sentence only." + WO10B_NUDGE_RULES + "]",
     },
     companion: {
-      open:        "[SYSTEM: The narrator has been quiet. In Companion mode, offer one very soft presence check-in — no memoir questions, no interview agenda. Something like 'I'm here if you'd like to keep talking.' One sentence only.]",
-      recognition: "[SYSTEM: The narrator has been quiet. In Companion mode, offer one simple, warm sentence. Use their name if you know it. No agenda.]",
-      alongside:   "[SYSTEM: The narrator has been quiet. In Companion mode, offer only quiet presence — one very gentle sentence, no expectation of response.]",
+      open:        "[SYSTEM: The narrator has been quiet. In Companion mode, offer one very soft presence check-in — no memoir questions, no interview agenda. Something like 'I'm here if you'd like to keep talking.' One sentence only." + WO10B_NUDGE_RULES + "]",
+      recognition: "[SYSTEM: The narrator has been quiet. In Companion mode, offer one simple, warm sentence. Use their name if you know it. No agenda." + WO10B_NUDGE_RULES + "]",
+      alongside:   "[SYSTEM: The narrator has been quiet. In Companion mode, offer only quiet presence — one very gentle sentence, no expectation of response." + WO10B_NUDGE_RULES + "]",
     },
-    non_memoir:  "[SYSTEM: The narrator has been quiet after raising a personal concern. Offer one very soft, neutral check-in — no pressure, no memoir questions.]",
+    non_memoir:  "[SYSTEM: The narrator has been quiet after raising a personal concern. Offer one very soft, neutral check-in — no pressure, no memoir questions." + WO10B_NUDGE_RULES + "]",
     safety:      null, // never arm idle in safety mode
   };
 
@@ -5488,6 +5658,28 @@ async function lv80Init() {
         lv80SwitchPerson(firstPid);
       }
     }
+  }
+
+  // WO-10B: Restore operator resume gate from localStorage
+  try {
+    const gateStored = localStorage.getItem("wo10b_operator_resume_gate");
+    if (gateStored === "1") {
+      window.HORNELORE_OPERATOR_MODE = true;
+      const toggle = document.getElementById("wo10bResumeGateToggle");
+      if (toggle) toggle.checked = true;
+      const label = document.getElementById("wo10bResumeGateLabel");
+      if (label) label.textContent = "On — resume requires operator approval";
+    }
+  } catch (_) {}
+  // Keep the toggle label in sync
+  const _wo10bGateToggle = document.getElementById("wo10bResumeGateToggle");
+  if (_wo10bGateToggle) {
+    _wo10bGateToggle.addEventListener("change", function() {
+      const label = document.getElementById("wo10bResumeGateLabel");
+      if (label) label.textContent = this.checked
+        ? "On — resume requires operator approval"
+        : "Off — auto-resume active";
+    });
   }
 
   console.log("[Hornelore 1.0] Shell initialised.");

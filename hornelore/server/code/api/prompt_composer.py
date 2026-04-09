@@ -274,6 +274,216 @@ def _identity_grounding_rules_block(runtime71: Optional[Dict[str, Any]]) -> str:
     )
 
 
+# ---------------------------------------------------------------------------
+# WO-9/WO-10 — Adaptive Conversation Memory Context Builder
+# Phase 1: scored/pruned summary | Phase 2: multi-thread | Phase 3: adaptive
+# Phase 4: resume confidence | Phase 5: conversation state
+# ---------------------------------------------------------------------------
+def build_conversation_memory_context(
+    person_id: Optional[str],
+    session_id: Optional[str] = None,
+    conversation_state: Optional[str] = None,
+) -> str:
+    """
+    Build an adaptive conversation memory block for the LLM prompt.
+    WO-10: Selects context based on conversation shape, thread strength,
+    and resume confidence rather than fixed "last N turns + anchor".
+    Returns a formatted string or "" if no memory exists.
+    """
+    from . import archive as arc
+
+    if not person_id:
+        return ""
+
+    try:
+        # Load the three memory sources
+        recent = arc.load_recent_archive_turns(person_id, session_id=session_id, limit=8)
+        anchor = None
+        summary = arc.read_rolling_summary(person_id)
+
+        # Thread anchor: try latest session
+        sid = session_id or arc.get_latest_session_id(person_id)
+        if sid:
+            anchor = arc.read_thread_anchor(person_id=person_id, session_id=sid)
+
+        # WO-10: Prune summary to scored items
+        summary = arc.prune_rolling_summary(summary)
+
+        # WO-10: Multi-thread awareness — choose best thread
+        threads = summary.get("active_threads", [])
+        selected_thread = arc.choose_best_thread(anchor, threads, recent)
+
+        # WO-10: Resume confidence scoring
+        confidence = arc.score_resume_confidence(anchor, summary, recent, selected_thread)
+        conf_level = confidence.get("level", "low")
+
+        # WO-10: Adaptive budgeting based on scenario
+        scenario = _detect_memory_scenario(anchor, recent, summary)
+
+        lines = ["CONVERSATION MEMORY:"]
+
+        # ── Thread block (adaptive size) ──
+        if selected_thread:
+            lines.append(f"  Active thread: {selected_thread.get('topic_label', 'general')}")
+            if selected_thread.get("subtopic_label"):
+                lines.append(f"  Subtopic: {selected_thread['subtopic_label']}")
+            if selected_thread.get("related_era"):
+                lines.append(f"  Era: {selected_thread['related_era']}")
+            if selected_thread.get("summary"):
+                lines.append(f"  Thread context: {selected_thread['summary'][:250]}")
+        elif anchor and anchor.get("topic_summary"):
+            lines.append(f"  Last topic: {anchor.get('topic_label', 'unknown')}")
+            lines.append(f"  Summary: {anchor['topic_summary'][:250]}")
+            if anchor.get("active_era"):
+                lines.append(f"  Era: {anchor['active_era']}")
+
+        # ── Multi-thread awareness ──
+        if len(threads) > 1:
+            other_threads = [t for t in threads if t != selected_thread][:2]
+            if other_threads:
+                labels = [t.get("topic_label", "?") for t in other_threads]
+                lines.append(f"  Other open threads: {', '.join(labels)}")
+
+        # ── Scored summary block (adaptive size) ──
+        scored_items = summary.get("scored_items", [])
+        if scored_items:
+            if scenario == "resume_after_gap":
+                # More summary, less raw turns
+                top_items = scored_items[:8]
+            elif scenario == "long_mature_thread":
+                top_items = scored_items[:5]
+            else:
+                top_items = scored_items[:3]
+
+            fact_lines = []
+            for item in top_items:
+                kind = item.get("kind", "fact")
+                text = item.get("text", "")[:120]
+                if kind == "open_loop":
+                    fact_lines.append(f"    [open] {text}")
+                elif kind == "question":
+                    fact_lines.append(f"    [Q] {text}")
+                elif kind == "tone":
+                    fact_lines.append(f"    [tone] {text}")
+                else:
+                    fact_lines.append(f"    {text}")
+            if fact_lines:
+                lines.append("  Key memory:")
+                lines.extend(fact_lines)
+
+        # ── Last meaningful exchange from anchor ──
+        if anchor and anchor.get("last_meaningful_user_turn"):
+            lines.append(f"  Last narrator said: {anchor['last_meaningful_user_turn'][:200]}")
+            if anchor.get("last_meaningful_assistant_turn"):
+                lines.append(f"  Lori replied: {anchor['last_meaningful_assistant_turn'][:150]}")
+
+        # ── Recent turns block (adaptive count) ──
+        if recent:
+            if scenario == "short_recent_thread":
+                turn_count = min(6, len(recent))  # more raw turns
+            elif scenario == "resume_after_gap":
+                turn_count = min(3, len(recent))  # less raw, more summary
+            else:
+                turn_count = min(4, len(recent))
+
+            turn_lines = []
+            for t in recent[-turn_count:]:
+                role = (t.get("role") or "").upper()
+                content = (t.get("content") or "").strip()[:150]
+                if role == "USER":
+                    turn_lines.append(f"    Narrator: {content}")
+                elif role == "ASSISTANT":
+                    turn_lines.append(f"    Lori: {content}")
+            if turn_lines:
+                lines.append("  Recent exchange:")
+                lines.extend(turn_lines)
+
+        # ── Resume confidence directive ──
+        if conf_level == "high":
+            lines.append("  Resume directly from the active thread. Welcome them back warmly.")
+        elif conf_level == "medium":
+            lines.append("  Resume softly — confirm the thread before diving deep.")
+            lines.append('  Example: "Last time we were talking about [topic]. Shall we continue there?"')
+        else:
+            lines.append("  Resume with a gentle bridge — do not assume the last thread.")
+            lines.append('  Example: "We\'ve touched on several parts of your story. Where would you like to continue today?"')
+
+        # ── WO-10B: Hard anti-drift rule ──
+        # If a substantive thread is active, identity/homeplace is FORBIDDEN
+        has_substantive_thread = (
+            selected_thread
+            and not any(
+                pat in (selected_thread.get("topic_label") or "").lower()
+                for pat in ("birthplace", "childhood", "stanley", "hometown", "born in", "identity", "onboarding")
+            )
+        )
+        if has_substantive_thread:
+            lines.append("  HARD RULE: Do NOT ask about birthplace, childhood home, or identity basics.")
+            lines.append("  The narrator has an active story thread — stay on it.")
+            lines.append("  Asking about birthplace when a stronger thread exists feels dismissive of what they shared.")
+        else:
+            lines.append("  No strong thread active — gentle open questions are acceptable, including identity topics.")
+
+        # ── Conversation state hint (WO-10 Phase 5) ──
+        if conversation_state:
+            state_hints = {
+                "storytelling": "The narrator is in storytelling mode — listen more, question less.",
+                "reflecting": "The narrator is reflecting — use gentle follow-ups, not fact-seeking questions.",
+                "emotional_pause": "The narrator may be emotional — wait, acknowledge, do not redirect.",
+                "correcting": "The narrator is correcting or revising — accept corrections without comment.",
+                "searching_memory": "The narrator is searching their memory — be patient, offer gentle prompts.",
+                "answering": "The narrator is answering a question — follow up naturally.",
+            }
+            hint = state_hints.get(conversation_state)
+            if hint:
+                lines.append(f"  Narrator state: {hint}")
+
+        return "\n".join(lines) if len(lines) > 1 else ""
+
+    except Exception as e:
+        logger.warning(f"[WO-10] build_conversation_memory_context error: {e}")
+        return ""
+
+
+def _detect_memory_scenario(
+    anchor: Optional[Dict[str, Any]],
+    recent_turns: List[Dict[str, Any]],
+    summary: Dict[str, Any],
+) -> str:
+    """
+    WO-10 Phase 3: Detect the conversation scenario for adaptive budgeting.
+    Returns: 'short_recent_thread' | 'long_mature_thread' | 'resume_after_gap' | 'first_session'
+    """
+    if not recent_turns and not anchor:
+        return "first_session"
+
+    # Check if anchor is fresh (within last 2 hours)
+    anchor_fresh = False
+    if anchor and anchor.get("updated_at"):
+        try:
+            from datetime import datetime, timezone
+            anchor_dt = datetime.fromisoformat(anchor["updated_at"].replace("Z", "+00:00"))
+            age_hours = (datetime.now(timezone.utc) - anchor_dt).total_seconds() / 3600
+            anchor_fresh = age_hours < 2
+        except Exception:
+            pass
+
+    # Short/recent: few turns, anchor fresh
+    if len(recent_turns) <= 6 and anchor_fresh:
+        return "short_recent_thread"
+
+    # Long/mature: many turns or many scored items
+    scored_items = summary.get("scored_items", [])
+    if len(recent_turns) > 6 or len(scored_items) > 10:
+        return "long_mature_thread"
+
+    # Resume after gap: anchor exists but is stale
+    if anchor and not anchor_fresh:
+        return "resume_after_gap"
+
+    return "short_recent_thread"
+
+
 def compose_system_prompt(
     conv_id: str,
     ui_system: Optional[str] = None,
@@ -837,6 +1047,17 @@ def compose_system_prompt(
                     "Use a gentle re-engagement phrase if appropriate, without pressure."
                 )
 
+        # WO-10B: Forbidden observation language — never label the narrator's internal state
+        # This applies regardless of visual signal availability
+        directive_lines.append(
+            "FORBIDDEN OBSERVATION LANGUAGE (WO-10B):\n"
+            "  Never say: 'I see you thinking', 'You look confused', 'You seem emotional',\n"
+            "  'I notice you paused', 'You appear to be struggling', 'Are you still there?'\n"
+            "  These phrases feel invasive and can embarrass elderly narrators.\n"
+            "  Instead use: 'Take your time', 'I can wait', 'No rush at all',\n"
+            "  'Would you like me to repeat that?', or a warm callback to what they said last."
+        )
+
         # Fatigue signal
         if fatigue_score >= 70:
             directive_lines.append(
@@ -855,5 +1076,16 @@ def compose_system_prompt(
             )
 
         parts.append("\n".join(directive_lines).strip())
+
+    # WO-9/WO-10 — Inject adaptive conversation memory context
+    if runtime71:
+        _person_id = runtime71.get("person_id") or None
+        if _person_id:
+            _conv_state = runtime71.get("conversation_state") or None
+            memory_block = build_conversation_memory_context(
+                _person_id, conversation_state=_conv_state
+            )
+            if memory_block:
+                parts.append(memory_block)
 
     return "\n\n".join([p for p in parts if p.strip()]).strip()

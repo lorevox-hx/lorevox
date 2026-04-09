@@ -1,0 +1,40 @@
+{
+  "name": "Verbose Kent",
+  "description": "Long 5-10 paragraph answers about leaving home, Army, parents/farm. Tests chunking, extraction completeness, summary quality, resume continuity.",
+  "person_id": "test-verbose-kent",
+  "profile": {
+    "basics": {
+      "fullname": "Kent Robert Vox",
+      "preferred": "Kent",
+      "dob": "1943-05-15",
+      "pob": "Stanley, North Dakota"
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "verbose-sess-001",
+      "started_at": "2026-04-05T14:00:00Z",
+      "events": [
+        { "ts": "2026-04-05T14:00:30Z", "role": "assistant", "content": "Kent, tell me about when you left home. What was that transition like?" },
+        { "ts": "2026-04-05T14:01:00Z", "role": "user", "content": "Well, I left Stanley when I was 18. It was 1961, right after graduation. My dad didn't want me to go — he needed help on the farm, and my older brother Harold had already left for Minot to work at the grain elevator. But I had signed up for the Army. I remember the day I told my mother. She was in the kitchen, making that bread she always made on Thursdays. She didn't say anything for a long time, just kept kneading the dough. Finally she said, 'You'll write, won't you?' And I did — I wrote her every week for two years. My dad drove me to the bus station in Minot. He shook my hand, didn't hug me, that wasn't his way. Said 'Make us proud.' That was the last thing he said to me before I shipped out to Fort Leonard Wood in Missouri. Basic training was the hardest thing I'd ever done. The drill sergeants were from the South mostly, and they couldn't believe how cold I said North Dakota winters were. One of them — Sergeant Williams, big fellow from Georgia — he bet me five dollars I was lying about minus-40. I told him I'd bring a newspaper clipping next time I was home. The barracks were old wooden buildings, nothing like what you see now. We'd get up at 0430, run two miles before breakfast. I was in good shape from farm work, so the physical part wasn't bad. It was the being told what to do every minute that got to me. On the farm, once Dad showed you what needed doing, you just did it your way. In the Army, there was one way — the Army way." },
+        { "ts": "2026-04-05T14:04:00Z", "role": "assistant", "content": "That's a vivid picture, Kent — the bus station, your mother's bread, Sergeant Williams. What happened after basic training? Where did the Army send you?" },
+        { "ts": "2026-04-05T14:04:30Z", "role": "user", "content": "After basic I went to Fort Sill in Oklahoma for artillery school. That's where I learned about the M109 self-propelled howitzer. Beautiful piece of machinery, if you can call a weapon beautiful. I was good at the math — trajectory calculations, wind adjustments. The farm boy who could calculate wheat yields in his head turned out to be pretty handy with ballistic tables. After artillery school, I got orders for Germany. This was 1962, right when the Berlin Wall had just gone up. We were in Grafenwoehr, a big training area in Bavaria. The countryside reminded me of North Dakota in some ways — flat, open, but greener. The beer was nothing like what we had back home though, I'll tell you that. My first German beer was at a Gasthaus in town, and I thought I'd died and gone to heaven. We trained constantly — live fire exercises, field problems, the whole works. The Cold War was real then, not something you read about in books. We knew the Russians were right there, on the other side. Some of the older sergeants had been in Korea, and they'd tell stories that made your hair stand up." }
+      ]
+    },
+    {
+      "session_id": "verbose-sess-002",
+      "started_at": "2026-04-07T10:00:00Z",
+      "events": [
+        { "ts": "2026-04-07T10:00:30Z", "role": "assistant", "content": "Welcome back, Kent. Last time you were telling me about your Army service in Germany — Grafenwoehr and the Cold War. Would you like to continue from there?" },
+        { "ts": "2026-04-07T10:01:00Z", "role": "user", "content": "Yes, Germany. Well, I was there for about 18 months. Made some good friends — Eddie Kowalski from Chicago, Jimmy Reeves from Texas. We'd go into town on weekends when we weren't on duty. There was a little restaurant run by a woman named Frau Schmidt — best schnitzel you ever had. She reminded me of my aunt Margaret, always fussing over us like we were her own boys. Eddie got himself in trouble once — stayed out past curfew and the MPs picked him up. Almost got a court martial but our lieutenant went to bat for him. Good man, Lieutenant Harrison. He was from Montana, so we had that plains connection. After Germany, I came back stateside to Fort Hood in Texas. That's where I met Janice — at a USO dance in Killeen. She was a schoolteacher. Pretty girl with dark hair and the smartest eyes you ever saw." }
+      ]
+    }
+  ],
+  "expected_behaviors": {
+    "resume": "Should reference Germany/Army or Janice meeting, NOT Stanley birthplace",
+    "confidence": "high — rich context, recent session, strong continuity",
+    "chunking": "First user turn is ~1800 chars — should trigger chunked extraction",
+    "threads": ["Military service", "Parents & family", "Marriage & family"],
+    "dominant_thread": "Military service (most turns, most recent)"
+  }
+}

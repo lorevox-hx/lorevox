@@ -1,0 +1,30 @@
+{
+  "name": "Sparse Kent",
+  "description": "Minimal profile — only name, DOB, birthplace. Tests thin-zone questioning and safe resume with little context.",
+  "person_id": "test-sparse-kent",
+  "profile": {
+    "basics": {
+      "fullname": "Kent Robert Vox",
+      "preferred": "Kent",
+      "dob": "1943-05-15",
+      "pob": "Stanley, North Dakota"
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "sparse-sess-001",
+      "started_at": "2026-04-07T10:00:00Z",
+      "events": [
+        { "ts": "2026-04-07T10:00:30Z", "role": "assistant", "content": "Hello Kent, I'm Lori. I'm here to help you tell your story. Where would you like to begin?" },
+        { "ts": "2026-04-07T10:01:15Z", "role": "user", "content": "Well, I was born in Stanley." },
+        { "ts": "2026-04-07T10:01:45Z", "role": "assistant", "content": "Stanley, North Dakota — that's wonderful. What was life like growing up there?" },
+        { "ts": "2026-04-07T10:02:30Z", "role": "user", "content": "It was... well, it was farming country. My dad had a wheat farm." }
+      ]
+    }
+  ],
+  "expected_behaviors": {
+    "resume": "Should ask about farming or Stanley without repeating birthplace question",
+    "confidence": "low — very few turns, minimal context",
+    "thread_detection": "Should detect 'Farm & rural life' or 'Parents & family'"
+  }
+}

@@ -1168,29 +1168,59 @@ function _extractAndProjectMultiField(answerText, turnId) {
   var targetPath = state.interviewProjection._lastTargetPath || null;
   var targetSection = state.interviewProjection._lastTargetSection || null;
 
-  var payload = {
-    person_id: state.person_id,
-    session_id: state.interview.session_id || null,
-    answer: answerText,
-    current_section: targetSection || null,
-    current_target_path: targetPath || null
-  };
+  // WO-9: Chunk long answers before sending to backend
+  var chunks = (typeof _wo8ChunkText === "function" && answerText && answerText.length > 1200)
+    ? _wo8ChunkText(answerText, 1200) : [answerText];
+  if (chunks.length > 1) {
+    console.log("[extract][WO-9] Chunked answer into " + chunks.length + " segments for backend extraction");
+  }
 
-  fetch((window.LOREVOX_API || "http://localhost:8000") + "/api/extract-fields", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-  .then(function (resp) {
-    if (!resp.ok) throw new Error("extract-fields returned " + resp.status);
-    return resp.json();
-  })
-  .then(function (data) {
+  var allItems = [];
+  var extractMethod = "";
+  var chunkPromises = chunks.map(function (chunk, ci) {
+    var payload = {
+      person_id: state.person_id,
+      session_id: state.interview.session_id || null,
+      answer: chunk,
+      current_section: targetSection || null,
+      current_target_path: targetPath || null
+    };
+    return fetch((window.LOREVOX_API || "http://localhost:8000") + "/api/extract-fields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(function (resp) {
+      if (!resp.ok) throw new Error("extract-fields returned " + resp.status);
+      return resp.json();
+    })
+    .then(function (data) {
+      if (data.items && data.items.length > 0) {
+        allItems = allItems.concat(data.items);
+        if (!extractMethod) extractMethod = data.method || "";
+        console.log("[extract] Chunk " + (ci + 1) + "/" + chunks.length + ": " + data.items.length + " items");
+      }
+    });
+  });
+
+  Promise.all(chunkPromises)
+  .then(function () {
+    // WO-9: Deduplicate items across chunks (same fieldPath + value = skip)
+    var seen = {};
+    var data = { items: [], method: extractMethod };
+    for (var i = 0; i < allItems.length; i++) {
+      var key = (allItems[i].fieldPath || "") + "::" + (allItems[i].value || "");
+      if (!seen[key]) {
+        seen[key] = true;
+        data.items.push(allItems[i]);
+      }
+    }
+
     if (!data.items || data.items.length === 0) {
       console.log("[extract] No additional fields extracted (method: " + data.method + ")");
       return;
     }
-    console.log("[extract] Backend returned " + data.items.length + " items via " + data.method);
+    console.log("[extract] Backend returned " + data.items.length + " items via " + data.method + (chunks.length > 1 ? " (" + chunks.length + " chunks)" : ""));
 
     // Track repeatable section indices for grouping
     var repeatableCounters = {};
