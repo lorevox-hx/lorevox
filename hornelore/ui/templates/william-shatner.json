@@ -1,7 +1,7 @@
 {
   "_template": "Lorevox 8.0 Narrator Preload Template",
   "_version": 1,
-  "_instructions": "Fill in fields below. Repeatable sections (parents, grandparents, siblings, children, pets) are arrays — add as many entries as needed. Leave empty strings for unknown fields. Load via: lv80PreloadNarrator(template) or lv80PreloadFromFile(file)",
+  "_instructions": "Fill in fields below. Repeatable sections (parents, grandparents, siblings, children, pets) are arrays — add as many entries as needed. Load via: lv80PreloadNarrator(template) or lv80PreloadFromFile(file)",
   "_trainer": true,
   "_trainerStyle": "structured",
   "_trainerTitle": "Short, clear answers",
@@ -15,11 +15,11 @@
     "legalLastName": "Shatner",
     "dateOfBirth": "1931-03-22",
     "timeOfBirth": "",
-    "placeOfBirth": "Montreal, Quebec, Canada",
-    "birthOrder": "",
+    "placeOfBirth": "Notre-Dame-de-Grace, Montreal, Quebec, Canada",
+    "birthOrder": "2 (Middle child)",
     "zodiacSign": "Aries",
     "pronouns": "he/him",
-    "culture": "Canadian-Jewish",
+    "culture": "Canadian-Jewish (Conservative)",
     "country": "CA",
     "language": "English"
   },
@@ -35,30 +35,37 @@
       "birthPlace": "",
       "occupation": "Homemaker",
       "deceased": true,
-      "notableLifeEvents": "",
+      "notableLifeEvents": "Nurtured William's early interests in the arts.",
       "notes": ""
     },
     {
       "relation": "Father",
       "firstName": "Joseph",
-      "middleName": "",
+      "middleName": "M.",
       "lastName": "Shatner",
       "maidenName": "",
       "birthDate": "",
       "birthPlace": "",
       "occupation": "Clothing manufacturer",
       "deceased": true,
-      "notableLifeEvents": "Ran a clothing business in Montreal.",
-      "notes": ""
+      "notableLifeEvents": "Operated a clothing business in Montreal; son of Jewish immigrants.",
+      "notes": "Original family name was Schattner before being anglicized."
     }
   ],
 
   "grandparents": [
     {
+      "firstName": "Wolf",
+      "lastName": "Schattner",
+      "ancestry": "Austrian-Jewish",
+      "culturalBackground": "Immigrant from the Bukovina region (Austro-Hungarian Empire).",
+      "memorableStories": "He was the one who anglicized the family name from 'Schattner' to 'Shatner' upon moving to Canada."
+    },
+    {
       "firstName": "",
-      "lastName": "Shatner",
-      "ancestry": "Austrian-Jewish / Ukrainian-Jewish",
-      "culturalBackground": "Eastern European Jewish immigrant family",
+      "lastName": "",
+      "ancestry": "Ukrainian / Polish / Hungarian-Jewish",
+      "culturalBackground": "Eastern European Jewish immigrants.",
       "memorableStories": ""
     }
   ],
@@ -68,69 +75,73 @@
       "relation": "Sister",
       "firstName": "Joy",
       "middleName": "",
-      "lastName": "Shatner",
-      "birthOrder": "",
+      "lastName": "Rutenberg",
+      "birthOrder": "1 (Eldest)",
       "uniqueCharacteristics": "",
-      "sharedExperiences": "",
+      "sharedExperiences": "Grew up together in Montreal.",
       "memories": "",
-      "notes": ""
+      "notes": "1928–2023."
     },
     {
       "relation": "Sister",
       "firstName": "Farla",
       "middleName": "",
-      "lastName": "Shatner",
-      "birthOrder": "",
+      "lastName": "Cohen",
+      "birthOrder": "3 (Youngest)",
       "uniqueCharacteristics": "",
-      "sharedExperiences": "",
+      "sharedExperiences": "Grew up together in Montreal.",
       "memories": "",
-      "notes": ""
+      "notes": "Born in 1940."
     }
   ],
 
   "spouse": {
     "firstName": "Elizabeth",
-    "middleName": "",
-    "lastName": "Shatner",
+    "middleName": "Anderson",
+    "lastName": "Shatner (Martin)",
     "birthPlace": "",
     "occupation": "Horse trainer",
-    "narrative": "Fourth wife. Married in 2001. They share a love of horses and equestrian activities.",
+    "narrative": "Married in 2001; divorced in 2020 but remained close. They share a deep passion for the American Saddlebred industry.",
     "deceased": false
   },
 
   "children": [
     {
       "firstName": "Leslie",
-      "middleName": "",
+      "middleName": "Carol",
       "lastName": "Shatner",
-      "birthDate": "",
-      "narrative": "Eldest daughter from first marriage to Gloria Rand."
+      "birthDate": "1958-08-31",
+      "narrative": "Eldest daughter; worked as an Occupational Therapist."
     },
     {
       "firstName": "Lisabeth",
-      "middleName": "",
+      "middleName": "Mary",
       "lastName": "Shatner",
-      "birthDate": "",
-      "narrative": "Daughter from first marriage."
+      "birthDate": "1961-06-06",
+      "narrative": "Middle daughter; worked as a writer and actress."
     },
     {
       "firstName": "Melanie",
-      "middleName": "",
+      "middleName": "Ann",
       "lastName": "Shatner",
-      "birthDate": "",
-      "narrative": "Youngest daughter from first marriage."
+      "birthDate": "1964-08-01",
+      "narrative": "Youngest daughter; pursued acting in the 1990s."
     }
   ],
 
   "marriage": {
     "proposalStory": "",
-    "weddingDetails": "Married four times. First to Gloria Rand (1956-1969), then Marcy Lafferty (1973-1996), Nerine Kidd (1997-1999), and Elizabeth Martin (2001-present)."
+    "weddingDetails": "Four marriages: Gloria Rand (1956–1969), Marcy Lafferty (1973–1996), Nerine Kidd (1997–1999), and Elizabeth Martin (2001–2020)."
   },
 
   "familyTraditions": [
     {
-      "description": "Horseback riding and equestrian events with family.",
-      "occasion": "Ongoing"
+      "description": "E-biking excursions to stay active with younger family members.",
+      "occasion": "Family Visits"
+    },
+    {
+      "description": "Annual Hollywood Charity Horse Show.",
+      "occasion": "Philanthropy"
     }
   ],
 
@@ -143,7 +154,7 @@
       "adoptionDate": ""
     },
     {
-      "name": "",
+      "name": "Bella",
       "species": "Dog",
       "breed": "Doberman Pinscher",
       "birthDate": "",
@@ -152,47 +163,47 @@
   ],
 
   "earlyMemories": {
-    "firstMemory": "Growing up in the Notre-Dame-de-Grace neighborhood of Montreal.",
+    "firstMemory": "The physical geography of Montreal and the Jewish community in Notre-Dame-de-Grace.",
     "favoriteToy": "",
-    "significantEvent": "Attending a summer camp where he developed a love of performing."
+    "significantEvent": "Joining the Montreal Children's Theatre, which set the stage for his lifelong acting career."
   },
 
   "education": {
-    "schooling": "West Hill High School in Montreal.",
+    "schooling": "West Hill High School; Willingdon Elementary School.",
     "higherEducation": "Bachelor of Commerce from McGill University (1952).",
-    "earlyCareer": "Began acting at the Canadian National Repertory Theatre in Ottawa. Joined the Stratford Shakespeare Festival.",
-    "careerProgression": "Moved to New York for Broadway. Cast as Captain Kirk in Star Trek (1966). Career spans TV, film, music, and authorship across seven decades.",
-    "communityInvolvement": "Charity work for habitat conservation and veterans organizations.",
+    "earlyCareer": "Business manager for a Montreal theatre; then moved to Ottawa's Canadian National Repertory Theatre.",
+    "careerProgression": "Shakespearean actor at Stratford Festival; Broadway debut in 'The Tamburlaine the Great'; Cast as Captain Kirk in 1966.",
+    "communityInvolvement": "Extensive work with therapeutic riding organizations and environmental causes.",
     "mentorship": ""
   },
 
   "laterYears": {
-    "retirement": "Has shown no signs of retiring, remaining active in acting, writing, and public appearances well into his 90s.",
-    "lifeLessons": "'The world is a stage. You've got to get out there and act on it.'",
-    "adviceForFutureGenerations": "'Live life. Take chances. Be yourself.'"
+    "retirement": "Firmly refuses to retire, stating 'Say yes to life' is the secret to healthy aging.",
+    "lifeLessons": "'I know that good, healthy aging comes from not being solitary or brooding'.",
+    "adviceForFutureGenerations": "'Say yes to everything new, because time is too short to lose an opportunity'."
   },
 
   "hobbies": {
-    "hobbies": "Horseback riding, writing, music, motorcycling.",
-    "worldEvents": "",
-    "personalChallenges": "The tragic loss of third wife Nerine Kidd, who drowned in 1999.",
-    "travel": "Traveled extensively for filming and convention appearances worldwide."
+    "hobbies": "E-biking, breeding horses, competitive reining, and digital photography.",
+    "worldEvents": "Becoming the oldest person to travel to space via Blue Origin in 2021.",
+    "personalChallenges": "Overcoming the sudden death of his third wife, Nerine, and navigating life in the public eye for over 70 years.",
+    "travel": "Global conventions; filming in locations from Vancouver to Japan."
   },
 
   "health": {
-    "healthMilestones": "",
-    "lifestyleChanges": "Active lifestyle centered around horses and outdoor activities.",
-    "wellnessTips": ""
+    "healthMilestones": "Suffered from Tinnitus for decades; successfully managed through therapy.",
+    "lifestyleChanges": "Incorporating electric bicycles to keep pace with his grandchildren.",
+    "wellnessTips": "Mental agility is maintained through creativity and imaginative compensation for physical decline."
   },
 
   "technology": {
-    "firstTechExperience": "",
-    "favoriteGadgets": "",
-    "culturalPractices": ""
+    "firstTechExperience": "Radio broadcasts during his youth in Montreal.",
+    "favoriteGadgets": "Smartphones (for photography) and e-bikes.",
+    "culturalPractices": "Raised in Conservative Judaism; later focused on secular spirituality and environmentalism."
   },
 
   "additionalNotes": {
-    "unfinishedDreams": "Continuing to write, act, and explore. Went to space on Blue Origin at age 90 in October 2021.",
-    "messagesForFutureGenerations": "'Get out there and embrace the unknown.'"
+    "unfinishedDreams": "Exploring the 'Overview Effect' and its impact on human consciousness after his space flight.",
+    "messagesForFutureGenerations": "'There is nothing better for your brain than trying to help someone else'."
   }
 }
