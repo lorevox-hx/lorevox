@@ -1,0 +1,198 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_instructions": "Fill in fields below. Repeatable sections (parents, grandparents, siblings, children, pets) are arrays — add as many entries as needed. Leave empty strings for unknown fields. Load via: lv80PreloadNarrator(template) or lv80PreloadFromFile(file)",
+  "_trainer": true,
+  "_trainerStyle": "structured",
+  "_trainerTitle": "Short, clear answers",
+  "_trainerPrompt": "Use this trainer to show concise, anchored answers with time, place, and people.",
+
+  "personal": {
+    "fullName": "William Alan Shatner",
+    "preferredName": "Bill",
+    "legalFirstName": "William",
+    "legalMiddleName": "Alan",
+    "legalLastName": "Shatner",
+    "dateOfBirth": "1931-03-22",
+    "timeOfBirth": "",
+    "placeOfBirth": "Montreal, Quebec, Canada",
+    "birthOrder": "",
+    "zodiacSign": "Aries",
+    "pronouns": "he/him",
+    "culture": "Canadian-Jewish",
+    "country": "CA",
+    "language": "English"
+  },
+
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Anne",
+      "middleName": "",
+      "lastName": "Shatner",
+      "maidenName": "Garmaise",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Homemaker",
+      "deceased": true,
+      "notableLifeEvents": "",
+      "notes": ""
+    },
+    {
+      "relation": "Father",
+      "firstName": "Joseph",
+      "middleName": "",
+      "lastName": "Shatner",
+      "maidenName": "",
+      "birthDate": "",
+      "birthPlace": "",
+      "occupation": "Clothing manufacturer",
+      "deceased": true,
+      "notableLifeEvents": "Ran a clothing business in Montreal.",
+      "notes": ""
+    }
+  ],
+
+  "grandparents": [
+    {
+      "firstName": "",
+      "lastName": "Shatner",
+      "ancestry": "Austrian-Jewish / Ukrainian-Jewish",
+      "culturalBackground": "Eastern European Jewish immigrant family",
+      "memorableStories": ""
+    }
+  ],
+
+  "siblings": [
+    {
+      "relation": "Sister",
+      "firstName": "Joy",
+      "middleName": "",
+      "lastName": "Shatner",
+      "birthOrder": "",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": ""
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Farla",
+      "middleName": "",
+      "lastName": "Shatner",
+      "birthOrder": "",
+      "uniqueCharacteristics": "",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": ""
+    }
+  ],
+
+  "spouse": {
+    "firstName": "Elizabeth",
+    "middleName": "",
+    "lastName": "Shatner",
+    "birthPlace": "",
+    "occupation": "Horse trainer",
+    "narrative": "Fourth wife. Married in 2001. They share a love of horses and equestrian activities.",
+    "deceased": false
+  },
+
+  "children": [
+    {
+      "firstName": "Leslie",
+      "middleName": "",
+      "lastName": "Shatner",
+      "birthDate": "",
+      "narrative": "Eldest daughter from first marriage to Gloria Rand."
+    },
+    {
+      "firstName": "Lisabeth",
+      "middleName": "",
+      "lastName": "Shatner",
+      "birthDate": "",
+      "narrative": "Daughter from first marriage."
+    },
+    {
+      "firstName": "Melanie",
+      "middleName": "",
+      "lastName": "Shatner",
+      "birthDate": "",
+      "narrative": "Youngest daughter from first marriage."
+    }
+  ],
+
+  "marriage": {
+    "proposalStory": "",
+    "weddingDetails": "Married four times. First to Gloria Rand (1956-1969), then Marcy Lafferty (1973-1996), Nerine Kidd (1997-1999), and Elizabeth Martin (2001-present)."
+  },
+
+  "familyTraditions": [
+    {
+      "description": "Horseback riding and equestrian events with family.",
+      "occasion": "Ongoing"
+    }
+  ],
+
+  "pets": [
+    {
+      "name": "",
+      "species": "Horse",
+      "breed": "American Saddlebred",
+      "birthDate": "",
+      "adoptionDate": ""
+    },
+    {
+      "name": "",
+      "species": "Dog",
+      "breed": "Doberman Pinscher",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+
+  "earlyMemories": {
+    "firstMemory": "Growing up in the Notre-Dame-de-Grace neighborhood of Montreal.",
+    "favoriteToy": "",
+    "significantEvent": "Attending a summer camp where he developed a love of performing."
+  },
+
+  "education": {
+    "schooling": "West Hill High School in Montreal.",
+    "higherEducation": "Bachelor of Commerce from McGill University (1952).",
+    "earlyCareer": "Began acting at the Canadian National Repertory Theatre in Ottawa. Joined the Stratford Shakespeare Festival.",
+    "careerProgression": "Moved to New York for Broadway. Cast as Captain Kirk in Star Trek (1966). Career spans TV, film, music, and authorship across seven decades.",
+    "communityInvolvement": "Charity work for habitat conservation and veterans organizations.",
+    "mentorship": ""
+  },
+
+  "laterYears": {
+    "retirement": "Has shown no signs of retiring, remaining active in acting, writing, and public appearances well into his 90s.",
+    "lifeLessons": "'The world is a stage. You've got to get out there and act on it.'",
+    "adviceForFutureGenerations": "'Live life. Take chances. Be yourself.'"
+  },
+
+  "hobbies": {
+    "hobbies": "Horseback riding, writing, music, motorcycling.",
+    "worldEvents": "",
+    "personalChallenges": "The tragic loss of third wife Nerine Kidd, who drowned in 1999.",
+    "travel": "Traveled extensively for filming and convention appearances worldwide."
+  },
+
+  "health": {
+    "healthMilestones": "",
+    "lifestyleChanges": "Active lifestyle centered around horses and outdoor activities.",
+    "wellnessTips": ""
+  },
+
+  "technology": {
+    "firstTechExperience": "",
+    "favoriteGadgets": "",
+    "culturalPractices": ""
+  },
+
+  "additionalNotes": {
+    "unfinishedDreams": "Continuing to write, act, and explore. Went to space on Blue Origin at age 90 in October 2021.",
+    "messagesForFutureGenerations": "'Get out there and embrace the unknown.'"
+  }
+}

@@ -4100,6 +4100,32 @@ async function _wo9BuildResumePrompt(pid) {
 }
 
 /**
+ * WO-11: Start normal interview after trainer coaching flow completes.
+ * Called by LorevoxTrainerNarrators.finish() when user clicks "Start Interview" or "Skip".
+ */
+window.lv80StartTrainerInterview = async function () {
+  try {
+    const basics = state.profile?.basics || {};
+    const name = basics.preferred || basics.fullname || state.session?.identityCapture?.name || "there";
+    const intro = "Now let\u2019s begin for real. I\u2019ll ask one gentle question at a time, and you can answer simply or tell more of the story.";
+
+    if (typeof appendBubble === "function") {
+      appendBubble("assistant", intro);
+    }
+
+    if (typeof setAssistantRole === "function") {
+      setAssistantRole("interviewer");
+    }
+
+    if (typeof renderRoadmap === "function") renderRoadmap();
+    if (typeof renderInterview === "function") renderInterview();
+    if (typeof update71RuntimeUI === "function") update71RuntimeUI();
+  } catch (e) {
+    console.warn("[WO-11] unable to start trainer interview", e);
+  }
+};
+
+/**
  * WO-8: Fire resume system prompt when narrator is opened.
  * Hooks into the narrator load flow after identity is confirmed ready.
  */

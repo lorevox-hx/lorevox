@@ -146,6 +146,17 @@ let state = {
     fatigueScore:     0,           // 0–100, estimated by session_vitals
   },
 
+  /* ── WO-11 Trainer Narrators ──────────────────────────────────── */
+  trainerNarrators: {
+    active: false,
+    personId: null,
+    style: null,          // structured | storyteller
+    stepIndex: 0,
+    completed: false
+  },
+
+  narratorTrainerMeta: {},
+
   /* ── v8 Interview Projection ────────────────────────────────────
      Live state for conversational template intake.
      Lori asks Bio Builder questionnaire questions during interview;

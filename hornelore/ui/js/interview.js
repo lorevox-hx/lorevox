@@ -228,6 +228,10 @@ function updateContextTriggers(){
 /* v7.1: when a timeline seed exists, builds prompt from pass + era.
    Falls back to the session-engine-assigned prompt for legacy flow. */
 function renderInterview(){
+  // WO-11: suppress interview rendering while trainer coaching flow is active
+  if (window.LorevoxTrainerNarrators && window.LorevoxTrainerNarrators.isActive()) {
+    return;
+  }
   document.getElementById("ivSession").textContent=state.interview.session_id||"—";
   document.getElementById("ivQid").textContent=state.interview.question_id||"—";
 

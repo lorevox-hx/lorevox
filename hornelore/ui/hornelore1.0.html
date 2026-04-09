@@ -1272,6 +1272,107 @@
     }
     .lv80-narrator-badge.real{background:rgba(20,184,166,.14);color:#5eead4;}
     .lv80-narrator-badge.test{background:rgba(251,191,36,.14);color:#fcd34d;}
+    .lv80-narrator-badge.training{background:rgba(139,92,246,.14);color:#c4b5fd;}
+
+    /* ── WO-11 Trainer Narrator Panel ──────────────────────────── */
+    #lv80TrainerPanel {
+      max-width: 800px;
+      margin: 16px auto 0;
+      padding: 0 16px;
+    }
+    .lv80-trainer-shell {
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(99, 102, 241, 0.22);
+      border-radius: 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+      padding: 20px;
+    }
+    .lv80-trainer-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #818cf8;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .lv80-trainer-title {
+      font-size: 22px;
+      color: #e2e8f0;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .lv80-trainer-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      color: #cbd5e1;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+    .lv80-trainer-question {
+      color: #f8fafc;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .lv80-trainer-examples {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .lv80-trainer-example-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .lv80-trainer-example-label {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .lv80-trainer-example-text {
+      color: #e2e8f0;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .lv80-trainer-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .lv80-trainer-btn {
+      background: rgba(99,102,241,0.18);
+      border: 1px solid rgba(99,102,241,0.38);
+      color: #c7d2fe;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .lv80-trainer-btn.secondary {
+      background: transparent;
+      border-color: rgba(148,163,184,0.28);
+      color: #94a3b8;
+    }
+    .lv80-narrator-group-title {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+      padding: 8px 0 4px;
+      border-bottom: 1px solid rgba(148,163,184,0.12);
+      margin-bottom: 6px;
+    }
+    .lv80-trainer-seed-row {
+      display: flex;
+      gap: 8px;
+      padding: 8px 0 4px;
+    }
 
     .lv80-delete-dialog{
       background:#111827;border:1px solid rgba(239,68,68,.28);border-radius:14px;
@@ -1943,6 +2044,8 @@
 
   <!-- ── CHAT AREA ───────────────────────────────────────────── -->
   <main id="lv80ChatWrap">
+    <!-- WO-11: Trainer narrator coaching panel -->
+    <div id="lv80TrainerPanel" hidden></div>
     <!-- app.js renders all chat bubbles into #chatMessages -->
     <div id="chatMessages"></div>
 
@@ -2421,6 +2524,11 @@
     <span class="lv80-switcher-sub">Choose carefully — narrator identity controls questionnaire, family tree, life map, and Lori grounding.</span>
   </div>
   <div id="lv80NarratorList" class="lv80-narrator-list"></div>
+  <!-- WO-11: Trainer narrator seed buttons -->
+  <div class="lv80-trainer-seed-row">
+    <button class="lv80-settings-btn" onclick="lv80SeedTrainerNarrator('william-shatner.json')">Add Shatner Trainer</button>
+    <button class="lv80-settings-btn" onclick="lv80SeedTrainerNarrator('dolly-parton.json')">Add Dolly Trainer</button>
+  </div>
 </div>
 
 <!-- ── v8 Delete Narrator Dialog ── -->
@@ -2544,6 +2652,7 @@
      runs AFTER it completes — identical pattern to lori7.5.html.
 ──────────────────────────────────────────────────────────────-->
 <script src="js/state.js"></script>
+<script src="js/trainer-narrators.js"></script>
 <script src="js/data.js"></script>
 <script src="js/api.js"></script>
 <script src="js/tabs.js"></script>
@@ -2901,6 +3010,24 @@ async function lv80SwitchPerson(personId) {
   // 3. Update narrator card UI
   lv80UpdateActiveNarratorCard();
 
+  // WO-11: trainer narrators start Lori coaching flow before standard interview
+  try {
+    const trainerMeta = window.LorevoxTrainerNarrators
+      ? window.LorevoxTrainerNarrators.getNarratorMeta(personId)
+      : null;
+    if (trainerMeta && trainerMeta.trainer) {
+      if (state.session) {
+        state.session.assistantRole = "interviewer";
+      }
+      window.LorevoxTrainerNarrators.start(personId, trainerMeta.style || "structured");
+      return;
+    } else if (window.LorevoxTrainerNarrators) {
+      window.LorevoxTrainerNarrators.reset();
+    }
+  } catch (e) {
+    console.warn("[WO-11] trainer switch flow failed", e);
+  }
+
   // 4. Classify narrator readiness
   const openState = getNarratorOpenState(personId);
   console.log("[v9-gate] Narrator classified as:", openState);
@@ -3195,21 +3322,35 @@ function lv80RenderNarratorCards(){
   const people = state?.narratorUi?.peopleCache || [];
   list.innerHTML = "";
 
+  // WO-11: separate trainers from normal narrators
+  const trainers = [];
+  const normal = [];
   people.forEach(person => {
     const pid = person.person_id || person.id || person.uuid;
+    const meta = (state.narratorTrainerMeta && state.narratorTrainerMeta[pid]) || null;
+    if (meta && meta.trainer) trainers.push(person);
+    else normal.push(person);
+  });
+
+  function _renderCard(person, badgeLabel, badgeClass, subtitle) {
+    const pid = person.person_id || person.id || person.uuid;
     const name = person.display_name || person.name || pid;
-    const kind = lv80NarratorKind(person);
     const card = document.createElement("div");
     card.className = "lv80-narrator-card" + (pid === state.person_id ? " active" : "");
+    const sub = subtitle
+      ? esc(subtitle)
+      : (person.date_of_birth ? esc(_lv80FormatDob(person.date_of_birth.toString())) : "DOB unknown")
+        + (person.place_of_birth ? " \u00b7 " + esc(person.place_of_birth) : "")
+        + (() => { const _a = lv80CalcAge(person.date_of_birth, null); return _a !== null ? " \u00b7 age " + _a : ""; })();
     card.innerHTML = `
       <div class="lv80-narrator-avatar">${lv80NarratorInitials(name)}</div>
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <strong style="font-size:14px;color:#e2e8f0;">${esc(name)}</strong>
-          <span class="lv80-narrator-badge ${kind}">${kind === "real" ? "REAL" : "TEST"}</span>
+          <span class="lv80-narrator-badge ${esc(badgeClass)}">${esc(badgeLabel)}</span>
         </div>
         <div style="font-size:12px;color:#94a3b8;margin-top:3px;">
-          ${person.date_of_birth ? esc(_lv80FormatDob(person.date_of_birth.toString())) : "DOB unknown"}${person.place_of_birth ? " · " + esc(person.place_of_birth) : ""}${(() => { const _a = lv80CalcAge(person.date_of_birth, null); return _a !== null ? " · age " + _a : ""; })()}
+          ${sub}
         </div>
         <div class="lv80-narrator-card-actions">
           <button class="bb-btn-sm" onclick="lv80ConfirmNarratorSwitch('${pid}')">Open</button>
@@ -3217,8 +3358,35 @@ function lv80RenderNarratorCards(){
         </div>
       </div>
     `;
-    list.appendChild(card);
-  });
+    return card;
+  }
+
+  // Render training narrators first
+  if (trainers.length) {
+    const title = document.createElement("div");
+    title.className = "lv80-narrator-group-title";
+    title.textContent = "Training Narrators";
+    list.appendChild(title);
+    trainers.forEach(person => {
+      const pid = person.person_id || person.id || person.uuid;
+      const meta = (state.narratorTrainerMeta && state.narratorTrainerMeta[pid]) || {};
+      list.appendChild(_renderCard(person, "TRAINER", "training", meta.title || "Guided example narrator"));
+    });
+  }
+
+  // Render normal narrators
+  if (normal.length) {
+    if (trainers.length) {
+      const title = document.createElement("div");
+      title.className = "lv80-narrator-group-title";
+      title.textContent = "Your Narrators";
+      list.appendChild(title);
+    }
+    normal.forEach(person => {
+      const kind = lv80NarratorKind(person);
+      list.appendChild(_renderCard(person, kind === "real" ? "REAL" : "TEST", kind, null));
+    });
+  }
 }
 
 function lv80ToggleNarratorSwitcher(){
@@ -3253,6 +3421,19 @@ function lv80ConfirmNarratorSwitch(pid){
   const pop = document.getElementById("lv80NarratorSwitcher");
   try{ if (pop?.matches(":popover-open")) pop.hidePopover(); }catch(_){}
   lv80SwitchPerson(pid);
+}
+
+// WO-11: Seed a trainer narrator from a JSON template file
+async function lv80SeedTrainerNarrator(filename) {
+  try {
+    const resp = await fetch("templates/" + filename);
+    const tpl = await resp.json();
+    await lv80PreloadNarrator(tpl);
+    await refreshPeople();
+    lv80OpenNarratorSwitcher();
+  } catch (e) {
+    console.warn("[WO-11] failed to seed trainer narrator", filename, e);
+  }
 }
 
 function lv80OpenDeleteDialog(){
