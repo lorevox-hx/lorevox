@@ -283,6 +283,7 @@ def build_conversation_memory_context(
     person_id: Optional[str],
     session_id: Optional[str] = None,
     conversation_state: Optional[str] = None,
+    cognitive_support_mode: bool = False,
 ) -> str:
     """
     Build an adaptive conversation memory block for the LLM prompt.
@@ -316,6 +317,36 @@ def build_conversation_memory_context(
         # WO-10: Resume confidence scoring
         confidence = arc.score_resume_confidence(anchor, summary, recent, selected_thread)
         conf_level = confidence.get("level", "low")
+
+        # WO-10C: Cognitive Support Mode — single-thread, simplified memory
+        if cognitive_support_mode:
+            # Use dedicated CSM thread selector (prefers warmth over recency)
+            csm_thread = arc.wo10c_select_single_support_thread(anchor, threads, recent)
+            csm_lines = ["CONVERSATION MEMORY (COGNITIVE SUPPORT MODE):"]
+            csm_lines.append("  NOTE: This narrator has cognitive difficulty. Keep context minimal.")
+            if csm_thread:
+                csm_lines.append(f"  Familiar topic: {csm_thread.get('topic_label', 'general')}")
+                if csm_thread.get("summary"):
+                    csm_lines.append(f"  Context: {csm_thread['summary'][:200]}")
+                if csm_thread.get("related_era"):
+                    csm_lines.append(f"  Era: {csm_thread['related_era']}")
+            elif anchor and anchor.get("topic_summary"):
+                csm_lines.append(f"  Familiar topic: {anchor.get('topic_label', 'unknown')}")
+                csm_lines.append(f"  Context: {anchor['topic_summary'][:200]}")
+            # Only the last narrator turn — not a full exchange
+            if anchor and anchor.get("last_meaningful_user_turn"):
+                csm_lines.append(f"  Last they shared: {anchor['last_meaningful_user_turn'][:150]}")
+            # Key facts only — minimal set
+            scored_items = summary.get("scored_items", [])
+            if scored_items:
+                top_facts = [i for i in scored_items if i.get("kind") != "question"][:3]
+                if top_facts:
+                    csm_lines.append("  Key facts:")
+                    for item in top_facts:
+                        csm_lines.append(f"    {item.get('text', '')[:100]}")
+            csm_lines.append("  RULE: Do NOT list multiple topics. Do NOT offer choices between threads.")
+            csm_lines.append("  If you reference memory, mention ONE familiar topic gently — as an invitation, not a test.")
+            return "\n".join(csm_lines) if len(csm_lines) > 2 else ""
 
         # WO-10: Adaptive budgeting based on scenario
         scenario = _detect_memory_scenario(anchor, recent, summary)
@@ -589,6 +620,8 @@ def compose_system_prompt(
         affect_state   = runtime71.get("affect_state", "neutral") or "neutral"
         fatigue_score  = int(runtime71.get("fatigue_score", 0) or 0)
         cognitive_mode  = runtime71.get("cognitive_mode") or None
+        # WO-10C — narrator-scoped cognitive support mode
+        cognitive_support_mode = bool(runtime71.get("cognitive_support_mode", False))
         # v7.2 — paired interview metadata
         paired          = bool(runtime71.get("paired", False))
         paired_speaker  = (runtime71.get("paired_speaker") or "").strip() or None
@@ -969,8 +1002,49 @@ def compose_system_prompt(
                 "DO NOT ask anything that requires sustained effort or detailed recall."
             )
 
-        # Cognitive override
-        if cognitive_mode == "recognition":
+        # WO-10C — Cognitive Support Mode (narrator-scoped, dementia-safe)
+        # When active, this REPLACES all other cognitive mode directives.
+        # The full behavioral contract is enforced here; recognition/alongside
+        # modes are subsumed because cognitive_support_mode is a superset.
+        if cognitive_support_mode:
+            directive_lines.append(
+                "═══ COGNITIVE SUPPORT MODE (WO-10C) ═══\n"
+                "This narrator has cognitive difficulty (dementia or similar). "
+                "You are NOT interviewing — you are keeping them company and protecting their dignity.\n\n"
+                "CORE BEHAVIORAL CONTRACT:\n"
+                "A. SILENCE IS PROTECTED: Silence of any length — seconds, minutes, or longer — "
+                "is expected and NEVER a problem to fix. Do not fill silence. Do not comment on silence. "
+                "Do not say 'I notice you paused' or 'Are you still there?' or anything that labels the quiet.\n\n"
+                "B. RESUME BECOMES RE-ENTRY: When returning to conversation after silence, "
+                "never interrogate. Offer a warm, invitational bridge: 'I was just thinking about what you said "
+                "about [topic]' or 'Would you like to tell me more about [warm topic]?' or simply "
+                "'I'm right here whenever you're ready.'\n\n"
+                "C. NO CORRECTION: Never correct factual errors, contradictions, repeated stories, or "
+                "chronological confusion. Emotional truth is always valid. If they tell the same story "
+                "again, receive it with warmth as if hearing it for the first time.\n\n"
+                "D. ONE THREAD AT A TIME: Do not reference multiple topics, offer complex choices, "
+                "or list options. Keep cognitive load minimal. Stay on whatever the narrator brings up, "
+                "or gently offer ONE familiar topic if they seem to want engagement.\n\n"
+                "E. VISUAL AFFECTS PATIENCE, NOT DIALOGUE: Camera signals (if present) may extend "
+                "your patience windows. NEVER describe what you see. NEVER reference the narrator's "
+                "expression, posture, gaze, or apparent emotional state.\n\n"
+                "F. INVITATIONAL, NOT INTERROGATIVE: Every prompt must be an invitation they can "
+                "decline or ignore. Never demand elaboration. Never stack questions. "
+                "Phrase as: 'Would you like to...' or 'I'd love to hear about...' — never "
+                "'Tell me about...' or 'What happened next?'\n\n"
+                "FORBIDDEN LANGUAGE (extends WO-10B):\n"
+                "  Never say: 'I see you thinking', 'You look confused', 'You seem emotional',\n"
+                "  'I notice you paused', 'You appear to be struggling', 'Are you still there?',\n"
+                "  'You already told me that', 'Actually, earlier you said...', 'Let me correct that',\n"
+                "  'Do you remember?', 'Try to think back', 'Can you recall?'\n"
+                "  Instead: 'Take your time', 'I can wait', 'No rush at all',\n"
+                "  'I'm right here with you', 'That sounds like it mattered a great deal.'\n\n"
+                "TONE: Warm, unhurried, present. Short sentences. Simple words. "
+                "Match the narrator's pace — if they speak slowly, you respond slowly. "
+                "If they say one word, you respond with one or two gentle sentences at most."
+            )
+        # Cognitive override (standard — only when NOT in cognitive_support_mode)
+        elif cognitive_mode == "recognition":
             directive_lines.append(
                 "COGNITIVE SUPPORT: This narrator may have memory difficulty.\n"
                 "DO NOT ask open-ended recall questions ('What do you remember about...').\n"
@@ -1083,7 +1157,9 @@ def compose_system_prompt(
         if _person_id:
             _conv_state = runtime71.get("conversation_state") or None
             memory_block = build_conversation_memory_context(
-                _person_id, conversation_state=_conv_state
+                _person_id,
+                conversation_state=_conv_state,
+                cognitive_support_mode=cognitive_support_mode,
             )
             if memory_block:
                 parts.append(memory_block)

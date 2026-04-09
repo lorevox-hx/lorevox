@@ -716,6 +716,50 @@ def choose_best_thread(
 
 
 # ---------------------------------------------------------------------------
+# WO-10C: Single support thread selection for cognitive support mode
+# ---------------------------------------------------------------------------
+def wo10c_select_single_support_thread(
+    anchor: Optional[Dict[str, Any]],
+    threads: List[Dict[str, Any]],
+    recent_turns: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """
+    Select ONE warm, familiar thread for cognitive support mode.
+    Prefers: emotional salience > narrative richness > recency.
+    Identity threads are acceptable here (unlike standard resume) because
+    familiar ground is comforting for narrators with cognitive difficulty.
+    Returns None if no threads are available.
+    """
+    if not threads:
+        # Fall back to anchor if available
+        if anchor and anchor.get("topic_label"):
+            return {"topic_label": anchor.get("topic_label", "general"),
+                    "summary": anchor.get("topic_summary", ""),
+                    "related_era": anchor.get("active_era")}
+        return None
+
+    now_ts = _time.time()
+    for t in threads:
+        _score_thread(t, now_ts)
+
+    # In CSM: override identity demotion — familiar is good
+    for t in threads:
+        if _is_identity_fallback_thread(t):
+            # Restore score (undo the 0.3x penalty) — identity is comforting here
+            t["score"] = t.get("score", 0) / 0.3 if t.get("score", 0) > 0 else 1.0
+
+    # Boost threads with emotional salience markers
+    for t in threads:
+        summary_text = (t.get("summary") or "").lower()
+        emotional_hits = sum(1 for m in _EMOTIONAL_SALIENCE_MARKERS if m in summary_text)
+        if emotional_hits > 0:
+            t["score"] = t.get("score", 0) + emotional_hits * 2.0
+
+    threads.sort(key=lambda x: x.get("score", 0), reverse=True)
+    return threads[0]
+
+
+# ---------------------------------------------------------------------------
 # WO-10 Phase 4: Resume confidence scoring
 # ---------------------------------------------------------------------------
 def score_resume_confidence(

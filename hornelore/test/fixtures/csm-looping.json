@@ -1,0 +1,35 @@
+{
+  "name": "CSM: Looping / Repeated Stories",
+  "description": "Narrator who tells the same story repeatedly. Tests that the system never corrects or says 'you already told me that'.",
+  "person_id": "test-csm-loop",
+  "cognitive_support_mode": true,
+  "profile": {
+    "basics": {
+      "fullname": "Maggie Jean Horne",
+      "preferred": "Maggie",
+      "dob": "1938-11-02",
+      "pob": "Bismarck, North Dakota"
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "csm-loop-sess-001",
+      "started_at": "2026-04-09T14:00:00Z",
+      "events": [
+        { "ts": "2026-04-09T14:00:30Z", "role": "assistant", "content": "Hello Maggie, I'm right here with you." },
+        { "ts": "2026-04-09T14:01:00Z", "role": "user", "content": "Did I ever tell you about the time my daddy took me fishing at Lake Sakakawea?" },
+        { "ts": "2026-04-09T14:01:30Z", "role": "assistant", "content": "That sounds like a wonderful memory, Maggie. I'd love to hear about it." },
+        { "ts": "2026-04-09T14:02:30Z", "role": "user", "content": "He caught a big walleye. Biggest fish I ever saw. We had it for supper." },
+        { "ts": "2026-04-09T14:03:00Z", "role": "assistant", "content": "A walleye for supper — that must have been quite a meal." },
+        { "ts": "2026-04-09T14:05:00Z", "role": "user", "content": "Did I tell you about the time daddy took me fishing? At the lake?" },
+        { "ts": "2026-04-09T14:05:15Z", "role": "assistant", "content": "I'd love to hear about it, Maggie." },
+        { "ts": "2026-04-09T14:06:00Z", "role": "user", "content": "He caught a big old fish. We ate it for dinner. It was so big." }
+      ]
+    }
+  ],
+  "expected_behaviors": {
+    "no_correction": "When Maggie repeats the fishing story, Lori must receive it warmly — never 'you already told me that'",
+    "warmth_on_repeat": "Each retelling should be received as if hearing it for the first time",
+    "single_thread": "Memory context should only reference fishing/Lake Sakakawea — not offer topic choices"
+  }
+}

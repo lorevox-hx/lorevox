@@ -110,6 +110,13 @@ let state = {
        'safety'      : safety companion mode                                        */
     assistantRole: "interviewer",
 
+    /* WO-10C — Cognitive Support Mode: narrator-scoped flag.
+       When true, the entire stack shifts to dementia-safe companion behavior:
+       extended silence thresholds, invitational (not interrogative) prompts,
+       single-thread memory context, no correction, no observation language.
+       Set per narrator via operator controls; persists for the session. */
+    cognitiveSupportMode: false,
+
     /* v10 — Memoir Question Strategy: session-level tracking */
     memoirStrategy: {
       askedPaths:      [],   // recently asked field paths (capped at 30)
@@ -269,6 +276,10 @@ function getCurrentMode()  { return state.session?.currentMode  || "open";  }
 /* v7.4D — Assistant role getters/setters */
 function getAssistantRole() { return state.session?.assistantRole || "interviewer"; }
 function setAssistantRole(r){ if (state.session) state.session.assistantRole = r; }
+
+/* WO-10C — Cognitive Support Mode getter/setter */
+function getCognitiveSupportMode() { return !!(state.session?.cognitiveSupportMode); }
+function setCognitiveSupportMode(on) { if (state.session) state.session.cognitiveSupportMode = !!on; }
 
 /* ── v7.1 — Pass / era / mode setters ──────────────────────── */
 function setPass(p)  { if (state.session) state.session.currentPass = p; }

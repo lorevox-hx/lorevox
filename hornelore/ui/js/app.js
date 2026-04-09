@@ -521,6 +521,10 @@ function buildRuntime71() {
     person_id: state.person_id || null,
     /* WO-10: conversation state for adaptive memory context */
     conversation_state: _wo10DetectConversationState(),
+    /* WO-10C: cognitive support mode — narrator-scoped dementia-safe flag.
+       When true, backend shifts to extended silence, invitational prompts,
+       single-thread context, no correction, no observation language. */
+    cognitive_support_mode: !!(state.session?.cognitiveSupportMode),
   };
 }
 
@@ -4105,8 +4109,27 @@ async function wo8OnNarratorReady(pid) {
   // Phase 2: Load transcript history
   await wo8LoadTranscriptHistory(pid);
 
-  // WO-9/WO-10B: Resume flow — now gated by operator mode and confidence
+  // WO-9/WO-10B/WO-10C: Resume flow — gated by operator mode, confidence, and CSM
   if (hasIdentityBasics74()) {
+
+    // WO-10C: Cognitive Support Mode — replace ALL resume with gentle re-entry.
+    // Never interrogative, never assume they remember where they left off.
+    // The re-entry is a warm invitation, not a conversation resume.
+    if (typeof getCognitiveSupportMode === "function" && getCognitiveSupportMode()) {
+      const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "";
+      const greeting = name ? `${name}, ` : "";
+      const reentryPrompt = `[SYSTEM: COGNITIVE SUPPORT MODE RE-ENTRY. ${greeting}is here. `
+        + "This narrator has cognitive difficulty. Do NOT ask where you left off. Do NOT reference previous sessions. "
+        + "Do NOT ask 'Do you remember?' Welcome them with pure warmth — as if this is a fresh, gentle visit. "
+        + "Example: 'Hello " + (name || "there") + ", it's so good to see you. I'm Lori, and I'm here to keep you company.' "
+        + "One or two short, warm sentences. Then wait. Let them lead. Do not ask a question.]";
+      console.log("[WO-10C] Cognitive support mode — gentle re-entry, no resume.");
+      setTimeout(() => {
+        if (_llmReady) sendSystemPrompt(reentryPrompt);
+        else wo9SendOrQueueSystemPrompt(reentryPrompt);
+      }, 1200); // slightly longer delay — no rush
+      return;
+    }
 
     // WO-10B: If operator mode is ON, show Resume Preview instead of auto-resuming
     if (window.HORNELORE_OPERATOR_MODE) {

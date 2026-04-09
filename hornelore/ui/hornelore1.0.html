@@ -3329,6 +3329,18 @@ const LV80_IDLE_SOFT_MS      = 30_000;
 const LV80_IDLE_CHECKIN_OPEN = 75_000;
 const LV80_IDLE_CHECKIN_MEM  = 55_000;
 
+/* WO-10C — Cognitive Support Mode timing constants.
+   These replace standard idle timers when cognitiveSupportMode is active.
+   Protocol:  0–30s  silence: do nothing (protected)
+             30–120s silence: visual cue only (soft dot, no sound)
+            120–300s silence: optional gentle invitation (one sentence max)
+            300–600s silence: optional re-entry bridge (warm callback to last topic)
+            600s+           : no further nudges — infinite patience */
+const WO10C_VISUAL_CUE_MS       = 120_000;   // 2 min: first visual cue
+const WO10C_GENTLE_INVITE_MS    = 300_000;   // 5 min: optional gentle invitation
+const WO10C_REENTRY_BRIDGE_MS   = 600_000;   // 10 min: optional re-entry bridge
+let _wo10cIdleStage = 0;  // 0=armed, 1=visual shown, 2=gentle sent, 3=bridge sent
+
 let _lv80IdleSoftTimer    = null;
 let _lv80IdleCheckInTimer = null;
 let _lv80IdleCheckInFired = false;
@@ -3339,6 +3351,26 @@ function lv80ArmIdle(reason) {
   _lv80IdleCheckInFired = false;
 
   lv80LogTurnDebug({ event: "idle_arm", idle_arm_reason: reason || "genuine_question" });
+
+  /* WO-10C — Cognitive Support Mode uses completely different timing.
+     Standard idle (30s visual, 55-75s checkin) is replaced with:
+     120s visual → 300s gentle invitation → 600s re-entry bridge. */
+  const csm = typeof getCognitiveSupportMode === "function" && getCognitiveSupportMode();
+  if (csm) {
+    _wo10cIdleStage = 0;
+    // Stage 1: visual cue at 2 minutes (not 30 seconds)
+    _lv80IdleSoftTimer = setTimeout(() => {
+      if (window._wo8VoicePaused) return;
+      const lastGrowth = window._wo10bLastTranscriptGrowthTs || 0;
+      if (lastGrowth > 0 && (Date.now() - lastGrowth) < 5000) return;
+      document.getElementById("lv80IdleCue")?.classList.add("visible");
+      _wo10cIdleStage = 1;
+      lv80LogTurnDebug({ event: "wo10c_visual_cue", stage: 1 });
+    }, WO10C_VISUAL_CUE_MS);
+    // Stage 2: gentle invitation at 5 minutes
+    _lv80IdleCheckInTimer = setTimeout(() => { _wo10cIdleStage = 2; lv80FireCheckIn(); }, WO10C_GENTLE_INVITE_MS);
+    return;
+  }
 
   _lv80IdleSoftTimer = setTimeout(() => {
     if (window._wo8VoicePaused) return;    // WO-8: no visual cue while paused
@@ -3362,6 +3394,8 @@ function lv80ClearIdle() {
   clearTimeout(_lv80IdleCheckInTimer);
   _lv80IdleSoftTimer = null;
   _lv80IdleCheckInTimer = null;
+  // WO-10C: reset stage tracker on any clear (narrator spoke, new turn, etc.)
+  _wo10cIdleStage = 0;
   document.getElementById("lv80IdleCue")?.classList.remove("visible");
 }
 
@@ -3371,6 +3405,50 @@ function lv80FireCheckIn() {
     lv80LogTurnDebug({ event: "idle_fire_blocked", reason: "wo8_voice_paused" });
     lv80ClearIdle();
     return;
+  }
+
+  /* ═══ WO-10C — Cognitive Support Mode idle protocol ═══
+     Completely bypasses standard no-interruption engine.
+     Uses staged escalation: gentle invitation → re-entry bridge → stop.
+     All prompts are invitational, never interrogative. */
+  const csm = typeof getCognitiveSupportMode === "function" && getCognitiveSupportMode();
+  if (csm) {
+    // Still check for active speech — even in CSM, don't talk over them
+    const lastGrowth = window._wo10bLastTranscriptGrowthTs || 0;
+    if (lastGrowth > 0 && (Date.now() - lastGrowth) < 5000) {
+      _lv80IdleCheckInTimer = setTimeout(lv80FireCheckIn, 30000); // re-check in 30s (not 10)
+      return;
+    }
+
+    const WO10C_NUDGE_RULES = " ABSOLUTE RULES: Do NOT comment on the silence. Do NOT say 'I notice you've been quiet' or 'Are you still there?' or 'I see you thinking'. Do NOT ask questions. Offer ONE very gentle invitation they can ignore. Use their name if you know it. One short sentence maximum. FORBIDDEN: 'Do you remember', 'Try to think back', 'Can you recall', 'What happened next', 'Tell me about'.";
+
+    if (_wo10cIdleStage <= 2) {
+      // Stage 2: Gentle invitation (at ~5 minutes of silence)
+      const gentlePrompt = "[SYSTEM: The narrator has been quietly present for several minutes. This is normal and expected — they may have cognitive difficulty. Offer ONE very soft, invitational sentence. Examples: 'I'm right here with you, [name].' or 'Would you like to tell me about something that makes you smile?' Do not reference the silence. Do not ask a direct question." + WO10C_NUDGE_RULES + "]";
+      lv80LogTurnDebug({ event: "wo10c_gentle_invite", stage: 2 });
+      _lv80IdleCheckInFired = true;
+      lv80ClearIdle();
+      sendSystemPrompt(gentlePrompt);
+      // Arm stage 3: re-entry bridge at 10 minutes total
+      _wo10cIdleStage = 2;
+      _lv80IdleCheckInTimer = setTimeout(() => { _wo10cIdleStage = 3; lv80FireCheckIn(); }, WO10C_REENTRY_BRIDGE_MS - WO10C_GENTLE_INVITE_MS);
+      return;
+    } else if (_wo10cIdleStage === 3) {
+      // Stage 3: Re-entry bridge (at ~10 minutes of silence)
+      const bridgePrompt = "[SYSTEM: The narrator has been quietly present for a long time. This is okay. If you want to offer one final gentle bridge, reference something warm they mentioned earlier — a person they loved, a place they enjoyed, a happy memory. Example: 'I was just thinking about what you told me about [warm topic]. That sounded really special.' Then be silent. If they don't respond, that is perfectly fine. Do NOT nudge again after this." + WO10C_NUDGE_RULES + "]";
+      lv80LogTurnDebug({ event: "wo10c_reentry_bridge", stage: 3 });
+      _lv80IdleCheckInFired = true;
+      lv80ClearIdle();
+      sendSystemPrompt(bridgePrompt);
+      // Stage 3 is the last nudge — infinite patience after this
+      _wo10cIdleStage = 4; // done, no more nudges
+      return;
+    } else {
+      // Stage 4+: no more nudges — infinite patience
+      lv80LogTurnDebug({ event: "wo10c_infinite_patience", stage: _wo10cIdleStage });
+      lv80ClearIdle();
+      return;
+    }
   }
 
   // WO-10B: No-interruption engine — narrator still actively speaking

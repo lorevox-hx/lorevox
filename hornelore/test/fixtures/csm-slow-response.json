@@ -1,0 +1,31 @@
+{
+  "name": "CSM: Slow Response Narrator",
+  "description": "Narrator with cognitive difficulty who responds very slowly. Tests that silence is protected and no interrogative prompts fire.",
+  "person_id": "test-csm-slow",
+  "cognitive_support_mode": true,
+  "profile": {
+    "basics": {
+      "fullname": "Maggie Jean Horne",
+      "preferred": "Maggie",
+      "dob": "1938-11-02",
+      "pob": "Bismarck, North Dakota"
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "csm-slow-sess-001",
+      "started_at": "2026-04-09T14:00:00Z",
+      "events": [
+        { "ts": "2026-04-09T14:00:30Z", "role": "assistant", "content": "Hello Maggie, it's so good to see you. I'm Lori, and I'm here to keep you company." },
+        { "ts": "2026-04-09T14:03:00Z", "role": "user", "content": "Oh... hello." },
+        { "ts": "2026-04-09T14:03:15Z", "role": "assistant", "content": "It's lovely to hear your voice, Maggie." },
+        { "ts": "2026-04-09T14:08:00Z", "role": "user", "content": "I... my mother used to make bread." }
+      ]
+    }
+  ],
+  "expected_behaviors": {
+    "silence_protected": "5 minutes of silence between turns 2 and 3 — system should NOT have fired interrogative nudge",
+    "no_correction": "System must not correct or contradict anything Maggie says",
+    "invitational_tone": "All Lori responses must be invitational, not interrogative"
+  }
+}

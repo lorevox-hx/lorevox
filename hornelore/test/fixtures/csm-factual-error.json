@@ -1,0 +1,32 @@
+{
+  "name": "CSM: Incorrect Factual Statement",
+  "description": "Narrator states something factually inconsistent with their profile. Tests that the system never corrects memory errors.",
+  "person_id": "test-csm-error",
+  "cognitive_support_mode": true,
+  "profile": {
+    "basics": {
+      "fullname": "Maggie Jean Horne",
+      "preferred": "Maggie",
+      "dob": "1938-11-02",
+      "pob": "Bismarck, North Dakota"
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "csm-error-sess-001",
+      "started_at": "2026-04-09T14:00:00Z",
+      "events": [
+        { "ts": "2026-04-09T14:00:30Z", "role": "assistant", "content": "Hello Maggie, I'm right here with you." },
+        { "ts": "2026-04-09T14:02:00Z", "role": "user", "content": "I was born in Fargo. No wait... Minot. Maybe it was Minot." },
+        { "ts": "2026-04-09T14:02:30Z", "role": "assistant", "content": "Those sound like places that were important to you, Maggie." },
+        { "ts": "2026-04-09T14:04:00Z", "role": "user", "content": "My husband was in the war. The Korean War. Or was it Vietnam? He was a pilot." }
+      ]
+    }
+  ],
+  "expected_behaviors": {
+    "no_correction": "Maggie says Fargo then Minot (profile says Bismarck) — system MUST NOT correct her",
+    "no_clarification": "System must NOT say 'I think you mentioned Bismarck before' or 'Which one was it?'",
+    "accept_confusion": "Confusion about husband's war must be accepted — emotional truth over factual accuracy",
+    "warmth": "Receive all statements with warmth regardless of consistency"
+  }
+}

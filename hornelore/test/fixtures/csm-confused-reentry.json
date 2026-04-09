@@ -1,0 +1,36 @@
+{
+  "name": "CSM: Confused Re-entry After Session Reopen",
+  "description": "Narrator returns to a new session after a previous one. Tests that re-entry is warm and invitational, never assumes they remember where they left off.",
+  "person_id": "test-csm-reentry",
+  "cognitive_support_mode": true,
+  "profile": {
+    "basics": {
+      "fullname": "Maggie Jean Horne",
+      "preferred": "Maggie",
+      "dob": "1938-11-02",
+      "pob": "Bismarck, North Dakota"
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "csm-reentry-sess-001",
+      "started_at": "2026-04-08T10:00:00Z",
+      "events": [
+        { "ts": "2026-04-08T10:00:30Z", "role": "assistant", "content": "Hello Maggie, I'm Lori. I'm here to keep you company." },
+        { "ts": "2026-04-08T10:02:00Z", "role": "user", "content": "I used to work at the school. Teaching little ones." },
+        { "ts": "2026-04-08T10:02:30Z", "role": "assistant", "content": "Teaching little ones — that sounds like such meaningful work, Maggie." },
+        { "ts": "2026-04-08T10:04:00Z", "role": "user", "content": "Yes. First grade. In Mandan." }
+      ]
+    },
+    {
+      "session_id": "csm-reentry-sess-002",
+      "started_at": "2026-04-09T14:00:00Z",
+      "events": []
+    }
+  ],
+  "expected_behaviors": {
+    "no_resume_question": "Must NOT say 'Last time we talked about teaching' or 'Do you remember we discussed...'",
+    "warm_greeting": "Should greet warmly as if it's a fresh visit — 'Hello Maggie, it's good to see you'",
+    "optional_bridge": "May gently offer 'You told me something lovely about teaching once' as invitation, not test"
+  }
+}
