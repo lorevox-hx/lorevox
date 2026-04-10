@@ -2227,7 +2227,7 @@
         rows="1"
         placeholder="Type or speak…"
         onkeydown="onChatKey(event)"
-        oninput="this.style.height='auto'; this.style.height=(this.scrollHeight)+'px';"
+        oninput="this.style.height='auto'; this.style.height=(this.scrollHeight)+'px'; if(typeof _wo10hOnNarratorActivity==='function') _wo10hOnNarratorActivity();"
       ></textarea>
 
       <!-- Status dot — replaces text badge; pulses while thinking -->
@@ -2601,6 +2601,17 @@
       <div class="lv10d-bp-row"><span class="lv10d-bp-label">Signal Age</span><span class="lv10d-bp-value" id="lv10dBpSignalAge">—</span></div>
     </div>
 
+    <!-- WO-10H: Turn State -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Narrator Turn</div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">turn_state</span><span class="lv10d-bp-value" id="lv10dBpTurnState">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">tts_active</span><span class="lv10d-bp-value" id="lv10dBpTtsActive">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">tts_finished_at</span><span class="lv10d-bp-value" id="lv10dBpTtsFinished">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">narrator_turn_claimed</span><span class="lv10d-bp-value" id="lv10dBpTurnClaimed">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">interruptions_blocked_by</span><span class="lv10d-bp-value" id="lv10dBpInterruptBlock">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">pending_timeout_at</span><span class="lv10d-bp-value" id="lv10dBpTimeoutAt">—</span></div>
+    </div>
+
     <!-- Memory -->
     <div class="lv10d-bp-section">
       <div class="lv10d-bp-section-title">Memory</div>
@@ -2616,13 +2627,24 @@
       <div class="lv10d-bp-row"><span class="lv10d-bp-label">WebSocket</span><span class="lv10d-bp-value" id="lv10dBpWs">—</span></div>
     </div>
 
-    <!-- LLM Tuning (WO-10E) -->
+    <!-- LLM Tuning (WO-10E/H) -->
     <div class="lv10d-bp-section">
       <div class="lv10d-bp-section-title">LLM Tuning</div>
       <div class="lv10d-bp-row">
+        <span class="lv10d-bp-label">Context Window</span>
+        <select id="lv10dLlmCtxWindow" onchange="lv10dSetLlmParam('context_window', this.value)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:12px;">
+          <option value="2048">2048</option>
+          <option value="4096" selected>4096</option>
+          <option value="8192">8192</option>
+          <option value="16384">16384</option>
+        </select>
+      </div>
+      <div class="lv10d-bp-row">
         <span class="lv10d-bp-label">Temperature</span>
         <select id="lv10dLlmTemp" onchange="lv10dSetLlmParam('temperature', this.value)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:12px;">
+          <option value="0.2">0.2</option>
           <option value="0.3">0.3</option>
+          <option value="0.4">0.4</option>
           <option value="0.5">0.5</option>
           <option value="0.7" selected>0.7</option>
           <option value="0.9">0.9</option>
@@ -2638,6 +2660,38 @@
           <option value="2048">2048</option>
         </select>
       </div>
+    </div>
+
+    <!-- WO-10H: Test Harness -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Test Harness</div>
+      <div class="lv10d-bp-row">
+        <span class="lv10d-bp-label">Test Sample</span>
+        <select id="lv10hTestSample" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:12px;">
+          <option value="clean">Clean (1000-word)</option>
+          <option value="messy">Messy (rambling)</option>
+          <option value="emotional">Emotional (nonlinear)</option>
+          <option value="fragmented">Fragmented (minimal)</option>
+        </select>
+      </div>
+      <div class="lv10d-bp-actions" style="margin-top:6px;">
+        <button class="lv10d-bp-action-btn" onclick="lv10hRunTest(document.getElementById('lv10hTestSample').value)">Run Test</button>
+        <button class="lv10d-bp-action-btn" onclick="lv10hRepeatTest()">Repeat Last</button>
+        <button class="lv10d-bp-action-btn" onclick="lv10hClearTest()">Clear Test Data</button>
+        <button class="lv10d-bp-action-btn" onclick="lv10hSaveGolden()">Save as Golden</button>
+      </div>
+    </div>
+
+    <!-- WO-10H: Extraction Scorecard -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Extraction Scorecard</div>
+      <div id="lv10hScorecardContent" style="font-size:12px;color:#94a3b8;">No test runs yet. Use "Run Test" above.</div>
+    </div>
+
+    <!-- WO-10H: Comparison Table -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Run Comparison</div>
+      <div id="lv10hComparisonContent" style="font-size:12px;color:#94a3b8;">No test runs yet.</div>
     </div>
 
     <!-- Warnings -->
@@ -2912,6 +2966,7 @@
 <script src="js/bio-phase-f-test-harness.js"></script>
 <script src="js/bio-control-center.js"></script>
 <script src="js/focus-canvas.js"></script>
+<script src="js/test-harness.js"></script>
 
 <script>
 /* ── Auto-reset on startup ──────────────────────────────────────
@@ -3762,6 +3817,10 @@ let _lv80IdleCheckInFired = false;
 let _lv80IdleWasThinking  = false;
 
 function lv80ArmIdle(reason) {
+  // WO-10H: Do not arm idle when narrator has claimed the floor
+  if (typeof wo10hIsNarratorTurnActive === "function" && wo10hIsNarratorTurnActive()) {
+    return;
+  }
   lv80ClearIdle();
   _lv80IdleCheckInFired = false;
 
@@ -3815,6 +3874,14 @@ function lv80ClearIdle() {
 }
 
 function lv80FireCheckIn() {
+  // WO-10H: If narrator has claimed the floor, do NOT fire idle check-in.
+  // The narrator turn-claim system handles its own timeout/check-in.
+  if (typeof wo10hIsNarratorTurnActive === "function" && wo10hIsNarratorTurnActive()) {
+    lv80LogTurnDebug({ event: "idle_fire_blocked", reason: "wo10h_narrator_turn_active" });
+    lv80ClearIdle();
+    return;
+  }
+
   // WO-8 fix: if voice is paused, do NOT fire — operator explicitly silenced Lori
   if (window._wo8VoicePaused) {
     lv80LogTurnDebug({ event: "idle_fire_blocked", reason: "wo8_voice_paused" });

@@ -130,6 +130,8 @@
           '<button class="lv80-trainer-btn secondary" onclick="LorevoxTrainerNarrators.skip()">Skip</button>' +
         '</div>' +
       '</div>';
+    // WO-10J: Ensure trainer panel is visible after any re-render
+    setTimeout(function() { root.scrollIntoView({behavior: "smooth", block: "start"}); }, 50);
   }
   function _esc(v) {
     return String(v == null ? "" : v)

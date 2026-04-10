@@ -37,10 +37,14 @@ fuser -k ${PORT}/tcp 2>/dev/null || true
 mkdir -p "$DATA_DIR"/{db,voices,cache_audio,memory,projects,interview,logs,templates}
 
 # ── Start server ──────────────────────────────────────────────────────────
+# Activate venv from parent repo (that's where the shared venv lives)
 cd "$PARENT_REPO_DIR"
 source .venv-gpu/bin/activate
-cd server
+# WO-10L: cwd MUST be the hornelore/server tree so `python -m uvicorn code.api.main:app`
+# loads the hornelore source tree, NOT the stale parent server/ copy.
+cd "$REPO_DIR/server"
 
+echo "[launcher] cwd=$(pwd)"
 echo "[launcher] Starting Hornelore LLM server on port $PORT"
 echo "[launcher] DATA_DIR=$DATA_DIR"
 echo "[launcher] MODEL_PATH=${MODEL_PATH:-<not set — will use MODEL_ID>}"

@@ -34,8 +34,10 @@ mkdir -p "$DATA_DIR"/{db,voices,cache_audio,memory,projects,interview,logs,templ
 # ── Start server ──────────────────────────────────────────────────────────
 cd "$PARENT_REPO_DIR"
 source .venv-tts/bin/activate
-cd server
+# WO-10L: cwd MUST be the hornelore/server tree so uvicorn loads the hornelore copy
+cd "$REPO_DIR/server"
 
+echo "[launcher] cwd=$(pwd)"
 echo "[launcher] Starting Hornelore TTS server on port $TTS_PORT"
 echo "[launcher] DATA_DIR=$DATA_DIR"
 echo "[launcher] TTS_MODEL=$TTS_MODEL  TTS_GPU=$TTS_GPU  SPEAKER=$TTS_SPEAKER_LORI"

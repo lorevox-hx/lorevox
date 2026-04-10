@@ -165,6 +165,19 @@ let state = {
     cameraConsent: false,   // true after user granted facial consent
   },
 
+  /* ── WO-10H Narrator Turn-Claim ─────────────────────────────────
+     Explicit state machine for narrator floor-claim contract.
+     States: idle | awaiting_tts_end | armed_for_narrator | recording | paused | timeout_check
+     ─────────────────────────────────────────────────────────────── */
+  narratorTurn: {
+    state:             "idle",    // current turn state
+    claimTimestamp:     null,     // when narrator claimed the floor (ms epoch)
+    timeoutDeadline:    null,     // when timeout check-in should fire (ms epoch)
+    interruptionBlock:  null,     // reason interruptions are blocked: "narrator_claimed_turn" | null
+    ttsFinishedAt:      null,     // when TTS finished (ms epoch) — null while speaking
+    checkInFired:       false,    // true after one gentle check-in has been sent
+  },
+
   /* ── v8 Interview Projection ────────────────────────────────────
      Live state for conversational template intake.
      Lori asks Bio Builder questionnaire questions during interview;

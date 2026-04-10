@@ -2308,6 +2308,8 @@ async function sendUserMessage(){
   // v7.4D — stop recording immediately on send so we don't capture background
   // audio or Lori's incoming response. Mic stays off; user re-enables when ready.
   if(isRecording) stopRecording();
+  // WO-10H: Release narrator turn-claim on Send
+  if (typeof wo10hReleaseTurn === "function") wo10hReleaseTurn("send_submitted");
 
   // v7.4D — Phase 6: identity-first onboarding state machine.
   // Route through identity extractor. If _advanceIdentityPhase returns true,
@@ -2885,13 +2887,47 @@ let isLoriSpeaking = false;
 
 function unlockAudio(){
   if(_audioUnlocked) return;
-  _audioUnlocked = true;
-  _ttsAudio = new Audio();
-  // Play silence immediately inside the gesture handler to whitelist the element.
-  const silence = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-  _ttsAudio.src = silence;
-  _ttsAudio.play().catch(()=>{});
+
+  // WO-10K: Canonical Web Audio API unlock pattern — create AudioContext,
+  // resume it, and play a 1-sample silent buffer via BufferSource. This is
+  // the most reliable way to satisfy Chrome's autoplay policy and works
+  // even in hidden/background tabs (which break HTMLAudioElement.play()).
+  try {
+    const ctx = window._lvAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    window._lvAudioCtx = ctx;
+    if (ctx.state === "suspended") ctx.resume().catch(()=>{});
+    // Play a 1-sample silent buffer to fully whitelist the context.
+    const silentBuf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = silentBuf;
+    src.connect(ctx.destination);
+    src.start(0);
+    _audioUnlocked = true;
+    console.log("[TTS] AudioContext unlocked via user gesture (state: " + ctx.state + ")");
+  } catch(e){
+    console.warn("[TTS] AudioContext unlock failed: " + (e && e.message || e));
+  }
+
+  // Also keep a persistent HTMLAudioElement as fallback path.
+  try {
+    _ttsAudio = new Audio();
+    _ttsAudio.preload = "auto";
+  } catch(_){}
 }
+
+// WO-10K: Global first-interaction listener — unlock audio on ANY user click/tap/key.
+// This ensures TTS works even if the user's first action isn't Send or Mic.
+(function(){
+  function _globalUnlock(){
+    unlockAudio();
+    document.removeEventListener("click", _globalUnlock, true);
+    document.removeEventListener("touchstart", _globalUnlock, true);
+    document.removeEventListener("keydown", _globalUnlock, true);
+  }
+  document.addEventListener("click", _globalUnlock, true);
+  document.addEventListener("touchstart", _globalUnlock, true);
+  document.addEventListener("keydown", _globalUnlock, true);
+})();
 
 // Strip markdown formatting so TTS doesn't read "asterisk asterisk" etc.
 function _stripMarkdownForTts(text){
@@ -2955,12 +2991,69 @@ async function drainTts(){
           const raw=atob(obj.wav_b64);
           const bytes=new Uint8Array(raw.length);
           for(let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i);
-          const blob=new Blob([bytes],{type:"audio/wav"});
-          const url=URL.createObjectURL(blob);
-          const a=_ttsAudio||new Audio();
-          a.src=url;
-          await new Promise(res=>{ a.onended=a.onerror=res; a.play().catch(res); });
-          URL.revokeObjectURL(url);
+
+          // WO-10K: Use Web Audio API (AudioContext + BufferSource) instead of
+          // HTMLAudioElement. HTMLAudioElement.play() hangs on blob URLs in hidden
+          // tabs and has flaky autoplay whitelisting. AudioContext is already
+          // running (unlocked by first user gesture) and has reliable onended.
+          let playedViaWebAudio = false;
+          if (window._lvAudioCtx) {
+            try {
+              if (window._lvAudioCtx.state === "suspended") {
+                try { await window._lvAudioCtx.resume(); } catch(_){}
+              }
+              // decodeAudioData mutates the buffer, so pass a copy
+              const audioBuffer = await window._lvAudioCtx.decodeAudioData(bytes.buffer.slice(0));
+              await new Promise(res => {
+                const src = window._lvAudioCtx.createBufferSource();
+                src.buffer = audioBuffer;
+                src.connect(window._lvAudioCtx.destination);
+                // Safety timeout: duration + 2s margin
+                const safetyMs = Math.ceil(audioBuffer.duration * 1000) + 2000;
+                const _playTimeout = setTimeout(() => {
+                  console.warn("[TTS] WebAudio playback timed out after " + safetyMs + "ms — forcing continue");
+                  try { src.stop(); } catch(_){}
+                  res();
+                }, safetyMs);
+                src.onended = () => { clearTimeout(_playTimeout); res(); };
+                try { src.start(0); } catch(e) {
+                  clearTimeout(_playTimeout);
+                  console.warn("[TTS] WebAudio start failed: " + e.message);
+                  res();
+                }
+              });
+              playedViaWebAudio = true;
+            } catch(e) {
+              console.warn("[TTS] WebAudio decode/play failed, falling back to HTMLAudio: " + (e && e.message || e));
+            }
+          }
+
+          // Fallback: HTMLAudioElement (only if WebAudio path didn't run)
+          if (!playedViaWebAudio) {
+            const blob=new Blob([bytes],{type:"audio/wav"});
+            const url=URL.createObjectURL(blob);
+            const a=_ttsAudio||new Audio();
+            a.src=url;
+            if(!_audioUnlocked){
+              console.warn("[TTS] Audio not unlocked yet — skipping chunk (waiting for user gesture)");
+              URL.revokeObjectURL(url);
+              continue;
+            }
+            // WO-10J/K: Timeout safeguard — prevents isLoriSpeaking from getting
+            // stuck if audio.play() hangs for any reason (network, decode, edge case).
+            await new Promise(res=>{
+              const _playTimeout=setTimeout(()=>{
+                console.warn("[TTS] HTMLAudio playback timed out after 15s — forcing continue");
+                try{ a.pause(); a.currentTime=0; }catch(_){}
+                res();
+              }, 15000);
+              const _done=()=>{ clearTimeout(_playTimeout); res(); };
+              a.onended=_done;
+              a.onerror=_done;
+              a.play().catch(_done);
+            });
+            URL.revokeObjectURL(url);
+          }
         }
       }catch{}
     }
@@ -2970,6 +3063,14 @@ async function drainTts(){
     // stuck true permanently, silently suppressing all STT forever.
     isLoriSpeaking=false;
     ttsBusy=false;
+
+    // WO-10H: Record TTS finish time and transition narrator turn-claim if pending.
+    if (state.narratorTurn) {
+      state.narratorTurn.ttsFinishedAt = Date.now();
+      if (state.narratorTurn.state === "awaiting_tts_end") {
+        _wo10hTransitionToArmed();
+      }
+    }
   }
 }
 
@@ -2994,7 +3095,15 @@ async function drainTts(){
    Invariant: isLoriSpeaking must NEVER be left stuck at true.
    The finally{} block in drainTts() is the enforced safety net.
 ═══════════════════════════════════════════════════════════════ */
-function toggleRecording(){ unlockAudio(); isRecording?stopRecording():startRecording(); }
+function toggleRecording(){
+  unlockAudio();
+  // WO-10H: If Lori is still speaking TTS, claim next turn instead of starting immediately.
+  if (isLoriSpeaking && !isRecording) {
+    _wo10hClaimTurn();
+    return;
+  }
+  isRecording?stopRecording():startRecording();
+}
 // HTML button calls toggleMic() — alias to toggleRecording.
 function toggleMic(){ toggleRecording(); }
 // Normalise spoken punctuation words produced by Web Speech API.
@@ -4284,7 +4393,8 @@ async function wo8OnNarratorReady(pid) {
       // Fetch confidence level to decide auto-resume behavior
       let confLevel = "medium";
       try {
-        const r = await fetch(`${API.RESUME_PREVIEW}?person_id=${encodeURIComponent(pid)}`);
+        // WO-10K: API.RESUME_PREVIEW is a function, not a string — call it properly
+        const r = await fetch(API.RESUME_PREVIEW(pid));
         if (r.ok) {
           const data = await r.json();
           confLevel = (data.confidence && data.confidence.level) || "medium";
@@ -4550,6 +4660,162 @@ function finalizeOnboarding74() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   WO-10H: Narrator Turn-Claim Contract
+   Explicit state machine for respectful narrator floor-claiming.
+   States: idle → awaiting_tts_end → armed_for_narrator → recording → idle
+═══════════════════════════════════════════════════════════════ */
+
+const WO10H_SILENT_WAIT_MS   = 45000;   // 0-45s: silent wait
+const WO10H_VISUAL_CUE_MS    = 45000;   // 45-60s: subtle visual cue
+const WO10H_CHECKIN_MS        = 60000;   // 60s: one gentle check-in
+
+let _wo10hTimeoutTimer    = null;
+let _wo10hVisualCueTimer  = null;
+
+/** Narrator claims the next turn while Lori TTS is still speaking. */
+function _wo10hClaimTurn() {
+  if (!state.narratorTurn) return;
+  state.narratorTurn.state            = "awaiting_tts_end";
+  state.narratorTurn.claimTimestamp    = Date.now();
+  state.narratorTurn.interruptionBlock = "narrator_claimed_turn";
+  state.narratorTurn.checkInFired      = false;
+  state.narratorTurn.timeoutDeadline   = null;
+
+  // Suppress idle nudges while narrator owns the floor
+  if (typeof lv80ClearIdle === "function") lv80ClearIdle();
+
+  console.log("[WO-10H] Narrator claimed turn — awaiting TTS end.");
+  _wo10hSyncUI();
+}
+window._wo10hClaimTurn = _wo10hClaimTurn;
+
+/** Transition from awaiting_tts_end → armed_for_narrator. Called from drainTts finally. */
+function _wo10hTransitionToArmed() {
+  if (!state.narratorTurn) return;
+  state.narratorTurn.state            = "armed_for_narrator";
+  state.narratorTurn.ttsFinishedAt    = Date.now();
+  state.narratorTurn.interruptionBlock = "narrator_claimed_turn";
+  state.narratorTurn.timeoutDeadline   = Date.now() + WO10H_CHECKIN_MS;
+
+  // Suppress all idle/nudge timers — narrator owns the floor
+  if (typeof lv80ClearIdle === "function") lv80ClearIdle();
+
+  console.log("[WO-10H] TTS finished — narrator armed. Starting capture.");
+
+  // Start recording now that TTS is done
+  if (!isRecording && !_wo8VoicePaused && !listeningPaused) {
+    startRecording();
+    state.narratorTurn.state = "recording";
+  }
+
+  // Arm timeout timers
+  _wo10hArmTimeout();
+  _wo10hSyncUI();
+}
+window._wo10hTransitionToArmed = _wo10hTransitionToArmed;
+
+/** Arm the staged timeout: visual cue at 45s, gentle check-in at 60s. */
+function _wo10hArmTimeout() {
+  _wo10hClearTimeout();
+  if (!state.narratorTurn) return;
+
+  // Visual cue at 45s
+  _wo10hVisualCueTimer = setTimeout(function () {
+    if (state.narratorTurn.state === "idle") return;
+    // Show subtle visual cue
+    const cue = document.getElementById("lv80IdleCue");
+    if (cue) cue.classList.add("visible");
+    console.log("[WO-10H] Visual cue — narrator still has floor.");
+  }, WO10H_VISUAL_CUE_MS);
+
+  // Gentle check-in at 60s — fires only once
+  _wo10hTimeoutTimer = setTimeout(function () {
+    if (state.narratorTurn.state === "idle") return;
+    if (state.narratorTurn.checkInFired) return;
+
+    state.narratorTurn.state = "timeout_check";
+    state.narratorTurn.checkInFired = true;
+
+    console.log("[WO-10H] Timeout check-in — one gentle prompt.");
+
+    // Send one soft, non-intrusive check-in
+    if (typeof sendSystemPrompt === "function") {
+      sendSystemPrompt("[SYSTEM: The narrator claimed the floor but has not submitted yet. This is normal — they may be thinking or typing. Offer ONE very gentle, non-intrusive presence statement. Say something like: 'Take your time. I'm here when you're ready.' Do NOT ask a new question. Do NOT give a memory nudge. Do NOT comment on the silence. One short sentence maximum.]");
+    }
+
+    // Return to armed state after check-in — do NOT clear the claim
+    state.narratorTurn.state = "armed_for_narrator";
+    _wo10hSyncUI();
+  }, WO10H_CHECKIN_MS);
+}
+
+function _wo10hClearTimeout() {
+  if (_wo10hTimeoutTimer) { clearTimeout(_wo10hTimeoutTimer); _wo10hTimeoutTimer = null; }
+  if (_wo10hVisualCueTimer) { clearTimeout(_wo10hVisualCueTimer); _wo10hVisualCueTimer = null; }
+  const cue = document.getElementById("lv80IdleCue");
+  if (cue) cue.classList.remove("visible");
+}
+
+/** Clear narrator turn-claim and return to idle. Called on Send, Cancel, or explicit reset. */
+function wo10hReleaseTurn(reason) {
+  if (!state.narratorTurn) return;
+  const prev = state.narratorTurn.state;
+  state.narratorTurn.state            = "idle";
+  state.narratorTurn.claimTimestamp    = null;
+  state.narratorTurn.timeoutDeadline   = null;
+  state.narratorTurn.interruptionBlock = null;
+  state.narratorTurn.checkInFired      = false;
+  _wo10hClearTimeout();
+
+  if (prev !== "idle") {
+    console.log("[WO-10H] Turn released:", reason || "unknown");
+  }
+  _wo10hSyncUI();
+}
+window.wo10hReleaseTurn = wo10hReleaseTurn;
+
+/** Cancel a pending claim (e.g. narrator decides not to speak). */
+function wo10hCancelClaim() {
+  if (isRecording) stopRecording();
+  wo10hReleaseTurn("narrator_cancelled");
+}
+window.wo10hCancelClaim = wo10hCancelClaim;
+
+/** Check if narrator turn interruption blocking is active. Used by idle/nudge guards. */
+function wo10hIsNarratorTurnActive() {
+  return state.narratorTurn && state.narratorTurn.state !== "idle";
+}
+window.wo10hIsNarratorTurnActive = wo10hIsNarratorTurnActive;
+
+/** Called when narrator shows activity (typing, speaking) — re-arm timeout. */
+function _wo10hOnNarratorActivity() {
+  if (!state.narratorTurn || state.narratorTurn.state === "idle") return;
+  // Reset timeout deadlines since narrator is active
+  state.narratorTurn.timeoutDeadline = Date.now() + WO10H_CHECKIN_MS;
+  _wo10hArmTimeout();
+}
+window._wo10hOnNarratorActivity = _wo10hOnNarratorActivity;
+
+/** Sync header controls and Bug Panel UI for turn state. */
+function _wo10hSyncUI() {
+  // Sync header mic button to show claim state
+  const micBtn = document.getElementById("lv10dMicBtn");
+  const micLabel = document.getElementById("lv10dMicLabel");
+  if (micBtn && state.narratorTurn) {
+    if (state.narratorTurn.state === "awaiting_tts_end") {
+      micBtn.classList.remove("active", "paused");
+      micBtn.classList.add("paused"); // yellow = waiting
+      if (micLabel) micLabel.textContent = "Mic (Claiming…)";
+    } else if (state.narratorTurn.state === "armed_for_narrator" || state.narratorTurn.state === "recording") {
+      micBtn.classList.remove("paused");
+      micBtn.classList.add("active");
+      if (micLabel) micLabel.textContent = "Mic (Your Turn)";
+    }
+  }
+}
+window._wo10hSyncUI = _wo10hSyncUI;
+
+/* ═══════════════════════════════════════════════════════════════
    WO-10D: Header Input Controls + Bug Panel
    Persistent header Mic / Camera toggles wired to real functions.
    Bug Panel with live diagnostics, LLM tuning (WO-10E), route checks.
@@ -4690,6 +4956,18 @@ function lv10dRefreshBugPanel() {
   _v("lv10dBpAffect", hasFresh ? vs.affectState + " (" + (vs.confidence * 100).toFixed(0) + "%)" : (state.runtime?.affectState || "neutral"), hasFresh ? "ok" : "off");
   _v("lv10dBpSignalAge", vs?.timestamp ? ((Date.now() - vs.timestamp) / 1000).toFixed(1) + "s" : "—", hasFresh ? "" : (vs?.timestamp ? "warn" : "off"));
 
+  // WO-10H: Narrator turn-state
+  const nt = state.narratorTurn;
+  if (nt) {
+    const turnCls = nt.state === "idle" ? "off" : (nt.state === "awaiting_tts_end" ? "warn" : "ok");
+    _v("lv10dBpTurnState", nt.state, turnCls);
+    _v("lv10dBpTtsActive", isLoriSpeaking ? "YES" : "no", isLoriSpeaking ? "warn" : "");
+    _v("lv10dBpTtsFinished", nt.ttsFinishedAt ? new Date(nt.ttsFinishedAt).toLocaleTimeString() : "—", nt.ttsFinishedAt ? "" : "off");
+    _v("lv10dBpTurnClaimed", nt.claimTimestamp ? ((Date.now() - nt.claimTimestamp) / 1000).toFixed(1) + "s ago" : "no", nt.claimTimestamp ? "ok" : "off");
+    _v("lv10dBpInterruptBlock", nt.interruptionBlock || "none", nt.interruptionBlock ? "warn" : "");
+    _v("lv10dBpTimeoutAt", nt.timeoutDeadline ? ((nt.timeoutDeadline - Date.now()) / 1000).toFixed(0) + "s" : "—", nt.timeoutDeadline ? (nt.timeoutDeadline < Date.now() ? "err" : "warn") : "off");
+  }
+
   // Memory — check asynchronously
   _v("lv10dBpRollingSummary", "—", "off");
   _v("lv10dBpRecentTurns", "—", "off");
@@ -4707,10 +4985,11 @@ function lv10dRefreshBugPanel() {
 
   // Services
   _v("lv10dBpWs", (ws && wsReady) ? "Connected" : (usingFallback ? "Fallback (SSE)" : "Disconnected"), (ws && wsReady) ? "ok" : "err");
-  fetch(ORIGIN + "/api/health", { method: "GET", signal: AbortSignal.timeout(3000) })
+  // WO-10K: Use real health routes — /api/ping for API, /api/health for TTS
+  fetch(ORIGIN + "/api/ping", { method: "GET", signal: AbortSignal.timeout(3000) })
     .then(r => { _v("lv10dBpApi", r.ok ? "OK" : "ERR " + r.status, r.ok ? "ok" : "err"); })
     .catch(() => { _v("lv10dBpApi", "DOWN", "err"); });
-  fetch((typeof TTS_ORIGIN !== "undefined" ? TTS_ORIGIN : ORIGIN.replace(":8000", ":8001")) + "/health", { method: "GET", signal: AbortSignal.timeout(3000) })
+  fetch(TTS_ORIG + "/api/health", { method: "GET", signal: AbortSignal.timeout(3000) })
     .then(r => { _v("lv10dBpTts", r.ok ? "OK" : "ERR " + r.status, r.ok ? "ok" : "err"); })
     .catch(() => { _v("lv10dBpTts", "DOWN", "err"); });
 
@@ -4721,6 +5000,8 @@ function lv10dRefreshBugPanel() {
   if (vs?.timestamp && (Date.now() - vs.timestamp >= 8000) && cameraActive) warnings.push("Visual signal stale (>8s) — camera may have frozen");
   if (cameraActive && !emotionAware) warnings.push("Camera active but emotionAware is false — state inconsistency");
   if (listeningPaused && isRecording) warnings.push("Mic recording while listening is paused — state conflict");
+  if (nt && nt.state === "awaiting_tts_end" && !isLoriSpeaking) warnings.push("Turn state stuck in awaiting_tts_end but TTS is not active");
+  if (nt && nt.state !== "idle" && nt.checkInFired) warnings.push("Check-in already fired for this claimed turn");
 
   const warnList = document.getElementById("lv10dBpWarnings");
   if (warnList) {
@@ -4736,7 +5017,7 @@ window.lv10dRefreshBugPanel = lv10dRefreshBugPanel;
 /* ── WO-10D: Route health check ── */
 async function lv10dCheckRoutes() {
   const routes = [
-    { label: "health",         url: ORIGIN + "/api/health" },
+    { label: "ping",            url: ORIGIN + "/api/ping" },
     { label: "rolling-summary", url: ORIGIN + "/api/transcript/rolling-summary?person_id=" + (state.person_id || "test") },
     { label: "recent-turns",   url: ORIGIN + "/api/transcript/recent-turns?person_id=" + (state.person_id || "test") + "&session_id=default&limit=1" },
     { label: "history",        url: ORIGIN + "/api/transcript/history?person_id=" + (state.person_id || "test") },
