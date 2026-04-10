@@ -29,10 +29,11 @@ export ATTN_IMPL=${ATTN_IMPL:-flash_attention_2}
 # The old 7168 default was an unsafe ceiling for a 16 GB co-resident stack
 # once WO-10 memory features (rolling summary + thread anchor + recent turns)
 # are active. Chat replies in practice are 1–3 sentences for operator_feedback
-# and 4–8 for content_answer, so 512 is ample headroom without enabling
-# repetition-loop VRAM runaway. Extraction and summary get their own caps.
-export MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-512}
-export MAX_NEW_TOKENS_CHAT=${MAX_NEW_TOKENS_CHAT:-512}
+# and 4–8 for content_answer, so 256 is a safe default that still covers
+# normal operator turns. Raise to 512 manually only after stability is proven.
+# Extraction and summary get their own caps.
+export MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-256}
+export MAX_NEW_TOKENS_CHAT=${MAX_NEW_TOKENS_CHAT:-256}
 export MAX_NEW_TOKENS_EXTRACT=${MAX_NEW_TOKENS_EXTRACT:-128}
 export MAX_NEW_TOKENS_SUMMARY=${MAX_NEW_TOKENS_SUMMARY:-1024}
 

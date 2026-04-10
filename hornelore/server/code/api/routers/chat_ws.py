@@ -14,8 +14,10 @@ _LV_DEBUG = os.getenv("LV_DEV_MODE", "0") in ("1", "true", "True")
 # ── WO-10M: Token cap + VRAM guard configuration ───────────────────────────
 # Pulled from env so the launcher can tune without code edits. The chat cap
 # is the default floor when the UI does not pass an explicit max_new_tokens
-# in params; the UI currently sends 512, so this is primarily a safety net.
-_WO10M_CHAT_CAP = int(os.getenv("MAX_NEW_TOKENS_CHAT", os.getenv("MAX_NEW_TOKENS", "512")))
+# in params. WO-10M post-fix: default 256 (was 512) to start conservative
+# under full Hornelore + Whisper co-residency; raise only after stability
+# is proven green.
+_WO10M_CHAT_CAP = int(os.getenv("MAX_NEW_TOKENS_CHAT", os.getenv("MAX_NEW_TOKENS", "256")))
 _WO10M_CHAT_CAP_HARD = int(os.getenv("MAX_NEW_TOKENS_CHAT_HARD", "1024"))  # absolute ceiling
 _WO10M_GUARD_ENABLED = os.getenv("VRAM_GUARD_ENABLED", "1") in ("1", "true", "True")
 _WO10M_GUARD_BASE_MB = float(os.getenv("VRAM_GUARD_BASE_MB", "600"))

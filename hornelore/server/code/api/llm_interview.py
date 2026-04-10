@@ -15,8 +15,14 @@ raises; these helpers then return safe fallbacks (None / empty lists).
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import List, Optional
+
+# WO-10M: Summary / memoir token cap is launcher-tunable via env var.
+# Used by draft_section_summary() and draft_final_memoir(). Extraction has
+# its own env var (MAX_NEW_TOKENS_EXTRACT) handled in routers/extract.py.
+_WO10M_SUMMARY_CAP = int(os.getenv("MAX_NEW_TOKENS_SUMMARY", "1024"))
 
 
 def _try_call_llm(system_prompt: str, user_prompt: str, *, max_new: int, temp: float, top_p: float, conv_id: Optional[str] = None) -> Optional[str]:
@@ -70,8 +76,11 @@ def draft_section_summary(
     transcript: str,
     person_name: str = "the speaker",
     pronouns: str = "",
-    max_new: int = 420,
+    max_new: Optional[int] = None,
 ) -> Optional[str]:
+    # WO-10M: Honor MAX_NEW_TOKENS_SUMMARY when caller doesn't override.
+    if max_new is None:
+        max_new = _WO10M_SUMMARY_CAP
     """Draft a short end-of-section narrative summary."""
     transcript = (transcript or "").strip()
     if not transcript:
@@ -160,9 +169,12 @@ def draft_final_memoir(
     transcript: str,
     person_name: str,
     pronouns: str = "",
-    max_new: int = 900,
+    max_new: Optional[int] = None,
 ) -> Optional[str]:
     """Draft a short memoir from the full transcript."""
+    # WO-10M: Honor MAX_NEW_TOKENS_SUMMARY when caller doesn't override.
+    if max_new is None:
+        max_new = _WO10M_SUMMARY_CAP
     transcript = (transcript or "").strip()
     if not transcript:
         return None

@@ -1,7 +1,25 @@
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
+
+# WO-10M: Configure application logging BEFORE any module imports fire their
+# module-level loggers. Without this, Python's root logger defaults to WARNING
+# and every logger.info(...) call in the WO-10M instrumentation is silently
+# dropped. The LOG_LEVEL env var lets the launcher dial this up or down
+# without a code edit. Default is INFO so WO-10M guard/cap/extraction markers
+# are visible in api.log.
+_WO10M_LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, _WO10M_LOG_LEVEL, logging.INFO),
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    force=True,  # override any default handler uvicorn may have installed
+)
+# Make sure the two WO-10M-instrumented loggers are at INFO even if a parent
+# filter tries to downgrade them later.
+logging.getLogger("code.api.routers.chat_ws").setLevel(logging.INFO)
+logging.getLogger("lorevox.extract").setLevel(logging.INFO)
 
 # Load .env from repo root before anything else so DATA_DIR, DB_NAME, UI_DIR etc.
 # are always available regardless of how the server was launched.
