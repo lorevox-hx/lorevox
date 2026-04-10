@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import json
 import logging
 import os
@@ -9,6 +10,16 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 _LV_DEBUG = os.getenv("LV_DEV_MODE", "0") in ("1", "true", "True")
+
+# ── WO-10M: Token cap + VRAM guard configuration ───────────────────────────
+# Pulled from env so the launcher can tune without code edits. The chat cap
+# is the default floor when the UI does not pass an explicit max_new_tokens
+# in params; the UI currently sends 512, so this is primarily a safety net.
+_WO10M_CHAT_CAP = int(os.getenv("MAX_NEW_TOKENS_CHAT", os.getenv("MAX_NEW_TOKENS", "512")))
+_WO10M_CHAT_CAP_HARD = int(os.getenv("MAX_NEW_TOKENS_CHAT_HARD", "1024"))  # absolute ceiling
+_WO10M_GUARD_ENABLED = os.getenv("VRAM_GUARD_ENABLED", "1") in ("1", "true", "True")
+_WO10M_GUARD_BASE_MB = float(os.getenv("VRAM_GUARD_BASE_MB", "600"))
+_WO10M_GUARD_PER_TOKEN_MB = float(os.getenv("VRAM_GUARD_PER_TOKEN_MB", "0.14"))
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from transformers import TextIteratorStreamer, StoppingCriteriaList
@@ -44,24 +55,69 @@ async def ws_chat(ws: WebSocket):
     active_person_id: Optional[str] = None
 
     async def generate_and_stream(conv_id: str, user_text: str, params: Dict[str, Any]) -> None:
+      # WO-10M: Flag-outside-except OOM recovery pattern.
+      # The exception object holds references to the stack frame where the
+      # allocator failed, which in turn holds references to the tensors that
+      # blew up. If we try to run recovery logic (empty_cache, mem_get_info,
+      # new allocations) INSIDE the except block, those tensors are still
+      # rooted and the allocator can't reclaim them. We set a flag, exit the
+      # except scope cleanly, and run recovery after the exception object is
+      # garbage-collected.
+      oom_triggered = False
+      generic_exc: Optional[BaseException] = None
+      generic_msg: str = ""
+
       try:
         await _generate_and_stream_inner(ws, ev, conv_id, user_text, params)
-      except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
-        err_str = str(oom_err)
-        is_oom = "out of memory" in err_str.lower() or "CUDA" in err_str
-        if is_oom:
-            logger.error("[chat_ws] CUDA OOM: %s", err_str[:200])
+        return
+      except torch.cuda.OutOfMemoryError as oom_err:
+        oom_triggered = True
+        logger.error("[chat_ws][WO-10M] CUDA OOM caught (torch.cuda.OutOfMemoryError): %s", str(oom_err)[:200])
+      except RuntimeError as rt_err:
+        err_str = str(rt_err)
+        if "out of memory" in err_str.lower() or "CUDA out of memory" in err_str:
+            oom_triggered = True
+            logger.error("[chat_ws][WO-10M] CUDA OOM caught (RuntimeError): %s", err_str[:200])
+        else:
+            generic_exc = rt_err
+            generic_msg = err_str
+            logger.error("[chat_ws] RuntimeError: %s", rt_err, exc_info=True)
+      except Exception as exc:
+        generic_exc = exc
+        generic_msg = str(exc)
+        logger.error("[chat_ws] generate_and_stream failed: %s", exc, exc_info=True)
+
+      # ── Recovery phase: exception scope is now closed, references are
+      #    dropped, allocator can reclaim memory safely. ────────────────────
+      if oom_triggered:
+        # Break any lingering reference cycles from the failed turn.
+        try:
+            gc.collect()
+        except Exception:
+            pass
+        # Attempt cache release. Wrapped defensively because mem_get_info
+        # and empty_cache can themselves raise if the allocator is wedged.
+        vram_after_mb = -1.0
+        try:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            await _ws_send(ws, {"type": "error", "message": "CUDA_OOM: GPU out of memory. VRAM freed — try again."})
-        else:
-            logger.error("[chat_ws] RuntimeError: %s", oom_err, exc_info=True)
-            await _ws_send(ws, {"type": "error", "message": f"Chat backend error: {oom_err}"})
+                vram_after_mb = torch.cuda.mem_get_info()[0] / 1024**2
+        except Exception as cleanup_err:
+            logger.warning("[chat_ws][WO-10M] post-OOM cleanup failed: %s", cleanup_err)
+        logger.info("[chat_ws][WO-10M] post-OOM recovery complete, free VRAM=%.0f MB", vram_after_mb)
+        await _ws_send(ws, {
+            "type": "error",
+            "code": "CUDA_OOM",
+            "message": "GPU ran out of memory mid-generation. VRAM has been freed — please try again.",
+            "vram_free_mb": round(vram_after_mb) if vram_after_mb >= 0 else None,
+        })
+        await _ws_send(ws, {"type": "done", "final_text": "", "oom": True})
+        return
+
+      if generic_exc is not None:
+        await _ws_send(ws, {"type": "error", "message": f"Chat backend error: {generic_msg[:300]}"})
         await _ws_send(ws, {"type": "done", "final_text": ""})
-      except Exception as exc:
-        logger.error("[chat_ws] generate_and_stream failed: %s", exc, exc_info=True)
-        await _ws_send(ws, {"type": "error", "message": f"Chat backend error: {exc}"})
-        await _ws_send(ws, {"type": "done", "final_text": ""})
+        return
 
     async def _generate_and_stream_inner(ws: WebSocket, ev: threading.Event, conv_id: str, user_text: str, params: Dict[str, Any]) -> None:
         # Extract person_id from params (sent by UI)
@@ -126,16 +182,82 @@ async def ws_chat(ws: WebSocket):
         msgs.append({"role": "user", "content": user_text})
         prompt = _apply_chat_template(msgs)
 
-        # ── Diagnostic logging ──
+        # ── WO-10M: Cap enforcement + pre-generation VRAM guard ────────────
+        # Resolve the effective max_new, capped hard at the launcher ceiling
+        # so a misbehaving UI can't request 7168 and blow through our budget.
+        _ui_max_new = int(params.get("max_new_tokens", params.get("max_new", _WO10M_CHAT_CAP)))
+        max_new = max(1, min(_ui_max_new, _WO10M_CHAT_CAP_HARD))
+        if max_new != _ui_max_new:
+            logger.info("[chat_ws][WO-10M] capping max_new %d → %d (hard ceiling %d)",
+                        _ui_max_new, max_new, _WO10M_CHAT_CAP_HARD)
+
+        # Diagnostic: prompt size + current VRAM
         _prompt_tokens = len(tok.encode(prompt))
-        _vram_free = torch.cuda.mem_get_info()[0] / 1024**2 if torch.cuda.is_available() else -1
-        _vram_total = torch.cuda.mem_get_info()[1] / 1024**2 if torch.cuda.is_available() else -1
-        logger.info("[chat_ws] prompt_tokens=%d VRAM=%.0f/%.0f MB free max_new=%s",
-                    _prompt_tokens, _vram_free, _vram_total, params.get("max_new_tokens", 512))
+        try:
+            _vram_free = torch.cuda.mem_get_info()[0] / 1024**2 if torch.cuda.is_available() else -1
+            _vram_total = torch.cuda.mem_get_info()[1] / 1024**2 if torch.cuda.is_available() else -1
+        except Exception as _mem_err:
+            logger.warning("[chat_ws][WO-10M] mem_get_info failed pre-guard: %s", _mem_err)
+            _vram_free, _vram_total = -1.0, -1.0
+
+        # WO-10M: Pre-generation VRAM guard.
+        # Conservative planning formula:
+        #   required_mb = base + (prompt_tokens + max_new) * per_token_mb
+        # base covers the MLP down_proj transient spike (~600 MB on Llama-3.1-8B
+        # 4-bit). per_token_mb of 0.14 covers KV cache (~128 KB/token for GQA)
+        # plus per-token activation overhead. If free VRAM is below this
+        # threshold we refuse the turn cleanly instead of calling generate()
+        # and crashing mid-forward-pass.
+        _planned_seq = min(_prompt_tokens, MAX_CONTEXT_WINDOW) + max_new
+        _required_mb = _WO10M_GUARD_BASE_MB + _planned_seq * _WO10M_GUARD_PER_TOKEN_MB
+        _guard_blocked = False
+        _guard_decision = "disabled"
+        if _WO10M_GUARD_ENABLED and _vram_free >= 0:
+            if _vram_free < _required_mb:
+                # One retry after empty_cache — fragmentation may be the culprit.
+                try:
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    _vram_free = torch.cuda.mem_get_info()[0] / 1024**2
+                except Exception:
+                    pass
+                if _vram_free < _required_mb:
+                    _guard_blocked = True
+                    _guard_decision = "blocked"
+                else:
+                    _guard_decision = "pass_after_flush"
+            else:
+                _guard_decision = "pass"
+
+        logger.info(
+            "[chat_ws][WO-10M] prompt_tokens=%d max_new=%d required=%.0f MB "
+            "free=%.0f/%.0f MB guard=%s",
+            _prompt_tokens, max_new, _required_mb, _vram_free, _vram_total, _guard_decision,
+        )
+
+        if _guard_blocked:
+            logger.warning(
+                "[chat_ws][WO-10M] BLOCKING turn: required=%.0f MB > free=%.0f MB "
+                "(prompt=%d, max_new=%d). Not calling model.generate().",
+                _required_mb, _vram_free, _prompt_tokens, max_new,
+            )
+            await _ws_send(ws, {
+                "type": "error",
+                "code": "VRAM_PRESSURE",
+                "message": "Not enough GPU memory for this turn — please try a shorter message or try again shortly.",
+                "vram_free_mb": round(_vram_free),
+                "required_mb": round(_required_mb),
+                "prompt_tokens": _prompt_tokens,
+            })
+            await _ws_send(ws, {"type": "done", "final_text": "", "blocked": "vram_pressure"})
+            return
 
         # Prep generation — clear cache first for max headroom
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            try:
+                torch.cuda.empty_cache()
+            except Exception:
+                pass
         inputs = tok(prompt, return_tensors="pt").to(model.device)
         # WO-1 VRAM guard: truncate input to MAX_CONTEXT_WINDOW to prevent KV cache OOM
         if inputs["input_ids"].shape[-1] > MAX_CONTEXT_WINDOW:
@@ -147,7 +269,6 @@ async def ws_chat(ws: WebSocket):
         ev.clear()
         stop = StoppingCriteriaList([StopOnEvent(ev)])
 
-        max_new = int(params.get("max_new_tokens", params.get("max_new", 512)))
         temperature = float(params.get("temperature", params.get("temp", 0.8)))
         top_p = float(params.get("top_p", 0.95))
 

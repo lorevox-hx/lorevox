@@ -24,7 +24,33 @@ export PORT=${PORT:-8000}
 export LOAD_IN_4BIT=${LOAD_IN_4BIT:-1}
 export TORCH_DTYPE=${TORCH_DTYPE:-bfloat16}
 export ATTN_IMPL=${ATTN_IMPL:-flash_attention_2}
-export MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-7168}
+
+# WO-10M: Token cap separation by task.
+# The old 7168 default was an unsafe ceiling for a 16 GB co-resident stack
+# once WO-10 memory features (rolling summary + thread anchor + recent turns)
+# are active. Chat replies in practice are 1–3 sentences for operator_feedback
+# and 4–8 for content_answer, so 512 is ample headroom without enabling
+# repetition-loop VRAM runaway. Extraction and summary get their own caps.
+export MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-512}
+export MAX_NEW_TOKENS_CHAT=${MAX_NEW_TOKENS_CHAT:-512}
+export MAX_NEW_TOKENS_EXTRACT=${MAX_NEW_TOKENS_EXTRACT:-128}
+export MAX_NEW_TOKENS_SUMMARY=${MAX_NEW_TOKENS_SUMMARY:-1024}
+
+# WO-10M: VRAM guard thresholds (read by chat_ws.py pre-generation guard).
+# required_mb = VRAM_GUARD_BASE_MB + (prompt_tokens + max_new) * VRAM_GUARD_PER_TOKEN_MB
+# 0.14 MB/token covers KV cache (~128 KB) + forward-pass activation overhead.
+# 600 MB base covers transient MLP down_proj spikes (SwiGLU bottleneck).
+export VRAM_GUARD_BASE_MB=${VRAM_GUARD_BASE_MB:-600}
+export VRAM_GUARD_PER_TOKEN_MB=${VRAM_GUARD_PER_TOKEN_MB:-0.14}
+export VRAM_GUARD_ENABLED=${VRAM_GUARD_ENABLED:-1}
+
+# WO-10M: Allocator fragmentation mitigation.
+# Long-running WebSocket inference accumulates fixed-size segments in the
+# PyTorch CUDA allocator; a large transient allocation can then fail even
+# with enough total free VRAM, because no single segment is big enough.
+# expandable_segments lets the allocator re-map physical VRAM across
+# segment boundaries so small gaps don't block large tensors.
+export PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}
 
 # STT (served on this port alongside the LLM)
 export STT_MODEL=${STT_MODEL:-large-v3}
@@ -49,5 +75,8 @@ echo "[launcher] Starting Hornelore LLM server on port $PORT"
 echo "[launcher] DATA_DIR=$DATA_DIR"
 echo "[launcher] MODEL_PATH=${MODEL_PATH:-<not set — will use MODEL_ID>}"
 echo "[launcher] STT_MODEL=$STT_MODEL  STT_GPU=$STT_GPU"
+echo "[launcher] WO-10M caps: chat=$MAX_NEW_TOKENS_CHAT extract=$MAX_NEW_TOKENS_EXTRACT summary=$MAX_NEW_TOKENS_SUMMARY"
+echo "[launcher] WO-10M VRAM guard: enabled=$VRAM_GUARD_ENABLED base=${VRAM_GUARD_BASE_MB}MB per_token=${VRAM_GUARD_PER_TOKEN_MB}MB"
+echo "[launcher] WO-10M allocator: PYTORCH_CUDA_ALLOC_CONF=$PYTORCH_CUDA_ALLOC_CONF"
 
 python -m uvicorn code.api.main:app --host "$HOST" --port "$PORT"

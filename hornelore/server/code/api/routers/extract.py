@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from typing import Any, Dict, List, Optional
 
@@ -309,7 +310,15 @@ def _extract_via_llm(answer: str, current_section: Optional[str], current_target
     # FIX-3: Use a unique ephemeral conv_id for each extraction call to prevent
     # cross-narrator context contamination via shared session/RAG state.
     ephemeral_conv_id = f"_extract_{_uuid.uuid4().hex[:12]}"
-    raw = _try_call_llm(system, user, max_new=600, temp=0.15, top_p=0.9, conv_id=ephemeral_conv_id)
+    # WO-10M: Extraction output is a small JSON array (typically 3–8 items).
+    # The old 600-token cap allowed the LLM to generate verbose prose or
+    # multiple JSON blobs, both of which waste VRAM and confuse the parser.
+    # 128 is generous for a structured JSON response. One-shot only — parse
+    # failures fall straight through to rules, never re-call the LLM.
+    _extract_cap = int(os.getenv("MAX_NEW_TOKENS_EXTRACT", "128"))
+    logger.info("[extract][WO-10M] calling LLM max_new=%d temp=0.15 conv=%s",
+                _extract_cap, ephemeral_conv_id)
+    raw = _try_call_llm(system, user, max_new=_extract_cap, temp=0.15, top_p=0.9, conv_id=ephemeral_conv_id)
     if not raw:
         # Empty response: mark temporarily unavailable so we retry soon,
         # but do not get stuck for 2 minutes.
