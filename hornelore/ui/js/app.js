@@ -190,6 +190,10 @@ function _onModelReady() {
    INIT
 ═══════════════════════════════════════════════════════════════ */
 window.onload = async () => {
+  // WO-11B: hard reset trainer/capture state on startup to prevent contamination
+  if (typeof window.lv80ClearTrainerAndCaptureState === "function") {
+    window.lv80ClearTrainerAndCaptureState();
+  }
   checkStatus();
   connectWebSocket();
   await initSession();
@@ -377,8 +381,10 @@ function buildRuntime71() {
   const vs                  = (state.session && state.session.visualSignals) || null;
   const baselineEstablished = !!(state.session && state.session.affectBaseline && state.session.affectBaseline.established);
 
+  // WO-10G: cameraActive must be true for visual signals to be considered.
+  // Prevents stale signals leaking through the 8s window after camera off.
   const hasFreshLiveAffect = !!(
-    vs && vs.affectState && vs.timestamp && (Date.now() - vs.timestamp < 8000)
+    cameraActive && vs && vs.affectState && vs.timestamp && (Date.now() - vs.timestamp < 8000)
   );
 
   const affect_state      = hasFreshLiveAffect ? vs.affectState           : (state.runtime?.affectState||"neutral");
@@ -652,7 +658,11 @@ async function refreshPeople(){
   try{
     const r=await fetch(API.PEOPLE+"?limit=200");
     const j=await r.json();
-    const items=j.items||j.people||j||[];
+    let items=j.items||j.people||j||[];
+    // WO-11B: filter to Hornelore family only
+    if (typeof _horneloreFilterVisiblePeople === "function") {
+      items = _horneloreFilterVisiblePeople(items);
+    }
     renderPeople(items);
     // v8: cache for narrator card UI
     if (state?.narratorUi) {
@@ -832,6 +842,11 @@ async function loadPerson(pid){
 async function lvxSwitchNarratorSafe(pid){
   if (!pid) return;
   if (pid === state.person_id) return;
+
+  // WO-11B: hard reset trainer/capture state before any narrator switch
+  if (typeof window.lv80ClearTrainerAndCaptureState === "function") {
+    window.lv80ClearTrainerAndCaptureState();
+  }
 
   // ── v9.0 HARD RESET on narrator switch ──────────────────────
   // Purge ALL narrator-scoped state so nothing bleeds across narrators.
@@ -2362,8 +2377,10 @@ async function sendUserMessage(){
       }
     } catch(e) {}
     console.log("[Lori 7.1] runtime71 → model:", JSON.stringify(_rt71, null, 2));
+    const _llmT = (window._lv10dLlmParams && window._lv10dLlmParams.temperature) || 0.7;
+    const _llmM = (window._lv10dLlmParams && window._lv10dLlmParams.max_new_tokens) || 512;
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
-      message:payload,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71}}));
+      message:payload,params:{person_id:state.person_id,temperature:_llmT,max_new_tokens:_llmM,runtime71:_rt71}}));
     // Safety timeout: if no response within 30s, unstick the UI
     // WO-S3: Guard against stacked unavailable messages — only show once
     const _sendTimestamp = Date.now();
@@ -2398,8 +2415,10 @@ async function sendSystemPrompt(instruction){
     setLoriState("thinking");
     currentAssistantBubble=bubble;
     console.log("[Lori 7.1] runtime71 (sys) → model:", JSON.stringify(_rt71sys, null, 2));
+    const _llmTs = (window._lv10dLlmParams && window._lv10dLlmParams.temperature) || 0.7;
+    const _llmMs = (window._lv10dLlmParams && window._lv10dLlmParams.max_new_tokens) || 512;
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
-      message:instruction,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71sys}}));
+      message:instruction,params:{person_id:state.person_id,temperature:_llmTs,max_new_tokens:_llmMs,runtime71:_rt71sys}}));
     // Safety timeout: if no response within 30s, unstick the UI
     setTimeout(()=>{
       if(currentAssistantBubble===bubble && _bubbleBody(bubble)?.textContent==="…"){
@@ -4126,6 +4145,92 @@ window.lv80StartTrainerInterview = async function () {
 };
 
 /**
+ * WO-11B: Hard reset helper for trainer/capture state.
+ * Clears trainer flow, listening state, mic UI, and pending capture.
+ * Called on: startup, narrator switch, trainer finish, trainer skip.
+ */
+window.lv80ClearTrainerAndCaptureState = function () {
+  try {
+    if (window.LorevoxTrainerNarrators) {
+      window.LorevoxTrainerNarrators.reset();
+    }
+  } catch (_) {}
+
+  try {
+    listeningPaused = false;
+  } catch (_) {}
+
+  try {
+    if (typeof recognition !== "undefined" && recognition) {
+      recognition.onend = recognition.onend || null;
+      recognition.stop();
+    }
+  } catch (_) {}
+
+  try {
+    isRecording = false;
+  } catch (_) {}
+
+  try {
+    const mic = document.getElementById("btnMic");
+    if (mic) mic.classList.remove("mic-active");
+  } catch (_) {}
+
+  try {
+    const pauseBtn = document.getElementById("btnPause");
+    if (pauseBtn) {
+      pauseBtn.classList.remove("paused");
+      pauseBtn.textContent = "Pause";
+    }
+  } catch (_) {}
+};
+
+/**
+ * WO-11B: Pause/Resume listening toggle.
+ * Pause stops speech recognition immediately and prevents auto-restart.
+ * Resume returns to ready state — capture does not auto-restart.
+ */
+window.lv80TogglePauseListening = function () {
+  try {
+    const pauseBtn = document.getElementById("btnPause");
+
+    if (!listeningPaused) {
+      listeningPaused = true;
+
+      try {
+        if (typeof recognition !== "undefined" && recognition) {
+          recognition.stop();
+        }
+      } catch (_) {}
+
+      isRecording = false;
+
+      const mic = document.getElementById("btnMic");
+      if (mic) mic.classList.remove("mic-active");
+
+      if (pauseBtn) {
+        pauseBtn.classList.add("paused");
+        pauseBtn.textContent = "Resume";
+      }
+
+      console.log("[WO-11B] listening paused");
+      return;
+    }
+
+    listeningPaused = false;
+
+    if (pauseBtn) {
+      pauseBtn.classList.remove("paused");
+      pauseBtn.textContent = "Pause";
+    }
+
+    console.log("[WO-11B] listening resumed");
+  } catch (e) {
+    console.warn("[WO-11B] pause toggle failed", e);
+  }
+};
+
+/**
  * WO-8: Fire resume system prompt when narrator is opened.
  * Hooks into the narrator load flow after identity is confirmed ready.
  */
@@ -4443,3 +4548,256 @@ function finalizeOnboarding74() {
 
   appendLoriOnboardingMessage("Whenever you're ready, we can begin at the beginning. I'll start by helping place your story in time.");
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-10D: Header Input Controls + Bug Panel
+   Persistent header Mic / Camera toggles wired to real functions.
+   Bug Panel with live diagnostics, LLM tuning (WO-10E), route checks.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── WO-10D: LLM tuning parameters (WO-10E) ── */
+window._lv10dLlmParams = { temperature: 0.7, max_new_tokens: 512 };
+
+function lv10dSetLlmParam(key, value) {
+  window._lv10dLlmParams[key] = Number(value);
+  console.log("[WO-10E] LLM param set:", key, "=", Number(value));
+}
+window.lv10dSetLlmParam = lv10dSetLlmParam;
+
+/* ── WO-10D: Header Mic toggle ──
+   Wires to real wo8PauseListening / wo8ResumeListening when WO-8 voice
+   is active, otherwise uses toggleRecording / stopRecording. */
+function lv10dToggleMic() {
+  // If WO-8 voice is paused, resume it
+  if (_wo8VoicePaused || listeningPaused) {
+    if (typeof wo8ResumeListening === "function") wo8ResumeListening();
+    // Also clear WO-11B pause
+    listeningPaused = false;
+    const pauseBtn = document.getElementById("btnPause");
+    if (pauseBtn) { pauseBtn.classList.remove("paused"); pauseBtn.textContent = "Pause"; }
+    lv10dSyncHeaderControls();
+    return;
+  }
+  // If mic is active, pause/stop it
+  if (isRecording) {
+    if (typeof wo8PauseListening === "function") wo8PauseListening();
+    lv10dSyncHeaderControls();
+    return;
+  }
+  // Mic is off — start recording
+  if (typeof startRecording === "function") startRecording();
+  lv10dSyncHeaderControls();
+}
+window.lv10dToggleMic = lv10dToggleMic;
+
+/* ── WO-10D: Header Camera toggle ──
+   Camera ON must go through consent path. Camera OFF calls stopEmotionEngine. */
+function lv10dToggleCamera() {
+  if (cameraActive) {
+    if (typeof stopEmotionEngine === "function") stopEmotionEngine();
+    lv10dSyncHeaderControls();
+    return;
+  }
+  // Camera ON — must go through consent
+  if (typeof beginCameraConsent74 === "function") {
+    beginCameraConsent74({ cameraForPacing: true, profilePhotoEnabled: false }).then(function () {
+      lv10dSyncHeaderControls();
+    });
+  } else if (typeof startEmotionEngine === "function") {
+    startEmotionEngine().then(function () {
+      lv10dSyncHeaderControls();
+    });
+  }
+}
+window.lv10dToggleCamera = lv10dToggleCamera;
+
+/* ── WO-10D: Sync header control visuals from real state ── */
+function lv10dSyncHeaderControls() {
+  const micBtn = document.getElementById("lv10dMicBtn");
+  const camBtn = document.getElementById("lv10dCamBtn");
+  const micLabel = document.getElementById("lv10dMicLabel");
+  const camLabel = document.getElementById("lv10dCamLabel");
+
+  if (micBtn) {
+    micBtn.classList.remove("active", "paused");
+    if (_wo8VoicePaused || listeningPaused) {
+      micBtn.classList.add("paused");
+      if (micLabel) micLabel.textContent = "Mic (Paused)";
+    } else if (isRecording) {
+      micBtn.classList.add("active");
+      if (micLabel) micLabel.textContent = "Mic (On)";
+    } else {
+      if (micLabel) micLabel.textContent = "Mic";
+    }
+  }
+
+  if (camBtn) {
+    camBtn.classList.remove("active", "paused");
+    if (cameraActive) {
+      camBtn.classList.add("active");
+      if (camLabel) camLabel.textContent = "Cam (On)";
+    } else {
+      if (camLabel) camLabel.textContent = "Cam";
+    }
+  }
+
+  // Also sync inputState for Bug Panel
+  if (state.inputState) {
+    state.inputState.micActive = !!isRecording;
+    state.inputState.micPaused = !!(_wo8VoicePaused || listeningPaused);
+    state.inputState.cameraActive = !!cameraActive;
+    state.inputState.cameraConsent = !!(state.session?.onboarding?.cameraForPacing);
+  }
+}
+window.lv10dSyncHeaderControls = lv10dSyncHeaderControls;
+
+/* ── WO-10D: Bug Panel refresh ── */
+let _lv10dBugPanelTimer = null;
+
+function lv10dRefreshBugPanel() {
+  const panel = document.getElementById("lv10dBugPanel");
+  if (!panel) return;
+
+  // Sync header controls first
+  lv10dSyncHeaderControls();
+
+  const _v = (id, text, cls) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = "lv10d-bp-value" + (cls ? " " + cls : "");
+  };
+
+  // Session
+  const narratorName = document.getElementById("lv80ActiveNarratorName");
+  _v("lv10dBpNarrator", narratorName?.textContent || "—");
+  _v("lv10dBpPid", state.person_id || "—", state.person_id ? "" : "off");
+  _v("lv10dBpMode", getCurrentMode());
+  _v("lv10dBpPassEra", getCurrentPass() + " / " + (getCurrentEra() || "—"));
+  _v("lv10dBpRole", getAssistantRole());
+  _v("lv10dBpLlmReady", _llmReady ? "Yes" : "No", _llmReady ? "ok" : "err");
+
+  // Inputs
+  _v("lv10dBpMic", isRecording ? "ON" : "OFF", isRecording ? "ok" : "off");
+  _v("lv10dBpPaused", listeningPaused ? "YES" : "no", listeningPaused ? "warn" : "");
+  _v("lv10dBpWo8Paused", _wo8VoicePaused ? "YES" : "no", _wo8VoicePaused ? "warn" : "");
+  _v("lv10dBpCam", cameraActive ? "ON" : "OFF", cameraActive ? "ok" : "off");
+  _v("lv10dBpEmotion", emotionAware ? "ON" : "OFF", emotionAware ? "ok" : "off");
+
+  // Affect / visual signals
+  const vs = state.session?.visualSignals;
+  const hasFresh = !!(vs?.affectState && vs?.timestamp && (Date.now() - vs.timestamp < 8000));
+  _v("lv10dBpAffect", hasFresh ? vs.affectState + " (" + (vs.confidence * 100).toFixed(0) + "%)" : (state.runtime?.affectState || "neutral"), hasFresh ? "ok" : "off");
+  _v("lv10dBpSignalAge", vs?.timestamp ? ((Date.now() - vs.timestamp) / 1000).toFixed(1) + "s" : "—", hasFresh ? "" : (vs?.timestamp ? "warn" : "off"));
+
+  // Memory — check asynchronously
+  _v("lv10dBpRollingSummary", "—", "off");
+  _v("lv10dBpRecentTurns", "—", "off");
+  if (state.person_id) {
+    const pid = state.person_id;
+    // Rolling summary check
+    fetch(ORIGIN + "/api/transcript/rolling-summary?person_id=" + pid, { method: "GET" })
+      .then(r => { _v("lv10dBpRollingSummary", r.ok ? "OK (" + r.status + ")" : "ERR " + r.status, r.ok ? "ok" : "err"); })
+      .catch(() => { _v("lv10dBpRollingSummary", "UNREACHABLE", "err"); });
+    // Recent turns check
+    fetch(ORIGIN + "/api/transcript/recent-turns?person_id=" + pid + "&session_id=default&limit=1", { method: "GET" })
+      .then(r => { _v("lv10dBpRecentTurns", r.ok ? "OK (" + r.status + ")" : "ERR " + r.status, r.ok ? "ok" : "err"); })
+      .catch(() => { _v("lv10dBpRecentTurns", "UNREACHABLE", "err"); });
+  }
+
+  // Services
+  _v("lv10dBpWs", (ws && wsReady) ? "Connected" : (usingFallback ? "Fallback (SSE)" : "Disconnected"), (ws && wsReady) ? "ok" : "err");
+  fetch(ORIGIN + "/api/health", { method: "GET", signal: AbortSignal.timeout(3000) })
+    .then(r => { _v("lv10dBpApi", r.ok ? "OK" : "ERR " + r.status, r.ok ? "ok" : "err"); })
+    .catch(() => { _v("lv10dBpApi", "DOWN", "err"); });
+  fetch((typeof TTS_ORIGIN !== "undefined" ? TTS_ORIGIN : ORIGIN.replace(":8000", ":8001")) + "/health", { method: "GET", signal: AbortSignal.timeout(3000) })
+    .then(r => { _v("lv10dBpTts", r.ok ? "OK" : "ERR " + r.status, r.ok ? "ok" : "err"); })
+    .catch(() => { _v("lv10dBpTts", "DOWN", "err"); });
+
+  // Warnings
+  const warnings = [];
+  if (!_llmReady) warnings.push("LLM not ready — model still warming up");
+  if (!(ws && wsReady)) warnings.push("WebSocket disconnected");
+  if (vs?.timestamp && (Date.now() - vs.timestamp >= 8000) && cameraActive) warnings.push("Visual signal stale (>8s) — camera may have frozen");
+  if (cameraActive && !emotionAware) warnings.push("Camera active but emotionAware is false — state inconsistency");
+  if (listeningPaused && isRecording) warnings.push("Mic recording while listening is paused — state conflict");
+
+  const warnList = document.getElementById("lv10dBpWarnings");
+  if (warnList) {
+    if (warnings.length === 0) {
+      warnList.innerHTML = '<li style="color:#4ade80;">No warnings</li>';
+    } else {
+      warnList.innerHTML = warnings.map(w => '<li>' + w.replace(/</g, '&lt;') + '</li>').join("");
+    }
+  }
+}
+window.lv10dRefreshBugPanel = lv10dRefreshBugPanel;
+
+/* ── WO-10D: Route health check ── */
+async function lv10dCheckRoutes() {
+  const routes = [
+    { label: "health",         url: ORIGIN + "/api/health" },
+    { label: "rolling-summary", url: ORIGIN + "/api/transcript/rolling-summary?person_id=" + (state.person_id || "test") },
+    { label: "recent-turns",   url: ORIGIN + "/api/transcript/recent-turns?person_id=" + (state.person_id || "test") + "&session_id=default&limit=1" },
+    { label: "history",        url: ORIGIN + "/api/transcript/history?person_id=" + (state.person_id || "test") },
+    { label: "sessions",       url: ORIGIN + "/api/transcript/sessions?person_id=" + (state.person_id || "test") },
+    { label: "thread-anchor",  url: ORIGIN + "/api/transcript/thread-anchor?person_id=" + (state.person_id || "test") },
+  ];
+  const results = [];
+  for (const r of routes) {
+    try {
+      const resp = await fetch(r.url, { method: "GET", signal: AbortSignal.timeout(5000) });
+      results.push(r.label + ": " + resp.status + (resp.ok ? " OK" : " FAIL"));
+    } catch (e) {
+      results.push(r.label + ": UNREACHABLE");
+    }
+  }
+  console.log("[WO-10D] Route check:\n" + results.join("\n"));
+  alert("Route Check Results:\n\n" + results.join("\n"));
+}
+window.lv10dCheckRoutes = lv10dCheckRoutes;
+
+/* ── WO-10D: Copy diagnostics to clipboard ── */
+function lv10dCopyDiag() {
+  const diag = {
+    ts: new Date().toISOString(),
+    narrator: document.getElementById("lv80ActiveNarratorName")?.textContent || null,
+    person_id: state.person_id,
+    mode: getCurrentMode(),
+    pass: getCurrentPass(),
+    era: getCurrentEra(),
+    role: getAssistantRole(),
+    llmReady: _llmReady,
+    mic: { recording: isRecording, paused: listeningPaused, wo8Paused: _wo8VoicePaused },
+    camera: { active: cameraActive, emotionAware: emotionAware },
+    visualSignals: state.session?.visualSignals || null,
+    ws: { connected: !!(ws && wsReady), fallback: usingFallback },
+    llmParams: window._lv10dLlmParams,
+  };
+  const text = JSON.stringify(diag, null, 2);
+  navigator.clipboard.writeText(text).then(() => {
+    console.log("[WO-10D] Diagnostics copied to clipboard.");
+    alert("Diagnostics copied to clipboard.");
+  }).catch(() => {
+    console.log("[WO-10D] Diagnostics:\n" + text);
+    alert("Copy failed — see console for diagnostics.");
+  });
+}
+window.lv10dCopyDiag = lv10dCopyDiag;
+
+/* ── WO-10D: Auto-refresh Bug Panel while open ── */
+(function () {
+  const panel = document.getElementById("lv10dBugPanel");
+  if (!panel) return;
+  panel.addEventListener("toggle", function (e) {
+    if (panel.matches(":popover-open")) {
+      lv10dRefreshBugPanel();
+      _lv10dBugPanelTimer = setInterval(lv10dRefreshBugPanel, 2000);
+    } else {
+      if (_lv10dBugPanelTimer) { clearInterval(_lv10dBugPanelTimer); _lv10dBugPanelTimer = null; }
+    }
+  });
+})();
+
+/* ── WO-10D: Periodic header control sync (every 1s) ── */
+setInterval(lv10dSyncHeaderControls, 1000);

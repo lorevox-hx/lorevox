@@ -554,21 +554,7 @@
       // 2. Load the person
       await loadPerson(pid);
 
-      // WO-11: bind trainer narrator metadata in UI state
-      try {
-        if (tpl._trainer && window.LorevoxTrainerNarrators) {
-          window.LorevoxTrainerNarrators.bindNarratorMeta(pid, {
-            trainer: true,
-            style: tpl._trainerStyle || "structured",
-            title: tpl._trainerTitle || "",
-            prompt: tpl._trainerPrompt || "",
-            sourceTemplate: tpl._note || tpl._template || "trainer"
-          });
-          console.log("[preload] Bound trainer narrator meta for " + pid);
-        }
-      } catch (e) {
-        console.warn("[preload] Trainer meta bind failed", e);
-      }
+      // WO-11B: trainer launch is UI-only and does not bind through narrator preload.
 
       // 3. Populate profile
       var prof = _buildProfile(tpl);

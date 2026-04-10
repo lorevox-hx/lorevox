@@ -1,7 +1,10 @@
-/* trainer-narrators.js — WO-11 Trainer Narrators
+/* trainer-narrators.js — WO-11 Trainer Narrators (WO-11B stabilized)
    Shatner + Dolly coaching flow for narrator onboarding.
    Load order: after state.js, before app.js/interview.js use.
    Exposes: window.LorevoxTrainerNarrators
+
+   WO-11B: Trainers are UI-only launcher actions.
+   They never create person records or bind narrator metadata.
 */
 (function () {
   "use strict";
@@ -97,8 +100,8 @@
       return;
     }
     var styleLabel = s.style === "structured"
-      ? "Trainer Narrator: Short, clear answers"
-      : "Trainer Narrator: Warm, storytelling answers";
+      ? "Shatner Trainer \u2014 Short, clear answers"
+      : "Dolly Trainer \u2014 Warm, storytelling answers";
     var loriHtml = step.lori.map(function (line) {
       return '<div class="lv80-trainer-lori-line">' + _esc(line) + '</div>';
     }).join("");
@@ -168,8 +171,16 @@
     var s = _ensureTrainerState();
     if (!s) return;
     s.active = false;
+    s.personId = null;
+    s.style = null;
     s.completed = true;
     _renderPanel();
+
+    // WO-11B: hard reset trainer/capture state
+    if (typeof window.lv80ClearTrainerAndCaptureState === "function") {
+      window.lv80ClearTrainerAndCaptureState();
+    }
+
     if (typeof window.lv80StartTrainerInterview === "function") {
       window.lv80StartTrainerInterview();
     }
@@ -178,16 +189,7 @@
     var s = _ensureTrainerState();
     return !!(s && s.active);
   }
-  function bindNarratorMeta(personId, meta) {
-    if (typeof state === "undefined") return;
-    if (!state.narratorTrainerMeta) state.narratorTrainerMeta = {};
-    state.narratorTrainerMeta[personId] = meta || {};
-  }
-  function getNarratorMeta(personId) {
-    if (typeof state === "undefined") return null;
-    var map = state.narratorTrainerMeta || {};
-    return map[personId] || null;
-  }
+  // WO-11B: removed bindNarratorMeta/getNarratorMeta — trainers are UI-only
   window.LorevoxTrainerNarrators = {
     start: start,
     next: next,
@@ -196,8 +198,6 @@
     finish: finish,
     isActive: isActive,
     render: _renderPanel,
-    reset: _reset,
-    bindNarratorMeta: bindNarratorMeta,
-    getNarratorMeta: getNarratorMeta
+    reset: _reset
   };
 })();

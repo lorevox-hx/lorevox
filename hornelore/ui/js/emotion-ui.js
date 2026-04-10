@@ -78,6 +78,11 @@ async function startEmotionEngine(){
     const started = await LoreVoxEmotion.start();
     if (started) {
       cameraActive=true;
+      // WO-10G: Sync inputState truth model
+      if (typeof state !== "undefined" && state.inputState) {
+        state.inputState.cameraActive = true;
+        state.inputState.cameraConsent = true;
+      }
       updateEmotionAwareBtn();
       // Step 3 diagnostic — confirm srcObject is set after camera start.
       const videoEl = document.querySelector("video[playsinline]");
@@ -101,6 +106,24 @@ function stopEmotionEngine(){
   if(typeof LoreVoxEmotion !== "undefined") LoreVoxEmotion.stop();
   cameraActive=false;
   updateEmotionAwareBtn();
+
+  // WO-10G: Hard-clear visual signals when camera turns off.
+  // Prevents stale affect data from persisting in state and leaking into
+  // buildRuntime71() even after the 8s threshold (race window).
+  if (typeof state !== "undefined" && state.session && state.session.visualSignals) {
+    state.session.visualSignals.affectState     = null;
+    state.session.visualSignals.confidence      = 0;
+    state.session.visualSignals.gazeOnScreen    = null;
+    state.session.visualSignals.blendConfidence = 0;
+    state.session.visualSignals.timestamp       = null;
+  }
+
+  // WO-10G: Sync inputState truth model
+  if (typeof state !== "undefined" && state.inputState) {
+    state.inputState.cameraActive = false;
+  }
+
+  console.log("[WO-10G] Camera stopped — visual signals cleared.");
 }
 
 // Called by emotion.js when affect state changes.

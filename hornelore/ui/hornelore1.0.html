@@ -312,6 +312,120 @@
       transition: background 0.2s;
     }
     #lv80SendBtn:hover { background: #4f46e5; }
+    /* WO-11B: Pause/Resume button */
+    #btnPause {
+      flex-shrink: 0;
+      background: rgba(30,41,59,0.7);
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    #btnPause.paused {
+      background: rgba(234,179,8,0.14);
+      border-color: rgba(234,179,8,0.45);
+      color: #fde68a;
+    }
+
+    /* ── WO-10D: Header input controls ── */
+    .lv10d-header-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 8px;
+    }
+    .lv10d-ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(30,41,59,0.6);
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .lv10d-ctrl-btn:hover { border-color: rgba(99,102,241,0.4); color: #cbd5e1; }
+    .lv10d-ctrl-btn .lv10d-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #475569;
+      transition: background 0.3s;
+    }
+    .lv10d-ctrl-btn.active .lv10d-dot { background: #4ade80; }
+    .lv10d-ctrl-btn.active { border-color: rgba(74,222,128,0.3); color: #cbd5e1; }
+    .lv10d-ctrl-btn.paused .lv10d-dot { background: #fbbf24; }
+    .lv10d-ctrl-btn.paused { border-color: rgba(251,191,36,0.3); color: #fde68a; }
+
+    /* ── WO-10D: Bug Panel popover ── */
+    #lv10dBugPanel {
+      position: fixed;
+      inset: unset;
+      top: 60px;
+      right: 16px;
+      width: 420px;
+      max-height: calc(100dvh - 80px);
+      overflow-y: auto;
+      background: rgba(15,23,42,0.97);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 12px;
+      color: #cbd5e1;
+      padding: 0;
+      z-index: 100;
+    }
+    .lv10d-bp-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid rgba(99,102,241,0.15);
+    }
+    .lv10d-bp-title {
+      font-size: 16px; font-weight: 600; color: #e2e8f0; margin: 0 0 2px;
+    }
+    .lv10d-bp-subtitle {
+      font-size: 12px; color: #64748b; margin: 0;
+    }
+    .lv10d-bp-section {
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(99,102,241,0.08);
+    }
+    .lv10d-bp-section:last-child { border-bottom: none; }
+    .lv10d-bp-section-title {
+      font-size: 13px; font-weight: 600; color: #a5b4fc;
+      margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .lv10d-bp-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 3px 0; font-size: 13px;
+    }
+    .lv10d-bp-label { color: #94a3b8; }
+    .lv10d-bp-value { color: #e2e8f0; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px; }
+    .lv10d-bp-value.ok { color: #4ade80; }
+    .lv10d-bp-value.warn { color: #fbbf24; }
+    .lv10d-bp-value.err { color: #f87171; }
+    .lv10d-bp-value.off { color: #475569; }
+    .lv10d-bp-warnings {
+      margin: 0; padding: 0; list-style: none;
+    }
+    .lv10d-bp-warnings li {
+      font-size: 12px; color: #fbbf24; padding: 2px 0;
+    }
+    .lv10d-bp-warnings li::before {
+      content: "⚠ "; font-size: 11px;
+    }
+    .lv10d-bp-actions {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;
+    }
+    .lv10d-bp-action-btn {
+      font-size: 12px; padding: 4px 10px;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3);
+      color: #a5b4fc; border-radius: 6px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .lv10d-bp-action-btn:hover { background: rgba(99,102,241,0.25); }
 
     /* Thinking dots */
     .dot-bounce { display: inline-flex; gap: 4px; align-items: center; }
@@ -2007,6 +2121,25 @@
     </span>
 
     <div>
+      <!-- WO-10D: Persistent header input controls -->
+      <div class="lv10d-header-controls" id="lv10dHeaderControls">
+        <button class="lv10d-ctrl-btn" id="lv10dMicBtn" type="button"
+                onclick="lv10dToggleMic()" title="Toggle microphone">
+          <span class="lv10d-dot" id="lv10dMicDot"></span>
+          <span id="lv10dMicLabel">Mic</span>
+        </button>
+        <button class="lv10d-ctrl-btn" id="lv10dCamBtn" type="button"
+                onclick="lv10dToggleCamera()" title="Toggle camera">
+          <span class="lv10d-dot" id="lv10dCamDot"></span>
+          <span id="lv10dCamLabel">Cam</span>
+        </button>
+        <button class="lv10d-ctrl-btn" id="lv10dBugBtn" type="button"
+                popovertarget="lv10dBugPanel" title="Open Bug Panel diagnostics">
+          <span>🔍</span>
+          <span>Bug Panel</span>
+        </button>
+      </div>
+
       <button id="lv80BioBuilderBtn" popovertarget="bioBuilderPopover" title="Capture and organize biographical material">
         🧩 Bio Builder
       </button>
@@ -2100,6 +2233,7 @@
       <!-- Status dot — replaces text badge; pulses while thinking -->
       <div id="lv80LoriDot" title="Lori Status"></div>
 
+      <button id="btnPause" type="button" onclick="lv80TogglePauseListening()">Pause</button>
       <button id="lv80SendBtn" onclick="sendUserMessage()">Send</button>
     </div>
   </footer>
@@ -2434,6 +2568,97 @@
     </div>
   </div>
 
+  <!-- ── WO-10D BUG PANEL ────────────────────────────────────
+       Live diagnostics popover. Opened via header Bug Panel button.
+       Refreshes every 2s while open. Shows real state, not fake data.
+  ──────────────────────────────────────────────────────────────-->
+  <div id="lv10dBugPanel" popover>
+    <div class="lv10d-bp-header">
+      <div class="lv10d-bp-title">Bug Panel</div>
+      <div class="lv10d-bp-subtitle">Live diagnostics — refreshes every 2s</div>
+    </div>
+
+    <!-- Session -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Session</div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Narrator</span><span class="lv10d-bp-value" id="lv10dBpNarrator">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">person_id</span><span class="lv10d-bp-value" id="lv10dBpPid">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Mode</span><span class="lv10d-bp-value" id="lv10dBpMode">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Pass / Era</span><span class="lv10d-bp-value" id="lv10dBpPassEra">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Assistant Role</span><span class="lv10d-bp-value" id="lv10dBpRole">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">LLM Ready</span><span class="lv10d-bp-value" id="lv10dBpLlmReady">—</span></div>
+    </div>
+
+    <!-- Inputs -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Inputs</div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Mic (isRecording)</span><span class="lv10d-bp-value" id="lv10dBpMic">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Listening Paused</span><span class="lv10d-bp-value" id="lv10dBpPaused">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">WO-8 Voice Paused</span><span class="lv10d-bp-value" id="lv10dBpWo8Paused">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Camera Active</span><span class="lv10d-bp-value" id="lv10dBpCam">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Emotion Aware</span><span class="lv10d-bp-value" id="lv10dBpEmotion">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Affect State</span><span class="lv10d-bp-value" id="lv10dBpAffect">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Signal Age</span><span class="lv10d-bp-value" id="lv10dBpSignalAge">—</span></div>
+    </div>
+
+    <!-- Memory -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Memory</div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Rolling Summary</span><span class="lv10d-bp-value" id="lv10dBpRollingSummary">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">Recent Turns</span><span class="lv10d-bp-value" id="lv10dBpRecentTurns">—</span></div>
+    </div>
+
+    <!-- Services -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Services</div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">API (8000)</span><span class="lv10d-bp-value" id="lv10dBpApi">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">TTS (8001)</span><span class="lv10d-bp-value" id="lv10dBpTts">—</span></div>
+      <div class="lv10d-bp-row"><span class="lv10d-bp-label">WebSocket</span><span class="lv10d-bp-value" id="lv10dBpWs">—</span></div>
+    </div>
+
+    <!-- LLM Tuning (WO-10E) -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">LLM Tuning</div>
+      <div class="lv10d-bp-row">
+        <span class="lv10d-bp-label">Temperature</span>
+        <select id="lv10dLlmTemp" onchange="lv10dSetLlmParam('temperature', this.value)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:12px;">
+          <option value="0.3">0.3</option>
+          <option value="0.5">0.5</option>
+          <option value="0.7" selected>0.7</option>
+          <option value="0.9">0.9</option>
+          <option value="1.0">1.0</option>
+        </select>
+      </div>
+      <div class="lv10d-bp-row">
+        <span class="lv10d-bp-label">Max Tokens</span>
+        <select id="lv10dLlmMaxTokens" onchange="lv10dSetLlmParam('max_new_tokens', this.value)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:12px;">
+          <option value="256">256</option>
+          <option value="512" selected>512</option>
+          <option value="1024">1024</option>
+          <option value="2048">2048</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Warnings -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Warnings</div>
+      <ul class="lv10d-bp-warnings" id="lv10dBpWarnings">
+        <li style="color:#475569;">No warnings</li>
+      </ul>
+    </div>
+
+    <!-- Actions -->
+    <div class="lv10d-bp-section">
+      <div class="lv10d-bp-section-title">Actions</div>
+      <div class="lv10d-bp-actions">
+        <button class="lv10d-bp-action-btn" onclick="lv10dRefreshBugPanel()">Refresh Now</button>
+        <button class="lv10d-bp-action-btn" onclick="lv10dCheckRoutes()">Check Routes</button>
+        <button class="lv10d-bp-action-btn" onclick="lv10dCopyDiag()">Copy Diagnostics</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── SETTINGS POPOVER (Step 3) ───────────────────────────
        Triggered by the gear icon in the header via toggleSettings().
        Contains location opt-in and future settings expansion.
@@ -2524,10 +2749,10 @@
     <span class="lv80-switcher-sub">Choose carefully — narrator identity controls questionnaire, family tree, life map, and Lori grounding.</span>
   </div>
   <div id="lv80NarratorList" class="lv80-narrator-list"></div>
-  <!-- WO-11: Trainer narrator seed buttons -->
+  <!-- WO-11B: Trainer launcher buttons (UI-only, no narrator creation) -->
   <div class="lv80-trainer-seed-row">
-    <button class="lv80-settings-btn" onclick="lv80SeedTrainerNarrator('william-shatner.json')">Add Shatner Trainer</button>
-    <button class="lv80-settings-btn" onclick="lv80SeedTrainerNarrator('dolly-parton.json')">Add Dolly Trainer</button>
+    <button class="lv80-settings-btn" onclick="lv80RunTrainerNarrator('structured')">Run Shatner Trainer</button>
+    <button class="lv80-settings-btn" onclick="lv80RunTrainerNarrator('story')">Run Dolly Trainer</button>
   </div>
 </div>
 
@@ -2930,6 +3155,9 @@ async function lv80LoadPeople() {
     } catch {}
   }
 
+  // WO-11B: filter to Hornelore family only before caching
+  people = _horneloreFilterVisiblePeople(people);
+
   // v8: cache for narrator card UI
   if (state?.narratorUi) {
     state.narratorUi.peopleCache = Array.isArray(people) ? people : [];
@@ -2948,7 +3176,7 @@ async function lv80LoadPeople() {
   people.forEach(p => {
     const opt = document.createElement("option");
     opt.value = p.person_id || p.id || "";
-    opt.textContent = p.display_name || p.name || p.preferred || p.fullname || "Unknown";
+    opt.textContent = _horneloreNormalizeVisibleName(p);
     sel.appendChild(opt);
   });
 
@@ -3010,25 +3238,9 @@ async function lv80SwitchPerson(personId) {
   // 3. Update narrator card UI
   lv80UpdateActiveNarratorCard();
 
-  // WO-11: trainer narrators start Lori coaching flow before standard interview
-  try {
-    const trainerMeta = window.LorevoxTrainerNarrators
-      ? window.LorevoxTrainerNarrators.getNarratorMeta(personId)
-      : null;
-    if (trainerMeta && trainerMeta.trainer) {
-      if (state.session) {
-        state.session.assistantRole = "interviewer";
-      }
-      // Reset open gating so future switches aren't blocked by debounce
-      state.narratorOpen.openStatus = "ready";
-      state.narratorOpen.loadingPid = null;
-      window.LorevoxTrainerNarrators.start(personId, trainerMeta.style || "structured");
-      return;
-    } else if (window.LorevoxTrainerNarrators) {
-      window.LorevoxTrainerNarrators.reset();
-    }
-  } catch (e) {
-    console.warn("[WO-11] trainer switch flow failed", e);
+  // WO-11B: hard reset trainer/capture state on any narrator switch
+  if (typeof window.lv80ClearTrainerAndCaptureState === "function") {
+    window.lv80ClearTrainerAndCaptureState();
   }
 
   // 4. Classify narrator readiness
@@ -3325,19 +3537,12 @@ function lv80RenderNarratorCards(){
   const people = state?.narratorUi?.peopleCache || [];
   list.innerHTML = "";
 
-  // WO-11: separate trainers from normal narrators
-  const trainers = [];
-  const normal = [];
-  people.forEach(person => {
-    const pid = person.person_id || person.id || person.uuid;
-    const meta = (state.narratorTrainerMeta && state.narratorTrainerMeta[pid]) || null;
-    if (meta && meta.trainer) trainers.push(person);
-    else normal.push(person);
-  });
+  // WO-11B: Trainers are launcher actions only — no trainer card grouping.
+  // Render only Hornelore family narrators (already filtered by _horneloreFilterVisiblePeople).
 
   function _renderCard(person, badgeLabel, badgeClass, subtitle) {
     const pid = person.person_id || person.id || person.uuid;
-    const name = person.display_name || person.name || pid;
+    const name = _horneloreNormalizeVisibleName(person);
     const card = document.createElement("div");
     card.className = "lv80-narrator-card" + (pid === state.person_id ? " active" : "");
     const sub = subtitle
@@ -3364,32 +3569,10 @@ function lv80RenderNarratorCards(){
     return card;
   }
 
-  // Render training narrators first
-  if (trainers.length) {
-    const title = document.createElement("div");
-    title.className = "lv80-narrator-group-title";
-    title.textContent = "Training Narrators";
-    list.appendChild(title);
-    trainers.forEach(person => {
-      const pid = person.person_id || person.id || person.uuid;
-      const meta = (state.narratorTrainerMeta && state.narratorTrainerMeta[pid]) || {};
-      list.appendChild(_renderCard(person, "TRAINER", "training", meta.title || "Guided example narrator"));
-    });
-  }
-
-  // Render normal narrators
-  if (normal.length) {
-    if (trainers.length) {
-      const title = document.createElement("div");
-      title.className = "lv80-narrator-group-title";
-      title.textContent = "Your Narrators";
-      list.appendChild(title);
-    }
-    normal.forEach(person => {
-      const kind = lv80NarratorKind(person);
-      list.appendChild(_renderCard(person, kind === "real" ? "REAL" : "TEST", kind, null));
-    });
-  }
+  people.forEach(person => {
+    const kind = lv80NarratorKind(person);
+    list.appendChild(_renderCard(person, kind === "real" ? "REAL" : "TEST", kind, null));
+  });
 }
 
 function lv80ToggleNarratorSwitcher(){
@@ -3426,17 +3609,65 @@ function lv80ConfirmNarratorSwitch(pid){
   lv80SwitchPerson(pid);
 }
 
-// WO-11: Seed a trainer narrator from a JSON template file
-async function lv80SeedTrainerNarrator(filename) {
+// WO-11B: UI-only trainer launcher — never creates a person record
+function lv80RunTrainerNarrator(style) {
   try {
-    const resp = await fetch("templates/" + filename);
-    const tpl = await resp.json();
-    await lv80PreloadNarrator(tpl);
-    await refreshPeople();
-    lv80OpenNarratorSwitcher();
+    const pop = document.getElementById("lv80NarratorSwitcher");
+    try { if (pop?.matches(":popover-open")) pop.hidePopover(); } catch (_) {}
+
+    if (window.LorevoxTrainerNarrators) {
+      window.LorevoxTrainerNarrators.reset();
+      window.LorevoxTrainerNarrators.start(null, style || "structured");
+    }
   } catch (e) {
-    console.warn("[WO-11] failed to seed trainer narrator", filename, e);
+    console.warn("[WO-11B] failed to run trainer narrator", style, e);
   }
+}
+
+// WO-11B: Hornelore narrator visibility filter helpers
+function _horneloreAllowedNarratorNames() {
+  return new Set([
+    "christopher todd horne",
+    "christopher horne",
+    "christopher",
+    "chris",
+    "kent james horne",
+    "kent horne",
+    "kent",
+    "janice josephine (zarr) horne",
+    "janice josephine zarr horne",
+    "janice josephine horne",
+    "janice horne",
+    "janice"
+  ]);
+}
+
+function _horneloreNormalizeVisibleName(person) {
+  const raw = String(person?.display_name || person?.name || "").toLowerCase().trim();
+  if (["kent", "kent horne", "kent james horne"].includes(raw)) {
+    return "Kent James Horne";
+  }
+  if (["chris", "christopher", "christopher horne", "christopher todd horne"].includes(raw)) {
+    return "Christopher Todd Horne";
+  }
+  if ([
+    "janice",
+    "janice horne",
+    "janice josephine horne",
+    "janice josephine zarr horne",
+    "janice josephine (zarr) horne"
+  ].includes(raw)) {
+    return "Janice Josephine (Zarr) Horne";
+  }
+  return person?.display_name || person?.name || "Unknown";
+}
+
+function _horneloreFilterVisiblePeople(people) {
+  const allowed = _horneloreAllowedNarratorNames();
+  return (Array.isArray(people) ? people : []).filter(p => {
+    const raw = String(p?.display_name || p?.name || "").toLowerCase().trim();
+    return allowed.has(raw);
+  });
 }
 
 function lv80OpenDeleteDialog(){

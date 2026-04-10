@@ -157,6 +157,14 @@ let state = {
 
   narratorTrainerMeta: {},
 
+  /* ── WO-10D Input State — single source of truth for mic/camera ─── */
+  inputState: {
+    micActive:     false,   // true when recognition is running
+    micPaused:     false,   // true when WO-8 or WO-11B pause is active
+    cameraActive:  false,   // true when emotion engine is running
+    cameraConsent: false,   // true after user granted facial consent
+  },
+
   /* ── v8 Interview Projection ────────────────────────────────────
      Live state for conversational template intake.
      Lori asks Bio Builder questionnaire questions during interview;
@@ -214,6 +222,7 @@ let ws = null, wsReady = false, usingFallback = false;
 
 /* ── Recording / TTS state ── */
 let isRecording = false, recognition = null;
+let listeningPaused = false; // WO-11B: explicit pause/resume control
 let ttsQueue = [], ttsBusy = false;
 
 /* ── Chat state ── */
