@@ -529,6 +529,18 @@ lorevox/
 - ISSUE-17 — Camera stream unification (preview + emotion engine share one `getUserMedia` call)
 - First Narrator Session Protocol (behavioral guide for first real narrator session — not more code)
 
+### Hornelore-Driven Improvements (in progress, 2026-04)
+
+The Hornelore build (a family-locked production instance of Lorevox) is the active development front. Extraction, interview, and meaning-layer work is being validated there first, then ported back to Lorevox when stable. Key work in progress:
+
+**Extraction pipeline hardening (WO-EX series).** The `/api/extract-fields` pipeline has been substantially expanded in Hornelore with: 60+ extractable field paths across 14 field families (personal, parents, siblings, children, spouse, grandparents, grandchildren, residence, military, faith, health, community, pets, travel, education); a semantic rerouter that corrects valid-but-wrong fieldPaths using section + path + lexical triple-agreement; claims validators (value-shape rejection, relation allowlist, confidence floor, negation guard); a two-pass extraction pipeline (pass 1: schema-blind span tagger, pass 2: hybrid rule-based + LLM field classifier) that splits the cognitive load of extraction into simpler subtasks; and a 62-case eval suite for measuring extraction accuracy across all field families. These changes address systematic model-capacity limits in single-pass extraction that temperature tuning cannot fix.
+
+**Interview improvements.** Phase-aware question composer (questions drawn from a 36-topic, 144-opener question bank matched to the narrator's current life phase); age-math plausibility validation (drops temporally impossible extractions like first-job-at-age-4); narrator greeting on session open.
+
+**Kawa Model integration (WO-KAWA series).** A parallel meaning layer based on Michael Iwama's Kawa (River) Model from occupational therapy. Four river elements (water/flow, rocks/obstacles, river walls/environment, driftwood/personal assets and liabilities) mapped to life stages as cross-section segments. Three interview modes (chronological, hybrid, kawa_reflection) and three memoir modes (chronology, chronology_river, river_organized). Kawa serves as a qualitative relationship-building layer alongside structured extraction, not as a replacement for it.
+
+**Quality Harness (WO-QA series).** A permanent measurement system with synthetic test narrators, two-channel scoring (narrator ceiling vs Lori suppression), hardware monitoring, and a Test Lab operator UI. The `cfg_expressive` sampling configuration was adopted as production default based on harness results.
+
 ### Deliberately out of scope
 
 - Cloud sync or remote storage
@@ -697,6 +709,10 @@ Phase D addressed four operational risk areas. All fixes are verified and active
 - Architecture integrity confirmed (Phase F anti-leakage, meaning engine, affect pipeline, identity gate)
 - All core invariants holding
 - Trust/privacy alignment enforced (TRANSPARENCY RULE, consent gate, local-only processing)
+
+### Active development front: Hornelore
+
+As of April 2026, active development is happening in the Hornelore repo (a family-locked build of Lorevox). Lorevox 9.0 core is stable and frozen. New extraction, interview, and meaning-layer features are validated in Hornelore against real narrators before being ported back. See the "Hornelore-Driven Improvements" section under Shipped vs Pending for details.
 
 ### One tracked issue before first narrator session
 
