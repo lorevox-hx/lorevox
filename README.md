@@ -529,17 +529,53 @@ lorevox/
 - ISSUE-17 — Camera stream unification (preview + emotion engine share one `getUserMedia` call)
 - First Narrator Session Protocol (behavioral guide for first real narrator session — not more code)
 
-### Hornelore-Driven Improvements (in progress, 2026-04)
+### Hornelore Promotion Queue (2026-04)
 
-The Hornelore build (a family-locked production instance of Lorevox) is the active development front. Extraction, interview, and meaning-layer work is being validated there first, then ported back to Lorevox when stable. Key work in progress:
+Hornelore is not a parity peer to Lorevox. Hornelore is a family-locked R&D crucible — a private build seeded with three real older-adult narrators (Chris, Kent, Janice) where features get validated against actual aging-parent use before they are considered ready for the public product. Lorevox is the distilled, generalized destination that receives only the features proven enough to promote.
 
-**Extraction pipeline hardening (WO-EX series).** The `/api/extract-fields` pipeline has been substantially expanded in Hornelore with: 60+ extractable field paths across 14 field families (personal, parents, siblings, children, spouse, grandparents, grandchildren, residence, military, faith, health, community, pets, travel, education); a semantic rerouter that corrects valid-but-wrong fieldPaths using section + path + lexical triple-agreement; claims validators (value-shape rejection, relation allowlist, confidence floor, negation guard); a two-pass extraction pipeline (pass 1: schema-blind span tagger, pass 2: hybrid rule-based + LLM field classifier) that splits the cognitive load of extraction into simpler subtasks; and a 62-case eval suite for measuring extraction accuracy across all field families. These changes address systematic model-capacity limits in single-pass extraction that temperature tuning cannot fix.
+The relationship is one-way: features move from Hornelore to Lorevox by promotion, never by file-parity backport. Each candidate gets a deliberate decision — generalize and promote, hold until stable, or keep Hornelore-only by design. The list below is the live queue as of 2026-04.
 
-**Interview improvements.** Phase-aware question composer (questions drawn from a 36-topic, 144-opener question bank matched to the narrator's current life phase); age-math plausibility validation (drops temporally impossible extractions like first-job-at-age-4); narrator greeting on session open.
+**A. Proven in Hornelore — ready to promote**
 
-**Kawa Model integration (WO-KAWA series).** A parallel meaning layer based on Michael Iwama's Kawa (River) Model from occupational therapy. Four river elements (water/flow, rocks/obstacles, river walls/environment, driftwood/personal assets and liabilities) mapped to life stages as cross-section segments. Three interview modes (chronological, hybrid, kawa_reflection) and three memoir modes (chronology, chronology_river, river_organized). Kawa serves as a qualitative relationship-building layer alongside structured extraction, not as a replacement for it.
+Validated against real narrators in Hornelore. Ready for distillation into the public product, which means removing Horne-family-specific assumptions and generalizing for arbitrary narrator universes.
 
-**Quality Harness (WO-QA series).** A permanent measurement system with synthetic test narrators, two-channel scoring (narrator ceiling vs Lori suppression), hardware monitoring, and a Test Lab operator UI. The `cfg_expressive` sampling configuration was adopted as production default based on harness results.
+- **Four-layer truth pipeline (WO-13).** Shadow archive → proposal layer → human review → promoted truth. Replaces direct write-to-facts with a deliberate review gate. Already aligned with Lorevox's "Archive → History → Memoir" core model — this is the structural enforcement of the "AI cannot promote claims without human review" doctrine.
+- **Photo system.** Curator-side photo intake with EXIF auto-fill, Nominatim reverse-geocoding, Plus Code generation, multi-file batch upload, View/Edit modal, dedupe-by-file-hash, narrator-room lightbox.
+- **Document Archive.** Separate curator lane for PDFs / scanned documents / handwritten notes / genealogy outlines / letters / certificates / newspaper clippings. Locked product rule: preserve first, tag second, transcribe/OCR third, extract candidates only after that — never auto-promote to truth.
+- **Memory Archive.** Per-session two-sided text transcript, narrator-only audio capture rule, per-session zip export, durable on-disk archive layout. Per-turn metadata stamped with session_style / identity_phase / bb_field / timestamp / session_id / writer_role.
+- **Per-turn audio capture (backend).** webm audio attachment endpoint live. Ready to pair with a browser MediaRecorder frontend.
+- **Three-tab UI shell.** Operator / Narrator Session / Media tab split with session-style picker (five persistent styles). Cleanly separates dev/curator surfaces from the calm conversation room.
+- **Narrator room layout.** Topbar + view tabs (Memory River / Life Map / Photos / Peek at Memoir) + chat column + context panel. Take-a-break overlay. Chat scroll stabilization.
+- **Cognitive Support Model — older-adult pacing.** Six dementia-safe behavioral guarantees: protected silence at 120s / 300s / 600s with progressively softer re-entry prompts, no correction, listen-first behavior, single-thread context, visual-as-patience, invitational prompts. Hornelore holds the parent-session test data; the model itself — the OT/life-review pacing pattern — is the single strongest distillable artifact for older-adult use, and belongs in Lorevox.
+- **Bio Builder contamination hardening.** Narrator-switch generation counter + three-guard backend response check + scope hard-gates eliminating cross-narrator data leakage. Required before any multi-narrator product can ship safely.
+- **Operator UI Health Check harness.** Fifteen-category PASS / WARN / FAIL / DISABLED / NOT_INSTALLED / SKIP / INFO grid with sub-100ms full run. Generic enough to promote as the Lorevox health surface.
+- **Soft transcript review cue.** Non-blocking bottom-right pill after four narrator turns inviting review. Small but proven — older narrators don't always think to ask "can I see what we captured?"
+- **Audio preflight check.** MediaRecorder + getUserMedia + secure context + permission state probe surfacing as a five-check harness category.
+- **Chronology Accordion (WO-CR).** Read-only left-side time ladder merging three lanes (world events / personal anchors / ghost prompts) at request time. Never writes to the database. Provenance-tagged so Lori knows which items are confirmed truth versus context. Generalizes cleanly because it's already source-of-truth-agnostic.
+
+**B. Still in flux — keep in Hornelore until stable**
+
+These are still iterating in the lab and shouldn't promote until they lock to a measurable acceptance threshold.
+
+- **Extractor pipeline hardening (WO-EX series).** 60+ extractable field paths across 14 field families, semantic rerouter, claims validators (value-shape, relation allowlist, confidence floor, negation guard), 62-case + 104-case eval suites. Locked baseline 70/104 on the master eval; ladder still climbing.
+- **WO-EX-SPANTAG-01.** Two-pass span-tag extraction (Pass 1 schema-blind tag inventory, Pass 2 controlled-prior binding). Active; eval inconclusive pending one clean full-master run with the flag confirmed firing server-side.
+- **WO-EX-BINDING-01.** Schema-binding rules for Type C narrative inputs. Layered after SPANTAG locks.
+- **WO-LORI-CONFIRM-01.** Multi-turn confirmation pass for fragile fields (birthOrder, parents.relation, dateRange). Parked at v1 spec; reactivates after SPANTAG.
+- **Phase-aware question composer.** 36-topic / 144-opener question bank matched to the narrator's current life phase. Age-math plausibility validation (drops temporally impossible extractions). Working but flag-gated.
+- **WO-LORI-PHOTO-ELICIT-01 Phase 2.** Lori-side narration over photos in the narrator room. Spec ready; LLM prompts pending.
+- **WO-MEDIA-WATCHFOLDER-01 / WO-MEDIA-OCR-01 / WO-MEDIA-ARCHIVE-CANDIDATES-01.** Future Document Archive lanes. Scoped, not built.
+- **Kawa Model integration (WO-KAWA series).** Parallel meaning layer based on Iwama's Kawa (River) Model — four river elements mapped to life stages, three interview modes, three memoir modes. Qualitative relationship-building layer alongside structured extraction. Promising; needs more validation against real narrator sessions before promoting.
+
+**C. Hornelore-only by design**
+
+These exist specifically because Hornelore is a family-locked R&D environment. Promoting them into a general-purpose product would be a category mistake.
+
+- **Closed Horne narrator universe.** Three named narrators plus two read-only trainer narrators (Shatner, Dolly). UI controls for adding or deleting narrators are removed; backend write guards block creation.
+- **Pre-seeded Horne identity.** Narrators auto-seeded from JSON templates on first startup; identity phase bypassed for known narrators.
+- **Family templates.** `kent-james-horne.json`, `janice-josephine-horne.json`, `christopher-todd-horne.json` carry full biographical seed data.
+- **Bug Panel as a dev surface.** Operator-only debugging utilities (Reset Identity, Purge Test Narrators, BB Walk Test harness, Export Current Session, Run Audio Preflight). Belongs to the lab, not the product.
+- **Local family-specific flags, fixtures, and parent-session runbooks.** Operating posture, family-specific extraction tunings, parent-session readiness gates.
+- **Quality Harness (WO-QA series).** A permanent measurement system with synthetic test narrators, two-channel scoring (narrator ceiling vs Lori suppression), hardware monitoring, and a Test Lab operator UI. The `cfg_expressive` sampling configuration was adopted as production default based on harness results. The harness *infrastructure* could conceivably promote, but its current shape is tuned to Hornelore's eval cadence.
 
 ### Deliberately out of scope
 
@@ -710,9 +746,13 @@ Phase D addressed four operational risk areas. All fixes are verified and active
 - All core invariants holding
 - Trust/privacy alignment enforced (TRANSPARENCY RULE, consent gate, local-only processing)
 
-### Active development front: Hornelore
+### Active development front: Hornelore (the R&D crucible)
 
-As of April 2026, active development is happening in the Hornelore repo (a family-locked build of Lorevox). Lorevox 9.0 core is stable and frozen. New extraction, interview, and meaning-layer features are validated in Hornelore against real narrators before being ported back. See the "Hornelore-Driven Improvements" section under Shipped vs Pending for details.
+Lorevox 9.0 core is stable. Active feature development happens in Hornelore — a family-locked private build seeded with three real older-adult narrators (Chris, Kent, Janice) where each candidate feature is exercised against actual aging-parent use before being considered for promotion to the public Lorevox product.
+
+The relationship is one-way and deliberate: Hornelore is the lab; Lorevox is the gold. Features move only by promotion, after they prove themselves with real narrators — never by file-parity backport. Each promotion strips out Horne-family-specific assumptions (closed narrator universe, pre-seeded identity, family templates, dev utilities) and generalizes the surviving capability for arbitrary narrators.
+
+The current promotion queue is captured under "Hornelore Promotion Queue (2026-04)" in the Shipped vs Pending section above. It separates candidates into three buckets: proven-and-ready-to-promote, in-flux-and-held-in-Hornelore, and Hornelore-only-by-design.
 
 ### One tracked issue before first narrator session
 
