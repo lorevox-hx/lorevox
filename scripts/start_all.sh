@@ -76,6 +76,7 @@ fi
 printf '\n=== Lorevox stack ready ===\n'
 printf 'API: http://127.0.0.1:%s\n' "$API_PORT"
 printf 'TTS: http://127.0.0.1:%s\n' "$TTS_PORT"
-printf 'UI:  http://127.0.0.1:%s/ui/lori9.0.html\n' "$UI_PORT"
+printf 'UI:  http://127.0.0.1:%s/ui/lorevox10.0.html\n' "$UI_PORT"
+printf '     (v9 baseline still available at /ui/lori9.0.html)\n'
 
 open_ui_in_windows
