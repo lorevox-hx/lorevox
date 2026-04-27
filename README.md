@@ -1,10 +1,12 @@
 # Lorevox
 
-**A local-first, privacy-first memoir and life-story platform for older adults and their families.**
+**A local-first, privacy-first life-story platform built around how older adults remember.**
 
-Lorevox captures a person's memories through guided interview conversations, organises them into a verified timeline, and drafts a human-readable memoir. The AI is a scribe — it structures, prompts, and drafts. The human is the author. Every word they speak is the ground truth.
+Guided conversation, photo and document archives, and a paced cognitive support model for narrators of any age or cognitive variability. The AI is a scribe — it structures, prompts, and drafts. The human is the author. Every word they speak is the ground truth. Nothing leaves the machine.
 
-**Lorevox 9.0 — pre-production ready. Phase N complete. Full test harness active.**
+Lorevox captures a person's memories through guided interview conversations, organises them into a verified timeline, and drafts a human-readable memoir. Photos, scanned documents, handwritten notes, genealogy records, letters, and certificates can all be ingested as source material — preserved in their original form, tagged for context, never auto-promoted to truth without human review.
+
+**Lorevox 10.0 (2026-04-26)** — distillation pass complete. The v9 core is preserved (`ui/lori9.0.html` and `server.STALE_do_not_import/` as historical reference) and the v10 entry point at `ui/lorevox10.0.html` brings together everything proven against real older-adult narrators in the Hornelore R&D crucible: four-layer truth pipeline, photo system, document archive, memory archive, three-tab UI shell, narrator room, cognitive support model, Bio Builder hardening, operator UI health check harness, chronology accordion. See "Hornelore Promotion Queue" below for the full distillation list and per-feature status.
 
 ---
 
@@ -764,13 +766,15 @@ The current promotion queue is captured under "Hornelore Promotion Queue (2026-0
 
 Copyright (c) 2026 Chris (dev@lorevox.com). All rights reserved.
 
-Lorevox is **source-available, not open source.** You may view and study this code and run it locally for personal, non-commercial use. You may not use it commercially, host it for others, or redistribute it in any form without written permission.
+Lorevox is **source-available proprietary**, not open source. You may view, study, and run an unmodified copy locally for personal, non-commercial use. You may not use it commercially, host it for third parties, redistribute it in any form, publish a fork, or use any of its prompts, schemas, or outputs to train or evaluate machine-learning models without express written permission.
 
-The name Lorevox, the Lori interviewer persona, the runtime71 cognitive state system, the multi-pass interview model, all prompt and directive text, and all documentation are explicitly reserved and are not licensed under any terms.
+**Commercial, institutional, research, nonprofit, educational, clinical, archival, family-office, elder-care, SaaS, hosted, deployment, integration, white-label, or third-party use is available by separate written license.** Contact dev@lorevox.com to discuss terms.
+
+Reserved rights cover the expressive implementation in this codebase — source code, prompt text, behavioral directives, schemas, character design, terminology — together with the names Lorevox, Lori, and Hornelore, and the expressive embodiment of the Archive → History → Memoir architecture, the runtime71 cognitive state system, the multi-pass interview model, the four-layer family-truth pipeline, and the Cognitive Support Model. Third-party libraries and dependencies remain subject to their own licenses. End-user data, family records, photographs, transcripts, and memoir drafts produced during use are owned by the operator and narrator who created them; this License grants no claim over such content.
 
 Contributions are by invitation only and require full assignment of rights to the copyright holder.
 
-See [LICENSE](LICENSE) for complete terms. For permissions: dev@lorevox.com
+See [LICENSE](LICENSE) for complete terms (Version 1.1 — 2026). For permissions: dev@lorevox.com
 
 ---
 

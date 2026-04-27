@@ -1,8 +1,13 @@
-Lorevox Source-Available License
-Version 1.0 — 2026
+Lorevox Source-Available Proprietary License
+Version 1.1 — 2026
 
 Copyright (c) 2026 Chris (dev@lorevox.com)
 All rights reserved.
+
+This is a SOURCE-AVAILABLE PROPRIETARY license. It is not an
+open-source license under the Open Source Initiative definition.
+The source is published so it can be read, studied, and evaluated;
+it is not published for redistribution, hosting, or commercial use.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -32,69 +37,225 @@ you may not:
   - Redistribute this software, modified or unmodified, in source
     or compiled form, through any channel including but not limited
     to package registries, app stores, or public repositories
-  - Publish a fork of this repository without the express written
-    permission of the copyright holder
+  - Publish a fork of this repository, except as expressly
+    permitted under "Contributions" below
   - Remove or alter this license notice or the copyright notice
     in any copy of this software
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-RESERVED RIGHTS
+COMMERCIAL AND INSTITUTIONAL LICENSING
 
-The following are the exclusive property of the copyright holder
-and are not licensed under any terms:
+Commercial, institutional, research, nonprofit, educational,
+clinical, archival, family-office, elder-care, SaaS, hosted,
+deployment, integration, white-label, or third-party use of
+Lorevox requires a separate written license agreement signed by
+the copyright holder.
 
+No commercial, institutional, hosted, or third-party use is granted
+by this Source-Available License.
+
+The copyright holder may offer separate commercial or institutional
+licenses with different permissions, restrictions, fees, support
+terms, privacy obligations, data-use terms, deployment rights, or
+research-publication terms.
+
+A separate written license may permit uses that are otherwise
+prohibited by this License. Until such an agreement is signed,
+all prohibited uses remain prohibited.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PLATFORM HOSTING NOTE
+
+If this repository is made public on GitHub or another hosting
+platform, the platform-level viewing and forking mechanics granted
+by that platform's Terms of Service do not grant any additional
+rights to use, modify, redistribute, deploy, publish, or
+commercialize Lorevox beyond the permissions expressly granted in
+this License. The presence of a "Fork" button on a hosting site
+does not waive the prohibitions in the NOT PERMITTED section above.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NO MACHINE LEARNING TRAINING OR EVALUATION USE
+
+You may not use Lorevox, its source code, prompts, system prompt
+text, behavioral directives, schemas, narrator templates, eval
+fixtures, documentation, outputs, examples, or any included
+materials to train, fine-tune, evaluate, benchmark, distill,
+align, or otherwise improve any machine-learning model, dataset,
+or AI system, without express written permission from the
+copyright holder. This restriction applies to both human-curated
+and automated extraction, and survives any subsequent modification,
+re-encoding, or transformation of the materials.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RESERVED RIGHTS — EXPRESSION AND IMPLEMENTATION
+
+The copyright holder reserves all rights in the expressive
+implementation, source code, user interface, documentation,
+prompt text, behavioral directives, schemas, character design,
+voice design, terminology, project naming, and workflows as
+expressed in this codebase, together with all associated Lorevox
+materials. This License does not transfer or grant any of those
+rights.
+
+The following names and brand marks are reserved and not licensed
+under any terms:
   - The name "Lorevox" and all associated brand names and marks
   - The name "Lori", the Lori interviewer persona, voice design,
     behavioral directives, and interview character
-  - The Archive to History to Memoir three-layer architecture as
+  - The name "Hornelore" and the Horne family R&D crucible
+    branding (used by the family-locked downstream build)
+  - Any other Lorevox-derived product names, sub-product names,
+    or branded surfaces released by the copyright holder
+
+The expressive embodiments of the following systems — that is,
+the source code, prompt text, schemas, and documentation that
+implement them in this codebase — are also part of the reserved
+rights:
+  - The Archive → History → Memoir three-layer architecture as
     expressed in this codebase
-  - The runtime71 cognitive state system and its prompt composition
-    pipeline
-  - The multi-pass interview model (Pass 1, Pass 2A, Pass 2B)
+  - The runtime71 cognitive state system and its prompt
+    composition pipeline
+  - The multi-pass interview model (Pass 1 / Pass 2A / Pass 2B)
     and the Timeline Spine structure
-  - All prompt text, interview question sets, behavioral directive
-    language, and system prompt templates
+  - The four-layer family-truth pipeline (shadow archive /
+    proposal layer / human review / promoted truth)
+  - The Cognitive Support Model and dementia-safe pacing ladder
+    (protected silence intervals, invitational re-entry, no-
+    correction posture)
   - The memoir schema and biographical data structures
-  - All documentation, design documents, and written materials
-    in the docs/ directory
+
+(Note: copyright protects expressive implementation, not abstract
+ideas or methodologies. Independently-developed implementations
+of similar architectures by third parties are not within the
+scope of these reservations; what is reserved is the expression
+in this codebase and any derivative works of it.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+THIRD-PARTY DEPENDENCIES
+
+Third-party libraries, models, packages, fonts, vendored web
+assets, and runtime dependencies included with or referenced by
+Lorevox remain subject to their own respective licenses. Examples
+include but are not limited to MediaPipe, Pillow, FastAPI, the
+Coqui TTS toolkit, faster-whisper, PyTorch, and any open-source
+language model used through MODEL_PATH or MODEL_ID. This License
+applies only to original Lorevox materials owned by the copyright
+holder. Use of any third-party component must comply with that
+component's own license.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SCOPE — WHAT THIS LICENSE COVERS AND DOES NOT COVER
+
+This License covers the Lorevox source code, original
+documentation, prompts, schemas, user interface text, narrator
+templates that ship with the codebase, and related project
+materials owned by the copyright holder.
+
+This License does NOT grant any rights to:
+  - Private narrator data created or imported by an end user
+  - Family records, genealogy documents, photographs, scans,
+    audio recordings, video, transcripts, or memoir drafts
+    produced or stored by Lorevox during use
+  - Model weights or AI model checkpoints loaded by Lorevox
+    at runtime
+  - Voice recordings, voice clones, or TTS speaker assets
+  - Personal archives or operator-curated content
+  - Any data that crosses the system boundary between
+    "what this codebase ships with" and "what an operator
+    or narrator generates while using the running product"
+
+End-user data, family content, and runtime-generated materials
+are owned by the operator or narrator who created them, subject
+to any separate agreement the operator and narrator may have
+between themselves. Lorevox the software grants no claim over
+such content.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CONTRIBUTIONS
 
-Contributions to this repository are welcome by invitation only.
-By submitting a pull request or patch, you agree that:
+Contributions to Lorevox are accepted by invitation only.
 
-  - You have the right to license your contribution
-  - You assign to the copyright holder all rights, title, and
-    interest in your contribution, including all intellectual
-    property rights
-  - The copyright holder may use, modify, and relicense your
-    contribution under any terms, including proprietary terms,
-    without further obligation to you
+Do not submit pull requests, patches, code, documentation, prompts,
+schemas, assets, training data, examples, designs, or other materials
+unless you have been explicitly invited to contribute.
 
-If you have not been explicitly invited to contribute, please
-open an issue to discuss your proposed change before submitting.
+Before any contribution is accepted, the contributor must sign a
+separate Lorevox Contributor Assignment Agreement (see
+CONTRIBUTING.md and the agreement template at
+docs/contributor-assignment-agreement.md) or other written agreement
+approved by the copyright holder.
+
+A pull request, patch, issue comment, email, message, or other
+submission does not create any obligation for the copyright holder
+to accept, review, merge, publish, credit, compensate, or maintain
+the contribution.
+
+Uninvited contributions may be closed, deleted, ignored, or rejected
+without review. Acceptance of an invited contribution is contingent
+on a valid signed Contributor Assignment Agreement and remains at
+the sole discretion of the copyright holder.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-FUTURE TERMS
+VERSIONING AND TERMINATION
 
-The copyright holder reserves the right to release future versions
-of Lorevox under different license terms, including open-source
-or commercial licenses. This license applies to the version of
-the software with which it is distributed.
+The copyright holder may release future versions of Lorevox
+under different license terms, including more permissive open-
+source licenses or more restrictive commercial licenses, without
+obligation. The license that applies to a given copy of the
+software is the license file included in that copy.
+
+The copyright holder may modify, supersede, or terminate this
+License at any time by publishing a new version. Continued use of
+Lorevox after such notice constitutes acceptance of the new
+terms. If you do not accept the new terms, you must cease use
+and destroy any copies in your possession.
+
+This License does not grant a perpetual or irrevocable right to
+any prior version. Permissions granted under any version of this
+License may be terminated automatically if you breach any of the
+NOT PERMITTED conditions above.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 NO WARRANTY
 
 This software is provided "as is", without warranty of any kind,
-express or implied. The copyright holder accepts no liability for
-any damages arising from its use.
+express or implied, including but not limited to warranties of
+merchantability, fitness for a particular purpose, accuracy,
+non-infringement, or non-interference. The copyright holder
+accepts no liability for any damages, lost data, lost profits,
+or other harms arising from the use, inability to use, or
+operation of this software, even if advised of the possibility
+of such damages.
+
+Use of Lorevox in clinical, medical, legal, or other regulated
+contexts is at the operator's own risk and is the operator's
+sole responsibility.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-For permissions beyond the scope of this license, contact:
+NOT LEGAL ADVICE
+
+This License is provided as a clear statement of the copyright
+holder's intent. It is not legal advice. The text has not been
+drafted or reviewed by a licensed attorney. For commercial deals,
+investor diligence, or any situation where exact rights matter,
+the copyright holder may seek a formal legal review and may
+publish a successor License at that time.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For commercial licensing, institutional use, research collaboration,
+deployment permission, or any permissions beyond the scope of this
+License, contact:
+
 dev@lorevox.com
