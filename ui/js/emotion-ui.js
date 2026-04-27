@@ -25,8 +25,9 @@ const AFFECT_STATE_COLORS = {
 function toggleEmotionAware(){
   emotionAware=!emotionAware;
   updateEmotionAwareBtn();
-  if(emotionAware && state.interview.session_id && !cameraActive){
-    // Symmetric start: turning on mid-session starts the engine immediately
+  if(emotionAware && !cameraActive){
+    // WO-CAM-FIX: Removed session_id gate — camera must start even when
+    // narrator is resumed without a fresh interview session.
     startEmotionEngine();
   } else if(!emotionAware && cameraActive){
     stopEmotionEngine();
@@ -67,8 +68,11 @@ async function startEmotionEngine(){
   }
 
   try{
+    // WO-CAM-FIX: session_id may be null during narrator-resume (no fresh
+    // interview start). That's fine — sessionId is stored but not used by
+    // the emotion engine. Pass whatever we have.
     await LoreVoxEmotion.init({
-      sessionId: state.interview.session_id,
+      sessionId: (state.interview && state.interview.session_id) || null,
       apiBase:   ORIGIN,
       onAffectState: onBrowserAffectEvent,
     });
@@ -78,22 +82,96 @@ async function startEmotionEngine(){
     const started = await LoreVoxEmotion.start();
     if (started) {
       cameraActive=true;
+      // WO-10G: Sync inputState truth model
+      if (typeof state !== "undefined" && state.inputState) {
+        state.inputState.cameraActive = true;
+        state.inputState.cameraConsent = true;
+      }
       updateEmotionAwareBtn();
       // Step 3 diagnostic — confirm srcObject is set after camera start.
       const videoEl = document.querySelector("video[playsinline]");
       if (videoEl && !videoEl.srcObject) {
         console.warn("[camera] Video element has no srcObject after start — stream may not have attached.");
       }
+      // WO-CAM-FIX: Show the camera preview mirror (WO-01) now that camera is active.
+      // camera-preview.js exposes window.lv74.showCameraPreview() but nothing was calling it
+      // after camera start. Without this, cameraActive=true but previewVisible stays false.
+      if (window.lv74 && typeof window.lv74.showCameraPreview === "function") {
+        window.lv74.showCameraPreview();
+        console.log("[WO-CAM-FIX] Camera preview mirror activated.");
+      }
+      // WO-06: Camera-to-mic awareness prompt.
+      // If camera started but mic is not recording, gently remind the narrator
+      // that voice input is available. Only once per session.
+      if (!window._wo06MicNudgeShown && !isRecording && typeof sysBubble === "function") {
+        window._wo06MicNudgeShown = true;
+        setTimeout(function() {
+          // Re-check — mic may have started in the meantime
+          if (!isRecording && cameraActive) {
+            sysBubble("💡 Camera is on — tap the microphone button when you're ready to talk.");
+          }
+        }, 3000);  // 3s delay: don't overwhelm narrator right after camera starts
+      }
     } else {
       console.warn("[camera] LoreVoxEmotion.start() returned false — camera did not start. Affect-aware mode disabled.");
       emotionAware = false;
       updateEmotionAwareBtn();
+      // WO-CAM-FIX: Show user-facing message instead of silent failure.
+      // Check browser permission state to give a specific, actionable message.
+      _wo_camfix_showPermissionHelp();
     }
   }catch(e){
     console.warn("[camera] Emotion engine threw on start:", e);
     emotionAware = false;
     cameraActive = false;
     updateEmotionAwareBtn();
+    // WO-CAM-FIX: Also show permission help on thrown exceptions
+    _wo_camfix_showPermissionHelp();
+  }
+}
+
+/* ── WO-CAM-FIX: User-facing camera permission help ────────────
+   When the camera fails to start (permission denied, hardware missing,
+   etc.), show a clear, gentle, actionable message instead of silently
+   disabling affect-aware mode. For elderly narrators, a confusing silent
+   failure is far worse than a clear explanation.
+   ────────────────────────────────────────────────────────────── */
+async function _wo_camfix_showPermissionHelp() {
+  var reason = "unknown";
+  try {
+    var perm = await navigator.permissions.query({ name: "camera" });
+    reason = perm.state; // "denied", "prompt", "granted"
+  } catch (_) { /* permissions API not available */ }
+
+  var msg;
+  if (reason === "denied") {
+    msg = "Camera is blocked by your browser. To fix this:\n\n" +
+          "1. Click the lock icon (or camera icon) in the address bar\n" +
+          "2. Find 'Camera' and change it to 'Allow'\n" +
+          "3. Reload this page\n\n" +
+          "The camera lets Lori see when you're thinking or feeling something — " +
+          "but everything still works fine without it.";
+  } else if (reason === "prompt") {
+    msg = "The camera needs your permission to start. " +
+          "If you see a popup asking to allow camera access, please click 'Allow'. " +
+          "You can try again by clicking the Cam button above.";
+  } else {
+    msg = "The camera couldn't start. This might mean:\n\n" +
+          "• No camera is connected\n" +
+          "• Another program is using the camera\n" +
+          "• The browser blocked camera access\n\n" +
+          "Everything still works fine without it — you can talk to Lori using the microphone.";
+  }
+
+  // Show via sysBubble if available (gentle in-chat message),
+  // otherwise fall back to alert for visibility
+  if (typeof sysBubble === "function") {
+    sysBubble("📷 " + msg.split("\n")[0].replace(/\n/g, " "));
+    // Also log the full message for Bug Panel / diagnostics
+    console.warn("[WO-CAM-FIX] Camera permission help shown. Reason: " + reason);
+    console.warn("[WO-CAM-FIX] Full message:\n" + msg);
+  } else {
+    alert(msg);
   }
 }
 
@@ -101,6 +179,24 @@ function stopEmotionEngine(){
   if(typeof LoreVoxEmotion !== "undefined") LoreVoxEmotion.stop();
   cameraActive=false;
   updateEmotionAwareBtn();
+
+  // WO-10G: Hard-clear visual signals when camera turns off.
+  // Prevents stale affect data from persisting in state and leaking into
+  // buildRuntime71() even after the 8s threshold (race window).
+  if (typeof state !== "undefined" && state.session && state.session.visualSignals) {
+    state.session.visualSignals.affectState     = null;
+    state.session.visualSignals.confidence      = 0;
+    state.session.visualSignals.gazeOnScreen    = null;
+    state.session.visualSignals.blendConfidence = 0;
+    state.session.visualSignals.timestamp       = null;
+  }
+
+  // WO-10G: Sync inputState truth model
+  if (typeof state !== "undefined" && state.inputState) {
+    state.inputState.cameraActive = false;
+  }
+
+  console.log("[WO-10G] Camera stopped — visual signals cleared.");
 }
 
 // Called by emotion.js when affect state changes.

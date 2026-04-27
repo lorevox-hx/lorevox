@@ -31,59 +31,90 @@
      Key: "section.field"
   ─────────────────────────────────────────────────────────── */
 
+  /* ── Memoir Question Strategy metadata ─────────────────────
+     memoirClass:  "background" — known, skip if preloaded
+                   "hook"       — known fact that anchors deeper questions
+                   "thin_zone"  — structural but likely lacking narrative depth
+     questionKind: "fact" | "sensory" | "meaning" | "reflection" |
+                   "relationship" | "turning_point"
+     memoirWeight: 1–10 — higher = better memoir question
+     hookPrompt:   richer follow-up when preload already has the base fact
+     skipIfPreloaded:      skip this question entirely if preload covers it
+     confirmOnlyIfMissing: only ask if truly blank; never re-ask confirmed data
+  ───────────────────────────────────────────────────────────── */
+
   var FIELD_MAP = {
 
     /* ── Personal Information ──────────────────────────────── */
     "personal.fullName": {
       writeMode: "prefill_if_blank",
-      protectedIdentity: true,   // Phase G — cannot be overwritten by chat extraction
+      protectedIdentity: true,
       priority: 1,
       eraTags: [],
       conversational: "What is your full name — first, middle, and last?",
-      followUp: "Is there a name you prefer to go by?"
+      followUp: "Is there a name you prefer to go by?",
+      extractionHint: "Narrator's full legal or primary name. Extract only the name the narrator explicitly states as their own.",
+      memoirClass: "background", questionKind: "fact", memoirWeight: 1,
+      skipIfPreloaded: true, confirmOnlyIfMissing: true
     },
     "personal.preferredName": {
       writeMode: "prefill_if_blank",
-      protectedIdentity: true,   // Phase G
+      protectedIdentity: true,
       priority: 1,
       eraTags: [],
       conversational: "What name do you prefer to go by?",
+      memoirClass: "background", questionKind: "fact", memoirWeight: 1,
+      skipIfPreloaded: true, confirmOnlyIfMissing: true
     },
     "personal.dateOfBirth": {
       writeMode: "prefill_if_blank",
-      protectedIdentity: true,   // Phase G
+      protectedIdentity: true,
       priority: 1,
       eraTags: [],
       conversational: "When were you born?",
-      inputHelper: "normalizeDob"
+      extractionHint: "Narrator's exact date of birth. Extract only what the narrator explicitly states. Preserve month/day/year precision if present.",
+      inputHelper: "normalizeDob",
+      memoirClass: "background", questionKind: "fact", memoirWeight: 1,
+      skipIfPreloaded: true, confirmOnlyIfMissing: true
     },
     "personal.timeOfBirth": {
       writeMode: "suggest_only",
       priority: 4,
       eraTags: ["early_childhood"],
       conversational: "Do you happen to know what time of day you were born?",
+      memoirClass: "background", questionKind: "fact", memoirWeight: 2,
+      skipIfPreloaded: true
     },
     "personal.placeOfBirth": {
       writeMode: "prefill_if_blank",
-      protectedIdentity: true,   // Phase G — birthplace especially must not drift
+      protectedIdentity: true,
       priority: 1,
       eraTags: ["early_childhood"],
       conversational: "Where were you born — what city and state, or country?",
-      inputHelper: "normalizePlace"
+      extractionHint: "Narrator's birthplace city/state/country. Extract only the location the narrator explicitly states as their own birthplace, not third-party locations.",
+      inputHelper: "normalizePlace",
+      memoirClass: "background", questionKind: "fact", memoirWeight: 1,
+      skipIfPreloaded: true, confirmOnlyIfMissing: true,
+      hookPrompt: "You were born in {value}. What do you remember hearing about that place from your family — the feel of the town, or why your parents were there?"
     },
     "personal.birthOrder": {
       writeMode: "prefill_if_blank",
-      protectedIdentity: true,   // Phase G
+      protectedIdentity: true,
       priority: 2,
       eraTags: ["early_childhood"],
       conversational: "Were you the first child, or did you have older siblings?",
+      memoirClass: "background", questionKind: "fact", memoirWeight: 2,
+      skipIfPreloaded: true, confirmOnlyIfMissing: true,
+      hookPrompt: "You were the {value}. What was that like — did your position in the family shape how you saw yourself?"
     },
     "personal.zodiacSign": {
       writeMode: "prefill_if_blank",
       priority: 5,
       eraTags: [],
-      conversational: null,  // auto-derived from DOB, never asked directly
-      autoDerive: "zodiacFromDob"
+      conversational: null,
+      autoDerive: "zodiacFromDob",
+      memoirClass: "background", questionKind: "fact", memoirWeight: 0,
+      skipIfPreloaded: true
     },
 
     /* ── Early Memories ────────────────────────────────────── */
@@ -92,18 +123,24 @@
       priority: 3,
       eraTags: ["early_childhood"],
       conversational: "What is the earliest memory you can recall? Even a small fragment — a place, a sound, a feeling?",
+      memoirClass: "hook", questionKind: "sensory", memoirWeight: 9,
+      hookPrompt: "You mentioned your earliest memory: \"{value}\". Can you close your eyes and go back there for a moment — what do you see, smell, or hear?"
     },
     "earlyMemories.favoriteToy": {
       writeMode: "suggest_only",
       priority: 4,
       eraTags: ["early_childhood"],
       conversational: "Was there a favorite toy, blanket, or object you were attached to as a young child?",
+      memoirClass: "hook", questionKind: "sensory", memoirWeight: 6,
+      hookPrompt: "You mentioned {value}. What made it special — can you picture it? Where would you keep it?"
     },
     "earlyMemories.significantEvent": {
       writeMode: "suggest_only",
       priority: 3,
       eraTags: ["early_childhood"],
       conversational: "Was there a significant event from your early childhood — something the family talked about, or that you remember feeling strongly?",
+      memoirClass: "hook", questionKind: "turning_point", memoirWeight: 8,
+      hookPrompt: "You mentioned: \"{value}\". What do you think that event meant for you — did it change something, or does it just stay with you?"
     },
 
     /* ── Education & Career ────────────────────────────────── */
@@ -112,36 +149,48 @@
       priority: 3,
       eraTags: ["school_years"],
       conversational: "Tell me about your schooling — where did you go to school, and what was it like?",
+      memoirClass: "hook", questionKind: "sensory", memoirWeight: 7,
+      hookPrompt: "You went to school at {value}. What do you remember most about it — a teacher, a friend, the walk to school, the feeling of the place?"
     },
     "education.higherEducation": {
       writeMode: "suggest_only",
       priority: 3,
       eraTags: ["school_years", "early_adulthood"],
       conversational: "Did you go on to college or any other education after high school? What was that experience like?",
+      memoirClass: "hook", questionKind: "turning_point", memoirWeight: 7,
+      hookPrompt: "You studied at {value}. Was there a moment during that time that opened a door for you — or closed one?"
     },
     "education.earlyCareer": {
       writeMode: "suggest_only",
       priority: 3,
       eraTags: ["early_adulthood"],
       conversational: "What was your first real job or the beginning of your career?",
+      memoirClass: "hook", questionKind: "turning_point", memoirWeight: 8,
+      hookPrompt: "Your early career was in {value}. What was that first day like — or the moment you realized this was going to be your path?"
     },
     "education.careerProgression": {
       writeMode: "suggest_only",
       priority: 3,
       eraTags: ["early_adulthood", "midlife"],
       conversational: "How did your career develop over the years? Were there turning points or big changes?",
+      memoirClass: "hook", questionKind: "turning_point", memoirWeight: 8,
+      hookPrompt: "Your career involved {value}. Was there a moment when things shifted — a decision, a risk, a change you didn't expect?"
     },
     "education.communityInvolvement": {
       writeMode: "suggest_only",
       priority: 4,
       eraTags: ["midlife", "later_life"],
       conversational: "Were you involved in your community — church, volunteering, clubs, or organizations?",
+      memoirClass: "thin_zone", questionKind: "meaning", memoirWeight: 5,
+      hookPrompt: "You were involved in {value}. What drew you to that — and what did it give you?"
     },
     "education.mentorship": {
       writeMode: "suggest_only",
       priority: 4,
       eraTags: ["midlife", "later_life"],
       conversational: "Was there someone who mentored you, or someone you mentored?",
+      memoirClass: "hook", questionKind: "relationship", memoirWeight: 7,
+      hookPrompt: "You mentioned a mentor: {value}. What did they teach you that you still carry — not just skills, but something about how to live?"
     },
 
     /* ── Later Years ───────────────────────────────────────── */
@@ -150,18 +199,25 @@
       priority: 3,
       eraTags: ["later_life"],
       conversational: "What was retirement like for you? Was it a welcome change or a difficult transition?",
+      extractionHint: "Narrator's retirement status or experience. Extract what the narrator says about their own retirement, including if they say they never retired.",
+      memoirClass: "hook", questionKind: "turning_point", memoirWeight: 9,
+      hookPrompt: "You retired from {value}. What was the first morning like when you realized you didn't have to go? What did you feel?"
     },
     "laterYears.lifeLessons": {
       writeMode: "suggest_only",
       priority: 3,
       eraTags: ["later_life"],
       conversational: "Looking back, what are the most important lessons life has taught you?",
+      memoirClass: "hook", questionKind: "reflection", memoirWeight: 9,
+      hookPrompt: "You've said: \"{value}\". Was there a single moment when that lesson became real — not just words, but felt?"
     },
     "laterYears.adviceForFutureGenerations": {
       writeMode: "suggest_only",
       priority: 3,
       eraTags: ["later_life"],
       conversational: "If you could pass along one piece of advice to future generations, what would it be?",
+      memoirClass: "hook", questionKind: "reflection", memoirWeight: 8,
+      hookPrompt: "You've shared: \"{value}\". What in your life taught you that — was there a moment that made it clear?"
     },
 
     /* ── Hobbies & Interests ───────────────────────────────── */
@@ -170,24 +226,32 @@
       priority: 4,
       eraTags: ["school_years", "adolescence", "early_adulthood", "midlife", "later_life"],
       conversational: "What hobbies or interests have been important to you over the years?",
+      memoirClass: "thin_zone", questionKind: "sensory", memoirWeight: 5,
+      hookPrompt: "You enjoy {value}. When did that start — and what does it feel like when you're doing it?"
     },
     "hobbies.worldEvents": {
       writeMode: "suggest_only",
       priority: 4,
       eraTags: ["school_years", "adolescence", "early_adulthood", "midlife"],
       conversational: "Were there world events — a war, a political moment, a cultural shift — that shaped your life in some way?",
+      memoirClass: "hook", questionKind: "meaning", memoirWeight: 7,
+      hookPrompt: "You mentioned {value}. Where were you when that happened — and how did it change the way you saw things?"
     },
     "hobbies.personalChallenges": {
       writeMode: "suggest_only",
       priority: 3,
       eraTags: ["adolescence", "early_adulthood", "midlife", "later_life"],
       conversational: "What personal challenges or hardships have you faced? How did you get through them?",
+      memoirClass: "hook", questionKind: "turning_point", memoirWeight: 9,
+      hookPrompt: "You've faced: {value}. What got you through — was there a moment when you knew you'd make it?"
     },
     "hobbies.travel": {
       writeMode: "suggest_only",
       priority: 4,
       eraTags: ["early_adulthood", "midlife", "later_life"],
       conversational: "Have you traveled to places that left a strong impression on you?",
+      memoirClass: "hook", questionKind: "sensory", memoirWeight: 6,
+      hookPrompt: "You traveled to {value}. What do you still see when you think of that place — a view, a meal, a feeling?"
     },
 
     /* ── Additional Notes ──────────────────────────────────── */
@@ -196,19 +260,31 @@
       priority: 5,
       eraTags: ["later_life"],
       conversational: "Is there a dream or goal you still carry with you — something unfinished?",
+      memoirClass: "hook", questionKind: "reflection", memoirWeight: 8,
+      hookPrompt: "You mentioned: \"{value}\". What would it mean to you if that could still happen?"
     },
     "additionalNotes.messagesForFutureGenerations": {
       writeMode: "suggest_only",
       priority: 5,
       eraTags: ["later_life"],
       conversational: "Is there a message you'd like to leave for the people who come after you?",
+      memoirClass: "hook", questionKind: "reflection", memoirWeight: 8,
+      hookPrompt: "You've shared: \"{value}\". Who do you most hope hears that — and why them?"
     }
   };
 
   /* ───────────────────────────────────────────────────────────
      REPEATABLE SECTION TEMPLATES — Parents, Grandparents, Siblings
-     These are candidate_only: interview answers create candidate
-     entries in state.bioBuilder.candidates.people (and .relationships).
+
+     Generic Lorevox behavior:
+     - interview-derived answers create candidates for review
+
+     Lorevox behavior:
+     - projection-sync.js applies a source-aware trust override
+     - trusted sources (preload, human_edit, profile_hydrate)
+       may write these sections directly into bb.questionnaire
+     - interview / backend_extract still route to candidates
+
      Conversational questions are templates with {ordinal} placeholders.
   ─────────────────────────────────────────────────────────── */
 
@@ -219,15 +295,15 @@
       priority: 2,
       eraTags: ["early_childhood", "school_years"],
       fields: {
-        relation:          { conversational: "Was {ref} your mother, father, stepparent, or another role?" },
-        firstName:         { conversational: "What was {ref}'s first name?" },
-        middleName:        { conversational: "Did {ref} have a middle name?" },
-        lastName:          { conversational: "What was {ref}'s last name?" },
-        maidenName:        { conversational: "Did {ref} have a maiden name or birth name?" },
-        birthDate:         { conversational: "Do you know when {ref} was born?", inputHelper: "normalizeDob" },
-        birthPlace:        { conversational: "Where was {ref} born?", inputHelper: "normalizePlace" },
-        occupation:        { conversational: "What did {ref} do for work?" },
-        notableLifeEvents: { conversational: "Were there notable events or stories from {ref}'s life that stand out?" },
+        relation:          { conversational: "Was {ref} your mother, father, stepparent, or another role?", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        firstName:         { conversational: "What was {ref}'s first name?", extractionHint: "The first name of this parent/parental figure as stated by the narrator. Extract only the name explicitly given.", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        middleName:        { conversational: "Did {ref} have a middle name?", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        lastName:          { conversational: "What was {ref}'s last name?", extractionHint: "The last/family name of this parent/parental figure as stated by the narrator.", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        maidenName:        { conversational: "Did {ref} have a maiden name or birth name?", memoirClass: "background", memoirWeight: 2, skipIfPreloaded: true },
+        birthDate:         { conversational: "Do you know when {ref} was born?", inputHelper: "normalizeDob", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        birthPlace:        { conversational: "Where was {ref} born?", inputHelper: "normalizePlace", memoirClass: "background", memoirWeight: 2, skipIfPreloaded: true },
+        occupation:        { conversational: "What did {ref} do for work?", memoirClass: "hook", questionKind: "relationship", memoirWeight: 6, hookPrompt: "Your {ref} worked as {value}. What do you remember about their work — the hours, the tools, how they carried it?" },
+        notableLifeEvents: { conversational: "Were there notable events or stories from {ref}'s life that stand out?", memoirClass: "hook", questionKind: "turning_point", memoirWeight: 8, hookPrompt: "You mentioned that {ref} experienced: \"{value}\". How did that affect your family — and you?" },
         notes:             { conversational: null }
       },
       entryPrompt: "Tell me about your {ordinal} parent — your mother or father. What was their name?",
@@ -240,11 +316,11 @@
       priority: 3,
       eraTags: ["early_childhood"],
       fields: {
-        firstName:          { conversational: "What was your {ordinal} grandparent's first name?" },
-        lastName:           { conversational: "What was their last name?" },
-        ancestry:           { conversational: "Do you know anything about their ancestry or where their family came from?" },
-        culturalBackground: { conversational: "Was there a cultural background — traditions, language, food — that came from that side of the family?" },
-        memorableStories:   { conversational: "Are there any memorable stories about this grandparent?" }
+        firstName:          { conversational: "What was your {ordinal} grandparent's first name?", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        lastName:           { conversational: "What was their last name?", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        ancestry:           { conversational: "Do you know anything about their ancestry or where their family came from?", memoirClass: "hook", questionKind: "meaning", memoirWeight: 6, hookPrompt: "Your family ancestry includes {value}. Were there traditions, stories, or a sense of where you came from that shaped your identity?" },
+        culturalBackground: { conversational: "Was there a cultural background — traditions, language, food — that came from that side of the family?", memoirClass: "hook", questionKind: "sensory", memoirWeight: 7, hookPrompt: "You mentioned a cultural background of {value}. What do you remember most vividly — a holiday, a dish, a phrase that still stays with you?" },
+        memorableStories:   { conversational: "Are there any memorable stories about this grandparent?", memoirClass: "hook", questionKind: "relationship", memoirWeight: 8, hookPrompt: "You shared a story about your grandparent: \"{value}\". What made that story stick — was it told often, or is it yours alone?" }
       },
       entryPrompt: "Let's talk about your grandparents. Can you tell me about one of them?",
       naturalTransition: "Would you like to tell me about another grandparent?"
@@ -256,14 +332,14 @@
       priority: 2,
       eraTags: ["early_childhood", "school_years", "adolescence"],
       fields: {
-        relation:              { conversational: "Was this a brother, sister, or another kind of sibling?" },
-        firstName:             { conversational: "What was their first name?" },
-        middleName:            { conversational: "Did they have a middle name?" },
-        lastName:              { conversational: "What was their last name?" },
-        birthOrder:            { conversational: "Were they older, younger, or the same age as you?" },
-        uniqueCharacteristics: { conversational: "What was unique about them — personality, appearance, or temperament?" },
-        sharedExperiences:     { conversational: "What experiences did you share growing up?" },
-        memories:              { conversational: "Is there a particular memory with this sibling that comes to mind?" },
+        relation:              { conversational: "Was this a brother, sister, or another kind of sibling?", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        firstName:             { conversational: "What was their first name?", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        middleName:            { conversational: "Did they have a middle name?", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        lastName:              { conversational: "What was their last name?", memoirClass: "background", memoirWeight: 1, skipIfPreloaded: true },
+        birthOrder:            { conversational: "Were they older, younger, or the same age as you?", memoirClass: "background", memoirWeight: 2, skipIfPreloaded: true },
+        uniqueCharacteristics: { conversational: "What was unique about them — personality, appearance, or temperament?", memoirClass: "hook", questionKind: "relationship", memoirWeight: 7, hookPrompt: "You described your sibling as: \"{value}\". What made you see them that way — is there a moment that captures who they were?" },
+        sharedExperiences:     { conversational: "What experiences did you share growing up?", memoirClass: "hook", questionKind: "sensory", memoirWeight: 8, hookPrompt: "You shared experiences: \"{value}\". Which one comes back most vividly — what do you still feel when you think of it?" },
+        memories:              { conversational: "Is there a particular memory with this sibling that comes to mind?", memoirClass: "hook", questionKind: "sensory", memoirWeight: 9, hookPrompt: "You recalled: \"{value}\". Take me there — where were you, what time of year, what was the feeling?" },
         notes:                 { conversational: null }
       },
       entryPrompt: "Did you have brothers or sisters? Tell me about one of them.",

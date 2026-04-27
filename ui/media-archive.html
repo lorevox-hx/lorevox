@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Lorevox — Document Archive</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/media-archive.css">
+</head>
+<body>
+  <div class="ma-shell">
+    <header class="ma-header">
+      <div>
+        <h1>Document Archive</h1>
+        <div class="ma-subtitle">Upload scanned documents, handwritten notes, letters, records, and genealogy sources.</div>
+      </div>
+      <div>
+        <a href="lorevox10.0.html" class="ma-chip-btn" style="text-decoration:none;display:inline-block;">← Back to Operator</a>
+      </div>
+    </header>
+
+    <div class="ma-grid">
+
+      <!-- ────────── Upload form ────────── -->
+      <section class="ma-card" id="maUploadCard">
+        <h2>Add Archive Item</h2>
+
+        <div class="ma-field">
+          <label for="maFile">File <span class="ma-field-hint">PDF, image, or text/markdown</span></label>
+          <input type="file" id="maFile" accept="application/pdf,image/*,.txt,.md"/>
+        </div>
+
+        <div class="ma-field-row">
+          <div class="ma-field">
+            <label for="maNarrator">Narrator (optional)</label>
+            <select id="maNarrator">
+              <option value="">— no narrator —</option>
+            </select>
+          </div>
+          <div class="ma-field">
+            <label for="maFamilyLine">Family line (optional)</label>
+            <input type="text" id="maFamilyLine" placeholder="e.g. Shong"/>
+          </div>
+        </div>
+
+        <div class="ma-field">
+          <label for="maTitle">Title <span class="ma-required">*</span></label>
+          <input type="text" id="maTitle" placeholder="e.g. Outline of the Shong Family"/>
+        </div>
+
+        <div class="ma-field">
+          <label for="maDocumentType">Document type <span class="ma-required">*</span></label>
+          <select id="maDocumentType">
+            <option value="genealogy_document">genealogy document</option>
+            <option value="handwritten_note">handwritten note</option>
+            <option value="letter">letter</option>
+            <option value="certificate">certificate</option>
+            <option value="newspaper_clipping">newspaper clipping</option>
+            <option value="school_record">school record</option>
+            <option value="military_record">military record</option>
+            <option value="legal_record">legal record</option>
+            <option value="photo_scan_contact_sheet">photo scan / contact sheet</option>
+            <option value="pdf_document">PDF document</option>
+            <option value="typed_notes">typed notes</option>
+            <option value="book_excerpt">book excerpt</option>
+            <option value="unknown" selected>unknown</option>
+          </select>
+        </div>
+
+        <div class="ma-field">
+          <label for="maDescription">Description / source attribution</label>
+          <textarea id="maDescription" placeholder="What this document is + where it came from. e.g. Scanned genealogy outline compiled by Charlotte Graichen, Valley City, North Dakota."></textarea>
+        </div>
+
+        <div class="ma-field-row">
+          <div class="ma-field">
+            <label for="maDateValue">Date (optional)</label>
+            <input type="text" id="maDateValue" placeholder="e.g. 1968 or 1968-07-04"/>
+          </div>
+          <div class="ma-field">
+            <label for="maDatePrecision">Date precision</label>
+            <select id="maDatePrecision">
+              <option value="unknown" selected>unknown</option>
+              <option value="decade">decade</option>
+              <option value="year">year</option>
+              <option value="month">month</option>
+              <option value="exact">exact (full date)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ma-field-row">
+          <div class="ma-field">
+            <label for="maLocationLabel">Location (optional)</label>
+            <input type="text" id="maLocationLabel" placeholder="e.g. Valley City, North Dakota"/>
+          </div>
+          <div class="ma-field">
+            <label for="maLocationSource">Location source</label>
+            <select id="maLocationSource">
+              <option value="unknown" selected>unknown</option>
+              <option value="typed_address">typed_address</option>
+              <option value="spoken_place">spoken_place</option>
+              <option value="description_geocode">description_geocode</option>
+              <option value="exif_gps">exif_gps</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ma-field-row">
+          <div class="ma-field">
+            <label for="maTimelineYear">Timeline year (optional)</label>
+            <input type="number" id="maTimelineYear" placeholder="e.g. 1863"/>
+          </div>
+          <div class="ma-field">
+            <label for="maLifeMapEra">Life Map era</label>
+            <input type="text" id="maLifeMapEra" placeholder="e.g. ancestry"/>
+          </div>
+        </div>
+
+        <div class="ma-field">
+          <label for="maLifeMapSection">Life Map section</label>
+          <input type="text" id="maLifeMapSection" placeholder="e.g. Shong family origins"/>
+        </div>
+
+        <div class="ma-field">
+          <label>People in this document (optional)</label>
+          <div class="ma-people-list" id="maPeopleList"></div>
+          <button type="button" class="ma-chip-btn" id="maAddPersonBtn">+ Add person</button>
+        </div>
+
+        <div class="ma-field">
+          <label>Family lines (optional, can be multiple)</label>
+          <div class="ma-family-lines-list" id="maFamilyLinesList"></div>
+          <button type="button" class="ma-chip-btn" id="maAddFamilyLineBtn">+ Add family line</button>
+        </div>
+
+        <div class="ma-field">
+          <label for="maManualTranscription">Manual transcription (optional)</label>
+          <textarea id="maManualTranscription" placeholder="Type or paste the document's text here. Save creates a curator-side transcription record without OCR."></textarea>
+        </div>
+
+        <div class="ma-field">
+          <label for="maOperatorNotes">Operator notes (private)</label>
+          <textarea id="maOperatorNotes" placeholder="Internal curator notes. Not shown to the narrator."></textarea>
+        </div>
+
+        <label class="ma-check">
+          <input type="checkbox" id="maArchiveOnly" checked/>
+          <span>Archive only (preserve as evidence; do not surface for candidate review)</span>
+        </label>
+        <label class="ma-check">
+          <input type="checkbox" id="maCandidateReady"/>
+          <span>Candidate ready (operator has reviewed; ready for future candidate harvest)</span>
+        </label>
+
+        <div class="ma-actions">
+          <button type="button" class="ma-btn-primary" id="maSaveBtn">Save Archive Item</button>
+          <button type="button" class="ma-btn-ghost" id="maResetBtn">Reset</button>
+          <span class="ma-status" id="maStatus"></span>
+        </div>
+      </section>
+
+      <!-- ────────── Saved list ────────── -->
+      <section class="ma-card" id="maListCard">
+        <h2>Saved Archive Items</h2>
+        <div class="ma-status" id="maListStatus"></div>
+        <div class="ma-list" id="maList"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- View / Edit modal -->
+  <div class="ma-modal-backdrop" id="maModalBackdrop" hidden>
+    <div class="ma-modal" role="dialog" aria-labelledby="maModalTitle" aria-modal="true">
+      <div class="ma-modal-header">
+        <h2 id="maModalTitle">Archive Item</h2>
+        <button type="button" class="ma-chip-btn" id="maModalCloseBtn" aria-label="Close">×</button>
+      </div>
+
+      <div class="ma-modal-body">
+        <div class="ma-modal-preview-wrap">
+          <img id="maModalThumb" alt="" class="ma-modal-thumb"/>
+          <div class="ma-modal-meta-readonly" id="maModalMetaReadonly"></div>
+          <a id="maModalOpenOriginal" href="#" target="_blank" rel="noopener" class="ma-btn-ghost">Open Original</a>
+        </div>
+
+        <div class="ma-modal-form">
+          <div class="ma-field">
+            <label for="maModalTitleInput">Title</label>
+            <input type="text" id="maModalTitleInput"/>
+          </div>
+
+          <div class="ma-field">
+            <label for="maModalDocumentType">Document type</label>
+            <select id="maModalDocumentType">
+              <option value="genealogy_document">genealogy document</option>
+              <option value="handwritten_note">handwritten note</option>
+              <option value="letter">letter</option>
+              <option value="certificate">certificate</option>
+              <option value="newspaper_clipping">newspaper clipping</option>
+              <option value="school_record">school record</option>
+              <option value="military_record">military record</option>
+              <option value="legal_record">legal record</option>
+              <option value="photo_scan_contact_sheet">photo scan / contact sheet</option>
+              <option value="pdf_document">PDF document</option>
+              <option value="typed_notes">typed notes</option>
+              <option value="book_excerpt">book excerpt</option>
+              <option value="unknown">unknown</option>
+            </select>
+          </div>
+
+          <div class="ma-field">
+            <label for="maModalDescription">Description / source attribution</label>
+            <textarea id="maModalDescription"></textarea>
+          </div>
+
+          <div class="ma-field-row">
+            <div class="ma-field">
+              <label for="maModalDateValue">Date</label>
+              <input type="text" id="maModalDateValue"/>
+            </div>
+            <div class="ma-field">
+              <label for="maModalDatePrecision">Date precision</label>
+              <select id="maModalDatePrecision">
+                <option value="unknown">unknown</option>
+                <option value="decade">decade</option>
+                <option value="year">year</option>
+                <option value="month">month</option>
+                <option value="exact">exact (full date)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ma-field-row">
+            <div class="ma-field">
+              <label for="maModalLocationLabel">Location</label>
+              <input type="text" id="maModalLocationLabel"/>
+            </div>
+            <div class="ma-field">
+              <label for="maModalTimelineYear">Timeline year</label>
+              <input type="number" id="maModalTimelineYear"/>
+            </div>
+          </div>
+
+          <div class="ma-field-row">
+            <div class="ma-field">
+              <label for="maModalLifeMapEra">Life Map era</label>
+              <input type="text" id="maModalLifeMapEra"/>
+            </div>
+            <div class="ma-field">
+              <label for="maModalLifeMapSection">Life Map section</label>
+              <input type="text" id="maModalLifeMapSection"/>
+            </div>
+          </div>
+
+          <div class="ma-field">
+            <label>People</label>
+            <div class="ma-people-list" id="maModalPeopleList"></div>
+            <button type="button" class="ma-chip-btn" id="maModalAddPersonBtn">+ Add person</button>
+          </div>
+
+          <div class="ma-field">
+            <label>Family lines</label>
+            <div class="ma-family-lines-list" id="maModalFamilyLinesList"></div>
+            <button type="button" class="ma-chip-btn" id="maModalAddFamilyLineBtn">+ Add family line</button>
+          </div>
+
+          <div class="ma-field">
+            <label for="maModalManualTranscription">Manual transcription</label>
+            <textarea id="maModalManualTranscription"></textarea>
+          </div>
+
+          <div class="ma-field">
+            <label for="maModalOperatorNotes">Operator notes</label>
+            <textarea id="maModalOperatorNotes"></textarea>
+          </div>
+
+          <label class="ma-check">
+            <input type="checkbox" id="maModalArchiveOnly"/>
+            <span>Archive only</span>
+          </label>
+          <label class="ma-check">
+            <input type="checkbox" id="maModalCandidateReady"/>
+            <span>Candidate ready</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="ma-modal-footer">
+        <button type="button" class="ma-btn-ghost" id="maModalDeleteBtn">Delete</button>
+        <span class="ma-status" id="maModalStatus"></span>
+        <span style="flex:1"></span>
+        <button type="button" class="ma-btn-ghost" id="maModalCancelBtn">Cancel</button>
+        <button type="button" class="ma-btn-primary" id="maModalSaveBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/media-archive.js"></script>
+</body>
+</html>

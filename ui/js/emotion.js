@@ -399,12 +399,23 @@
           facingMode: 'user',
         });
 
+        // WO-CAM-FIX: The vendor camera_utils.js fires a raw alert() on
+        // getUserMedia failure BEFORE throwing the error we catch below.
+        // Suppress that vendor alert — our own emotion-ui.js shows a proper
+        // user-facing sysBubble message with actionable instructions instead.
+        var _origAlert = window.alert;
+        window.alert = function(msg) {
+          console.warn('[LoreVoxEmotion] Suppressed vendor camera alert:', msg);
+        };
         await _camera.start();
+        window.alert = _origAlert;
         _active = true;
         console.log('[LoreVoxEmotion] Camera started — affect detection active.');
         return true;
 
       } catch (err) {
+        // Restore alert in case it was suppressed before the error
+        if (_origAlert) window.alert = _origAlert;
         console.warn('[LoreVoxEmotion] Camera access denied or unavailable:', err);
         // Step 3 fix: clean up partially-created DOM and state on failed start.
         // Without this, every failed attempt leaves an orphaned <video> element in the DOM.

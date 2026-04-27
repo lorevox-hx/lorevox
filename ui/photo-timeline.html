@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Lorevox — Photo Timeline</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/photo-timeline.css">
+</head>
+<body>
+  <div class="pt-shell">
+
+    <header class="pt-header">
+      <h1>Photo Timeline</h1>
+      <div class="pt-header-controls">
+        <select id="ptNarrator" class="pt-narrator-select"></select>
+        <a href="photo-intake.html" class="pt-pill" style="text-decoration:none;padding:6px 12px;">Intake →</a>
+      </div>
+    </header>
+
+    <div id="ptBody">
+      <div class="pt-empty" id="ptEmpty">Loading photos…</div>
+    </div>
+
+  </div>
+
+  <!-- Fullsize preview modal -->
+  <div class="pt-modal-backdrop" id="ptModal" style="display:none;">
+    <img id="ptModalImg" alt=""/>
+  </div>
+
+  <script src="js/photo-timeline.js"></script>
+</body>
+</html>

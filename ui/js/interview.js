@@ -228,6 +228,10 @@ function updateContextTriggers(){
 /* v7.1: when a timeline seed exists, builds prompt from pass + era.
    Falls back to the session-engine-assigned prompt for legacy flow. */
 function renderInterview(){
+  // WO-11: suppress interview rendering while trainer coaching flow is active
+  if (window.LorevoxTrainerNarrators && window.LorevoxTrainerNarrators.isActive()) {
+    return;
+  }
   document.getElementById("ivSession").textContent=state.interview.session_id||"—";
   document.getElementById("ivQid").textContent=state.interview.question_id||"—";
 
@@ -244,6 +248,329 @@ function renderInterview(){
   updateContextTriggers();
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   v10 — MEMOIR QUESTION STRATEGY LAYER
+   Decides what Lori should ask next based on:
+   - background suppression (skip known identity facts)
+   - memoir hooks (use known facts to ask deeper)
+   - thin-zone detection (target weak memoir areas)
+   - session memory (avoid repetitive prompts)
+═══════════════════════════════════════════════════════════════ */
+
+// ── Session memory helpers ───────────────────────────────────
+
+function _memoirStrategyState() {
+  if (!state?.session?.memoirStrategy) {
+    if (state?.session) {
+      state.session.memoirStrategy = {
+        askedPaths: [], askedKinds: [], askedEras: [],
+        lastQuestionTs: null, consecutiveSameEra: 0
+      };
+    }
+  }
+  return state?.session?.memoirStrategy || null;
+}
+
+function _recordAsked(path, kind, era) {
+  var ms = _memoirStrategyState();
+  if (!ms) return;
+  if (path) {
+    ms.askedPaths.push(path);
+    if (ms.askedPaths.length > 30) ms.askedPaths.shift();
+  }
+  if (kind) {
+    ms.askedKinds.push(kind);
+    if (ms.askedKinds.length > 15) ms.askedKinds.shift();
+  }
+  if (era) {
+    if (ms.askedEras.length > 0 && ms.askedEras[ms.askedEras.length - 1] === era) {
+      ms.consecutiveSameEra++;
+    } else {
+      ms.consecutiveSameEra = 1;
+    }
+    ms.askedEras.push(era);
+    if (ms.askedEras.length > 10) ms.askedEras.shift();
+  }
+  ms.lastQuestionTs = Date.now();
+}
+
+function _wasRecentlyAsked(path) {
+  var ms = _memoirStrategyState();
+  return ms ? ms.askedPaths.indexOf(path) >= 0 : false;
+}
+
+function _kindOverused(kind) {
+  var ms = _memoirStrategyState();
+  if (!ms) return false;
+  var recent = ms.askedKinds.slice(-5);
+  var count = recent.filter(function (k) { return k === kind; }).length;
+  return count >= 3; // same kind asked 3+ of last 5 times = overused
+}
+
+function _stuckInEra() {
+  var ms = _memoirStrategyState();
+  return ms ? ms.consecutiveSameEra >= 4 : false;
+}
+
+// ── Thin-zone detection ──────────────────────────────────────
+
+function lv80DetectThinZones(era) {
+  var qq = (state?.bioBuilder?.questionnaire) || {};
+  var thinZones = [];
+
+  // Define memoir zone → questionnaire section mapping with depth checks
+  var zones = [
+    { id: "early_childhood", label: "Early Childhood", sections: ["earlyMemories"], fields: ["firstMemory", "favoriteToy", "significantEvent"] },
+    { id: "formative_family", label: "Family & Roots", sections: ["parents", "grandparents", "siblings"], repeatable: true,
+      hookFields: { parents: ["occupation", "notableLifeEvents"], grandparents: ["memorableStories", "culturalBackground"], siblings: ["sharedExperiences", "memories", "uniqueCharacteristics"] } },
+    { id: "education_career", label: "Education & Career", sections: ["education"], fields: ["schooling", "higherEducation", "earlyCareer", "careerProgression"] },
+    { id: "relationships", label: "Relationships", sections: ["spouse", "marriage", "children"], repeatable: true,
+      hookFields: { spouse: ["narrative"], marriage: ["proposalStory", "weddingDetails"], children: ["narrative"] } },
+    { id: "later_life", label: "Later Years", sections: ["laterYears"], fields: ["retirement", "lifeLessons", "adviceForFutureGenerations"] },
+    { id: "identity", label: "Identity & Interests", sections: ["hobbies"], fields: ["hobbies", "personalChallenges", "worldEvents", "travel"] },
+  ];
+
+  for (var i = 0; i < zones.length; i++) {
+    var zone = zones[i];
+    var structureCount = 0;
+    var narrativeDepth = 0;
+
+    for (var j = 0; j < zone.sections.length; j++) {
+      var sec = zone.sections[j];
+      var data = qq[sec];
+      if (!data) continue;
+
+      if (zone.repeatable && Array.isArray(data)) {
+        structureCount += data.length;
+        // Check hook fields for narrative depth
+        var hf = zone.hookFields && zone.hookFields[sec] || [];
+        for (var k = 0; k < data.length; k++) {
+          for (var h = 0; h < hf.length; h++) {
+            var val = data[k][hf[h]];
+            if (val && String(val).trim().length > 30) narrativeDepth++;
+          }
+        }
+      } else if (typeof data === "object" && !Array.isArray(data)) {
+        var fields = zone.fields || Object.keys(data);
+        for (var f = 0; f < fields.length; f++) {
+          var v = data[fields[f]];
+          if (v && String(v).trim()) {
+            structureCount++;
+            if (String(v).trim().length > 50) narrativeDepth++;
+          }
+        }
+      }
+    }
+
+    // Thin = has structure but lacks narrative depth
+    if (structureCount > 0 && narrativeDepth < Math.max(1, Math.floor(structureCount * 0.3))) {
+      thinZones.push({ id: zone.id, label: zone.label, structure: structureCount, depth: narrativeDepth });
+    }
+  }
+
+  // If era is specified, prioritize zones that match it
+  if (era) {
+    var eraZoneMap = {
+      "early_childhood": ["early_childhood", "formative_family"],
+      "school_years": ["formative_family", "education_career"],
+      "adolescence": ["education_career", "identity"],
+      "early_adulthood": ["education_career", "relationships"],
+      "midlife": ["relationships", "identity"],
+      "later_life": ["later_life", "identity"]
+    };
+    var preferred = eraZoneMap[era] || [];
+    thinZones.sort(function (a, b) {
+      var aP = preferred.indexOf(a.id) >= 0 ? 0 : 1;
+      var bP = preferred.indexOf(b.id) >= 0 ? 0 : 1;
+      return aP - bP;
+    });
+  }
+
+  return thinZones;
+}
+
+// ── Preload-aware prompt enrichment ──────────────────────────
+
+function _buildHookPrompt(config, path) {
+  if (!config || !config.hookPrompt) return null;
+  // Get existing value from questionnaire or projection
+  var value = null;
+  var parsed = LorevoxProjectionMap.parsePath(path);
+  if (parsed) {
+    var qq = state?.bioBuilder?.questionnaire || {};
+    if (parsed.index !== null) {
+      // Repeatable field
+      var entries = qq[parsed.section];
+      if (Array.isArray(entries) && entries[parsed.index]) {
+        value = entries[parsed.index][parsed.field];
+      }
+    } else {
+      // Direct field
+      var sec = qq[parsed.section];
+      if (sec) value = sec[parsed.field];
+    }
+  }
+  if (!value) {
+    var proj = state?.interviewProjection?.fields || {};
+    if (proj[path] && proj[path].value) value = proj[path].value;
+  }
+  if (!value || !String(value).trim()) return null;
+  // Substitute {value} in hookPrompt
+  var prompt = config.hookPrompt.replace(/\{value\}/g, String(value).trim());
+  // Also substitute {ref} if present (for repeatable person references)
+  if (parsed && parsed.index !== null) {
+    var qq2 = state?.bioBuilder?.questionnaire || {};
+    var entries2 = qq2[parsed.section];
+    if (Array.isArray(entries2) && entries2[parsed.index]) {
+      var ref = entries2[parsed.index].firstName || entries2[parsed.index].relation || "this person";
+      prompt = prompt.replace(/\{ref\}/g, ref);
+    }
+  }
+  return prompt;
+}
+
+// ── Main strategy scorer ─────────────────────────────────────
+
+function lv80ScoreMemoirPromptCandidates(era, pass) {
+  if (typeof LorevoxProjectionMap === "undefined") return [];
+  if (!state?.bioBuilder) return [];
+  if (pass === "pass1") return [];
+
+  var projFields = state.interviewProjection ? state.interviewProjection.fields : {};
+  var bbQQ = state.bioBuilder.questionnaire || {};
+  var hasIdentity = !!(state.profile?.basics?.dob && state.profile?.basics?.pob);
+  var candidates = [];
+
+  // Get all fields from the projection map
+  var fieldMap = LorevoxProjectionMap.FIELD_MAP;
+  Object.keys(fieldMap).forEach(function (path) {
+    var config = fieldMap[path];
+
+    // Skip identity fields if already captured
+    if (!hasIdentity && config.priority === 1) { /* include — still need identity */ }
+    else if (config.priority === 1 && hasIdentity && config.skipIfPreloaded) return;
+
+    // Skip auto-derived and non-askable
+    if (config.autoDerive) return;
+    if (!config.conversational) return;
+
+    // Check era relevance
+    if (config.eraTags && config.eraTags.length > 0 && era && config.eraTags.indexOf(era) < 0) return;
+
+    // Check if already answered
+    var isAnswered = false;
+    if (projFields[path] && projFields[path].value) isAnswered = true;
+    var parsed = LorevoxProjectionMap.parsePath(path);
+    if (parsed && bbQQ[parsed.section]) {
+      var existing = bbQQ[parsed.section][parsed.field];
+      if (existing && String(existing).trim()) isAnswered = true;
+    }
+
+    // Score the candidate
+    var score = config.memoirWeight || 3;
+    var prompt = null;
+
+    if (isAnswered) {
+      // Already answered — only include if it's a hook with a hookPrompt
+      if (config.memoirClass === "hook" && config.hookPrompt) {
+        prompt = _buildHookPrompt(config, path);
+        if (prompt) {
+          score += 3; // Hooks on answered fields get bonus
+        } else {
+          return; // No value to build hook from
+        }
+      } else {
+        return; // Background or thin_zone already answered = skip
+      }
+    } else {
+      // Unanswered — use conversational prompt
+      prompt = config.conversational;
+
+      // Background fields with skipIfPreloaded: lower their score drastically
+      if (config.memoirClass === "background" && config.skipIfPreloaded) {
+        score = 1;
+      }
+    }
+
+    // Penalties
+    if (_wasRecentlyAsked(path)) score -= 5;
+    if (config.questionKind && _kindOverused(config.questionKind)) score -= 2;
+
+    // Thin-zone bonus
+    var thinZones = lv80DetectThinZones(era);
+    for (var t = 0; t < thinZones.length; t++) {
+      // If this field's section relates to a thin zone, boost it
+      if (parsed && thinZones[t].id.indexOf(parsed.section) >= 0) {
+        score += 2;
+        break;
+      }
+    }
+
+    if (score > 0 && prompt) {
+      candidates.push({
+        path: path,
+        config: config,
+        prompt: prompt,
+        score: score,
+        isHook: isAnswered && config.memoirClass === "hook",
+        questionKind: config.questionKind || "fact"
+      });
+    }
+  });
+
+  // Sort by score descending
+  candidates.sort(function (a, b) { return b.score - a.score; });
+  return candidates;
+}
+
+// ── Top-level selector ───────────────────────────────────────
+
+function lv80SelectBestMemoirQuestion(era, pass) {
+  var candidates = lv80ScoreMemoirPromptCandidates(era, pass);
+  if (candidates.length === 0) return null;
+
+  // Pick top candidate
+  var best = candidates[0];
+
+  // Record in session memory
+  _recordAsked(best.path, best.questionKind, era);
+
+  // Track for projection
+  if (state.interviewProjection) {
+    if (!best.isHook) {
+      state.interviewProjection._currentTargetPath = best.path;
+    } else {
+      // Hook questions use known data — don't target for overwrite
+      state.interviewProjection._currentTargetPath = null;
+    }
+  }
+
+  console.log("[memoir-strategy] Selected:", best.path,
+    "score:", best.score,
+    "kind:", best.questionKind,
+    "isHook:", best.isHook,
+    "era:", era);
+
+  return best;
+}
+
+/* ── WO-ARCH-07A — known-fact suppression after memory echo ──── */
+function _suppressKnownBasicsAfterMemoryEcho(q){
+  const t = String(q || "").toLowerCase();
+  const hadEcho = state?.session?.lastTurnMode === "memory_echo";
+  if (!hadEcho) return q;
+
+  const knowsDob = !!state?.profile?.basics?.dob;
+  const knowsPob = !!state?.profile?.basics?.pob;
+  const knowsName = !!(state?.profile?.basics?.preferred || state?.profile?.basics?.fullname);
+
+  if (knowsDob && /when were you born|date of birth/.test(t)) return null;
+  if (knowsPob && /where were you born|place of birth/.test(t)) return null;
+  if (knowsName && /what is your name|full name|prefer to go by/.test(t)) return null;
+
+  return q;
+}
+
 /* ── v7.1 — pass-aware prompt builder ───────────────────────── */
 function build71InterviewPrompt(){
   const pass = getCurrentPass();
@@ -251,23 +578,44 @@ function build71InterviewPrompt(){
   const mode = getCurrentMode();
   const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "this person";
 
-  // v8 projection integration — check if there's a specific template question to ask
-  var projectionQ = _getNextProjectionQuestion(era, pass);
-  if (projectionQ) {
-    var base = projectionQ;
-    // Still enrich with draft context for family/theme hints
+  var candidate = null;
+
+  // v10: Try memoir strategy layer first
+  var memoirQ = lv80SelectBestMemoirQuestion(era, pass);
+  if (memoirQ) {
+    var base = memoirQ.prompt;
     var draftHint = _buildDraftContextHint(era);
-    return draftHint ? base + " " + draftHint : base;
+    candidate = draftHint ? base + " " + draftHint : base;
   }
 
-  var base;
-  if(pass==="pass2a") base = _timelinePassPrompt(era, mode);
-  else if(pass==="pass2b") base = _depthPassPrompt(era, mode, name);
-  else base = "When were you born? And where were you born?";
+  // v8: Fall back to projection-based question selection
+  if (!candidate) {
+    var projectionQ = _getNextProjectionQuestion(era, pass);
+    if (projectionQ) {
+      var base = projectionQ;
+      var draftHint = _buildDraftContextHint(era);
+      candidate = draftHint ? base + " " + draftHint : base;
+    }
+  }
 
-  // v5 integration — enrich with Family Tree / Life Threads draft context
-  var draftHint = _buildDraftContextHint(era);
-  return draftHint ? base + " " + draftHint : base;
+  if (!candidate) {
+    var base;
+    if(pass==="pass2a") base = _timelinePassPrompt(era, mode);
+    else if(pass==="pass2b") base = _depthPassPrompt(era, mode, name);
+    else base = "When were you born? And where were you born?";
+
+    // v5 integration — enrich with Family Tree / Life Threads draft context
+    var draftHint = _buildDraftContextHint(era);
+    candidate = draftHint ? base + " " + draftHint : base;
+  }
+
+  // WO-ARCH-07A — suppress known-basics re-ask after memory echo
+  var filtered = _suppressKnownBasicsAfterMemoryEcho(candidate);
+  if (filtered) return filtered;
+
+  // Suppressed — try next available question by re-running memoir/projection
+  // without the suppressed candidate. For now, fall back to a safe generic.
+  return "Tell me more about what comes to mind.";
 }
 
 /* ── v8 — Projection-aware question selection ──────────────────
@@ -550,7 +898,12 @@ async function processInterviewAnswer(text, skipped=false){
     const j=await r.json();
     if(j.next_question){
       state.interview.question_id=j.next_question.id;
-      state.interview.prompt=j.next_question.prompt;
+      // WO-KAWA-02A: intercept question with Kawa follow-up in hybrid/reflection modes
+      const _anchorForKawa = j.anchor || state?.timeline?.activeEvent || state?.chronologyAccordion?.focus || null;
+      state.interview.prompt = normalizeKawaLanguageForUser(
+        maybeApplyKawaFollowup(j.next_question.prompt, _anchorForKawa)
+      );
+      if (typeof tickKawaPromptCooldown === "function") tickKawaPromptCooldown();
     }
     if(j.summary_section_id){
       // Translate backend plan ID → UI roadmap ID (they use different naming conventions)
@@ -855,29 +1208,86 @@ function _extractAndProjectMultiField(answerText, turnId) {
   var targetPath = state.interviewProjection._lastTargetPath || null;
   var targetSection = state.interviewProjection._lastTargetSection || null;
 
-  var payload = {
-    person_id: state.person_id,
-    session_id: state.interview.session_id || null,
-    answer: answerText,
-    current_section: targetSection || null,
-    current_target_path: targetPath || null
-  };
+  // WO-9: Chunk long answers before sending to backend
+  var chunks = (typeof _wo8ChunkText === "function" && answerText && answerText.length > 1200)
+    ? _wo8ChunkText(answerText, 1200) : [answerText];
+  if (chunks.length > 1) {
+    console.log("[extract][WO-9] Chunked answer into " + chunks.length + " segments for backend extraction");
+  }
 
-  fetch((window.LOREVOX_API || "http://localhost:8000") + "/api/extract-fields", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-  .then(function (resp) {
-    if (!resp.ok) throw new Error("extract-fields returned " + resp.status);
-    return resp.json();
-  })
-  .then(function (data) {
+  var allItems = [];
+  var allClarifications = [];
+  var extractMethod = "";
+  var chunkPromises = chunks.map(function (chunk, ci) {
+    // WO-EX-SECTION-EFFECT-01 Phase 2 (#93): thread life-map stage
+    // (era/pass/mode) from session state into the extraction payload.
+    // Pure plumbing — backend only logs these at INFO. Reads from the
+    // same state.session fields the runtime71 composer uses.
+    var _sess = (state && state.session) || {};
+    var payload = {
+      person_id: state.person_id,
+      session_id: state.interview.session_id || null,
+      answer: chunk,
+      current_section: targetSection || null,
+      current_target_path: targetPath || null,
+      current_era:  _sess.currentEra  || null,
+      current_pass: _sess.currentPass || null,
+      current_mode: _sess.currentMode || null
+    };
+    // WO-STT-LIVE-02 (#99): attach transcript provenance when available.
+    // buildExtractionPayloadFields() returns {} when nothing is staged,
+    // so the payload is byte-stable with pre-WO-STT-LIVE-02 callers.
+    // Note: we reconcile against the chunk so a long answer split into
+    // multiple chunks still carries the right source tag on each.
+    try {
+      if (window.TranscriptGuard && typeof window.TranscriptGuard.buildExtractionPayloadFields === "function") {
+        var _tFields = window.TranscriptGuard.buildExtractionPayloadFields(chunk);
+        Object.keys(_tFields).forEach(function (k) { payload[k] = _tFields[k]; });
+      }
+    } catch (_tErr) {
+      console.warn("[extract][stt-guard] payload merge failed:", _tErr && _tErr.message);
+    }
+    return fetch((window.LOREVOX_API || "http://localhost:8000") + "/api/extract-fields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(function (resp) {
+      if (!resp.ok) throw new Error("extract-fields returned " + resp.status);
+      return resp.json();
+    })
+    .then(function (data) {
+      if (data.items && data.items.length > 0) {
+        allItems = allItems.concat(data.items);
+        if (!extractMethod) extractMethod = data.method || "";
+        console.log("[extract] Chunk " + (ci + 1) + "/" + chunks.length + ": " + data.items.length + " items");
+      }
+      // WO-STT-LIVE-02 (#99): collect clarification entries across chunks.
+      // Defaults to [] on pre-WO-STT-LIVE-02 backends.
+      if (Array.isArray(data.clarification_required) && data.clarification_required.length > 0) {
+        allClarifications = allClarifications.concat(data.clarification_required);
+      }
+    });
+  });
+
+  Promise.all(chunkPromises)
+  .then(function () {
+    // WO-9: Deduplicate items across chunks (same fieldPath + value = skip)
+    var seen = {};
+    var data = { items: [], method: extractMethod };
+    for (var i = 0; i < allItems.length; i++) {
+      var key = (allItems[i].fieldPath || "") + "::" + (allItems[i].value || "");
+      if (!seen[key]) {
+        seen[key] = true;
+        data.items.push(allItems[i]);
+      }
+    }
+
     if (!data.items || data.items.length === 0) {
       console.log("[extract] No additional fields extracted (method: " + data.method + ")");
       return;
     }
-    console.log("[extract] Backend returned " + data.items.length + " items via " + data.method);
+    console.log("[extract] Backend returned " + data.items.length + " items via " + data.method + (chunks.length > 1 ? " (" + chunks.length + " chunks)" : ""));
 
     // Track repeatable section indices for grouping
     var repeatableCounters = {};
@@ -981,6 +1391,60 @@ function _extractAndProjectMultiField(answerText, turnId) {
     if (typeof LorevoxProjectionSync.forcePersist === "function") {
       LorevoxProjectionSync.forcePersist();
     }
+
+    // WO-13X Part B: Show inline claim panel after extraction
+    if (data.items.length > 0 && window.LorevoxShadowReview && window.LorevoxShadowReview.showInlineClaims) {
+      try {
+        window.LorevoxShadowReview.showInlineClaims(data.items, answerText);
+      } catch (e) {
+        console.warn("[extract] Inline claims panel error:", e);
+      }
+    }
+
+    // WO-STT-LIVE-02 (#99): surface clarification_required entries so the
+    // UI can ask the narrator to confirm fragile facts instead of silently
+    // prefilling from a low-confidence / fragile-flagged transcript.
+    // Default dispatch order:
+    //   1. custom handler window.LorevoxClarifyFragile (if installed)
+    //   2. shadow-review inline panel (when available) — reuses the same
+    //      surface as other review prompts
+    //   3. console log (diagnostic only) when no handler is installed
+    if (allClarifications && allClarifications.length > 0) {
+      console.log("[extract][stt-safety] " + allClarifications.length + " fragile-field clarification(s) requested:", allClarifications);
+      var handled = false;
+      if (typeof window.LorevoxClarifyFragile === "function") {
+        try {
+          window.LorevoxClarifyFragile(allClarifications, answerText);
+          handled = true;
+        } catch (e) {
+          console.warn("[extract][stt-safety] custom handler failed:", e && e.message);
+        }
+      }
+      if (!handled && window.LorevoxShadowReview && typeof window.LorevoxShadowReview.showFragileClarifications === "function") {
+        try {
+          window.LorevoxShadowReview.showFragileClarifications(allClarifications, answerText);
+          handled = true;
+        } catch (e) {
+          console.warn("[extract][stt-safety] shadow-review handler failed:", e && e.message);
+        }
+      }
+      if (!handled && window.TranscriptGuard && typeof window.TranscriptGuard.buildConfirmationPrompt === "function") {
+        // Minimum viable surface — log each prompt line so it is visible
+        // in the DevTools console during testing even without UI wiring.
+        for (var ci2 = 0; ci2 < allClarifications.length; ci2++) {
+          console.log("[extract][stt-safety][prompt] " +
+                      window.TranscriptGuard.buildConfirmationPrompt(allClarifications[ci2]));
+        }
+      }
+    }
+
+    // Clear the staged transcript after a successful extraction round-trip
+    // so a stale capture never double-attributes to the next turn.
+    try {
+      if (window.TranscriptGuard && typeof window.TranscriptGuard.clearStagedTranscript === "function") {
+        window.TranscriptGuard.clearStagedTranscript();
+      }
+    } catch (_) {}
   })
   .catch(function (err) {
     // Non-fatal: backend extraction is supplementary
@@ -996,4 +1460,78 @@ function _ivResetProjectionForNarrator(newPid) {
   if (typeof LorevoxProjectionSync !== "undefined") {
     LorevoxProjectionSync.resetForNarrator(newPid);
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-KAWA-UI-01A — Kawa interview mode hooks
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Set the Kawa interview mode.
+ * 'chronological' — default, no Kawa prompts
+ * 'hybrid'        — chronological + selective Kawa follow-ups
+ * 'kawa_reflection' — river-first questioning
+ */
+function setKawaMode(mode) {
+  if (!state?.session) return;
+  state.session.lastKawaMode = state.session.kawaMode || "chronological";
+  state.session.kawaMode = mode;
+  console.log("[kawa] Interview mode set to:", mode);
+}
+
+function getKawaMode() {
+  return state?.session?.kawaMode || "chronological";
+}
+
+/**
+ * Check if a given anchor is a high-meaning life event
+ * that warrants offering Kawa reflection.
+ */
+function shouldOfferKawaReflection(anchor){
+  if (!anchor) return false;
+  const label = String(anchor.label || "").toLowerCase();
+  return [
+    "marriage","divorce","move","retirement","first job","loss","death",
+    "caregiving","graduation","military","health","birth","relocation",
+    "diagnosis","separation"
+  ].some(x => label.includes(x));
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-KAWA-02A — Kawa follow-up interception + language normalization
+   Called from the question assignment path to inject Kawa prompts
+   in hybrid/kawa_reflection modes.
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Intercept the next question and optionally replace it with a Kawa
+ * follow-up in hybrid or kawa_reflection mode.
+ */
+function maybeApplyKawaFollowup(nextQuestion, anchor){
+  const mode = state?.session?.kawaMode || "chronological";
+  if (mode === "chronological") return nextQuestion;
+  if (typeof shouldOfferKawaReflectionForAnchor !== "function") return nextQuestion;
+  if (!shouldOfferKawaReflectionForAnchor(anchor)) return nextQuestion;
+  if (typeof buildKawaFollowup !== "function") return nextQuestion;
+  const kawaQuestion = buildKawaFollowup(anchor);
+  if (!kawaQuestion) return nextQuestion;
+  return kawaQuestion;
+}
+
+/**
+ * Replace river metaphor language with plain equivalents when the
+ * narrator has opted into plain meaning language.
+ */
+function normalizeKawaLanguageForUser(text){
+  if (!text) return text;
+  const prefersPlain = !!state?.ui?.prefersPlainMeaningLanguage;
+  if (!prefersPlain) return text;
+  const fb = window.KAWA_PROMPTS?.fallback_vocabulary || {};
+  return text
+    .replace(/\briver\b/gi, fb.water || "life")
+    .replace(/\brock(s?)\b/gi, (fb.rocks || "obstacle") + "$1")
+    .replace(/\bdriftwood\b/gi, fb.driftwood || "support")
+    .replace(/\bbanks\b/gi, fb.banks || "context")
+    .replace(/\bwater\b/gi, fb.water || "flow");
 }

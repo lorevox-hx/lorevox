@@ -50,6 +50,51 @@ let state = {
     pairedSpeaker: null,    // name or label for the second participant
   },
 
+  /* ── WO-STT-LIVE-02 (#99) — transcript provenance ─────────────────
+     The single source of truth for "what produced the text we're about
+     to send to /api/extract-fields". Populated by:
+       - app.js recognition.onresult  (source = "web_speech")
+       - future backend-STT adapter   (source = "backend_whisper")
+       - sendUserMessage() fallback   (source = "typed" when no recent
+                                       recognition event matches the
+                                       current #chatInput content)
+     Consumed by:
+       - ui/js/interview.js _extractAndProjectMultiField payload builder.
+       - ui/js/transcript-guard.js reconciliation + confirmation
+         decision ("is this turn fragile enough to require UX gating?")
+     Schema:
+       raw_text          : string — verbatim recognizer output (pre-normalise)
+       normalized_text   : string — punctuation/case normalised (matches what
+                                    lands in #chatInput and is sent as `answer`)
+       source            : "web_speech" | "backend_whisper" | "typed" | null
+       is_final          : bool    — true when recognition.onresult fires with
+                                    isFinal; typed inputs are always final
+       confidence        : number|null  — 0..1; null when source provides none
+       fragile_fact_flags: string[] — output of transcript-guard's frontend
+                                     heuristic ("mentions_dob", "mentions_name",
+                                     "mentions_birthplace", "mentions_parent",
+                                     "mentions_spouse", "mentions_sibling",
+                                     "mentions_child")
+       confirmation_required : bool — true when (source != "typed") AND
+                                     ((confidence != null && confidence < 0.6)
+                                      OR fragile_fact_flags.length > 0)
+       confirmation_prompt   : string|null — optional pre-composed UI prompt
+       turn_id               : string|null — interview turn id when available
+       ts                    : number — ms epoch of last update
+  ─────────────────────────────────────────────────────────────── */
+  lastTranscript: {
+    raw_text:              "",
+    normalized_text:       "",
+    source:                null,
+    is_final:              false,
+    confidence:            null,
+    fragile_fact_flags:    [],
+    confirmation_required: false,
+    confirmation_prompt:   null,
+    turn_id:               null,
+    ts:                    0,
+  },
+
   /* ── v7.1 Timeline Spine ──────────────────────────────────────
      Initialized when DOB + birthplace are saved.
      periods: { label, start_year, end_year, places[], notes[] }[]
@@ -70,6 +115,75 @@ let state = {
     currentPass: "pass1",
     currentEra:  null,
     currentMode: "open",
+
+    /* WO-UI-SHELL-01 — operator-chosen session style.
+       Separate from currentMode (which is cognitive/runtime state).
+       Values: questionnaire_first | clear_direct | warm_storytelling
+               | memory_exercise   | companion
+       Persisted to localStorage under 'lorevox_session_style_v1' and
+       rehydrated by lvShellInitTabs on load.  Phase 1 = state + label
+       only; prompt-composer wiring is a later WO. */
+    sessionStyle: "warm_storytelling",
+
+    /* WO-HORNELORE-SESSION-LOOP-01 — post-identity orchestrator state.
+       After identityPhase becomes "complete", lvSessionLoopOnTurn drives
+       what Lori does next based on sessionStyle.  This substate tracks
+       the questionnaire walk progress so subsequent turns advance to
+       the next field instead of asking the same one twice.
+         currentSection: BB section id we're walking (e.g. "personal")
+         currentField:   field id we just asked the narrator about
+         askedKeys:      stable list of "<sectionId>.<fieldId>" strings
+                         we've already asked this session (capped at 60)
+         lastTrigger:    "identity_complete" | "narrator_turn" |
+                         "operator_skip" — diagnostic for the harness
+         lastAction:     last action the dispatcher chose, e.g.
+                         "ask_personal.preferredName" | "deferred:parents"
+                         | "fallback_warm_storytelling"
+         tellingStoryOnce: when narrator says "tell a story instead",
+                         we route ONE turn through warm_storytelling and
+                         resume the walk on the next narrator turn. */
+    loop: {
+      currentSection:    null,
+      currentField:      null,
+      askedKeys:         [],
+      /* WO-01B: stable list of "<sectionId>.<fieldId>" strings for fields
+         the loop has actually persisted to /api/bio-builder/questionnaire
+         this session.  Used by the harness to observe save activity and
+         to prevent double-PUT on idempotent re-dispatch. */
+      savedKeys:         [],
+      lastTrigger:       null,
+      lastAction:        null,
+      tellingStoryOnce:  false,
+    },
+
+    /* WO-NARRATOR-ROOM-01 — hands-free session scaffolding.
+       These are Phase-1 hooks for WO-STT-HANDSFREE-01.  The room
+       controls set them but the auto-rearm STT loop lives in a
+       later WO.
+         handsFree      : narrator has opted into hands-free mode
+         micAutoRearm   : after TTS ends, rearm mic without narrator tap
+         loriSpeaking   : Lori's TTS is currently playing (must suppress
+                          mic to avoid echo)  */
+    handsFree:    false,
+    micAutoRearm: false,
+    loriSpeaking: false,
+    /* WO-AUDIO-NARRATOR-ONLY-01: per-session "Save my voice" toggle.
+       Default true — capturing parents' audio is the whole point of
+       the data-acquisition pipeline.  Operator can flip OFF in the
+       narrator-room topbar OR Settings popover; recorder becomes a
+       no-op when false (transcript still flows).  Lori audio is
+       NEVER captured regardless of this flag. */
+    recordVoice:  true,
+    /* Current narrator-room view — "river" | "map" | "photos" | "memoir".
+       Defaults to "river" (Memory River). */
+    narratorView: "river",
+    /* Break overlay active (Take a break clicked).  Pauses auto-rearm. */
+    breakActive: false,
+
+    /* WO-ARCH-07A — explicit turn routing */
+    turnMode: "interview",      // interview | followup | memory_echo | correction | clarify | trainer
+    lastTurnMode: null,         // previous completed mode for correction follow-through
+    pendingCorrection: false,   // set true after memory echo until next resolved turn
     /* v7.2 — Sustained confusion tracking (persisted within session) */
     confusionTurnCount: 0,  // increments on confused turns, decrements on clear turns
     /* v7.4A — Real visual affect bridge target.
@@ -110,6 +224,32 @@ let state = {
        'safety'      : safety companion mode                                        */
     assistantRole: "interviewer",
 
+    /* WO-KAWA-UI-01A — Interview mode for Kawa integration.
+       'chronological' : default milestone-driven interview (no Kawa prompts)
+       'hybrid'        : chronological skeleton + selective Kawa follow-ups
+       'kawa_reflection': narrator explores life in river/meaning terms      */
+    kawaMode: "chronological",
+    lastKawaMode: null,
+    kawaPromptCooldown: 0,         // WO-KAWA-02A: suppress Kawa prompts for N turns after one fires
+    lastKawaSegmentId: null,       // WO-KAWA-02A: last segment used in a Kawa prompt
+    memoirMode: "chronology",      // WO-KAWA-02A: chronology | chronology_river | river_organized
+
+    /* WO-10C — Cognitive Support Mode: narrator-scoped flag.
+       When true, the entire stack shifts to dementia-safe companion behavior:
+       extended silence thresholds, invitational (not interrogative) prompts,
+       single-thread memory context, no correction, no observation language.
+       Set per narrator via operator controls; persists for the session. */
+    cognitiveSupportMode: false,
+
+    /* v10 — Memoir Question Strategy: session-level tracking */
+    memoirStrategy: {
+      askedPaths:      [],   // recently asked field paths (capped at 30)
+      askedKinds:      [],   // recently asked questionKind values (capped at 15)
+      askedEras:       [],   // recently targeted eras (capped at 10)
+      lastQuestionTs:  null, // timestamp of last question
+      consecutiveSameEra: 0, // count of consecutive questions in same era
+    },
+
     /* v7.4D Phase 6B — Identity-first onboarding state machine.
        null  = not yet started (new user before first message, OR returning user with profile)
        'askName' → 'askDob' → 'askBirthplace' → 'resolving' → 'complete'
@@ -123,11 +263,102 @@ let state = {
   /* ── v7.1 Runtime affect / cognitive signals ─────────────────
      Populated by the affect engine; read by the pass engine.
   ─────────────────────────────────────────────────────────────── */
+  /* WO-ARCH-07A — Memory Echo snapshot
+     Rebuilt from state on demand. Never treated as canonical truth by itself. */
+  memoryEcho: {
+    builtAt: null,
+    entity: null,          // structured read-back object
+    lastRenderedText: null // UI convenience only; not an authority source
+  },
+
+  /* WO-ARCH-07A PATCH SET 2 — correction ledger
+     Narrator-scoped, UI-readable, not canonical by itself. */
+  correctionState: {
+    applied: [],   // [{ fieldPath, newValue, oldValue, sourceText, ts }]
+    conflicts: [], // [{ fieldPath, activeValue, conflictingValue, sourceText, ts }]
+    uncertain: []  // ["family.children", "education.retirement", ...]
+  },
+
   runtime: {
     affectState:      "neutral",   // latest smoothed affect label
     affectConfidence: 0,
     cognitiveMode:    null,        // null | 'open' | 'recognition' | 'grounding' | 'light' | 'alongside'
     fatigueScore:     0,           // 0–100, estimated by session_vitals
+  },
+
+  /* ── WO-KAWA-UI-01A — Kawa River View ─────────────────────────
+     Parallel meaning layer. Never canonical by itself.
+     Segment-level, narrator-confirmed only when explicitly saved.
+  ─────────────────────────────────────────────────────────────── */
+  kawa: {
+    mode: "river",              // river | timeline_split
+    segmentList: [],            // [{ segment_id, anchor, kawa, provenance }]
+    activeSegmentId: null,
+    activeSegment: null,
+    isLoading: false,
+    isDirty: false,
+    lastBuiltAt: null,
+    /* WO-KAWA-02A — question context for hybrid/reflection modes */
+    questionContext: {
+      lastAnchorId: null,
+      lastPromptType: null
+    },
+    /* WO-KAWA-02A — memoir overlay configuration */
+    memoir: {
+      overlayEnabled: true,
+      organizationMode: "chronology_river"  // chronology | chronology_river | river_organized
+    },
+    metrics: {
+      proposalsBuilt: 0,
+      promptsShown: 0,
+      confirmed: 0,
+      edited: 0,
+      hybridPromptsShown: 0,           // WO-KAWA-02A
+      kawaSegmentsUsedInMemoir: 0      // WO-KAWA-02A
+    }
+  },
+
+  /* ── WO-11 Trainer Narrators ──────────────────────────────────────
+     WO-11 (TRAINER MODE REPAIR): canonical state shape.
+     Single source of truth for trainer mode. Read by:
+       - trainer-narrators.js (panel render + step nav)
+       - interview.js          (renderInterview gate)
+       - app.js                (lvxSwitchNarratorSafe stomp guard,
+                                lv80StartTrainerInterview meta read)
+     style/title/promptHint/templateName are populated from the trainer
+     template JSON at launch time (lv80LoadTrainerTemplate).
+     completedStyle survives `active=false` so the post-handoff intro
+     and any later UI surface can still see which trainer ran.       */
+  trainerNarrators: {
+    active:         false,
+    style:          null,   // "structured" | "storyteller"
+    title:          null,   // template _trainerTitle
+    promptHint:     null,   // template _trainerPrompt (one-shot system hint at handoff)
+    templateName:   null,   // "william-shatner" | "dolly-parton"
+    stepIndex:      0,
+    completed:      false,
+    completedStyle: null    // last completed trainer style; persists past active=false
+  },
+
+  /* ── WO-10D Input State — single source of truth for mic/camera ─── */
+  inputState: {
+    micActive:     false,   // true when recognition is running
+    micPaused:     false,   // true when WO-8 or WO-11B pause is active
+    cameraActive:  false,   // true when emotion engine is running
+    cameraConsent: false,   // true after user granted facial consent
+  },
+
+  /* ── WO-10H Narrator Turn-Claim ─────────────────────────────────
+     Explicit state machine for narrator floor-claim contract.
+     States: idle | awaiting_tts_end | armed_for_narrator | recording | paused | timeout_check
+     ─────────────────────────────────────────────────────────────── */
+  narratorTurn: {
+    state:             "idle",    // current turn state
+    claimTimestamp:     null,     // when narrator claimed the floor (ms epoch)
+    timeoutDeadline:    null,     // when timeout check-in should fire (ms epoch)
+    interruptionBlock:  null,     // reason interruptions are blocked: "narrator_claimed_turn" | null
+    ttsFinishedAt:      null,     // when TTS finished (ms epoch) — null while speaking
+    checkInFired:       false,    // true after one gentle check-in has been sent
   },
 
   /* ── v8 Interview Projection ────────────────────────────────────
@@ -164,6 +395,26 @@ let state = {
     pendingSuggestions: [],// { fieldPath, value, confidence, turnId, ts } — for suggest_only fields
     syncLog: [],          // { fieldPath, action, fromValue, toValue, ts } — audit trail, capped at 200
   },
+
+  /* ── WO-CR-01 Chronology Accordion ──────────────────────────────
+     Left-side accordion state.  Read-only — never writes truth.
+     openDecades / openYears track which decade/year rows are expanded.
+     visible: whether the accordion column is shown at all.
+     collapsed: whether accordion is in narrow (80px) or wide (280px) mode.
+  ─────────────────────────────────────────────────────────────── */
+  chronologyAccordion: {
+    visible: false,
+    collapsed: true,        // true = 80px narrow, false = 280px expanded
+    openDecades: {},        // { "1940": true, "1950": true, ... }
+    openYears: {},          // { "1940": { "1942": true, "1945": true }, ... }
+    payload: null,          // cached API response
+    loading: false,
+    error: null,
+    /* CR-04 Lori awareness — focus set when the user clicks a year/item.
+       Used by the runtime payload builder to compose a narrow
+       chronology_context slice. Cleared on narrator switch. */
+    focus: null,            // { year, era, lane, at } | null
+  },
 };
 
 /* ── v8 Debug: expose projection state globally for console inspection ── */
@@ -187,6 +438,7 @@ let ws = null, wsReady = false, usingFallback = false;
 
 /* ── Recording / TTS state ── */
 let isRecording = false, recognition = null;
+let listeningPaused = false; // WO-11B: explicit pause/resume control
 let ttsQueue = [], ttsBusy = false;
 
 /* ── Chat state ── */
@@ -215,11 +467,11 @@ let sensitiveSegments = [];
 let pendingConfirmAction = null; // callback for confirm dialog
 
 /* ── v6.1 Track B — Affect/emotion state ── */
-let emotionAware   = false;  // user has opted in to affect-aware mode
+let emotionAware   = true;   // WO-02: default ON for family narrators (affect-aware mode)
 let cameraActive   = false;  // camera + MediaPipe running
 let showAffectArc  = false;  // timeline affect arc toggle
 let permMicOn      = true;   // mic permission (default on)
-let permCamOn      = false;  // camera permission (default off)
+let permCamOn      = true;   // WO-02: camera permission default ON for family use
 let permLocOn      = false;  // location permission (default off — Step 3: optional, consent-gated)
 let permCardShown  = false;  // has the permission card been shown this session?
 // Session affect events: { ts, section_id, affect_state, confidence }[]
@@ -260,6 +512,10 @@ function getCurrentMode()  { return state.session?.currentMode  || "open";  }
 /* v7.4D — Assistant role getters/setters */
 function getAssistantRole() { return state.session?.assistantRole || "interviewer"; }
 function setAssistantRole(r){ if (state.session) state.session.assistantRole = r; }
+
+/* WO-10C — Cognitive Support Mode getter/setter */
+function getCognitiveSupportMode() { return !!(state.session?.cognitiveSupportMode); }
+function setCognitiveSupportMode(on) { if (state.session) state.session.cognitiveSupportMode = !!on; }
 
 /* ── v7.1 — Pass / era / mode setters ──────────────────────── */
 function setPass(p)  { if (state.session) state.session.currentPass = p; }

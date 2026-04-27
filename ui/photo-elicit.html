@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Lorevox — Photo Session</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/photo-elicit.css">
+</head>
+<body>
+  <div class="pe-shell" id="peShell">
+
+    <header class="pe-header">
+      <div class="pe-header-title">Photo Session</div>
+      <div class="pe-header-narrator" id="peNarratorLabel">—</div>
+    </header>
+
+    <!-- Photo stage -->
+    <div class="pe-photo-wrap empty" id="pePhotoWrap">
+      <span id="pePhotoPlaceholder">Loading your first photo…</span>
+    </div>
+
+    <!-- Lori prompt -->
+    <div class="pe-prompt" id="pePrompt">
+      One moment while we find a photo to share.
+    </div>
+
+    <!-- Transcript capture -->
+    <div class="pe-capture">
+      <textarea
+        class="pe-transcript"
+        id="peTranscript"
+        placeholder="Type or speak your story here. Take your time — there's no rush."
+        rows="4"
+      ></textarea>
+      <div class="pe-mic-row off" id="peMicRow">
+        <button type="button" class="pe-mic-btn" id="peMicBtn" aria-label="Toggle microphone">🎙  Mic: off</button>
+        <span id="peMicHint">Tap to speak, or just type.</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="pe-actions">
+      <button type="button" class="pe-btn pe-btn-primary" id="peCaptureBtn">Capture Story</button>
+      <button type="button" class="pe-btn pe-btn-secondary" id="peFollowupBtn">Gentle Follow-up</button>
+      <button type="button" class="pe-btn pe-btn-quiet" id="peZeroRecallBtn">I don't remember</button>
+      <button type="button" class="pe-btn pe-btn-stop" id="peDistressBtn">Take a break</button>
+    </div>
+
+    <div class="pe-status" id="peStatus"></div>
+
+    <!-- Soft wind-down overlay, revealed at 600s silence or on Take-a-break -->
+    <div id="peWindDown" class="pe-winddown" style="display:none;">
+      <h2>Thank you for sharing.</h2>
+      <p>Let's rest for a little while. Your stories are saved, and we can come back any time.</p>
+      <button type="button" class="pe-btn pe-btn-quiet" id="peCloseBtn">Close</button>
+    </div>
+
+  </div>
+
+  <!-- minimal state shim for TranscriptGuard -->
+  <script>
+    // TranscriptGuard expects a global `state.lastTranscript`. The full
+    // state.js module isn't loaded on this page; this shim is the
+    // minimum shape TranscriptGuard writes to. (See transcript-guard.js
+    // _safeState / _stageTranscript.)
+    window.state = {
+      lastTranscript: {
+        raw_text: "",
+        normalized_text: "",
+        source: null,
+        is_final: false,
+        confidence: null,
+        fragile_fact_flags: [],
+        confirmation_required: false,
+        confirmation_prompt: null,
+        turn_id: null,
+        ts: 0,
+      }
+    };
+  </script>
+  <script src="js/transcript-guard.js"></script>
+  <script src="js/photo-elicit.js"></script>
+</body>
+</html>

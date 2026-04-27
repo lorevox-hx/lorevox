@@ -1,0 +1,455 @@
+/* ═══════════════════════════════════════════════════════════════
+   conflict-console.css — WO-13YZ Conflict Console
+   Lorevox 1.0
+
+   Authority Workspace — Third Lane
+   Amber/red toned palette for conflict visibility.
+   Reuses --br-* design tokens from bio-review.css.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Panel Layout ────────────────────────────────────────────── */
+
+.cc-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--br-bg, #1a1e2a);
+  color: var(--br-text, #e7edf7);
+  font-family: var(--br-font, "Inter", system-ui, sans-serif);
+  border-radius: var(--br-radius, 14px);
+  overflow: hidden;
+}
+
+.cc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(251,191,36,.06);
+  border-bottom: 1px solid rgba(251,191,36,.15);
+}
+.cc-header-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--br-warn, #fbbf24);
+}
+.cc-header-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--br-muted, #97a4b8);
+}
+
+.cc-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Left Pane: Conflict List ────────────────────────────────── */
+
+.cc-left {
+  border-right: 1px solid var(--br-border, rgba(255,255,255,.06));
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.cc-list-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--br-muted, #97a4b8);
+  padding: 4px 8px 8px;
+}
+
+.cc-conflict-card {
+  padding: 10px 10px;
+  border: 1px solid var(--br-border, rgba(255,255,255,.06));
+  border-radius: 8px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  transition: .14s ease;
+  background: rgba(255,255,255,.02);
+}
+.cc-conflict-card:hover {
+  border-color: rgba(251,191,36,.22);
+  background: rgba(251,191,36,.04);
+}
+.cc-conflict-card.cc-active {
+  border-color: rgba(251,191,36,.35);
+  background: rgba(251,191,36,.08);
+}
+.cc-conflict-card.cc-resolved {
+  opacity: .6;
+}
+.cc-conflict-card.cc-resolved.cc-active {
+  opacity: 1;
+}
+
+.cc-card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--br-text, #e7edf7);
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-card-field {
+  font-size: 10px;
+  color: var(--br-soft, #6f7d92);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.cc-badge-pending {
+  background: rgba(251,191,36,.14);
+  color: var(--br-warn, #fbbf24);
+}
+.cc-badge-resolved {
+  background: rgba(74,222,128,.12);
+  color: var(--br-good, #4ade80);
+}
+
+/* ── Center Pane: Comparison ─────────────────────────────────── */
+
+.cc-center {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.cc-compare-header {
+  margin-bottom: 14px;
+}
+.cc-compare-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--br-muted, #97a4b8);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.cc-compare-path {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--br-accent-2, #c6a7ff);
+}
+
+/* Side-by-side boxes */
+.cc-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+.cc-compare-box {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--br-border, rgba(255,255,255,.08));
+}
+.cc-compare-current {
+  background: rgba(74,222,128,.05);
+  border-color: rgba(74,222,128,.18);
+}
+.cc-compare-proposed {
+  background: rgba(248,113,113,.05);
+  border-color: rgba(248,113,113,.18);
+}
+.cc-compare-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--br-soft, #6f7d92);
+}
+.cc-compare-box-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-bottom: 6px;
+}
+.cc-compare-current .cc-compare-box-label {
+  color: var(--br-good, #4ade80);
+}
+.cc-compare-proposed .cc-compare-box-label {
+  color: var(--br-bad, #f87171);
+}
+.cc-compare-box-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--br-text, #e7edf7);
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+.cc-compare-box-source {
+  font-size: 10px;
+  color: var(--br-soft, #6f7d92);
+}
+
+/* Reviewer note */
+.cc-note {
+  padding: 8px 12px;
+  border-left: 3px solid rgba(251,191,36,.3);
+  background: rgba(251,191,36,.04);
+  border-radius: 0 8px 8px 0;
+  font-size: 12px;
+  color: var(--br-text, #e7edf7);
+  margin-bottom: 14px;
+}
+.cc-note-label {
+  font-weight: 700;
+  color: var(--br-warn, #fbbf24);
+}
+
+/* Resolution actions */
+.cc-actions-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--br-muted, #97a4b8);
+  margin-bottom: 8px;
+}
+.cc-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.cc-res-btn {
+  appearance: none;
+  border: 1px solid var(--br-border, rgba(255,255,255,.1));
+  background: rgba(255,255,255,.03);
+  color: var(--br-muted, #97a4b8);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .14s ease;
+  font-family: inherit;
+}
+.cc-res-btn:hover {
+  border-color: rgba(251,191,36,.22);
+  color: var(--br-text);
+}
+
+/* Active states per resolution type */
+.cc-res-keep.cc-res-active {
+  background: rgba(74,222,128,.14);
+  border-color: rgba(74,222,128,.3);
+  color: var(--br-good, #4ade80);
+}
+.cc-res-replace.cc-res-active {
+  background: rgba(248,113,113,.14);
+  border-color: rgba(248,113,113,.3);
+  color: var(--br-bad, #f87171);
+}
+.cc-res-merge.cc-res-active {
+  background: rgba(96,165,250,.14);
+  border-color: rgba(96,165,250,.3);
+  color: #60a5fa;
+}
+.cc-res-ambiguous.cc-res-active {
+  background: rgba(251,191,36,.14);
+  border-color: rgba(251,191,36,.3);
+  color: var(--br-warn, #fbbf24);
+}
+.cc-res-followup.cc-res-active {
+  background: rgba(192,132,252,.14);
+  border-color: rgba(192,132,252,.3);
+  color: #c084fc;
+}
+
+/* Merge editor */
+.cc-merge-editor {
+  padding: 10px 12px;
+  border: 1px solid rgba(96,165,250,.22);
+  background: rgba(96,165,250,.06);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  animation: ccFadeIn .2s ease;
+}
+.cc-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-editor-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--br-muted, #97a4b8);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+.cc-editor-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--br-border, rgba(255,255,255,.1));
+  background: var(--br-bg, #1a1e2a);
+  color: var(--br-text, #e7edf7);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color .14s ease;
+}
+.cc-editor-input:focus {
+  outline: none;
+  border-color: rgba(96,165,250,.4);
+}
+
+/* Default notice — questionnaire wins */
+.cc-default-notice {
+  padding: 10px 14px;
+  border: 1px solid rgba(74,222,128,.18);
+  background: rgba(74,222,128,.05);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--br-text, #e7edf7);
+  line-height: 1.4;
+}
+.cc-default-notice strong {
+  color: var(--br-good, #4ade80);
+}
+
+/* ── Right Pane: Resolution Log ──────────────────────────────── */
+
+.cc-right {
+  border-left: 1px solid var(--br-border, rgba(255,255,255,.06));
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.cc-right-header {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.cc-right-stat {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--br-muted, #97a4b8);
+  padding: 3px 8px;
+  border: 1px solid var(--br-border, rgba(255,255,255,.06));
+  border-radius: 6px;
+  background: rgba(255,255,255,.02);
+}
+
+.cc-right-group {
+  margin-bottom: 10px;
+}
+.cc-right-group-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 2px 0 4px;
+  margin-bottom: 4px;
+}
+.cc-right-group-label.cc-res-keep     { color: var(--br-good, #4ade80); }
+.cc-right-group-label.cc-res-replace  { color: var(--br-bad, #f87171); }
+.cc-right-group-label.cc-res-merge    { color: #60a5fa; }
+.cc-right-group-label.cc-res-ambiguous { color: var(--br-warn, #fbbf24); }
+.cc-right-group-label.cc-res-followup { color: #c084fc; }
+
+.cc-right-item {
+  font-size: 11px;
+  color: var(--br-text, #e7edf7);
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid var(--br-border, rgba(255,255,255,.08));
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Commit button */
+.cc-commit-btn {
+  appearance: none;
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid rgba(251,191,36,.3);
+  background: rgba(251,191,36,.12);
+  color: var(--br-warn, #fbbf24);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: .14s ease;
+  font-family: inherit;
+  text-align: center;
+}
+.cc-commit-btn:hover {
+  background: rgba(251,191,36,.18);
+  border-color: rgba(251,191,36,.4);
+}
+
+/* ── Empty State ─────────────────────────────────────────────── */
+
+.cc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 13px;
+  color: var(--br-soft, #6f7d92);
+  text-align: center;
+  padding: 20px;
+  line-height: 1.5;
+}
+.cc-empty-sub {
+  font-size: 11px;
+  color: var(--br-muted, #97a4b8);
+  margin-top: 4px;
+}
+
+/* ── Animation ───────────────────────────────────────────────── */
+
+@keyframes ccFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .cc-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  .cc-left   { max-height: 180px; }
+  .cc-right  { max-height: 220px; }
+}
+@media (max-width: 600px) {
+  .cc-compare-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .cc-compare-vs {
+    display: none;
+  }
+  .cc-actions {
+    flex-direction: column;
+  }
+}

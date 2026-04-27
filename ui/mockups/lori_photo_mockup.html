@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lori Photo Intake + Story Elicitation Mockup</title>
+  <style>
+    :root {
+      --bg: #f6f2ea;
+      --panel: #fffaf2;
+      --ink: #29241f;
+      --muted: #6c6258;
+      --line: #ded2c2;
+      --accent: #7d4e2d;
+      --accent2: #2f6653;
+      --soft: #efe3d2;
+      --warn: #b36828;
+      --danger: #9c3f35;
+      --ok: #2f6653;
+      --shadow: 0 14px 40px rgba(70, 45, 20, .12);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #fff7e8, var(--bg) 45%, #efe6da);
+      color: var(--ink);
+    }
+
+    .app {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    h1 { margin: 0; font-size: clamp(26px, 4vw, 44px); letter-spacing: -0.04em; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 17px; }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: rgba(255,255,255,.5);
+      border: 1px solid var(--line);
+      padding: 8px;
+      border-radius: 999px;
+    }
+
+    button, .button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-weight: 750;
+      cursor: pointer;
+      background: var(--soft);
+      color: var(--ink);
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,.08); }
+    button.active { background: var(--accent); color: white; }
+    button.primary { background: var(--accent2); color: white; }
+    button.ghost { background: transparent; border: 1px solid var(--line); }
+    button.danger { background: #f1d4ce; color: var(--danger); }
+
+    .screen { display: none; }
+    .screen.active { display: block; animation: rise .18s ease; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .card {
+      background: rgba(255,250,242,.88);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .card h2 { margin: 0 0 12px; font-size: 26px; }
+    .card h3 { margin: 20px 0 10px; }
+
+    .photo-box {
+      aspect-ratio: 4 / 3;
+      border-radius: 20px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #cab58e, #f3e4c6);
+      border: 1px solid var(--line);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(41,36,31,.65);
+      font-weight: 800;
+      font-size: 22px;
+      text-align: center;
+      padding: 18px;
+    }
+
+    .photo-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo-label {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      background: rgba(0,0,0,.52);
+      color: white;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    label { display: block; margin: 14px 0 7px; font-weight: 800; }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+      padding: 13px 14px;
+      outline: none;
+    }
+    textarea { min-height: 88px; resize: vertical; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: #eadbc8;
+      color: #392e24;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .chip.ok { background: #d7eadf; color: var(--ok); }
+    .chip.warn { background: #f4dfc8; color: var(--warn); }
+    .chip.danger { background: #f0d3cf; color: var(--danger); }
+
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+
+    .lori-layout {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 20px;
+    }
+
+    .big-photo { min-height: 560px; }
+    .big-photo .photo-box { height: 100%; aspect-ratio: auto; }
+
+    .speech {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 16px;
+      margin: 12px 0;
+      line-height: 1.45;
+    }
+    .speech.lori { border-left: 6px solid var(--accent2); }
+    .speech.narrator { border-left: 6px solid var(--accent); }
+    .speaker { display: block; font-weight: 900; margin-bottom: 4px; color: var(--muted); }
+
+    .mic {
+      width: 100%;
+      border-radius: 24px;
+      padding: 18px;
+      font-size: 20px;
+      margin-top: 10px;
+    }
+
+    .timeline-year {
+      margin-bottom: 22px;
+      border-left: 4px solid var(--accent2);
+      padding-left: 16px;
+    }
+    .timeline-year h2 { margin: 0 0 12px; }
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 14px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .thumb {
+      aspect-ratio: 1;
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      text-align: center;
+      color: var(--muted);
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .timeline-item h3 { margin: 0 0 6px; }
+    .meta { color: var(--muted); font-size: 14px; margin: 3px 0; }
+
+    .review-item {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .compare div {
+      background: #fbf5ec;
+      border-radius: 14px;
+      padding: 12px;
+      border: 1px solid var(--line);
+    }
+
+    .small { font-size: 13px; color: var(--muted); }
+    .toggle-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+    .toggle-line input { width: auto; transform: scale(1.25); }
+
+    @media (max-width: 900px) {
+      header, .grid, .lori-layout { grid-template-columns: 1fr; display: grid; }
+      header { align-items: stretch; }
+      .tabs { border-radius: 20px; }
+      .big-photo { min-height: 380px; }
+      .timeline-item { grid-template-columns: 90px 1fr; }
+      .row, .compare { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Lori Photo Memory Mockup</h1>
+        <p class="subtitle">Curator facts first. Lori story later. No testing the narrator.</p>
+      </div>
+      <nav class="tabs">
+        <button class="active" data-screen="intake">Curator Intake</button>
+        <button data-screen="session">Lori Session</button>
+        <button data-screen="timeline">Timeline</button>
+        <button data-screen="review">Review Queue</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="intake" class="screen active">
+        <div class="grid">
+          <div class="card">
+            <h2>1. Add Photo</h2>
+            <div class="photo-box" id="previewBox">
+              <span>Photo preview<br><span class="small">Click “Use Sample Photo” below</span></span>
+              <span class="photo-label">sha256 dedupe pending</span>
+            </div>
+            <div class="actions">
+              <button class="primary" id="sampleBtn">Use Sample Photo</button>
+              <button class="ghost" id="scanBtn">Mark as scanned / photo-of-photo</button>
+            </div>
+            <div class="chips" id="photoSignals">
+              <span class="chip warn">No EXIF yet</span>
+              <span class="chip warn">No thumbnail yet</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>2. Curator Facts</h2>
+            <p class="small">All fields are optional. Unknown is allowed. Lori can still use the photo later.</p>
+
+            <label>Who is in this photo?</label>
+            <input id="peopleInput" value="Chris, Melanie" />
+
+            <div class="row">
+              <div>
+                <label>When was this?</label>
+                <input id="dateInput" value="2018" />
+              </div>
+              <div>
+                <label>Date precision</label>
+                <select id="datePrecision">
+                  <option>exact</option>
+                  <option selected>year</option>
+                  <option>decade</option>
+                  <option>unknown</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div>
+                <label>Where was this?</label>
+                <input id="placeInput" value="Austin, Texas" />
+              </div>
+              <div>
+                <label>Location source</label>
+                <select id="locationSource">
+                  <option>exif_gps</option>
+                  <option selected>typed_address</option>
+                  <option>spoken_place</option>
+                  <option>description_geocode</option>
+                  <option>unknown</option>
+                </select>
+              </div>
+            </div>
+
+            <label>What is happening?</label>
+            <textarea id="descInput">Birthday dinner while visiting family.</textarea>
+
+            <div class="toggle-line">
+              <input type="checkbox" id="readyToggle" checked />
+              <div>
+                <strong>Facts known — make narrator-ready</strong><br>
+                <span class="small">Bypasses fact interview. Lori uses this photo to invite a story.</span>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="primary" id="saveBtn">Save Photo Row</button>
+              <button class="ghost" id="unknownBtn">Set date/place unknown</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="session" class="screen">
+        <div class="lori-layout">
+          <div class="card big-photo">
+            <div class="photo-box" id="sessionPhoto">
+              <span>Photo will appear here</span>
+              <span class="photo-label">Narrator stimulus</span>
+            </div>
+          </div>
+          <div class="card">
+            <h2>2. Lori Story Session</h2>
+            <div id="conversation">
+              <div class="speech lori">
+                <span class="speaker">Lori</span>
+                <span id="loriPrompt">This is you and Melanie at a birthday dinner in Austin. Tell me about that day.</span>
+              </div>
+            </div>
+            <label>Narrator says</label>
+            <textarea id="narratorText">That was a good night. I remember feeling happy because everyone was together. I think Briana was there too.</textarea>
+            <button class="primary mic" id="captureBtn">🎙 Capture Story Turn</button>
+            <div class="actions">
+              <button class="ghost" id="gentleFollowupBtn">Ask Gentle Follow-up</button>
+              <button class="danger" id="conflictBtn">Simulate Person Conflict</button>
+            </div>
+            <div class="chips" id="sessionChips">
+              <span class="chip ok">No required fields</span>
+              <span class="chip ok">No correction mode</span>
+              <span class="chip warn">Story extraction pending</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="timeline" class="screen">
+        <div class="card">
+          <h2>3. Combined Timeline</h2>
+          <p class="small">Archive facts and narrator memories render together, but stay separate in storage.</p>
+          <div id="timelineBody"></div>
+        </div>
+      </section>
+
+      <section id="review" class="screen">
+        <div class="card">
+          <h2>4. Curator Review Queue</h2>
+          <p class="small">Narrator contradictions never overwrite curator facts. They become review candidates.</p>
+          <div id="reviewBody"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      photo: null,
+      memories: [],
+      conflicts: []
+    };
+
+    const sampleSvg = encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="900" height="650" viewBox="0 0 900 650">
+        <defs>
+          <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+            <stop stop-color="#d8c09a"/>
+            <stop offset="1" stop-color="#8f6846"/>
+          </linearGradient>
+        </defs>
+        <rect width="900" height="650" fill="url(#g)"/>
+        <circle cx="325" cy="250" r="82" fill="#f1d9bc"/>
+        <circle cx="560" cy="250" r="82" fill="#e8c8a8"/>
+        <rect x="230" y="335" width="190" height="170" rx="34" fill="#72513c"/>
+        <rect x="465" y="335" width="190" height="170" rx="34" fill="#5f6047"/>
+        <rect x="120" y="510" width="660" height="60" rx="18" fill="#fff1d5" opacity=".75"/>
+        <text x="450" y="550" text-anchor="middle" font-size="34" font-family="Arial" fill="#4b372b" font-weight="700">Sample family photo</text>
+      </svg>`);
+    const sampleUrl = `data:image/svg+xml,${sampleSvg}`;
+
+    function $(id) { return document.getElementById(id); }
+
+    document.querySelectorAll('[data-screen]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-screen]').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        btn.classList.add('active');
+        $(btn.dataset.screen).classList.add('active');
+        if (btn.dataset.screen === 'timeline') renderTimeline();
+        if (btn.dataset.screen === 'review') renderReview();
+      });
+    });
+
+    $('sampleBtn').addEventListener('click', () => {
+      $('previewBox').innerHTML = `<img src="${sampleUrl}" alt="sample family photo"><span class="photo-label">sha256: demo_8f4a...</span>`;
+      $('photoSignals').innerHTML = `
+        <span class="chip ok">Thumbnail generated: 400px</span>
+        <span class="chip warn">No EXIF GPS</span>
+        <span class="chip ok">Hash dedupe ready</span>`;
+    });
+
+    $('scanBtn').addEventListener('click', () => {
+      $('photoSignals').innerHTML = `
+        <span class="chip warn">Scanned/photo-of-photo</span>
+        <span class="chip warn">EXIF not trusted</span>
+        <span class="chip ok">Curator facts allowed</span>`;
+      $('locationSource').value = 'typed_address';
+      $('datePrecision').value = 'year';
+    });
+
+    $('unknownBtn').addEventListener('click', () => {
+      $('dateInput').value = '';
+      $('placeInput').value = '';
+      $('datePrecision').value = 'unknown';
+      $('locationSource').value = 'unknown';
+    });
+
+    $('saveBtn').addEventListener('click', () => {
+      state.photo = {
+        id: 'photo_demo_001',
+        image_url: sampleUrl,
+        image_path: 'memory/archive/photos/photo_demo_001/original.jpg',
+        thumbnail_url: 'memory/archive/photos/photo_demo_001/thumb_400.jpg',
+        file_hash: 'demo_8f4a9d_sha256',
+        people: splitList($('peopleInput').value),
+        date: $('dateInput').value.trim(),
+        date_precision: $('datePrecision').value,
+        place: $('placeInput').value.trim(),
+        location_source: $('locationSource').value,
+        description: $('descInput').value.trim(),
+        narrator_ready: $('readyToggle').checked,
+        needs_confirmation: $('locationSource').value !== 'exif_gps'
+      };
+      syncPhotoViews();
+      alert('Saved photo row. It is now available to Lori.');
+    });
+
+    $('captureBtn').addEventListener('click', () => {
+      ensurePhoto();
+      const text = $('narratorText').value.trim();
+      if (!text) return;
+      state.memories.push({
+        id: `memory_${state.memories.length + 1}`,
+        photo_id: state.photo.id,
+        transcript: text,
+        extracted: {
+          emotional_texture: findEmotion(text),
+          possible_people: text.toLowerCase().includes('briana') ? ['Briana'] : [],
+          memory_type: 'episodic_story',
+          needs_review: text.toLowerCase().includes('briana')
+        }
+      });
+      $('conversation').innerHTML += `
+        <div class="speech narrator"><span class="speaker">Narrator</span>${escapeHtml(text)}</div>
+        <div class="speech lori"><span class="speaker">Lori</span>Thank you. I’ll keep that memory with the photo. What else do you remember feeling in that moment?</div>`;
+      $('sessionChips').innerHTML = `
+        <span class="chip ok">photo_memory row saved</span>
+        <span class="chip ok">Story linked to photo</span>
+        <span class="chip warn">Review: ${state.memories[state.memories.length - 1].extracted.needs_review ? 'yes' : 'no'}</span>`;
+    });
+
+    $('gentleFollowupBtn').addEventListener('click', () => {
+      $('conversation').innerHTML += `
+        <div class="speech lori"><span class="speaker">Lori</span>What part of this picture catches your eye first?</div>`;
+    });
+
+    $('conflictBtn').addEventListener('click', () => {
+      ensurePhoto();
+      state.conflicts.push({
+        id: `conflict_${state.conflicts.length + 1}`,
+        photo_id: state.photo.id,
+        field: 'person_identity',
+        curator_value: state.photo.people.join(', '),
+        narrator_value: 'Briana',
+        status: 'needs_review',
+        rule: 'Do not correct narrator; do not overwrite curator facts.'
+      });
+      alert('Conflict queued for curator review. Narrator was not corrected.');
+    });
+
+    function ensurePhoto() {
+      if (!state.photo) $('saveBtn').click();
+    }
+
+    function splitList(value) {
+      return value.split(',').map(v => v.trim()).filter(Boolean);
+    }
+
+    function syncPhotoViews() {
+      const imgHtml = `<img src="${state.photo.image_url}" alt="photo stimulus"><span class="photo-label">${state.photo.narrator_ready ? 'Narrator-ready' : 'Needs more facts'}</span>`;
+      $('sessionPhoto').innerHTML = imgHtml;
+      $('loriPrompt').textContent = buildPrompt(state.photo);
+    }
+
+    function buildPrompt(photo) {
+      const who = photo.people.length ? photo.people.join(' and ') : 'some people here';
+      const where = photo.place ? ` in ${photo.place}` : '';
+      const when = photo.date ? ` around ${photo.date}` : '';
+      if (photo.people.length || photo.place || photo.date) {
+        return `This photo shows ${who}${where}${when}. Tell me what you remember about this moment.`;
+      }
+      return `I’m not sure when or where this was taken, but it looks meaningful. What do you remember when you look at it?`;
+    }
+
+    function renderTimeline() {
+      ensurePhoto();
+      const year = state.photo.date_precision === 'unknown' || !state.photo.date ? 'Undated' : state.photo.date.slice(0, 4);
+      const memoryHtml = state.memories.length
+        ? state.memories.map(m => `<p class="meta"><strong>Story:</strong> “${escapeHtml(m.transcript)}”</p>`).join('')
+        : `<p class="meta"><strong>Story:</strong> Lori prompt pending</p>`;
+      $('timelineBody').innerHTML = `
+        <div class="timeline-year">
+          <h2>${escapeHtml(year)}</h2>
+          <div class="timeline-item">
+            <div class="thumb"><img src="${state.photo.image_url}" alt="timeline thumb"></div>
+            <div>
+              <h3>${escapeHtml(state.photo.description || 'Untitled photo')}</h3>
+              <p class="meta"><strong>People:</strong> ${escapeHtml(state.photo.people.join(', ') || 'Unknown')}</p>
+              <p class="meta"><strong>Place:</strong> ${escapeHtml(state.photo.place || 'Unknown')} · source: ${escapeHtml(state.photo.location_source)}</p>
+              <p class="meta"><strong>Date precision:</strong> ${escapeHtml(state.photo.date_precision)}</p>
+              ${memoryHtml}
+              <div class="chips">
+                <span class="chip ok">Archive fact row</span>
+                <span class="chip ${state.memories.length ? 'ok' : 'warn'}">${state.memories.length ? 'Memory attached' : 'Needs story'}</span>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderReview() {
+      if (!state.conflicts.length) {
+        $('reviewBody').innerHTML = `
+          <div class="review-item">
+            <h3>No conflicts yet</h3>
+            <p class="meta">Use “Simulate Person Conflict” in Lori Session to see the review pattern.</p>
+          </div>`;
+        return;
+      }
+      $('reviewBody').innerHTML = state.conflicts.map(c => `
+        <div class="review-item">
+          <h3>Conflict: ${escapeHtml(c.field)}</h3>
+          <p class="meta">Status: ${escapeHtml(c.status)}</p>
+          <div class="compare">
+            <div><strong>Curator facts</strong><br>${escapeHtml(c.curator_value)}</div>
+            <div><strong>Narrator story</strong><br>${escapeHtml(c.narrator_value)}</div>
+          </div>
+          <p class="meta">${escapeHtml(c.rule)}</p>
+          <div class="actions">
+            <button class="primary">Accept narrator candidate</button>
+            <button class="ghost">Keep curator value</button>
+            <button class="ghost">Store both</button>
+          </div>
+        </div>`).join('');
+    }
+
+    function findEmotion(text) {
+      const t = text.toLowerCase();
+      if (t.includes('happy')) return 'happy / togetherness';
+      if (t.includes('sad')) return 'sadness';
+      return 'unspecified';
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[ch]));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Lorevox — Photo Intake (Curator)</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/photo-intake.css">
+</head>
+<body>
+  <div class="pi-shell">
+    <header class="pi-header">
+      <div>
+        <h1>Photo Intake</h1>
+        <div class="pi-subtitle">Curator page — upload family photos and add what you know about each one.</div>
+      </div>
+      <div>
+        <a href="photo-timeline.html" class="pi-chip-btn" style="text-decoration:none;display:inline-block;">Timeline →</a>
+      </div>
+    </header>
+
+    <!-- ────────── Batch upload (multi-file + EXIF auto-fill) ────────── -->
+    <section class="pi-card pi-card-full" id="piBatchCard">
+      <h2>Quick Batch Upload</h2>
+      <div class="pi-batch-help">
+        Drop a folder of phone photos here, or pick multiple files. Date and location auto-fill from each photo's EXIF when present (phone GPS / camera timestamp). Edit any photo's details later from its row in Saved Photos below.
+      </div>
+
+      <div class="pi-field-row">
+        <div class="pi-field">
+          <label for="piBatchNarrator">Narrator (applies to every file in this batch)</label>
+          <select id="piBatchNarrator"></select>
+        </div>
+        <div class="pi-field" style="justify-content:flex-end;">
+          <label class="pi-check" style="margin-top:24px;">
+            <input type="checkbox" id="piBatchNarratorReady" checked/>
+            <span>Mark each photo "ready to show" by default</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="pi-dropzone" id="piDropzone">
+        <div class="pi-dropzone-label">
+          Drop photos here, or
+          <label for="piBatchFile" class="pi-dropzone-pick">choose files</label>
+          <input type="file" id="piBatchFile" accept="image/*" multiple style="display:none"/>
+        </div>
+        <div class="pi-dropzone-sub">JPG · PNG · HEIC · WEBP — up to 50 per batch</div>
+      </div>
+
+      <div class="pi-actions">
+        <button type="button" class="pi-btn-primary" id="piBatchStartBtn" disabled>Upload All</button>
+        <button type="button" class="pi-btn-ghost"   id="piBatchClearBtn" disabled>Clear Queue</button>
+        <span class="pi-status" id="piBatchStatus"></span>
+      </div>
+
+      <div class="pi-batch-queue" id="piBatchQueue"></div>
+    </section>
+
+    <div class="pi-grid">
+
+      <!-- ────────── Upload form ────────── -->
+      <section class="pi-card" id="piUploadCard">
+        <h2>Add a Photo</h2>
+
+        <div class="pi-field">
+          <label for="piNarrator">Narrator</label>
+          <select id="piNarrator"></select>
+        </div>
+
+        <div class="pi-field">
+          <label for="piFile">Image file</label>
+          <input type="file" id="piFile" accept="image/*"/>
+        </div>
+
+        <!-- Thumbnail preview (client-side; appears after file picked) -->
+        <div class="pi-thumb-preview" id="piThumbPreview" hidden>
+          <img id="piThumbPreviewImg" alt=""/>
+        </div>
+
+        <!-- "Review File Info" button — visualschedulebot pattern.
+             Reads EXIF + reverse-geocodes server-side, prefills date /
+             location / description with what was found. Curator edits if
+             needed, then clicks "Save Photo" to commit. -->
+        <button type="button" class="pi-btn-review" id="piReviewBtn" disabled>
+          Review File Info
+        </button>
+        <div class="pi-status" id="piReviewStatus"></div>
+
+        <div class="pi-field">
+          <label for="piDescription">
+            Description (optional)
+            <span class="pi-source-pill" id="piDescriptionSource" hidden></span>
+          </label>
+          <textarea id="piDescription" placeholder="What's happening in this photo?"></textarea>
+        </div>
+
+        <div class="pi-field-row">
+          <div class="pi-field">
+            <label for="piDateValue">
+              Date (optional)
+              <span class="pi-source-pill" id="piDateSource" hidden></span>
+            </label>
+            <input type="text" id="piDateValue" placeholder="e.g. 1968 or 1968-07-04"/>
+          </div>
+          <div class="pi-field">
+            <label for="piDatePrecision">Date precision</label>
+            <select id="piDatePrecision">
+              <option value="unknown">unknown</option>
+              <option value="decade">decade</option>
+              <option value="year">year</option>
+              <option value="month">month</option>
+              <option value="exact">exact (full date)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pi-field-row">
+          <div class="pi-field">
+            <label for="piLocationLabel">
+              Location (optional)
+              <span class="pi-source-pill" id="piLocationSourcePill" hidden></span>
+            </label>
+            <input type="text" id="piLocationLabel" placeholder="e.g. Ada, Oklahoma"/>
+          </div>
+          <div class="pi-field">
+            <label for="piLocationSource">Location source</label>
+            <select id="piLocationSource">
+              <option value="unknown">unknown</option>
+              <option value="typed_address">typed_address</option>
+              <option value="spoken_place">spoken_place</option>
+              <option value="description_geocode">description_geocode</option>
+              <option value="exif_gps">exif_gps</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pi-field">
+          <label>People in the photo (optional)</label>
+          <div class="pi-people-list" id="piPeopleList"></div>
+          <button type="button" class="pi-chip-btn" id="piAddPersonBtn">+ Add person</button>
+        </div>
+
+        <div class="pi-field">
+          <label>Events or occasions (optional)</label>
+          <div class="pi-events-list" id="piEventsList"></div>
+          <button type="button" class="pi-chip-btn" id="piAddEventBtn">+ Add event</button>
+        </div>
+
+        <label class="pi-check">
+          <input type="checkbox" id="piNarratorReady"/>
+          <span>Ready to show this photo to the narrator</span>
+        </label>
+
+        <div class="pi-actions">
+          <button type="button" class="pi-btn-primary" id="piSaveBtn">Save Photo</button>
+          <button type="button" class="pi-btn-ghost" id="piResetBtn">Reset</button>
+          <span class="pi-status" id="piStatus"></span>
+        </div>
+      </section>
+
+      <!-- ────────── Saved list ────────── -->
+      <section class="pi-card" id="piListCard">
+        <h2>Saved Photos</h2>
+        <div class="pi-status" id="piListStatus"></div>
+        <div class="pi-list" id="piList"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ────────── View / Edit modal (BUG-239) ────────── -->
+  <div class="pi-modal-backdrop" id="piModalBackdrop" hidden>
+    <div class="pi-modal" role="dialog" aria-labelledby="piModalTitle" aria-modal="true">
+      <div class="pi-modal-header">
+        <h2 id="piModalTitle">Photo</h2>
+        <button type="button" class="pi-chip-btn" id="piModalCloseBtn" aria-label="Close">×</button>
+      </div>
+
+      <div class="pi-modal-body">
+        <div class="pi-modal-image-wrap">
+          <img id="piModalImage" alt="" />
+          <div class="pi-modal-source-attr" id="piModalSourceAttr"></div>
+        </div>
+
+        <div class="pi-modal-form">
+          <div class="pi-field">
+            <label for="piModalDescription">Description</label>
+            <textarea id="piModalDescription" placeholder="What's happening in this photo?"></textarea>
+          </div>
+
+          <div class="pi-field-row">
+            <div class="pi-field">
+              <label for="piModalDateValue">Date <span class="pi-field-hint" id="piModalDateHint"></span></label>
+              <input type="text" id="piModalDateValue" placeholder="e.g. 1968 or 1968-07-04"/>
+            </div>
+            <div class="pi-field">
+              <label for="piModalDatePrecision">Date precision</label>
+              <select id="piModalDatePrecision">
+                <option value="unknown">unknown</option>
+                <option value="decade">decade</option>
+                <option value="year">year</option>
+                <option value="month">month</option>
+                <option value="exact">exact (full date)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pi-field-row">
+            <div class="pi-field">
+              <label for="piModalLocationLabel">Location <span class="pi-field-hint" id="piModalLocationHint"></span></label>
+              <input type="text" id="piModalLocationLabel" placeholder="e.g. Ada, Oklahoma"/>
+            </div>
+            <div class="pi-field">
+              <label for="piModalLocationSource">Location source</label>
+              <select id="piModalLocationSource">
+                <option value="unknown">unknown</option>
+                <option value="typed_address">typed_address</option>
+                <option value="spoken_place">spoken_place</option>
+                <option value="description_geocode">description_geocode</option>
+                <option value="exif_gps">exif_gps</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pi-field" id="piModalGpsField" hidden>
+            <label>GPS coordinates (from EXIF — read-only)</label>
+            <div class="pi-modal-readonly" id="piModalGpsValue"></div>
+          </div>
+
+          <!-- WO-PHOTO-PEOPLE-EDIT-01: edit people + events post-upload -->
+          <div class="pi-field">
+            <label>People in the photo</label>
+            <div class="pi-people-list" id="piModalPeopleList"></div>
+            <button type="button" class="pi-chip-btn" id="piModalAddPersonBtn">+ Add person</button>
+          </div>
+
+          <div class="pi-field">
+            <label>Events or occasions</label>
+            <div class="pi-events-list" id="piModalEventsList"></div>
+            <button type="button" class="pi-chip-btn" id="piModalAddEventBtn">+ Add event</button>
+          </div>
+
+          <label class="pi-check">
+            <input type="checkbox" id="piModalNarratorReady"/>
+            <span>Ready to show this photo to the narrator</span>
+          </label>
+
+          <details class="pi-modal-exif">
+            <summary>Raw EXIF metadata (forensic — read-only)</summary>
+            <pre class="pi-modal-exif-pre" id="piModalExifPre">none</pre>
+          </details>
+
+          <div class="pi-completeness" id="piModalCompleteness"></div>
+        </div>
+      </div>
+
+      <div class="pi-modal-footer">
+        <button type="button" class="pi-btn-ghost"   id="piModalDeleteBtn">Delete</button>
+        <span class="pi-status" id="piModalStatus"></span>
+        <span style="flex:1"></span>
+        <button type="button" class="pi-btn-ghost"   id="piModalCancelBtn">Cancel</button>
+        <button type="button" class="pi-btn-primary" id="piModalSaveBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUG-PHOTO-BATCH-THUMB: lightbox for batch-queue thumbnails.
+       Click a queued thumb (not yet uploaded) → quick fullscreen
+       preview of the local file. After upload, click goes to the
+       full View/Edit modal instead (handled in JS). -->
+  <div class="pi-batch-preview-overlay" id="piBatchPreviewLightbox" hidden
+       role="dialog" aria-modal="true" aria-label="Photo preview"
+       onclick="if (event.target === this) _closeBatchPreviewLightbox();">
+    <button type="button" class="pi-batch-preview-close"
+            onclick="_closeBatchPreviewLightbox()" aria-label="Close">×</button>
+    <img class="pi-batch-preview-img" alt=""/>
+    <div class="pi-batch-preview-caption"></div>
+  </div>
+
+  <script src="js/photo-intake.js"></script>
+</body>
+</html>

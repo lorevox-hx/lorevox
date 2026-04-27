@@ -17,10 +17,18 @@
 (function (global) {
   'use strict';
 
+  /* ── Constants ──────────────────────────────────────────────── */
+  const LS_KEY = 'lorevox_facial_consent_granted';
+
   /* ── State ─────────────────────────────────────────────────── */
-  let _consentGranted  = false;   // true once user confirms
-  let _consentDeclined = false;   // true if user explicitly declined
-  let _pendingResolve  = null;    // Promise resolver waiting on consent answer
+  // WO-02: Check localStorage for prior consent (family-friendly persistence).
+  // On a family machine, narrators should not have to re-confirm every session.
+  let _storedConsent   = false;
+  try { _storedConsent = localStorage.getItem(LS_KEY) === 'true'; } catch(_){}
+
+  let _consentGranted  = _storedConsent;  // auto-grant if previously consented
+  let _consentDeclined = false;           // true if user explicitly declined
+  let _pendingResolve  = null;            // Promise resolver waiting on consent answer
 
   /* ── Public API ─────────────────────────────────────────────── */
   const FacialConsent = {
@@ -41,7 +49,10 @@
      * If consent was already given, resolves immediately.
      */
     request() {
-      if (_consentGranted)  return Promise.resolve(true);
+      if (_consentGranted) {
+        if (_storedConsent) console.log('[Lorevox] Facial expression consent: auto-granted from prior session.');
+        return Promise.resolve(true);
+      }
       if (_consentDeclined) return Promise.resolve(false);
 
       return new Promise((resolve) => {
@@ -57,8 +68,10 @@
     _confirm() {
       _consentGranted  = true;
       _consentDeclined = false;
+      _storedConsent   = true;
+      try { localStorage.setItem(LS_KEY, 'true'); } catch(_){}
       _hideOverlay();
-      console.log('[Lorevox] Facial expression consent: GRANTED');
+      console.log('[Lorevox] Facial expression consent: GRANTED (persisted)');
       if (_pendingResolve) { _pendingResolve(true); _pendingResolve = null; }
     },
 
@@ -74,17 +87,126 @@
     },
 
     /**
-     * Reset consent state (e.g. when a new person is selected).
+     * Reset session consent state (e.g. when a new person is selected).
+     * Does NOT clear localStorage — use revokeStored() for that.
      */
     reset() {
-      _consentGranted  = false;
+      _consentGranted  = _storedConsent;  // WO-02: preserve stored consent on narrator switch
       _consentDeclined = false;
       _pendingResolve  = null;
     },
+
+    /**
+     * WO-02: Revoke stored consent entirely (from settings panel).
+     * Next camera activation will show the full consent overlay again.
+     */
+    revokeStored() {
+      _consentGranted  = false;
+      _consentDeclined = false;
+      _storedConsent   = false;
+      try { localStorage.removeItem(LS_KEY); } catch(_){}
+      console.log('[Lorevox] Facial expression consent: stored consent revoked.');
+    },
   };
+
+  /* ── Overlay styles (self-contained — injected on first show) ── */
+  // #145: Previously relied on external CSS that was never shipped. Overlay
+  // rendered as position:static below the fold, so FacialConsent.request()
+  // hung forever because the confirm button was off-screen and never clicked.
+  // Inline stylesheet keeps the consent gate self-contained and guaranteed
+  // to render correctly regardless of what else is (or isn't) loaded.
+  const _STYLE_ID = 'facialConsentOverlayStyles';
+  const _CSS = `
+#facialConsentOverlay{
+  position:fixed; inset:0; z-index:2147483000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(28,22,14,0.72); backdrop-filter:blur(3px);
+  padding:24px; box-sizing:border-box; overflow-y:auto;
+  font-family:Georgia,"Times New Roman",serif;
+  animation:fcoFadeIn 160ms ease-out;
+}
+#facialConsentOverlay.hidden{ display:none; }
+@keyframes fcoFadeIn { from { opacity:0; } to { opacity:1; } }
+#facialConsentOverlay .fco-box{
+  background:#fdf7ea; color:#2a241a;
+  border:1px solid #cbb89a; border-radius:10px;
+  box-shadow:0 18px 48px rgba(0,0,0,0.35);
+  width:min(560px, 92vw); max-height:90vh; overflow-y:auto;
+  padding:28px 30px; box-sizing:border-box;
+}
+#facialConsentOverlay .fco-icon{
+  font-size:30px; color:#7a5a1f; text-align:center; margin-bottom:6px;
+}
+#facialConsentOverlay .fco-title{
+  margin:0 0 10px; font-size:22px; font-weight:600; text-align:center;
+  color:#2a241a;
+}
+#facialConsentOverlay .fco-intro{
+  margin:0 0 18px; font-size:15px; line-height:1.5;
+}
+#facialConsentOverlay .fco-section{ margin:0 0 14px; }
+#facialConsentOverlay .fco-section-label{
+  font-size:12px; font-weight:700; letter-spacing:0.04em;
+  text-transform:uppercase; color:#7a5a1f; margin-bottom:4px;
+}
+#facialConsentOverlay .fco-list{
+  margin:0; padding-left:20px; font-size:14px; line-height:1.45;
+}
+#facialConsentOverlay .fco-list li{ margin:2px 0; }
+#facialConsentOverlay .fco-safety{
+  display:flex; gap:10px; align-items:flex-start;
+  background:#fbefd0; border:1px solid #e0c57a; border-radius:6px;
+  padding:10px 12px; font-size:13px; line-height:1.45; margin:14px 0;
+}
+#facialConsentOverlay .fco-safety-icon{ font-size:18px; line-height:1; }
+#facialConsentOverlay .fco-confirm-question{ margin:14px 0 18px; }
+#facialConsentOverlay .fco-checkbox-label{
+  display:flex; gap:10px; align-items:flex-start;
+  font-size:14px; line-height:1.45; cursor:pointer;
+}
+#facialConsentOverlay .fco-checkbox-label input[type=checkbox]{
+  margin-top:3px; flex-shrink:0;
+}
+#facialConsentOverlay .fco-actions{
+  display:flex; flex-direction:column; gap:8px; margin:10px 0 14px;
+}
+#facialConsentOverlay .fco-btn{
+  padding:10px 16px; font-size:15px; font-weight:600;
+  border-radius:6px; cursor:pointer; font-family:inherit;
+  border:1px solid transparent;
+  transition:background 120ms ease, border-color 120ms ease;
+}
+#facialConsentOverlay .fco-btn-primary{
+  background:#6a4a14; color:#fdf7ea; border-color:#6a4a14;
+}
+#facialConsentOverlay .fco-btn-primary:hover:not(:disabled){
+  background:#553a0f; border-color:#553a0f;
+}
+#facialConsentOverlay .fco-btn-primary:disabled{
+  background:#c5b79b; border-color:#c5b79b; cursor:not-allowed;
+}
+#facialConsentOverlay .fco-btn-ghost{
+  background:transparent; color:#6a4a14; border-color:#cbb89a;
+}
+#facialConsentOverlay .fco-btn-ghost:hover{
+  background:#f3e7c9; border-color:#a08658;
+}
+#facialConsentOverlay .fco-footer{
+  margin:8px 0 0; font-size:12px; color:#6a5a3e; text-align:center;
+}
+`;
+
+  function _ensureStyles() {
+    if (document.getElementById(_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = _STYLE_ID;
+    style.textContent = _CSS;
+    document.head.appendChild(style);
+  }
 
   /* ── Overlay rendering ──────────────────────────────────────── */
   function _showOverlay() {
+    _ensureStyles();
     let overlay = document.getElementById('facialConsentOverlay');
     if (!overlay) {
       overlay = document.createElement('div');

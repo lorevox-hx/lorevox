@@ -1,0 +1,194 @@
+{
+  "_template": "Lorevox 8.0 Narrator Preload Template",
+  "_version": 1,
+  "_instructions": "Fill in fields below. Repeatable sections (parents, grandparents, siblings, children, pets) are arrays — add as many entries as needed. Leave empty strings for unknown fields. Load via: lv80PreloadNarrator(template) or lv80PreloadFromFile(file)",
+  "_trainer": true,
+  "_trainerStyle": "storyteller",
+  "_trainerTitle": "Rich, flowing stories",
+  "_trainerPrompt": "Use this trainer to show long-form storytelling with emotion, color, and family detail.",
+  "personal": {
+    "fullName": "Dolly Rebecca Parton",
+    "preferredName": "Dolly",
+    "legalFirstName": "Dolly",
+    "legalMiddleName": "Rebecca",
+    "legalLastName": "Parton",
+    "dateOfBirth": "1946-01-19",
+    "timeOfBirth": "Morning",
+    "placeOfBirth": "Locust Ridge, Sevier County, Tennessee",
+    "birthOrder": "4 of 12",
+    "zodiacSign": "Capricorn",
+    "pronouns": "she/her",
+    "culture": "Southern Appalachian",
+    "country": "US",
+    "language": "English"
+  },
+  "parents": [
+    {
+      "relation": "Mother",
+      "firstName": "Avie",
+      "middleName": "Lee",
+      "lastName": "Parton",
+      "maidenName": "Owens",
+      "birthDate": "1923-01-02",
+      "birthPlace": "Tennessee",
+      "occupation": "Homemaker",
+      "deceased": true,
+      "notableLifeEvents": "Inspired her children's musical talents through storytelling and singing. Created the 'Coat of Many Colors' from a box of rags.",
+      "notes": "Experienced a difficult recovery during Randy's birth, keeping her away for one Christmas."
+    },
+    {
+      "relation": "Father",
+      "firstName": "Robert",
+      "middleName": "Lee",
+      "lastName": "Parton",
+      "maidenName": "",
+      "birthDate": "1921-03-22",
+      "birthPlace": "Tennessee",
+      "occupation": "Sharecropper / Construction Worker",
+      "deceased": true,
+      "notableLifeEvents": "Though unable to read or write, his intelligence and hard work inspired the Imagination Library. Paid the doctor who delivered Dolly with a sack of cornmeal.",
+      "notes": "Often referred to as 'Lee'."
+    }
+  ],
+  "grandparents": [
+    {
+      "firstName": "Jake",
+      "lastName": "Owens",
+      "ancestry": "Appalachian",
+      "culturalBackground": "Pentecostal preacher; deeply religious and musical.",
+      "memorableStories": "He was the first to encourage Dolly to sing in front of a congregation at his church."
+    }
+  ],
+  "siblings": [
+    {
+      "relation": "Sister",
+      "firstName": "Willadeene",
+      "middleName": "",
+      "lastName": "Parton",
+      "birthOrder": "1",
+      "uniqueCharacteristics": "The family historian and author.",
+      "sharedExperiences": "Wrote 'Smoky Mountain Memories'.",
+      "memories": "Appeared on the 'Dolly' TV series in 1977.",
+      "notes": "Born in 1940."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "David",
+      "middleName": "Wilburn",
+      "lastName": "Parton",
+      "birthOrder": "2",
+      "uniqueCharacteristics": "Private and stayed out of the spotlight.",
+      "sharedExperiences": "Escorted Dolly to high-profile events early in her career.",
+      "memories": "",
+      "notes": "Born in 1942; passed away in 2024."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Coy",
+      "middleName": "Denver",
+      "lastName": "Parton",
+      "birthOrder": "3",
+      "uniqueCharacteristics": "Private life away from the industry.",
+      "sharedExperiences": "",
+      "memories": "",
+      "notes": "Born in 1943."
+    },
+    {
+      "relation": "Sister",
+      "firstName": "Stella",
+      "middleName": "Mae",
+      "lastName": "Parton",
+      "birthOrder": "6",
+      "uniqueCharacteristics": "Singer and entrepreneur.",
+      "sharedExperiences": "Performed 'Break My Mind' with Cassie and Dolly.",
+      "memories": "Often joined Dolly on stage during major concerts.",
+      "notes": "Born in 1949."
+    },
+    {
+      "relation": "Brother",
+      "firstName": "Randy",
+      "middleName": "",
+      "lastName": "Parton",
+      "birthOrder": "8",
+      "uniqueCharacteristics": "Singer and regular performer at Dollywood.",
+      "sharedExperiences": "Toured with Dolly and recorded songs together.",
+      "memories": "His birth was a major family event as it was the first in a hospital.",
+      "notes": "Passed away in 2021."
+    }
+  ],
+  "spouse": {
+    "firstName": "Carl",
+    "middleName": "Thomas",
+    "lastName": "Dean",
+    "birthPlace": "Nashville, Tennessee",
+    "occupation": "Asphalt Paving Business (Retired)",
+    "narrative": "Met at the Wishy Washy Laundromat on Dolly's first day in Nashville in 1964. He is famously private and has only seen Dolly perform live a handful of times.",
+    "deceased": false
+  },
+  "children": [
+    {
+      "firstName": "Miley",
+      "middleName": "Ray",
+      "lastName": "Cyrus",
+      "birthDate": "1992-11-23",
+      "narrative": "Dolly's famous goddaughter; they share a deep musical and personal bond."
+    }
+  ],
+  "marriage": {
+    "proposalStory": "A steady courtship that began on a laundromat sidewalk.",
+    "weddingDetails": "Married May 30, 1966, in a Baptist church in Ringgold, GA, to keep it secret from the record label."
+  },
+  "familyTraditions": [
+    {
+      "description": "Christmas gatherings involving hay rides and 'Stone Soup'—where everyone brings an ingredient for a communal meal.",
+      "occasion": "Christmas"
+    }
+  ],
+  "pets": [
+    {
+      "name": "Popeye",
+      "species": "Dog",
+      "breed": "French Bulldog",
+      "birthDate": "",
+      "adoptionDate": ""
+    }
+  ],
+  "earlyMemories": {
+    "firstMemory": "The battery-powered radio in the cabin and her mother singing ballads.",
+    "favoriteToy": "A corncob doll with corn silk hair; she later longed for a 'walking talking' doll.",
+    "significantEvent": "Receiving a second-hand guitar from her Uncle Bill Owens at age eight."
+  },
+  "education": {
+    "schooling": "Sevier County High School.",
+    "higherEducation": "High school diploma (1964); later received honorary doctorates.",
+    "earlyCareer": "Performances on 'The Cas Walker Show' and debut at the Grand Ole Opry at 13.",
+    "careerProgression": "Moved to Nashville the day after graduation. Breakthrough on 'The Porter Wagoner Show' in 1967. Achieved global stardom as a solo artist and actress.",
+    "communityInvolvement": "Unprecedented philanthropy through the Dollywood Foundation and funding for COVID-19 vaccine research.",
+    "mentorship": "Known for mentoring young country artists and her goddaughter, Miley Cyrus."
+  },
+  "laterYears": {
+    "retirement": "Refuses to retire; wants to 'drop dead in the middle of a song on stage'.",
+    "lifeLessons": "'Find out who you are and do it on purpose'.",
+    "adviceForFutureGenerations": "'Dream More, Learn More, Care More and Be More'."
+  },
+  "hobbies": {
+    "hobbies": "Songwriting, cooking Southern comfort food, and reading classic literature.",
+    "worldEvents": "Modernization of Appalachia and the global reach of country music.",
+    "personalChallenges": "Overcoming extreme childhood poverty and the loss of her brother Larry shortly after his birth.",
+    "travel": "Touring globally, though she famously hates flying and prefers her custom tour bus."
+  },
+  "health": {
+    "healthMilestones": "Strong recovery from various minor surgeries over the years.",
+    "lifestyleChanges": "Maintains a disciplined 'low-carb-ish' diet but indulges in Southern favorites.",
+    "wellnessTips": "'If you want the rainbow, you have to put up with the rain'."
+  },
+  "technology": {
+    "firstTechExperience": "The family’s first battery-powered radio.",
+    "favoriteGadgets": "Fax machines (famously her preferred method of communication over email).",
+    "culturalPractices": "Spiritual practice involves daily prayer and meditation at 3:00 AM."
+  },
+  "additionalNotes": {
+    "unfinishedDreams": "Expanding the Imagination Library to every country in the world.",
+    "messagesForFutureGenerations": "'If you don't like the road you're walking, start paving another one'."
+  }
+}

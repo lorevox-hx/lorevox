@@ -71,6 +71,70 @@
     "Adoptive son", "Adoptive daughter", "Foster child", "Other"
   ];
 
+  /* ───────────────────────────────────────────────────────────
+     WO-INTAKE-IDENTITY-01 — minimal intake gate + legacy helpers
+  ─────────────────────────────────────────────────────────── */
+
+  function intakeMinimalEnabled() {
+    try {
+      // Precedence: window var (build/server bootstrap)
+      // > localStorage (per-browser override)
+      // > default(true)
+      if (typeof window !== "undefined" && window.LOREVOX_INTAKE_MINIMAL != null) {
+        return !!window.LOREVOX_INTAKE_MINIMAL;
+      }
+      var ls = localStorage.getItem("lorevox.intake.minimal");
+      if (ls === "1") return true;
+      if (ls === "0") return false;
+    } catch (e) {}
+    return true;
+  }
+
+  function getSectionData(questionnaire, id) {
+    if (!questionnaire) return null;
+    if (questionnaire[id] != null) return questionnaire[id];
+    if (questionnaire._legacyRemovedSections &&
+        questionnaire._legacyRemovedSections[id] != null) {
+      return questionnaire._legacyRemovedSections[id];
+    }
+    return null;
+  }
+
+  function _migrateRemovedSectionsToLegacy(questionnaire) {
+    if (!questionnaire || typeof questionnaire !== "object") return questionnaire;
+
+    var removedIds = ["grandparents", "auntsUncles", "childhoodPlaces", "schools", "trips", "memoryNotes"];
+    var migrationVersion = "WO-INTAKE-IDENTITY-01";
+
+    if (!questionnaire._legacyRemovedSections) {
+      questionnaire._legacyRemovedSections = {
+        _version: migrationVersion,
+        _capturedAt: new Date().toISOString()
+      };
+    } else {
+      if (!questionnaire._legacyRemovedSections._version) {
+        questionnaire._legacyRemovedSections._version = migrationVersion;
+      }
+      if (!questionnaire._legacyRemovedSections._capturedAt) {
+        questionnaire._legacyRemovedSections._capturedAt = new Date().toISOString();
+      }
+    }
+
+    removedIds.forEach(function (id) {
+      if (questionnaire[id] == null) return;
+      try {
+        questionnaire._legacyRemovedSections[id] = questionnaire[id];
+        delete questionnaire[id];
+      } catch (e) {
+        console.warn("[intake-migration] failed to migrate " + id, e);
+        try { delete questionnaire._legacyRemovedSections[id]; } catch (_) {}
+      }
+    });
+
+    questionnaire._legacyMigrationVersion = migrationVersion;
+    return questionnaire;
+  }
+
   /* Phase Q+: Unified relationship type options for spouse/partner section */
   var RELATIONSHIP_TYPE_OPTIONS = [
     "", "Spouse", "Partner", "Former Spouse", "Domestic Partner",
@@ -152,7 +216,7 @@
      SECTION DEFINITIONS  (Janice Personal Information model)
   ─────────────────────────────────────────────────────────── */
 
-  var SECTIONS = [
+  var FULL_SECTIONS = [
     {
       id: "personal", label: "Personal Information", icon: "\u{1F464}",
       hint: "Full name, preferred name, birth date, birth place",
@@ -351,6 +415,56 @@
     }
   ];
 
+  var MINIMAL_SECTIONS = [
+    {
+      id: "personal",
+      label: "Personal Information",
+      icon: "\u{1F464}",
+      hint: "Core identity fields captured before Lori begins",
+      fields: [
+        { id: "fullName",      label: "Full Name",      type: "text",   placeholder: "Enter full name" },
+        { id: "preferredName", label: "Preferred Name", type: "text",   placeholder: "Enter preferred name" },
+        { id: "birthOrder",    label: "Birth Order",    type: "select", options: BIRTH_ORDER_OPTIONS },
+        { id: "dateOfBirth",   label: "Date of Birth",  type: "text",   placeholder: "Enter date of birth", helperText: "Use YYYY-MM-DD when known.", inputHelper: "normalizeDob" },
+        { id: "timeOfBirth",   label: "Time of Birth",  type: "text",   placeholder: "Enter time of birth", helperText: "Optional if known.", inputHelper: "normalizeTime" },
+        { id: "placeOfBirth",  label: "Place of Birth", type: "text",   placeholder: "Enter place of birth", helperText: "City, state, country when known.", inputHelper: "normalizePlace" }
+      ]
+    },
+    {
+      id: "parents",
+      label: "Parents",
+      icon: "\u{1F331}",
+      hint: "Minimal first-degree family anchors",
+      repeatable: true,
+      repeatLabel: "parent",
+      fields: [
+        { id: "relation",   label: "Relation",    type: "select", options: RELATION_OPTIONS },
+        { id: "firstName",  label: "First Name",  type: "text" },
+        { id: "middleName", label: "Middle Name", type: "text" },
+        { id: "lastName",   label: "Last Name",   type: "text" },
+        { id: "maidenName", label: "Maiden Name", type: "text" },
+        { id: "occupation", label: "Occupation",  type: "text" }
+      ]
+    },
+    {
+      id: "siblings",
+      label: "Siblings",
+      icon: "\u{1F46B}",
+      hint: "Names and relation order only",
+      repeatable: true,
+      repeatLabel: "sibling",
+      fields: [
+        { id: "relation",   label: "Relation",    type: "select", options: SIBLING_RELATION_OPTIONS },
+        { id: "firstName",  label: "First Name",  type: "text" },
+        { id: "middleName", label: "Middle Name", type: "text" },
+        { id: "lastName",   label: "Last Name",   type: "text" },
+        { id: "birthOrder", label: "Birth Order", type: "select", options: BIRTH_ORDER_OPTIONS }
+      ]
+    }
+  ];
+
+  var SECTIONS = intakeMinimalEnabled() ? MINIMAL_SECTIONS : FULL_SECTIONS;
+
   /* ───────────────────────────────────────────────────────────
      NORMALIZATION HELPERS
   ─────────────────────────────────────────────────────────── */
@@ -444,6 +558,21 @@
   function normalizePlaceInput(raw) {
     if (!raw) return "";
     var s = raw.trim();
+    // BUG-211: strip trailing STT fillers / dangling prepositions before
+    // running the state-name match.  Live evidence: Jake's pob came in
+    // as "Elbowoods on" because voice input captured a trailing
+    // preposition (probably " on a farm" cut off by STT).  Causes Lori
+    // to render "It's wonderful that you were born in Elbowoods on."
+    // — confusing for older-adult narrators.
+    var TRAILING_FILLERS = /\s+(on|in|at|of|the|a|an|and|or|but|um|uh|oh|so|like|just|with|by)$/i;
+    var TRAILING_PUNCT = /[\s,.;:!?\-]+$/;
+    s = s.replace(TRAILING_PUNCT, "");
+    // strip up to 2 trailing fillers in case STT dropped multiple
+    for (var k = 0; k < 2; k++) {
+      var stripped = s.replace(TRAILING_FILLERS, "");
+      if (stripped === s) break;
+      s = stripped.replace(TRAILING_PUNCT, "");
+    }
     var m, full;
     m = s.match(/^(.+?),\s*([A-Z]{2})$/i);
     if (m) { full = US_STATES[m[2].toUpperCase()]; if (full) return m[1].trim() + ", " + full; }
@@ -832,7 +961,7 @@
     if (pid && (!bb.questionnaire || Object.keys(bb.questionnaire).length === 0)) {
       _restoreQuestionnaire(pid);
     }
-    var q  = bb.questionnaire[section.id]; if (!q) return 0;
+    var q  = getSectionData(bb.questionnaire, section.id); if (!q) return 0;
     if (section.repeatable) { return (Array.isArray(q) ? q : [q]).length; }
     return section.fields.filter(function (f) { return q[f.id] && String(q[f.id]).trim(); }).length;
   }
@@ -850,10 +979,27 @@
       container.innerHTML = _emptyStateHtml("No narrator selected", "Select a narrator to start the structured questionnaire.", []);
       return;
     }
-    // Phase 1.2: ensure canonical questionnaire state is loaded before any render
+    // BUG-220A: fail-closed scope guard. If bb.personId still points at
+    // the previous narrator (async race or missing _personChanged hop),
+    // refuse to paint stale data. Caller (_renderActiveTab) also guards
+    // this; belt-and-suspenders here protects any direct call paths
+    // (e.g., section-detail re-render after edit).
     var bb = _bb();
+    if (bb && bb.personId && bb.personId !== pid) {
+      console.warn("[bb-scope] questionnaire tab render blocked — bb.personId=" +
+        (bb.personId || "").slice(0, 8) + " active=" + pid.slice(0, 8));
+      container.innerHTML = _emptyStateHtml(
+        "Loading active narrator questionnaire…",
+        "Scope reconciling. If this persists, switch narrators again.",
+        []);
+      return;
+    }
+    // Phase 1.2: ensure canonical questionnaire state is loaded before any render
     if (bb && (!bb.questionnaire || Object.keys(bb.questionnaire).length === 0)) {
       _restoreQuestionnaire(pid);
+    }
+    if (bb && bb.questionnaire) {
+      _migrateRemovedSectionsToLegacy(bb.questionnaire);
     }
     _qqDebugSnapshot("tab_render", pid);
     if (activeSection) { _renderSectionDetail(container, activeSection, renderActiveTab); return; }
@@ -875,8 +1021,12 @@
     }).join("");
 
     container.innerHTML =
-      '<div class="bb-section-title">Questionnaire Sections</div>'
-      + '<p class="bb-hint-text">Fill in any section to capture biographical material. Answers become candidate items you can review.</p>'
+      '<div class="bb-section-title">' + (intakeMinimalEnabled() ? 'Identity Intake' : 'Questionnaire Sections') + '</div>'
+      + '<p class="bb-hint-text">'
+      + (intakeMinimalEnabled()
+          ? 'Start with identity basics. This quick intake gives Lori your name, birth details, and immediate family before conversation begins.'
+          : 'Fill in any section to capture biographical material. Answers become candidate items you can review.')
+      + '</p>'
       + '<div class="bb-section-grid">' + sectionCards + '</div>';
   }
 
@@ -889,7 +1039,10 @@
     if (pid && (!bb.questionnaire || Object.keys(bb.questionnaire).length === 0)) {
       _restoreQuestionnaire(pid);
     }
-    var existing = bb.questionnaire[section.id];
+    if (bb && bb.questionnaire) {
+      _migrateRemovedSectionsToLegacy(bb.questionnaire);
+    }
+    var existing = getSectionData(bb.questionnaire, section.id);
     var fieldsHtml;
 
     if (section.repeatable) {
@@ -1001,6 +1154,14 @@
     if (!section) return;
     var bb = _bb(); if (!bb) return;
 
+    // WO-INTAKE-IDENTITY-01: restore before migrate — symmetric with _addRepeatEntry
+    // Covers code paths that invoke save without a prior render pass.
+    var pid = _currentPersonId();
+    if (pid) _restoreQuestionnaire(pid);
+    if (bb && bb.questionnaire) {
+      _migrateRemovedSectionsToLegacy(bb.questionnaire);
+    }
+
     // Phase 1.3: Step 1 — read DOM values; Step 2 — write into canonical bb.questionnaire
     if (section.repeatable) {
       var existing = Array.isArray(bb.questionnaire[sectionId])
@@ -1074,6 +1235,10 @@
     // Phase 2.2 Step 1: restore canonical questionnaire state
     if (pid) _restoreQuestionnaire(pid);
 
+    if (bb && bb.questionnaire) {
+      _migrateRemovedSectionsToLegacy(bb.questionnaire);
+    }
+
     // Phase 2.3: guard — ensure repeatable array exists
     if (!Array.isArray(bb.questionnaire[sectionId])) {
       bb.questionnaire[sectionId] = bb.questionnaire[sectionId] ? [bb.questionnaire[sectionId]] : [{}];
@@ -1116,6 +1281,8 @@
   window.LorevoxBioBuilderModules.questionnaire = {
     // Section definitions
     SECTIONS:                      SECTIONS,
+    FULL_SECTIONS:                 FULL_SECTIONS,
+    MINIMAL_SECTIONS:              MINIMAL_SECTIONS,
 
     // Rendering
     _renderQuestionnaireTab:       _renderQuestionnaireTab,
@@ -1137,6 +1304,11 @@
     deriveZodiacFromDob:           deriveZodiacFromDob,
     buildCanonicalBasicsFromBioBuilder: buildCanonicalBasicsFromBioBuilder,
     _onNormalizeBlur:              _onNormalizeBlur,
+
+    // WO-INTAKE-IDENTITY-01 helpers
+    intakeMinimalEnabled:          intakeMinimalEnabled,
+    getSectionData:                getSectionData,
+    _migrateRemovedSectionsToLegacy: _migrateRemovedSectionsToLegacy,
 
     // Hydration
     _hydrateQuestionnaireFromProfile: _hydrateQuestionnaireFromProfile,

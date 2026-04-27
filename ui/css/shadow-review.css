@@ -1,0 +1,803 @@
+/* ═══════════════════════════════════════════════════════════════
+   shadow-review.css — WO-13X Source-Centric Shadow Review UI
+   Lorevox 1.0
+
+   Reuses design tokens from bio-review.css (--br-* vars).
+   Three-pane layout: source list | claim detail | resolved outcomes
+   + inline post-chat panel for Part B
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Root container ────────────────────────────────────────── */
+.sr-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: var(--br-text);
+  background: transparent;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.sr-header {
+  padding: 14px 16px 10px 16px;
+  flex-shrink: 0;
+}
+.sr-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--br-text);
+  line-height: 1.15;
+}
+.sr-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--br-muted);
+  max-width: 580px;
+}
+
+/* ── 3-pane body ───────────────────────────────────────────── */
+.sr-body {
+  display: grid;
+  grid-template-columns: 240px 1fr 260px;
+  gap: var(--br-gap);
+  flex: 1;
+  min-height: 0;
+  padding: 0 16px 16px 16px;
+}
+
+/* ── Shared pane chrome ────────────────────────────────────── */
+.sr-left,
+.sr-center,
+.sr-right {
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+  border: 1px solid var(--br-border);
+  border-radius: var(--br-radius);
+  box-shadow: var(--br-shadow);
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── LEFT PANE — Source List ───────────────────────────────── */
+.sr-left {
+  padding: 10px 8px;
+  gap: 6px;
+}
+.sr-source-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.02);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: .16s ease;
+}
+.sr-source-item:hover {
+  border-color: rgba(124,156,255,.25);
+  background: rgba(124,156,255,.04);
+}
+.sr-source-item.sr-source-active {
+  border-color: rgba(124,156,255,.36);
+  background: rgba(124,156,255,.08);
+  box-shadow: inset 0 0 0 1px rgba(124,156,255,.18);
+}
+.sr-source-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sr-source-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.sr-source-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--br-text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-source-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--br-accent);
+  background: rgba(124,156,255,.12);
+  border: 1px solid rgba(124,156,255,.24);
+  border-radius: 999px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+.sr-source-excerpt {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--br-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sr-source-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 2px 7px;
+  align-self: flex-start;
+}
+.sr-badge-unreviewed {
+  color: var(--br-warn);
+  background: rgba(251,191,36,.10);
+  border: 1px solid rgba(251,191,36,.22);
+}
+.sr-badge-partial {
+  color: var(--br-accent);
+  background: rgba(124,156,255,.10);
+  border: 1px solid rgba(124,156,255,.22);
+}
+.sr-badge-resolved {
+  color: var(--br-good);
+  background: rgba(74,222,128,.10);
+  border: 1px solid rgba(74,222,128,.22);
+}
+
+/* ── CENTER PANE — Source + Grouped Claims ─────────────────── */
+.sr-center {
+  padding: 14px;
+  gap: 12px;
+}
+.sr-center-empty {
+  padding: 20px;
+  color: var(--br-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.sr-source-block {
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.02);
+  border-radius: var(--br-radius-sm);
+  padding: 12px;
+}
+.sr-source-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sr-speaker {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--br-accent);
+}
+.sr-timestamp {
+  font-size: 11px;
+  color: var(--br-soft);
+}
+.sr-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--br-accent-2);
+  background: rgba(198,167,255,.10);
+  border: 1px solid rgba(198,167,255,.24);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+.sr-excerpt {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--br-muted);
+  white-space: pre-wrap;
+  font-style: italic;
+}
+
+/* ── Claim groups ──────────────────────────────────────────── */
+.sr-claims {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+}
+.sr-group {
+  border: 1px solid var(--br-border);
+  border-radius: var(--br-radius-sm);
+  overflow: hidden;
+}
+.sr-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.02);
+  cursor: pointer;
+  user-select: none;
+  transition: .12s ease;
+}
+.sr-group-header:hover {
+  background: rgba(255,255,255,.04);
+}
+.sr-group-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.sr-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--br-text);
+  flex: 1;
+}
+.sr-group-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--br-accent);
+  background: rgba(124,156,255,.12);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+.sr-group-chevron {
+  font-size: 12px;
+  color: var(--br-soft);
+  flex-shrink: 0;
+  transition: .16s ease;
+}
+.sr-group-body {
+  padding: 6px 10px 10px 10px;
+}
+.sr-group-body.sr-hidden {
+  display: none;
+}
+
+/* ── Individual claim row ──────────────────────────────────── */
+.sr-claim {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.02);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 6px;
+  transition: .16s ease;
+}
+.sr-claim:hover {
+  border-color: rgba(124,156,255,.20);
+}
+.sr-claim.sr-claim-resolved {
+  opacity: .65;
+  border-color: rgba(74,222,128,.20);
+  background: rgba(74,222,128,.03);
+}
+.sr-claim-main {
+  flex: 1;
+  min-width: 0;
+}
+.sr-claim-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--br-text);
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+.sr-claim-snippet {
+  font-size: 11px;
+  color: var(--br-muted);
+  line-height: 1.4;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+.sr-claim-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.sr-conf {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--br-soft);
+  border: 1px solid var(--br-border);
+  border-radius: 999px;
+  padding: 1px 5px;
+}
+.sr-dest {
+  font-size: 10px;
+  color: var(--br-accent-2);
+}
+.sr-dup-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--br-warn);
+  background: rgba(251,191,36,.10);
+  border: 1px solid rgba(251,191,36,.20);
+  border-radius: 999px;
+  padding: 1px 6px;
+  cursor: pointer;
+}
+.sr-dup-badge:hover {
+  background: rgba(251,191,36,.18);
+}
+
+/* ── Claim action buttons ──────────────────────────────────── */
+.sr-claim-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.sr-act {
+  appearance: none;
+  border: 1px solid var(--br-border);
+  background: rgba(255,255,255,.03);
+  color: var(--br-muted);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .14s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.sr-act:hover {
+  border-color: rgba(124,156,255,.24);
+  color: var(--br-text);
+}
+.sr-act-approve.sr-act-active {
+  background: rgba(74,222,128,.14);
+  border-color: rgba(74,222,128,.28);
+  color: var(--br-good);
+}
+.sr-act-followup.sr-act-active {
+  background: rgba(251,191,36,.12);
+  border-color: rgba(251,191,36,.26);
+  color: var(--br-warn);
+}
+.sr-act-sourceonly.sr-act-active {
+  background: rgba(124,156,255,.12);
+  border-color: rgba(124,156,255,.26);
+  color: var(--br-accent);
+}
+.sr-act-reject.sr-act-active {
+  background: rgba(248,113,113,.12);
+  border-color: rgba(248,113,113,.26);
+  color: var(--br-bad);
+}
+
+/* ── Duplicate variants ────────────────────────────────────── */
+.sr-dup-variants {
+  padding: 6px 10px 6px 20px;
+  border-top: 1px dashed var(--br-border);
+}
+.sr-dup-variants.sr-hidden {
+  display: none;
+}
+.sr-dup-variant {
+  font-size: 11px;
+  color: var(--br-muted);
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+}
+.sr-dup-variant:last-child {
+  border-bottom: none;
+}
+.sr-dup-text {
+  color: var(--br-text);
+  font-weight: 600;
+}
+.sr-dup-snippet {
+  font-style: italic;
+  margin-left: 6px;
+}
+
+/* ── RIGHT PANE — Resolved Outcomes ────────────────────────── */
+.sr-right {
+  padding: 12px;
+  gap: 10px;
+}
+.sr-right-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.sr-right-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--br-text);
+}
+.sr-right-count {
+  font-size: 11px;
+  color: var(--br-muted);
+}
+.sr-outcome-group {
+  border: 1px solid var(--br-border);
+  border-radius: var(--br-radius-sm);
+  padding: 8px 10px;
+}
+.sr-outcome-label {
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.sr-outcome-approve  { color: var(--br-good); }
+.sr-outcome-followup { color: var(--br-warn); }
+.sr-outcome-sourceonly{ color: var(--br-accent); }
+.sr-outcome-reject   { color: var(--br-bad); }
+
+.sr-dest-group {
+  margin-bottom: 6px;
+}
+.sr-dest-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--br-accent-2);
+  margin-bottom: 3px;
+  display: block;
+}
+.sr-outcome-item {
+  font-size: 11px;
+  color: var(--br-muted);
+  padding: 3px 0;
+  line-height: 1.4;
+}
+.sr-outcome-collapsed .sr-outcome-item {
+  display: none;
+}
+
+/* ── Commit button ─────────────────────────────────────────── */
+.sr-commit-btn {
+  appearance: none;
+  width: 100%;
+  border: 1px solid rgba(74,222,128,.28);
+  background: rgba(74,222,128,.12);
+  color: var(--br-good);
+  border-radius: 9px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .16s ease;
+  font-family: inherit;
+  margin-top: auto;
+}
+.sr-commit-btn:hover {
+  background: rgba(74,222,128,.20);
+  border-color: rgba(74,222,128,.40);
+}
+
+/* ── Empty state ───────────────────────────────────────────── */
+.sr-empty {
+  padding: 20px 14px;
+  color: var(--br-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  border: 1px dashed var(--br-border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.02);
+}
+
+/* ── Utility ───────────────────────────────────────────────── */
+.sr-hidden {
+  display: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   INLINE POST-CHAT PANEL (Part B)
+   Shows beneath chat messages after extraction.
+═══════════════════════════════════════════════════════════════ */
+
+.sr-inline-panel {
+  margin: 10px 0 6px 0;
+  border: 1px solid rgba(124,156,255,.22);
+  background: linear-gradient(180deg, rgba(124,156,255,.06), rgba(124,156,255,.02));
+  border-radius: var(--br-radius-sm, 10px);
+  padding: 10px 12px;
+  animation: srFadeIn .3s ease;
+}
+
+@keyframes srFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sr-inline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.sr-inline-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--br-accent, #7c9cff);
+}
+.sr-inline-dismiss {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--br-soft, #6f7d92);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.sr-inline-dismiss:hover {
+  color: var(--br-text, #e7edf7);
+}
+.sr-inline-claims {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sr-inline-claim {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--br-border, rgba(255,255,255,.08));
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: rgba(255,255,255,.02);
+  transition: .16s ease;
+}
+.sr-inline-claim.sr-inline-resolved {
+  opacity: .6;
+}
+.sr-inline-claim-text {
+  flex: 1;
+  min-width: 0;
+}
+.sr-inline-field {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--br-accent-2, #c6a7ff);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-bottom: 1px;
+}
+.sr-inline-value {
+  font-size: 12px;
+  color: var(--br-text, #e7edf7);
+  line-height: 1.35;
+}
+.sr-inline-actions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.sr-iact {
+  appearance: none;
+  border: 1px solid var(--br-border, rgba(255,255,255,.08));
+  background: rgba(255,255,255,.03);
+  color: var(--br-muted, #97a4b8);
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .14s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.sr-iact:hover {
+  border-color: rgba(124,156,255,.22);
+  color: var(--br-text);
+}
+.sr-iact-approve.sr-iact-active {
+  background: rgba(74,222,128,.14);
+  border-color: rgba(74,222,128,.28);
+  color: var(--br-good, #4ade80);
+}
+.sr-iact-hold.sr-iact-active {
+  background: rgba(251,191,36,.12);
+  border-color: rgba(251,191,36,.26);
+  color: var(--br-warn, #fbbf24);
+}
+.sr-iact-sourceonly.sr-iact-active {
+  background: rgba(124,156,255,.12);
+  border-color: rgba(124,156,255,.26);
+  color: var(--br-accent, #7c9cff);
+}
+.sr-iact-reject.sr-iact-active {
+  background: rgba(248,113,113,.12);
+  border-color: rgba(248,113,113,.26);
+  color: var(--br-bad, #f87171);
+}
+
+/* Open in Shadow Review link */
+.sr-inline-open {
+  appearance: none;
+  display: block;
+  width: 100%;
+  border: 1px solid rgba(124,156,255,.22);
+  background: rgba(124,156,255,.08);
+  color: var(--br-accent, #7c9cff);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .16s ease;
+  text-align: center;
+  margin-top: 8px;
+  font-family: inherit;
+}
+.sr-inline-open:hover {
+  background: rgba(124,156,255,.14);
+  border-color: rgba(124,156,255,.32);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-13YZ: CORRECTION EDITOR
+   Inline form that expands below a claim row when Correct is clicked.
+═══════════════════════════════════════════════════════════════ */
+
+/* Correct + Correct+FU button active states */
+.sr-act-correct.sr-act-active {
+  background: rgba(96,165,250,.14);
+  border-color: rgba(96,165,250,.28);
+  color: #60a5fa;
+}
+.sr-act-correctfu.sr-act-active {
+  background: rgba(251,191,36,.14);
+  border-color: rgba(251,191,36,.28);
+  color: var(--br-warn, #fbbf24);
+}
+
+/* Correction editor wrapper */
+.sr-correction-editor {
+  margin: 6px 0 4px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(96,165,250,.22);
+  background: rgba(96,165,250,.06);
+  border-radius: var(--br-radius-sm, 10px);
+  animation: srFadeIn .2s ease;
+}
+
+.sr-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.sr-editor-row:last-child {
+  margin-bottom: 0;
+}
+.sr-editor-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--br-muted, #97a4b8);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  min-width: 72px;
+  flex-shrink: 0;
+}
+.sr-editor-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--br-border, rgba(255,255,255,.1));
+  background: var(--br-bg, #1a1e2a);
+  color: var(--br-text, #e7edf7);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  transition: border-color .14s ease;
+}
+.sr-editor-input:focus {
+  outline: none;
+  border-color: rgba(96,165,250,.4);
+}
+.sr-editor-input::placeholder {
+  color: var(--br-soft, #6f7d92);
+}
+.sr-editor-note {
+  min-height: 28px;
+  resize: vertical;
+}
+.sr-editor-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.sr-btn-save,
+.sr-btn-savefu,
+.sr-btn-cancel {
+  appearance: none;
+  border: 1px solid var(--br-border, rgba(255,255,255,.1));
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: .14s ease;
+}
+.sr-btn-save {
+  background: rgba(96,165,250,.14);
+  border-color: rgba(96,165,250,.28);
+  color: #60a5fa;
+}
+.sr-btn-save:hover {
+  background: rgba(96,165,250,.22);
+}
+.sr-btn-savefu {
+  background: rgba(251,191,36,.12);
+  border-color: rgba(251,191,36,.24);
+  color: var(--br-warn, #fbbf24);
+}
+.sr-btn-savefu:hover {
+  background: rgba(251,191,36,.18);
+}
+.sr-btn-cancel {
+  background: rgba(255,255,255,.04);
+  color: var(--br-muted, #97a4b8);
+}
+.sr-btn-cancel:hover {
+  background: rgba(255,255,255,.08);
+  color: var(--br-text);
+}
+
+/* Claim row with saved correction shows dimmed original */
+.sr-claim-corrected .sr-claim-text {
+  text-decoration: line-through;
+  opacity: .55;
+}
+.sr-claim-corrected .sr-claim-corrected-value {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #60a5fa;
+  text-decoration: none;
+  opacity: 1;
+}
+
+/* Right pane corrected section */
+.sr-outcome-corrected {
+  color: #60a5fa;
+}
+.sr-corr-arrow {
+  color: var(--br-soft, #6f7d92);
+  font-size: 10px;
+  margin: 0 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-13YZ: INLINE PANEL — Correct button for post-chat
+═══════════════════════════════════════════════════════════════ */
+
+.sr-iact-correct.sr-iact-active {
+  background: rgba(96,165,250,.14);
+  border-color: rgba(96,165,250,.28);
+  color: #60a5fa;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .sr-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  .sr-left   { max-height: 200px; }
+  .sr-right  { max-height: 240px; }
+}
+@media (max-width: 600px) {
+  .sr-inline-claim { flex-direction: column; align-items: stretch; }
+  .sr-inline-actions { justify-content: flex-end; }
+}

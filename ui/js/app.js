@@ -14,6 +14,64 @@
 let _llmReady = false;
 let _llmWarmupPolling = false;
 
+/* ── WO-9: Startup race fix — queue system prompts until model ready ── */
+let _wo9QueuedSystemPrompt = null;
+
+function wo9SendOrQueueSystemPrompt(prompt) {
+  if (!_llmReady) {
+    _wo9QueuedSystemPrompt = prompt;
+    console.log("[WO-9] Queued system prompt until model ready. Length:", prompt.length);
+    return false;
+  }
+  sendSystemPrompt(prompt);
+  return true;
+}
+
+function wo9DrainQueuedSystemPrompt() {
+  if (_wo9QueuedSystemPrompt && _llmReady) {
+    const prompt = _wo9QueuedSystemPrompt;
+    _wo9QueuedSystemPrompt = null;
+    console.log("[WO-9] Draining queued system prompt.");
+    sendSystemPrompt(prompt);
+  }
+}
+window.wo9SendOrQueueSystemPrompt = wo9SendOrQueueSystemPrompt;
+window.wo9DrainQueuedSystemPrompt = wo9DrainQueuedSystemPrompt;
+
+/* ── Lorevox operator mode flag ───────────────────────────── */
+window.LOREVOX_OPERATOR_MODE = window.LOREVOX_OPERATOR_MODE || false;
+
+/* ── Lorevox: deleted-narrator skip list ──────────────────── */
+function _lorevoxGetDeletedLabels() {
+  try {
+    return JSON.parse(localStorage.getItem("lorevox_deleted_labels") || "[]");
+  } catch (_) {
+    return [];
+  }
+}
+
+function _lorevoxMarkDeletedNarrator(label) {
+  if (!label) return;
+  try {
+    var arr = _lorevoxGetDeletedLabels();
+    if (arr.indexOf(label) < 0) arr.push(label);
+    localStorage.setItem("lorevox_deleted_labels", JSON.stringify(arr));
+  } catch (_) {}
+}
+
+function _lorevoxClearDeletedNarrator(label) {
+  if (!label) return;
+  try {
+    var arr = _lorevoxGetDeletedLabels().filter(function(x) { return x !== label; });
+    localStorage.setItem("lorevox_deleted_labels", JSON.stringify(arr));
+  } catch (_) {}
+}
+
+// Expose for operator UI
+window._lorevoxMarkDeletedNarrator  = _lorevoxMarkDeletedNarrator;
+window._lorevoxClearDeletedNarrator = _lorevoxClearDeletedNarrator;
+window._lorevoxGetDeletedLabels     = _lorevoxGetDeletedLabels;
+
 /** True once the model has completed warmup and can generate. */
 function isLlmReady() { return _llmReady; }
 // Expose for tests and console inspection
@@ -35,6 +93,17 @@ window._forceModelReady = _forceModelReady;
 /** Show/hide the warmup banner overlay. */
 function _setWarmupBanner(visible, message) {
   const banner = document.getElementById("lv80WarmupBanner");
+  // WO-UI-SHELL-01: mirror banner state to the Operator tab readiness card.
+  if (typeof lvUpdateOperatorReadiness === "function") {
+    if (visible) {
+      lvUpdateOperatorReadiness("pending",
+        message || "Lori is getting ready…",
+        "This can take a few minutes on first load.");
+    } else {
+      lvUpdateOperatorReadiness("ready", "Lori is ready.",
+        "You can hand her the session when you're set.");
+    }
+  }
   if (!banner) return;
   if (visible) {
     banner.querySelector(".warmup-msg").textContent = message || "Lorevox is warming up…";
@@ -119,19 +188,757 @@ async function pollModelReady() {
 /** Called once when model transitions to ready. Triggers deferred onboarding/narrator flow. */
 function _onModelReady() {
   console.log("[readiness] _onModelReady — firing deferred startup.");
+  // WO-9: Drain any system prompt that was queued during startup race
+  wo9DrainQueuedSystemPrompt();
   // v9: Startup neutrality — always open narrator selector on ready.
-  // New devices AND returning devices both start with "Choose a narrator."
-  // Onboarding only begins when user explicitly clicks "+ New" or "Open".
   console.log("[readiness] v9 — startup neutral. Opening narrator selector.");
+  // WO-UI-SHELL-01: paint readiness card green once warm.
+  if (typeof lvUpdateOperatorReadiness === "function") {
+    lvUpdateOperatorReadiness("ready", "Lori is ready.", "You can hand her the session when you're set.");
+  }
   setTimeout(() => {
     if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
   }, 400);
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   WO-UI-SHELL-01 — Three-tab shell wiring.
+   Operator | Narrator Session | Media.  Startup lands on Operator.
+   Session style is a state + persistence + label only concern in
+   Phase 1; WO-NARRATOR-ROOM-01 and a future prompt-composer WO will
+   route it into Lori's behavior.  Do NOT overload currentMode.
+═══════════════════════════════════════════════════════════════ */
+
+const LV_SESSION_STYLE_KEY = "lorevox_session_style_v1";
+// memory_exercise dropped 2026-04-25 — picker no-op, shelved.
+const LV_VALID_SESSION_STYLES = [
+  "questionnaire_first", "clear_direct", "warm_storytelling", "companion",
+];
+
+/** Read the current session style.  Defaults to warm_storytelling. */
+function getSessionStyle() {
+  return (state && state.session && state.session.sessionStyle) || "warm_storytelling";
+}
+window.getSessionStyle = getSessionStyle;
+
+/**
+ * Persist a session style selection.  Updates state.session.sessionStyle
+ * (NOT currentMode — those are different abstractions) and mirrors the
+ * choice to localStorage so it survives reload.
+ */
+function lvSetSessionStyle(value) {
+  if (!LV_VALID_SESSION_STYLES.includes(value)) {
+    console.warn("[lv-shell] ignored invalid session style:", value);
+    return;
+  }
+  if (!state.session) state.session = {};
+  state.session.sessionStyle = value;
+  try { localStorage.setItem(LV_SESSION_STYLE_KEY, value); } catch (_) {}
+  // Sync the radio group in case this was a programmatic call.
+  const radios = document.querySelectorAll('input[name="lvSessionStyle"]');
+  radios.forEach(r => { r.checked = (r.value === value); });
+  console.log("[lv-shell] sessionStyle =", value);
+}
+window.lvSetSessionStyle = lvSetSessionStyle;
+
+/** Hydrate session style from localStorage (or default) and paint radios. */
+function _lvHydrateSessionStyle() {
+  let saved = null;
+  try { saved = localStorage.getItem(LV_SESSION_STYLE_KEY); } catch (_) {}
+  const value = (saved && LV_VALID_SESSION_STYLES.includes(saved)) ? saved : "warm_storytelling";
+  if (!state.session) state.session = {};
+  state.session.sessionStyle = value;
+  const radios = document.querySelectorAll('input[name="lvSessionStyle"]');
+  radios.forEach(r => { r.checked = (r.value === value); });
+}
+
+/** Which tab is currently visible. */
+function lvShellGetActiveTab() {
+  const active = document.querySelector("#lvShellTabs .lv-shell-tab-active");
+  return active ? active.dataset.tab : "operator";
+}
+window.lvShellGetActiveTab = lvShellGetActiveTab;
+
+/**
+ * Switch to the named tab.  Safe to call before init (no-op if the DOM
+ * isn't present yet).  Updates aria-selected on both tab buttons and
+ * panel visibility via the .lv-shell-panel-active class.
+ */
+function lvShellShowTab(tabName) {
+  const nav = document.getElementById("lvShellTabs");
+  if (!nav) return;
+  const tabs   = nav.querySelectorAll(".lv-shell-tab");
+  const panels = document.querySelectorAll(".lv-shell-panel");
+  tabs.forEach(t => {
+    const isActive = t.dataset.tab === tabName;
+    t.classList.toggle("lv-shell-tab-active", isActive);
+    t.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  panels.forEach(p => {
+    const isActive = p.id === `lv${tabName.charAt(0).toUpperCase()}${tabName.slice(1)}Tab` ||
+                     p.id === `lv${tabName === "narrator" ? "Narrator" : tabName === "operator" ? "Operator" : "Media"}Tab`;
+    p.classList.toggle("lv-shell-panel-active", isActive);
+  });
+  // Reflect on body for any CSS hooks.
+  try { document.body.setAttribute("data-shell-tab", tabName); } catch (_) {}
+  // Media tab preflight — single-shot probe for /api/photos so we can
+  // surface the "not enabled" hint without navigating away.
+  if (tabName === "media") _lvMediaPreflightOnce();
+  // Narrator room upkeep — repaint identity + controls on entry; start
+  // a light tick so mic/camera state stays synced while we're here.
+  if (tabName === "narrator") {
+    if (typeof _lvNarratorPaintIdentity === "function") _lvNarratorPaintIdentity();
+    if (typeof _lvNarratorPaintControls === "function") _lvNarratorPaintControls();
+    _lvNarratorStartPaintTick();
+    // Anchor to latest when entering (in case user was reading old messages).
+    setTimeout(() => { if (typeof lvNarratorScrollToBottom === "function") lvNarratorScrollToBottom(true); }, 60);
+  } else {
+    _lvNarratorStopPaintTick();
+  }
+}
+window.lvShellShowTab = lvShellShowTab;
+
+/** One-shot init — hydrate session style, land on Operator, install tab handlers. */
+function lvShellInitTabs() {
+  _lvHydrateSessionStyle();
+  lvShellShowTab("operator");
+  // Mirror warmup banner state to the readiness card on boot.
+  const banner = document.getElementById("lv80WarmupBanner");
+  if (banner && !banner.classList.contains("hidden")) {
+    const msg = banner.querySelector(".warmup-msg");
+    lvUpdateOperatorReadiness("pending",
+      (msg && msg.textContent) || "Lori is getting ready…",
+      "This can take a few minutes on first load.");
+  } else if (typeof isLlmReady === "function" && isLlmReady()) {
+    lvUpdateOperatorReadiness("ready", "Lori is ready.",
+      "You can hand her the session when you're set.");
+  }
+}
+window.lvShellInitTabs = lvShellInitTabs;
+
+/**
+ * Update the readiness card on the Operator tab.  Safe if the card
+ * isn't in the DOM (returns silently).
+ *   state: "pending" | "ready" | "error"
+ */
+function lvUpdateOperatorReadiness(readyState, label, sub) {
+  const card = document.getElementById("lvOperatorReadiness");
+  if (!card) return;
+  card.setAttribute("data-ready", readyState || "pending");
+  const lbl = document.getElementById("lvOperatorReadinessLabel");
+  const sbl = document.getElementById("lvOperatorReadinessSub");
+  if (lbl && label) lbl.textContent = label;
+  if (sbl && sub)   sbl.textContent = sub;
+  // Reflect on the Start button.
+  const btn = document.getElementById("lvOperatorStartBtn");
+  if (btn) btn.disabled = (readyState !== "ready");
+}
+window.lvUpdateOperatorReadiness = lvUpdateOperatorReadiness;
+
+/**
+ * Hand the session to Lori — switch to the Narrator tab and call the
+ * narrator-room init hook if WO-NARRATOR-ROOM-01 has installed one.
+ * Requires an active narrator; if none is set, nudge the operator to
+ * pick one first.
+ */
+function lvStartNarratorSession() {
+  const hint = document.getElementById("lvOperatorStartHint");
+  const hasNarrator = !!(state && state.person_id);
+  if (!hasNarrator) {
+    if (hint) { hint.hidden = false; hint.textContent = "Choose a narrator first."; }
+    // Also pop the switcher if it's available.
+    if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
+    return;
+  }
+  if (hint) hint.hidden = true;
+  lvShellShowTab("narrator");
+  if (typeof window.lvNarratorRoomInit === "function") {
+    try { window.lvNarratorRoomInit(); } catch (e) { console.warn("[lv-shell] lvNarratorRoomInit threw:", e); }
+  }
+}
+window.lvStartNarratorSession = lvStartNarratorSession;
+
+/**
+ * Media tab launchers.  Phase 1: open existing photo pages.  The
+ * Photo Session requires an active narrator so the elicit page can
+ * bind the right narrator_id.
+ */
+function lvOpenMediaTool(tool) {
+  const noteEl = document.getElementById("lvMediaDisabledNote");
+  switch (tool) {
+    case "photo_intake":
+      window.open("photo-intake.html", "_blank", "noopener");
+      break;
+    case "photo_timeline":
+      window.open("photo-timeline.html", "_blank", "noopener");
+      break;
+    case "photo_session": {
+      const pid = state && state.person_id;
+      if (!pid) {
+        if (noteEl) { noteEl.hidden = false; noteEl.textContent = "Choose a narrator before starting a photo session."; }
+        if (typeof lv80OpenNarratorSwitcher === "function") lv80OpenNarratorSwitcher();
+        return;
+      }
+      window.open(`photo-elicit.html?narrator_id=${encodeURIComponent(pid)}`, "_blank", "noopener");
+      break;
+    }
+    // WO-MEDIA-ARCHIVE-01 — Document Archive lane (PDFs, scanned docs,
+    // genealogy outlines, handwritten notes, certificates, clippings).
+    // Distinct from Photo Intake which is image-only memory prompts;
+    // this surface accepts PDFs and is gated behind a separate flag
+    // (LOREVOX_MEDIA_ARCHIVE_ENABLED). Narrator is optional — many
+    // archive items aren't bound to a specific person at intake time.
+    case "document_archive":
+      window.open("media-archive.html", "_blank", "noopener");
+      break;
+    default:
+      console.warn("[lv-shell] unknown media tool:", tool);
+  }
+}
+window.lvOpenMediaTool = lvOpenMediaTool;
+
+/** One-shot preflight for Media tab — hides the "not enabled" note
+    when LOREVOX_PHOTO_ENABLED is on, shows it when off.
+    Uses /api/photos/health which returns {ok, enabled} regardless of
+    the flag (the photo surface 404s the list/mutate routes when off,
+    but /health is intentionally flag-agnostic). */
+let _lvMediaPreflightDone = false;
+async function _lvMediaPreflightOnce() {
+  if (_lvMediaPreflightDone) return;
+  _lvMediaPreflightDone = true;
+  const note = document.getElementById("lvMediaDisabledNote");
+  if (!note) return;
+  try {
+    // BUG-PHOTO-CORS-01: must use ORIGIN (port 8000) — page is served
+    // from port 8082 (lorevox-serve.py), so a bare relative path goes
+    // to the static UI server which doesn't have any /api/* routes.
+    const res = await fetch(ORIGIN + "/api/photos/health", { method: "GET" });
+    let enabled = false;
+    if (res.ok) {
+      const j = await res.json();
+      enabled = !!(j && j.enabled);
+    }
+    if (enabled) { note.hidden = true; }
+    else { note.hidden = false; note.textContent = "Photo tools are not enabled for this run."; }
+  } catch (_) {
+    // Leave note hidden on network error — don't block the launcher cards.
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-NARRATOR-ROOM-01 — Narrator session room.
+   Topbar (identity + Mic/Camera/Pause/Break) → view tabs (Memory
+   River | Life Map | Photos | Peek at Memoir) → 3-column main.
+   Controls delegate to existing entry points (lv10dToggleMic,
+   lv10dToggleCamera, lv80TogglePauseListening); Take-a-break is a
+   new overlay.  Chat scroll uses FocusCanvas's existing _scrollToLatest.
+═══════════════════════════════════════════════════════════════ */
+
+const LV_NARRATOR_SESSION_STYLE_LABELS = {
+  questionnaire_first: "Questionnaire first",
+  clear_direct:        "Clear & direct",
+  warm_storytelling:   "Warm storytelling",
+  // memory_exercise dropped 2026-04-25 — kept as legacy fallback label
+  // for narrators with saved sessionStyle="memory_exercise" that haven't
+  // yet been redirected by session-style-router on next load.
+  memory_exercise:     "Warm storytelling",
+  companion:           "Companion",
+};
+
+/** Paint the topbar identity (narrator name + session style pill). */
+function _lvNarratorPaintIdentity() {
+  const nameEl  = document.getElementById("lvNarratorRoomName");
+  const styleEl = document.getElementById("lvNarratorRoomStyle");
+  if (nameEl) {
+    const header = document.getElementById("lv80ActiveNarratorName");
+    nameEl.textContent = (header && header.textContent) || "—";
+  }
+  if (styleEl) {
+    const v = (typeof getSessionStyle === "function") ? getSessionStyle() : "warm_storytelling";
+    styleEl.textContent = LV_NARRATOR_SESSION_STYLE_LABELS[v] || v;
+  }
+}
+window._lvNarratorPaintIdentity = _lvNarratorPaintIdentity;
+
+/** Return the current narrator view name. */
+function lvNarratorCurrentView() {
+  return (state && state.session && state.session.narratorView) || "river";
+}
+
+/** Switch narrator-room view. */
+function lvNarratorShowView(view) {
+  if (!["river", "map", "photos", "memoir"].includes(view)) return;
+  if (!state.session) state.session = {};
+  state.session.narratorView = view;
+  // Paint tab active state.
+  document.querySelectorAll(".lv-narrator-view-tab").forEach(t => {
+    const isActive = t.dataset.view === view;
+    t.classList.toggle("lv-narrator-view-tab-active", isActive);
+    t.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  // Render view content.
+  switch (view) {
+    case "river":  _lvNarratorRenderRiver();  break;
+    case "map":    _lvNarratorRenderMap();    break;
+    case "photos": _lvNarratorRenderPhotos(); break;
+    case "memoir": _lvNarratorRenderMemoir(); break;
+  }
+}
+window.lvNarratorShowView = lvNarratorShowView;
+
+/* ── View renderers ──────────────────────────────────────────────
+   All renderers write into #lvNarratorViewHost.  Kawa + Life Map +
+   Memoir reuse existing popovers via a "Open full" CTA; Phase 1
+   minimal-slice per the WO's acceptable fallback. */
+
+function _lvNarratorRenderRiver() {
+  const host = document.getElementById("lvNarratorViewHost");
+  if (!host) return;
+  const segs = (state.kawa && Array.isArray(state.kawa.segmentList)) ? state.kawa.segmentList : [];
+  const activeId = state.kawa && state.kawa.activeSegmentId;
+  let body = `
+    <h3 class="lv-narrator-view-head">Memory River</h3>
+    <p class="lv-narrator-view-lede">Your life in the shape of a river — pick a stretch and tell Lori about it.</p>
+  `;
+  if (!segs.length) {
+    body += `<p class="lv-narrator-view-empty">Your river is still filling in. Keep talking — Lori is listening.</p>`;
+  } else {
+    body += `<div class="lv-narrator-segment-list" role="list">`;
+    segs.slice(0, 12).forEach((s) => {
+      const sid = s.segment_id || s.id || "";
+      const label = (s.anchor && (s.anchor.label || s.anchor.era)) || s.title || s.label || "Unnamed stretch";
+      const sub = (s.anchor && s.anchor.years) ? s.anchor.years :
+                  (s.anchor && s.anchor.age_range) ? `Age ${s.anchor.age_range}` : "";
+      const active = sid && activeId === sid ? " is-active" : "";
+      body += `<button type="button" role="listitem" class="lv-narrator-segment-row${active}"
+        onclick="_lvNarratorSelectSegment(${JSON.stringify(sid)})">
+        <span class="lv-narrator-segment-label">${_lvEscapeHtml(label)}</span>
+        ${sub ? `<span class="lv-narrator-segment-sub">${_lvEscapeHtml(sub)}</span>` : ""}
+      </button>`;
+    });
+    body += `</div>`;
+  }
+  body += `<button type="button" class="lv-narrator-view-cta"
+      onclick="document.getElementById('kawaRiverPopover')?.showPopover?.()">
+      Open full Memory River
+    </button>`;
+  host.innerHTML = body;
+}
+
+function _lvNarratorSelectSegment(sid) {
+  if (!state.kawa) state.kawa = {};
+  state.kawa.activeSegmentId = sid || null;
+  _lvNarratorRenderRiver();
+  // Signal downstream consumers (runtime / prompt composer) — best-effort.
+  try { window.dispatchEvent(new CustomEvent("lv-narrator-segment-change", { detail: { segment_id: sid } })); } catch (_) {}
+}
+window._lvNarratorSelectSegment = _lvNarratorSelectSegment;
+
+function _lvNarratorRenderMap() {
+  const host = document.getElementById("lvNarratorViewHost");
+  if (!host) return;
+  host.innerHTML = `
+    <h3 class="lv-narrator-view-head">Life Map</h3>
+    <p class="lv-narrator-view-lede">A picture of the places and eras in your life. Tap an era to tell Lori about that time.</p>
+    <button type="button" class="lv-narrator-view-cta"
+      onclick="document.getElementById('lifeMapPopover')?.showPopover?.()">
+      Open your Life Map
+    </button>
+    <p class="lv-narrator-view-empty" style="margin-top:12px;">Full map will live here in the next update (Phase 2).</p>
+  `;
+}
+
+function _lvNarratorRenderMemoir() {
+  const host = document.getElementById("lvNarratorViewHost");
+  if (!host) return;
+  host.innerHTML = `
+    <h3 class="lv-narrator-view-head">Peek at Memoir</h3>
+    <p class="lv-narrator-view-lede">Read what we have so far, in your own words.</p>
+    <button type="button" class="lv-narrator-view-cta"
+      onclick="document.getElementById('memoirScrollPopover')?.showPopover?.()">
+      Open your memoir
+    </button>
+  `;
+}
+
+/* Photos view — Phase 1 minimal slice: fetch, browse, stage memory.
+   Memory save requires a "show" context (POST /api/photos/shows/{show_id}/memory)
+   which is WO-LORI-PHOTO-ELICIT-01 Phase 2 territory; for now we
+   just stage locally with a clear note. */
+let _lvNarratorPhotos = { list: [], idx: 0, loaded: false, loading: false, error: null };
+
+async function _lvNarratorRenderPhotos() {
+  const host = document.getElementById("lvNarratorViewHost");
+  if (!host) return;
+  host.innerHTML = `
+    <h3 class="lv-narrator-view-head">Photos</h3>
+    <p class="lv-narrator-view-lede">One at a time. Tell Lori what you remember.</p>
+    <div id="lvNarratorPhotoSlot">Loading…</div>
+  `;
+  const pid = state && state.person_id;
+  if (!pid) {
+    document.getElementById("lvNarratorPhotoSlot").innerHTML =
+      `<p class="lv-narrator-view-empty">Choose a narrator on the Operator tab first.</p>`;
+    return;
+  }
+  if (!_lvNarratorPhotos.loaded && !_lvNarratorPhotos.loading) {
+    _lvNarratorPhotos.loading = true;
+    try {
+      // BUG-238: narrator MUST only see photos the curator marked
+      // narrator_ready=true. Without this filter, scanned-but-unvetted
+      // photos and in-progress curator entries leak into the narrator
+      // room before metadata is reviewed. The repo-side list_photos
+      // endpoint accepts the narrator_ready query param.
+      // BUG-PHOTO-CORS-01: must use ORIGIN — see _lvMediaPreflightOnce
+      // above for the same fix in the Media-tab health probe.
+      const res = await fetch(`${ORIGIN}/api/photos?narrator_id=${encodeURIComponent(pid)}&narrator_ready=true`);
+      if (res.status === 404) {
+        _lvNarratorPhotos.error = "Photos are not enabled for this run.";
+      } else if (res.ok) {
+        const j = await res.json();
+        _lvNarratorPhotos.list = Array.isArray(j && j.photos) ? j.photos : [];
+      } else {
+        _lvNarratorPhotos.error = `Could not load photos (status ${res.status}).`;
+      }
+    } catch (e) {
+      _lvNarratorPhotos.error = "Could not reach the photo server.";
+      console.warn("[lv-narrator] photos fetch failed:", e);
+    }
+    _lvNarratorPhotos.loading = false;
+    _lvNarratorPhotos.loaded = true;
+  }
+  _lvNarratorPaintPhotoSlot();
+}
+
+function _lvNarratorPaintPhotoSlot() {
+  const slot = document.getElementById("lvNarratorPhotoSlot");
+  if (!slot) return;
+  if (_lvNarratorPhotos.error) {
+    slot.innerHTML = `<p class="lv-narrator-view-empty">${_lvEscapeHtml(_lvNarratorPhotos.error)}</p>`;
+    return;
+  }
+  if (!_lvNarratorPhotos.list.length) {
+    slot.innerHTML = `<p class="lv-narrator-view-empty">No photos yet. Add photos from the Media tab → Photo Intake.</p>`;
+    return;
+  }
+  const photo = _lvNarratorPhotos.list[_lvNarratorPhotos.idx];
+  // BUG-240: prefer thumbnail_url for the inline view (faster paint),
+  // but the lightbox uses media_url for the full-resolution photo.
+  // BUG-PHOTO-URL-RELATIVE-RESOLVES-TO-UI-PORT (2026-04-26): /api/photos/
+  // URLs the backend returns are relative; resolve against API ORIGIN
+  // (port 8000) not the page origin (port 8082).
+  const _rawSrc = photo.thumbnail_url || photo.url || photo.src || photo.photo_url || "";
+  const src = (_rawSrc && _rawSrc.charAt(0) === "/") ? (ORIGIN + _rawSrc) : _rawSrc;
+  // Composed caption: description first, then date + location for context.
+  // Falls back to the legacy caption/filename/name fields if description
+  // and the structured metadata are absent (e.g. pre-Phase-2 uploads).
+  const captionParts = [];
+  if (photo.description && String(photo.description).trim()) captionParts.push(String(photo.description).trim());
+  else if (photo.caption || photo.filename || photo.name) captionParts.push(photo.caption || photo.filename || photo.name);
+  const caption = captionParts.join("");
+  const subBits = [];
+  if (photo.date_value) subBits.push(photo.date_value);
+  if (photo.location_label) subBits.push(photo.location_label);
+  const subline = subBits.join(" · ");
+  const year    = photo.year || (photo.taken_at ? String(photo.taken_at).slice(0,4) : "") || (photo.date_value ? String(photo.date_value).slice(0,4) : "");
+  slot.innerHTML = `
+    <div class="lv-narrator-photo-frame lv-narrator-photo-frame--clickable" onclick="_lvNarratorOpenLightbox()" title="Click to see this photo full size">
+      ${src ? `<img src="${_lvEscapeAttr(src)}" alt="${_lvEscapeAttr(caption)}" />` : `<span class="lv-narrator-view-empty">No image</span>`}
+    </div>
+    <div class="lv-narrator-photo-meta">${_lvEscapeHtml(caption)}${year ? ` · ${year}` : ""} <span style="color:#7a8bb0;">(${_lvNarratorPhotos.idx+1} of ${_lvNarratorPhotos.list.length})</span></div>
+    ${subline ? `<div class="lv-narrator-photo-subline">${_lvEscapeHtml(subline)}</div>` : ""}
+    <div class="lv-narrator-photo-nav">
+      <button type="button" onclick="_lvNarratorPhotoStep(-1)" ${_lvNarratorPhotos.idx === 0 ? "disabled" : ""}>‹ Previous</button>
+      <button type="button" onclick="_lvNarratorPhotoStep( 1)" ${_lvNarratorPhotos.idx >= _lvNarratorPhotos.list.length - 1 ? "disabled" : ""}>Next ›</button>
+    </div>
+    <textarea class="lv-narrator-photo-memory" id="lvNarratorPhotoMemory"
+      placeholder="Type what you remember about this picture…"
+      oninput="_lvNarratorStagePhotoMemory(this.value)"></textarea>
+    <p class="lv-narrator-photo-hint">Memory saving arrives with the photo-session flow; for now your notes stay in this browser.</p>
+  `;
+}
+
+/* BUG-240: full-screen photo lightbox for the narrator room.
+   Mom/Dad clicking the small thumbnail expands to a full-frame view
+   they can actually SEE. Critical for tablet sessions where the
+   inline view is otherwise too small to recognize faces.
+
+   Close paths: X button, backdrop click, Escape key.
+   Caption row shows description + date + location below the photo
+   so the narrator gets the curator's metadata at a glance. */
+function _lvNarratorOpenLightbox() {
+  const photo = _lvNarratorPhotos.list[_lvNarratorPhotos.idx];
+  if (!photo) return;
+  const overlay = document.getElementById("lvNarratorLightbox");
+  if (!overlay) {
+    console.warn("[lv-narrator] lightbox host #lvNarratorLightbox not found in DOM");
+    return;
+  }
+  // Prefer the full-resolution media_url; thumbnail is only ~400px which
+  // looks pixelated on a 10" tablet. Fall back to whatever's available.
+  // BUG-PHOTO-URL-RELATIVE-RESOLVES-TO-UI-PORT: prepend ORIGIN for /api/* paths.
+  const _rawFull = photo.media_url || photo.url || photo.src || photo.photo_url || photo.thumbnail_url || "";
+  const fullSrc = (_rawFull && _rawFull.charAt(0) === "/") ? (ORIGIN + _rawFull) : _rawFull;
+  const caption = (photo.description && String(photo.description).trim())
+    || photo.caption || photo.filename || photo.name || "";
+  const subBits = [];
+  if (photo.date_value) subBits.push(photo.date_value);
+  if (photo.location_label) subBits.push(photo.location_label);
+  const subline = subBits.join(" · ");
+
+  const img = overlay.querySelector(".lv-narrator-lightbox-img");
+  const cap = overlay.querySelector(".lv-narrator-lightbox-caption");
+  const sub = overlay.querySelector(".lv-narrator-lightbox-subline");
+  if (img) img.src = fullSrc;
+  if (img) img.alt = caption;
+  if (cap) cap.textContent = caption;
+  if (sub) sub.textContent = subline;
+
+  overlay.hidden = false;
+  // Suppress page scroll while lightbox is open so swipe doesn't drag
+  // the chat behind it.
+  document.body.style.overflow = "hidden";
+}
+window._lvNarratorOpenLightbox = _lvNarratorOpenLightbox;
+
+function _lvNarratorCloseLightbox() {
+  const overlay = document.getElementById("lvNarratorLightbox");
+  if (!overlay) return;
+  overlay.hidden = true;
+  const img = overlay.querySelector(".lv-narrator-lightbox-img");
+  if (img) img.src = "";  // free memory; full-res images can be 5+ MB
+  document.body.style.overflow = "";
+}
+window._lvNarratorCloseLightbox = _lvNarratorCloseLightbox;
+
+// ESC closes lightbox. Single global listener; cheap.
+document.addEventListener("keydown", function (ev) {
+  if (ev.key === "Escape") {
+    var overlay = document.getElementById("lvNarratorLightbox");
+    if (overlay && !overlay.hidden) {
+      _lvNarratorCloseLightbox();
+    }
+  }
+});
+
+function _lvNarratorPhotoStep(delta) {
+  const n = _lvNarratorPhotos.list.length;
+  if (!n) return;
+  _lvNarratorPhotos.idx = Math.max(0, Math.min(n - 1, _lvNarratorPhotos.idx + delta));
+  _lvNarratorPaintPhotoSlot();
+}
+window._lvNarratorPhotoStep = _lvNarratorPhotoStep;
+
+function _lvNarratorStagePhotoMemory(text) {
+  // Phase 1 stages locally and emits an event.  Phase 2 (ELICIT-01) will
+  // persist via POST /api/photos/shows/{show_id}/memory.
+  const photo = _lvNarratorPhotos.list[_lvNarratorPhotos.idx];
+  if (!photo) return;
+  photo._stagedMemory = text;
+  try { window.dispatchEvent(new CustomEvent("lv-narrator-photo-memory-staged", { detail: { photo_id: photo.id, text } })); } catch (_) {}
+}
+window._lvNarratorStagePhotoMemory = _lvNarratorStagePhotoMemory;
+
+function _lvEscapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+function _lvEscapeAttr(s) { return _lvEscapeHtml(s); }
+
+/* ── Topbar controls — delegate to existing state machines ────── */
+
+/** Mic toggle → delegates to lv10dToggleMic.  After the call we paint
+    our button's data-on from state.inputState.micActive. */
+function lvNarratorToggleMic() {
+  if (typeof lv10dToggleMic === "function") { try { lv10dToggleMic(); } catch (e) { console.warn("[lv-narrator] mic toggle threw:", e); } }
+  // Paint asynchronously; the underlying flow may be async.
+  setTimeout(_lvNarratorPaintControls, 120);
+}
+window.lvNarratorToggleMic = lvNarratorToggleMic;
+
+/** Camera toggle → delegates to lv10dToggleCamera (which handles consent,
+    engine start, preview).  We just mirror state onto our button. */
+function lvNarratorToggleCamera() {
+  if (typeof lv10dToggleCamera === "function") { try { lv10dToggleCamera(); } catch (e) { console.warn("[lv-narrator] cam toggle threw:", e); } }
+  setTimeout(_lvNarratorPaintControls, 250);
+  // Camera flow can be async (consent modal); re-poll a few times.
+  setTimeout(_lvNarratorPaintControls, 1200);
+  setTimeout(_lvNarratorPaintControls, 3000);
+}
+window.lvNarratorToggleCamera = lvNarratorToggleCamera;
+
+/** Pause toggle → delegates to listening pause. */
+function lvNarratorTogglePause() {
+  if (typeof lv80TogglePauseListening === "function") {
+    try { lv80TogglePauseListening(); } catch (e) { console.warn("[lv-narrator] pause toggle threw:", e); }
+  }
+  setTimeout(_lvNarratorPaintControls, 80);
+}
+window.lvNarratorTogglePause = lvNarratorTogglePause;
+
+/** Paint Mic/Camera state dots + labels from global state.
+    Safe to call whenever — re-reads state each time. */
+function _lvNarratorPaintControls() {
+  const micBtn = document.getElementById("lvNarratorMicBtn");
+  const camBtn = document.getElementById("lvNarratorCamBtn");
+  const pauseBtn = document.getElementById("lvNarratorPauseBtn");
+  const micLabel = document.getElementById("lvNarratorMicLabel");
+  const camLabel = document.getElementById("lvNarratorCamLabel");
+  const pauseLabel = document.getElementById("lvNarratorPauseLabel");
+  const micOn = !!(state && state.inputState && state.inputState.micActive) ||
+                (typeof isRecording !== "undefined" && !!isRecording);
+  const camOn = !!(state && state.inputState && state.inputState.cameraActive) ||
+                (typeof cameraActive !== "undefined" && !!cameraActive);
+  const paused = !!(typeof listeningPaused !== "undefined" && listeningPaused);
+  if (micBtn) micBtn.setAttribute("data-on", micOn ? "true" : "false");
+  if (camBtn) camBtn.setAttribute("data-on", camOn ? "true" : "false");
+  if (pauseBtn) pauseBtn.setAttribute("data-on", paused ? "true" : "false");
+  if (micLabel)   micLabel.textContent   = micOn ? "Mic on"    : "Mic";
+  if (camLabel)   camLabel.textContent   = camOn ? "Camera on" : "Camera";
+  if (pauseLabel) pauseLabel.textContent = paused ? "Resume"   : "Pause";
+  // Paint the context panel blocks to match.
+  const ctxCam = document.getElementById("lvNarratorCtxCamera");
+  const ctxCamBody = document.getElementById("lvNarratorCtxCameraBody");
+  const ctxMic = document.getElementById("lvNarratorCtxMic");
+  const ctxMicBody = document.getElementById("lvNarratorCtxMicBody");
+  if (ctxCam)     ctxCam.setAttribute("data-state", camOn ? "on" : "off");
+  if (ctxCamBody) ctxCamBody.textContent = camOn ? "On — Lori adjusts pacing from your expressions." : "Off — Lori won't see you.";
+  if (ctxMic)     ctxMic.setAttribute("data-state", micOn ? "on" : "off");
+  if (ctxMicBody) ctxMicBody.textContent = paused ? "Paused — tap Resume to keep talking." : (micOn ? "Listening." : "Off — type your answer.");
+}
+window._lvNarratorPaintControls = _lvNarratorPaintControls;
+
+/* ── WO-AUDIO-NARRATOR-ONLY-01: "Save my voice" toggle ────────────
+   Operator-facing flip in the narrator-room topbar.  Default ON.
+   When OFF, the audio recorder becomes a no-op (transcript still
+   flows; backend chat_ws still writes the text).  Persists in
+   state.session.recordVoice so it survives the rest of the session
+   (per-session, not per-narrator). */
+function lvNarratorSetRecordVoice(enabled) {
+  if (!state.session) state.session = {};
+  state.session.recordVoice = !!enabled;
+  console.log("[narrator-audio] state.session.recordVoice = " + state.session.recordVoice);
+  // Sync the checkbox visual (in case this was called programmatically
+  // rather than via the onchange handler).
+  const cb = document.getElementById("lvNarratorRecordVoice");
+  if (cb && cb.checked !== state.session.recordVoice) cb.checked = state.session.recordVoice;
+  // If toggled OFF mid-session, drop any in-progress segment without
+  // uploading.  If toggled ON, the next mic-arm will start fresh.
+  if (!state.session.recordVoice && typeof window.lvNarratorAudioRecorder === "object") {
+    try { window.lvNarratorAudioRecorder.cleanup && window.lvNarratorAudioRecorder.cleanup(); } catch (_) {}
+  }
+}
+window.lvNarratorSetRecordVoice = lvNarratorSetRecordVoice;
+
+/* ── Take a Break overlay ─────────────────────────────────────── */
+
+function lvNarratorStartBreak() {
+  if (!state.session) state.session = {};
+  state.session.breakActive = true;
+  state.session.micAutoRearm = false;   // stop auto-rearm during break
+  // Pause mic if active, so the overlay really is silent.
+  const micOn = !!(state.inputState && state.inputState.micActive);
+  const paused = !!(typeof listeningPaused !== "undefined" && listeningPaused);
+  if (micOn && !paused && typeof lv80TogglePauseListening === "function") {
+    try { lv80TogglePauseListening(); } catch (_) {}
+  }
+  const overlay = document.getElementById("lvNarratorBreakOverlay");
+  if (overlay) { overlay.hidden = false; overlay.setAttribute("aria-hidden", "false"); }
+  _lvNarratorPaintControls();
+}
+window.lvNarratorStartBreak = lvNarratorStartBreak;
+
+function lvNarratorEndBreak() {
+  if (!state.session) state.session = {};
+  state.session.breakActive = false;
+  const overlay = document.getElementById("lvNarratorBreakOverlay");
+  if (overlay) { overlay.hidden = true; overlay.setAttribute("aria-hidden", "true"); }
+  _lvNarratorPaintControls();
+}
+window.lvNarratorEndBreak = lvNarratorEndBreak;
+
+function lvNarratorReturnToOperator() {
+  lvNarratorEndBreak();
+  if (typeof lvShellShowTab === "function") lvShellShowTab("operator");
+}
+window.lvNarratorReturnToOperator = lvNarratorReturnToOperator;
+
+/* ── Chat scroll helpers (delegate to FocusCanvas's existing plumbing). ── */
+
+function lvNarratorIsNearBottom() {
+  const el = document.getElementById("crChatInner");
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= 40;
+}
+window.lvNarratorIsNearBottom = lvNarratorIsNearBottom;
+
+function lvNarratorScrollToBottom(force) {
+  const el = document.getElementById("crChatInner");
+  if (!el) return;
+  if (force || lvNarratorIsNearBottom()) {
+    el.scrollTop = el.scrollHeight;
+  }
+}
+window.lvNarratorScrollToBottom = lvNarratorScrollToBottom;
+
+function lvNarratorPauseAutoScroll()  { try { window._scrollPauseByUser = true;  } catch (_) {} }
+function lvNarratorResumeAutoScroll() {
+  try { window._scrollPauseByUser = false; } catch (_) {}
+  if (typeof window._scrollToLatest === "function") window._scrollToLatest();
+}
+window.lvNarratorPauseAutoScroll  = lvNarratorPauseAutoScroll;
+window.lvNarratorResumeAutoScroll = lvNarratorResumeAutoScroll;
+
+/* Lightweight paint tick — runs only while the narrator tab is active.
+   1.5s cadence; all it does is re-read state flags and toggle a few
+   data-attrs/textContent.  Cheap, but we still gate it by the tab. */
+let _lvNarratorPaintTickId = null;
+function _lvNarratorStartPaintTick() {
+  if (_lvNarratorPaintTickId != null) return;
+  _lvNarratorPaintTickId = setInterval(() => {
+    if (typeof _lvNarratorPaintControls === "function") _lvNarratorPaintControls();
+    if (typeof _lvNarratorPaintIdentity === "function") _lvNarratorPaintIdentity();
+  }, 1500);
+}
+function _lvNarratorStopPaintTick() {
+  if (_lvNarratorPaintTickId != null) { clearInterval(_lvNarratorPaintTickId); _lvNarratorPaintTickId = null; }
+}
+
+/** Room init — called by lvStartNarratorSession (WO-UI-SHELL-01).
+    Paints identity, loads default view, hydrates control state. */
+function lvNarratorRoomInit() {
+  _lvNarratorPaintIdentity();
+  _lvNarratorPaintControls();
+  // Kawa segments may already be preloaded; if not, kick off a refresh.
+  if (typeof kawaRefreshList === "function" &&
+      state.kawa && (!state.kawa.segmentList || !state.kawa.segmentList.length)) {
+    kawaRefreshList().catch(() => {}).finally(() => {
+      if (lvNarratorCurrentView() === "river") _lvNarratorRenderRiver();
+    });
+  }
+  lvNarratorShowView(lvNarratorCurrentView() || "river");
+  // Anchor chat at latest when entering the room.
+  setTimeout(() => lvNarratorScrollToBottom(true), 40);
+  // Reset photo cache on narrator change so the next "photos" view refetches.
+  const pid = state && state.person_id;
+  if (_lvNarratorPhotos._pid !== pid) {
+    _lvNarratorPhotos = { list: [], idx: 0, loaded: false, loading: false, error: null, _pid: pid };
+  }
+}
+window.lvNarratorRoomInit = lvNarratorRoomInit;
+
+/* ═══════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════ */
 window.onload = async () => {
+  // WO-11B: hard reset trainer/capture state on startup to prevent contamination
+  if (typeof window.lv80ClearTrainerAndCaptureState === "function") {
+    window.lv80ClearTrainerAndCaptureState();
+  }
   checkStatus();
   connectWebSocket();
   await initSession();
@@ -141,6 +948,13 @@ window.onload = async () => {
   renderMemoirChapters();
   updateArchiveReadiness();
   update71RuntimeUI();   // v7.1 — paint runtime badges on first load
+  // WO-UI-SHELL-01: mount the three-tab shell.  Lands on Operator;
+  // hydrates session style from localStorage; mirrors warmup state.
+  if (typeof lvShellInitTabs === "function") lvShellInitTabs();
+  // WO-KAWA-UI-01A: Pre-load river segments (non-blocking)
+  if (typeof kawaRefreshList === "function") {
+    kawaRefreshList().catch(e => console.warn("[kawa] initial load skipped:", e));
+  }
   document.addEventListener("keydown", e => { if(e.key==="Escape" && isFocusMode) toggleFocus(); });
   // Step 3 (Task 6 audit): identityPhase starts as null in state.js.
   // getIdentityPhase74() handles null by checking hasIdentityBasics74():
@@ -304,6 +1118,288 @@ function normalizeLoriState(input) {
   return map[raw] || null; // null = badge-only (transitional or unknown)
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   WO-ARCH-07A — Router seed + Memory Echo helpers
+═══════════════════════════════════════════════════════════════ */
+
+const TURN_INTERVIEW   = "interview";
+const TURN_FOLLOWUP    = "followup";
+const TURN_MEMORY_ECHO = "memory_echo";
+const TURN_CORRECTION  = "correction";
+const TURN_CLARIFY     = "clarify";
+const TURN_TRAINER     = "trainer";
+
+function _lvText(s){
+  return String(s || "").trim();
+}
+
+function _looksLikeMemoryEchoRequest(text){
+  const t = _lvText(text).toLowerCase();
+  return [
+    "tell me what you know about me",
+    "what do you know about me",
+    "read back what you know about me",
+    "summarize what you know about me",
+    "read back what you know",
+    // WO-GREETING-01: expanded trigger phrases
+    "what have you learned about me",
+    "what do you remember about me",
+    "what have i told you",
+    "what have i told you about me",
+    "what have i shared with you",
+    "show me what you know",
+    "do you remember me",
+    "repeat what you know about me",
+    "recap what you know"
+  ].some(p => t.includes(p));
+}
+
+function _looksLikeCorrection(text){
+  const t = _lvText(text).toLowerCase();
+  if (!t) return false;
+  return (
+    t.startsWith("no,") ||
+    t.startsWith("actually") ||
+    t.startsWith("that is wrong") ||
+    t.startsWith("that's wrong") ||
+    t.startsWith("change that") ||
+    t.startsWith("add that") ||
+    t.includes(" not ") ||
+    t.includes(" wrong") ||
+    t.includes("i was born in") ||
+    t.includes("my father") ||
+    t.includes("my mother") ||
+    t.includes("i had ") ||
+    t.includes("i have ")
+  );
+}
+
+function lvRouteTurn(text){
+  if (_looksLikeMemoryEchoRequest(text)) return TURN_MEMORY_ECHO;
+  if (state?.session?.lastTurnMode === TURN_MEMORY_ECHO && _looksLikeCorrection(text)) return TURN_CORRECTION;
+  return TURN_INTERVIEW;
+}
+
+function _mkField(value, confidence, source, previous){
+  return {
+    value: value == null ? null : value,
+    confidence: confidence || "working_draft", // confirmed | working_draft | unclear
+    source: source || "projection",            // profile | user_correction | projection | derived
+    previous: Array.isArray(previous) ? previous : []
+  };
+}
+
+/* WO-ARCH-07A PS2 — correction-aware field resolution */
+function _ensureCorrectionState(){
+  if (!state.correctionState) {
+    state.correctionState = { applied: [], conflicts: [], uncertain: [] };
+  }
+  return state.correctionState;
+}
+
+function _activeCorrectionFor(fieldPath){
+  const cs = _ensureCorrectionState();
+  const hits = cs.applied.filter(x => x.fieldPath === fieldPath);
+  return hits.length ? hits[hits.length - 1] : null;
+}
+
+function _conflictsFor(fieldPath){
+  const cs = _ensureCorrectionState();
+  return cs.conflicts.filter(x => x.fieldPath === fieldPath);
+}
+
+function _fieldFromSources(fieldPath, baseValue, baseConfidence, baseSource){
+  const corr = _activeCorrectionFor(fieldPath);
+  if (corr) {
+    return _mkField(corr.newValue, "confirmed", "user_correction", corr.oldValue != null ? [corr.oldValue] : []);
+  }
+  const conflicts = _conflictsFor(fieldPath);
+  if (conflicts.length) {
+    return _mkField(baseValue, "unclear", baseSource || "projection", conflicts.map(c => c.conflictingValue));
+  }
+  return _mkField(baseValue, baseConfidence, baseSource);
+}
+
+/* Deterministic state read-back. This is NOT canonical truth by itself.
+   It is a coherence view built from current scoped state. */
+function buildMemoryEchoEntity(){
+  const basics = state?.profile?.basics || {};
+  const kin    = Array.isArray(state?.profile?.kinship) ? state.profile.kinship : [];
+  const spine  = state?.timeline?.spine || null;
+  const periods = Array.isArray(spine?.periods) ? spine.periods : [];
+
+  const parents = kin.filter(k => /mother|father|parent/i.test(k.relation || ""));
+  const siblings = kin.filter(k => /brother|sister|sibling/i.test(k.relation || ""));
+  const spouses = kin.filter(k => /spouse|wife|husband|partner/i.test(k.relation || ""));
+  const children = kin.filter(k => /son|daughter|child/i.test(k.relation || ""));
+
+  const entity = {
+    identity: {
+      full_name: _fieldFromSources(
+        "identity.full_name",
+        basics.fullname || basics.fullName || null,
+        (basics.fullname || basics.fullName) ? "confirmed" : "unclear",
+        "profile"
+      ),
+      preferred_name: _fieldFromSources(
+        "identity.preferred_name",
+        basics.preferred || basics.preferredName || null,
+        (basics.preferred || basics.preferredName) ? "confirmed" : "unclear",
+        "profile"
+      ),
+      date_of_birth: _fieldFromSources(
+        "identity.date_of_birth",
+        basics.dob || null,
+        basics.dob ? "confirmed" : "unclear",
+        "profile"
+      ),
+      place_of_birth: _fieldFromSources(
+        "identity.place_of_birth",
+        basics.pob || null,
+        basics.pob ? "confirmed" : "unclear",
+        "profile"
+      )
+    },
+
+    family: {
+      parents:  parents.map(p => _mkField((p.name || p.label || "").trim() || null, "working_draft", "projection")),
+      siblings: siblings.map(s => _mkField((s.name || s.label || "").trim() || null, "working_draft", "projection")),
+      spouses:  spouses.map(s => _mkField((s.name || s.label || "").trim() || null, "working_draft", "projection")),
+      children: children.map(c => _mkField((c.name || c.label || "").trim() || null, "working_draft", "projection"))
+    },
+
+    places: {
+      current_place: _mkField(basics.location || null, basics.location ? "working_draft" : "unclear", basics.location ? "projection" : "derived"),
+      first_home:    _mkField(null, "unclear", "derived")
+    },
+
+    education_work: {
+      schooling:  _mkField(null, "unclear", "derived"),
+      early_career: _mkField(null, "unclear", "derived"),
+      retirement: _mkField(null, "unclear", "derived")
+    },
+
+    timeline: {
+      birth: _mkField(
+        (basics.dob || basics.pob) ? `${basics.dob || "unknown date"} — ${basics.pob || "unknown place"}` : null,
+        (basics.dob || basics.pob) ? "confirmed" : "unclear",
+        "profile"
+      ),
+      periods: periods.map(p => ({
+        label: p.label || null,
+        start_year: p.start_year || null,
+        end_year: p.end_year == null ? null : p.end_year,
+        confidence: "working_draft",
+        source: "derived"
+      }))
+    },
+
+    themes: {
+      active_threads: []
+    },
+
+    uncertain: []
+  };
+
+  // Surface obvious missing fields
+  if (!entity.identity.full_name.value) entity.uncertain.push("full name");
+  if (!entity.identity.date_of_birth.value) entity.uncertain.push("date of birth");
+  if (!entity.identity.place_of_birth.value) entity.uncertain.push("place of birth");
+
+  // WO-ARCH-07A PS2 — merge correction ledger uncertainty + conflicts into entity
+  const cs = _ensureCorrectionState();
+  cs.uncertain.forEach(fp => {
+    if (!entity.uncertain.includes(fp)) entity.uncertain.push(fp);
+  });
+  if (cs.conflicts.length) {
+    entity.conflicts = cs.conflicts.map(c => ({
+      fieldPath: c.fieldPath,
+      activeValue: c.activeValue,
+      conflictingValue: c.conflictingValue,
+      sourceText: c.sourceText || null
+    }));
+  } else {
+    entity.conflicts = [];
+  }
+
+  state.memoryEcho = {
+    builtAt: Date.now(),
+    entity,
+    lastRenderedText: null
+  };
+
+  return entity;
+}
+
+/* WO-ARCH-07A PS2 — structured correction write-back */
+function _pushAppliedCorrection(fieldPath, newValue, oldValue, sourceText){
+  const cs = _ensureCorrectionState();
+  cs.applied.push({
+    fieldPath,
+    newValue,
+    oldValue: oldValue == null ? null : oldValue,
+    sourceText: sourceText || null,
+    ts: Date.now()
+  });
+}
+
+function _pushConflict(fieldPath, activeValue, conflictingValue, sourceText){
+  const cs = _ensureCorrectionState();
+  cs.conflicts.push({
+    fieldPath,
+    activeValue: activeValue == null ? null : activeValue,
+    conflictingValue: conflictingValue == null ? null : conflictingValue,
+    sourceText: sourceText || null,
+    ts: Date.now()
+  });
+}
+
+function applyCorrectionPayload(parsed, sourceText){
+  if (!parsed || typeof parsed !== "object") return;
+  const basics = state?.profile?.basics || {};
+
+  Object.keys(parsed).forEach(fp => {
+    const newValue = parsed[fp];
+
+    if (fp === "identity.place_of_birth") {
+      const oldValue = basics.pob || null;
+      if (oldValue && oldValue !== newValue) _pushConflict(fp, oldValue, newValue, sourceText);
+      basics.pob = newValue;
+      _pushAppliedCorrection(fp, newValue, oldValue, sourceText);
+      return;
+    }
+
+    if (fp === "identity.date_of_birth") {
+      const oldValue = basics.dob || null;
+      if (oldValue && oldValue !== newValue) _pushConflict(fp, oldValue, newValue, sourceText);
+      basics.dob = newValue;
+      _pushAppliedCorrection(fp, newValue, oldValue, sourceText);
+      return;
+    }
+
+    if (fp === "family.children.count") {
+      const cs = _ensureCorrectionState();
+      _pushAppliedCorrection(fp, newValue, null, sourceText);
+      cs.uncertain = cs.uncertain.filter(x => x !== "family.children.count");
+      return;
+    }
+
+    if (fp === "education_work.retirement") {
+      _pushAppliedCorrection(fp, newValue, null, sourceText);
+      return;
+    }
+
+    // Parent-name corrections stay in working layer for now.
+    if (fp === "family.parents.father.name" || fp === "family.parents.mother.name") {
+      _pushAppliedCorrection(fp, newValue, null, sourceText);
+      return;
+    }
+  });
+
+  // Rebuild echo with updated state
+  buildMemoryEchoEntity();
+}
+
 /**
  * Build the runtime71 block from live state.
  * This is the single source of truth for both ws.send() payloads.
@@ -319,8 +1415,10 @@ function buildRuntime71() {
   const vs                  = (state.session && state.session.visualSignals) || null;
   const baselineEstablished = !!(state.session && state.session.affectBaseline && state.session.affectBaseline.established);
 
+  // WO-10G: cameraActive must be true for visual signals to be considered.
+  // Prevents stale signals leaking through the 8s window after camera off.
   const hasFreshLiveAffect = !!(
-    vs && vs.affectState && vs.timestamp && (Date.now() - vs.timestamp < 8000)
+    cameraActive && vs && vs.affectState && vs.timestamp && (Date.now() - vs.timestamp < 8000)
   );
 
   const affect_state      = hasFreshLiveAffect ? vs.affectState           : (state.runtime?.affectState||"neutral");
@@ -349,6 +1447,21 @@ function buildRuntime71() {
     visual_signals,
     /* v7.4D — assistant role for prompt routing */
     assistant_role:  getAssistantRole(),
+    /* WO-SESSION-LOOP-01 — tier-2 session-style directive.
+       For clear_direct / memory_exercise / companion this is a short
+       string that prompt_composer appends to the directive block.  For
+       warm_storytelling and questionnaire_first this is empty (no
+       addendum — the questionnaire walk owns its own Lori prompts).
+       Backend gracefully ignores empty / missing values. */
+    session_style_directive: (function() {
+      try {
+        const style = (typeof getSessionStyle === "function") ? getSessionStyle() :
+          (state.session && state.session.sessionStyle) || "warm_storytelling";
+        return (typeof window._lvEmitStyleDirective === "function")
+          ? window._lvEmitStyleDirective(style) || ""
+          : "";
+      } catch (_) { return ""; }
+    })(),
     /* v7.4D Phase 6B — identity gating fields for prompt_composer.py */
     identity_complete: hasIdentityBasics74(),
     identity_phase:    getIdentityPhase74(),
@@ -459,7 +1572,86 @@ function buildRuntime71() {
         return (fam.parents.length || fam.siblings.length) ? fam : null;
       } catch (_) { return null; }
     })(),
+    /* WO-9: person_id for backend conversation memory context builder */
+    person_id: state.person_id || null,
+    /* WO-10: conversation state for adaptive memory context */
+    conversation_state: _wo10DetectConversationState(),
+    /* WO-10C: cognitive support mode — narrator-scoped dementia-safe flag.
+       When true, backend shifts to extended silence, invitational prompts,
+       single-thread context, no correction, no observation language. */
+    cognitive_support_mode: !!(state.session?.cognitiveSupportMode),
+    /* WO-KAWA-02A — Kawa interview mode for mode-aware prompt routing.
+       'chronological': default (no Kawa prompts from backend)
+       'hybrid': chronological + selective Kawa follow-ups
+       'kawa_reflection': river-first reflective questioning */
+    kawa_mode: state?.session?.kawaMode || "chronological",
+    /* WO-CR-PACK-01 (CR-04) — chronology context for Lori.
+       Lightweight, provenance-aware snapshot of the currently focused
+       year/era slice of the accordion. Null when trainer mode is active,
+       accordion is hidden, or no focus/era context is available.
+
+       Prompt-composer rules (enforced downstream, not here):
+         • personal_items[source=promoted_truth] — may be asserted as fact.
+         • personal_items[source=profile|questionnaire] — soft cue only.
+         • world_items[source=historical_json]  — context only, never
+           rephrased as personal biography.
+         • ghost_items[source=life_stage_template] — question-shaping
+           only, never stated as known history. */
+    chronology_context: (typeof crBuildChronologyContext === "function")
+      ? crBuildChronologyContext()
+      : null,
   };
+}
+
+/**
+ * WO-10 Phase 5: Lightweight conversation state detection.
+ * Returns: storytelling | answering | reflecting | correcting | searching_memory | emotional_pause | null
+ */
+let _wo10LastUserText = "";
+function _wo10DetectConversationState() {
+  const text = _wo10LastUserText || "";
+  if (!text) return null;
+  const lower = text.toLowerCase().trim();
+  const len = lower.length;
+
+  let result = null;
+
+  // Correcting: "no, actually...", "I meant...", "let me correct..."
+  if (/^(no[,.]?\s+(actually|wait|that'?s not|i meant)|let me correct|i should clarify|that'?s wrong)/i.test(lower)) {
+    result = "correcting";
+  }
+  // Emotional pause: very short after long, or explicit emotional markers
+  else if (len < 20 && /\b(yeah|mmm|hmm|oh|sigh)\b/i.test(lower)) {
+    result = "emotional_pause";
+  }
+  else if (/\b(hard to talk about|still miss|tears|crying|breaks my heart)\b/i.test(lower)) {
+    result = "emotional_pause";
+  }
+  // Searching memory: "I'm trying to remember...", "let me think..."
+  else if (/\b(trying to remember|let me think|i can'?t recall|what was|where was)\b/i.test(lower)) {
+    result = "searching_memory";
+  }
+  // Reflecting: thoughtful, measured responses with qualifiers
+  else if (/\b(looking back|in hindsight|when i think about|i realize now|i suppose)\b/i.test(lower)) {
+    result = "reflecting";
+  }
+  // Storytelling: long narrative (>200 chars with conjunctions and temporal markers)
+  else if (len > 200 && /\b(and then|so we|after that|the next|one day|that was when)\b/i.test(lower)) {
+    result = "storytelling";
+  }
+  // Answering: short-to-medium direct responses
+  else if (len < 200) {
+    result = "answering";
+  }
+  // Default for longer text
+  else {
+    result = "storytelling";
+  }
+
+  // WO-10B: Expose state for no-interruption engine
+  _wo10bCurrentConversationState = result;
+  window._wo10bCurrentConversationState = result;
+  return result;
 }
 
 /**
@@ -535,7 +1727,11 @@ async function refreshPeople(){
   try{
     const r=await fetch(API.PEOPLE+"?limit=200");
     const j=await r.json();
-    const items=j.items||j.people||j||[];
+    let items=j.items||j.people||j||[];
+    // WO-11B: filter to Lorevox family only
+    if (typeof _lorevoxFilterVisiblePeople === "function") {
+      items = _lorevoxFilterVisiblePeople(items);
+    }
     renderPeople(items);
     // v8: cache for narrator card UI
     if (state?.narratorUi) {
@@ -560,10 +1756,15 @@ function renderPeople(items){
   (_items||[]).forEach(p=>{
     const pid=p.id||p.person_id||p.uuid; if(!pid) return;
     const name=p.display_name||p.name||pid;
+    // WO-13 Phase 3 — reference narrators get a visible read-only badge
+    const isRef = String(p.narrator_type||"live").toLowerCase() === "reference";
+    const refBadge = isRef
+      ? ` <span class="wo13-ref-badge" title="Reference narrator (read-only)" style="display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px;background:#4b5563;color:#e5e7eb;margin-left:6px;vertical-align:middle">REF</span>`
+      : "";
     const d=document.createElement("div");
-    d.className="sb-item"+(pid===state.person_id?" active":"");
+    d.className="sb-item"+(pid===state.person_id?" active":"")+(isRef?" wo13-readonly":"");
     d.onclick=()=>loadPerson(pid);
-    d.innerHTML=`<div class="font-bold text-white truncate" style="font-size:15px">${esc(name)}</div>
+    d.innerHTML=`<div class="font-bold text-white truncate" style="font-size:15px">${esc(name)}${refBadge}</div>
       <div class="sb-meta mono dev-only">${esc(pid.slice(0,16))}</div>`;
     w.appendChild(d);
   });
@@ -594,6 +1795,13 @@ async function loadPerson(pid){
   state.person_id=pid;
   document.getElementById("activePerson").textContent=`person_id: ${pid}`;
   localStorage.setItem(LS_ACTIVE,pid);
+  // WO-11C: If footer was locked pending narrator selection (post-trainer handoff),
+  // unlock it now that a real narrator is being loaded.
+  if (state.trainerNarrators && state.trainerNarrators._wo11cPendingUnlock && pid) {
+    state.trainerNarrators._wo11cPendingUnlock = false;
+    if (typeof window._wo11cUnlockFooter === "function") window._wo11cUnlockFooter();
+    console.log("[WO-11C] Footer unlocked — narrator selected after trainer exit:", pid);
+  }
   // WO-2: Send sync_session to backend when person changes
   if(ws && wsReady && pid !== _prevPersonId){
     ws.send(JSON.stringify({type:"sync_session",person_id:pid,
@@ -716,6 +1924,20 @@ async function lvxSwitchNarratorSafe(pid){
   if (!pid) return;
   if (pid === state.person_id) return;
 
+  // WO-11 (TRAINER MODE REPAIR): trainer-active stomp guard.
+  // When the trainer overlay is up, the narrator switch must NOT wipe
+  // trainer state and must NOT reset the surrounding session posture
+  // (identityPhase / assistantRole / currentPass / currentEra / currentMode /
+  // confusionTurnCount). The new person still loads — this is intentional
+  // so profile/timeline UI updates — but the trainer flow continues.
+  var _trainerLive = !!(state.trainerNarrators && state.trainerNarrators.active);
+
+  // WO-11B + WO-11: hard reset trainer/capture state before a narrator
+  // switch — but ONLY if trainer is not currently live.
+  if (!_trainerLive && typeof window.lv80ClearTrainerAndCaptureState === "function") {
+    window.lv80ClearTrainerAndCaptureState();
+  }
+
   // ── v9.0 HARD RESET on narrator switch ──────────────────────
   // Purge ALL narrator-scoped state so nothing bleeds across narrators.
 
@@ -732,17 +1954,21 @@ async function lvxSwitchNarratorSafe(pid){
   state.interview.question_id = null;
   state.interview.plan_id     = null;
 
-  // 3. Clear identity onboarding state
-  state.session.identityPhase   = null;
-  state.session.identityCapture = { name: null, dob: null, birthplace: null };
-  state.session.speakerName     = null;
-  state.session.assistantRole   = "interviewer";
+  if (!_trainerLive) {
+    // 3. Clear identity onboarding state (WO-11 guard: trainer keeps its posture)
+    state.session.identityPhase   = null;
+    state.session.identityCapture = { name: null, dob: null, birthplace: null };
+    state.session.speakerName     = null;
+    state.session.assistantRole   = "interviewer";
 
-  // 4. Clear runtime signals that are narrator-specific
-  state.session.currentPass = "pass1";
-  state.session.currentEra  = null;
-  state.session.currentMode = "open";
-  state.session.confusionTurnCount = 0;
+    // 4. Clear runtime signals that are narrator-specific (WO-11 guard)
+    state.session.currentPass = "pass1";
+    state.session.currentEra  = null;
+    state.session.currentMode = "open";
+    state.session.confusionTurnCount = 0;
+  } else {
+    console.log("[WO-11] narrator switch with trainer active — preserving trainer posture");
+  }
 
   // 5. Clear in-memory text state
   lastAssistantText = "";
@@ -792,6 +2018,11 @@ async function lvxSwitchNarratorSafe(pid){
           iProj.pendingSuggestions = snap.projection.pendingSuggestions || [];
         }
       }
+      // WO-13: Stash prior user-turn count so resume prompts can be gated.
+      // A fresh narrator (count = 0) must NOT trigger "welcome back" greetings.
+      state.session = state.session || {};
+      state.session.priorUserTurns = Number(snap.user_turn_count || 0);
+      console.log("[WO-13] priorUserTurns for " + pid.slice(0, 8) + " = " + state.session.priorUserTurns);
     }
   } catch (e) {
     console.warn("[app] Phase G: state-snapshot fetch failed (proceeding with local data)", e);
@@ -804,6 +2035,11 @@ async function lvxSwitchNarratorSafe(pid){
 
   if (window.LorevoxBioBuilder?.refresh) window.LorevoxBioBuilder.refresh();
   if (window.LorevoxLifeMap?.render)     window.LorevoxLifeMap.render(true);
+
+  // WO-8: Load transcript history and fire resume prompt
+  if (typeof wo8OnNarratorReady === "function") {
+    wo8OnNarratorReady(pid).catch(e => console.log("[WO-8] narrator ready hook failed:", e.message));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -885,6 +2121,11 @@ async function lvxDeleteNarratorConfirmed(){
 
   // Store deleted person_id for undo (backend restore uses original ID)
   state.narratorDelete.deletedPid = pid;
+
+  // Lorevox: remember deleted label so auto-seed does not immediately recreate
+  if (state.narratorDelete && state.narratorDelete.targetLabel) {
+    _lorevoxMarkDeletedNarrator(state.narratorDelete.targetLabel);
+  }
 
   // clear active pointer if needed
   if (state.person_id === pid) {
@@ -1012,6 +2253,41 @@ async function saveProfile(){
     })}).catch(()=>{});
   }catch{ sysBubble("⚠ Save failed — is the server running?"); }
 }
+
+// WO-13 Phase 8: refresh state.profile from server and push to session.
+// Called by wo13PromoteClicked after a successful promote so the
+// memoir/obituary/chat surfaces all see the new promoted truth
+// without a manual page reload.
+window.lvxRefreshProfileFromServer = async function(pid) {
+  if (!pid) return;
+  try {
+    const r = await fetch(API.PROFILE(pid));
+    if (!r.ok) return;
+    const j = await r.json();
+    state.profile = normalizeProfile(j.profile || j || {});
+    try { localStorage.setItem("lorevox_offline_profile_"+pid, JSON.stringify(state.profile)); } catch {}
+    hydrateProfileForm();
+    updateObitIdentityCard(state.profile?.basics || {});
+    const msn = document.getElementById("memoirSourceName");
+    if (msn) {
+      const n = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "No person selected";
+      msn.textContent = n;
+    }
+    renderTimeline();
+    if (state.chat?.conv_id) {
+      fetch(API.SESS_PUT, {
+        method: "POST",
+        headers: ctype(),
+        body: JSON.stringify({
+          conv_id: state.chat.conv_id,
+          payload: { profile: state.profile, person_id: pid },
+        }),
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.warn("[lvx] refresh profile after promote failed:", e);
+  }
+};
 
 /* ── v8.0: Bio Builder → Profile sync bridge ── */
 /**
@@ -1467,7 +2743,25 @@ function generateMemoirDraft(){
   const style=framingInstructions[framing]||framingInstructions["chronological"];
   const pronouns=state.profile?.basics?.pronouns||"";
   const pronNote=pronouns?` Use ${pronouns} pronouns.`:"";
-  const prompt=`Please write a memoir draft for ${name}.${pronNote} Completed interview sections: ${done.join(", ")}. ${style} Ground every detail in the collected interview answers. Do not invent facts.`;
+  // WO-KAWA-02A: append Kawa river context to memoir prompt when mode warrants it
+  let kawaContext = "";
+  const _memoirMode = typeof getMemoirMode === "function" ? getMemoirMode() : "chronology";
+  if (_memoirMode !== "chronology") {
+    const _confirmedSegs = (state?.kawa?.segmentList || []).filter(s => s?.provenance?.confirmed);
+    if (_confirmedSegs.length) {
+      const _overlays = _confirmedSegs.map(seg =>
+        typeof buildKawaOverlayText === "function" ? buildKawaOverlayText(seg) : ""
+      ).filter(Boolean);
+      if (_overlays.length) {
+        if (_memoirMode === "river_organized") {
+          kawaContext = ` The narrator has also confirmed river reflections for ${_confirmedSegs.length} life periods. Organize the memoir around these river themes (flow, rocks, driftwood, banks, spaces) rather than strict chronology. River context: ${_overlays.join(" | ")}`;
+        } else {
+          kawaContext = ` The narrator has also confirmed river reflections for ${_confirmedSegs.length} life periods. Weave these naturally into the chronological narrative where they apply. River context: ${_overlays.join(" | ")}`;
+        }
+      }
+    }
+  }
+  const prompt=`Please write a memoir draft for ${name}.${pronNote} Completed interview sections: ${done.join(", ")}. ${style}${kawaContext} Ground every detail in the collected interview answers. Do not invent facts.`;
   setv("chatInput",prompt); document.getElementById("chatInput").focus();
   sysBubble("Memoir prompt loaded — press Send to have Lori write the draft.");
 }
@@ -1639,7 +2933,7 @@ function copyObituary(){ nav_copy(document.getElementById("obituaryOutput").valu
 async function initSession(){
   try{
     const r=await fetch(API.SESS_NEW,{method:"POST",headers:ctype(),
-      body:JSON.stringify({title:"Lorevox v5.5"})});
+      body:JSON.stringify({title:"Lorevox 1.0"})});
     const j=await r.json();
     state.chat.conv_id=j.conv_id||j.session_id||null;
     document.getElementById("chatSessionLabel").textContent=state.chat.conv_id||"Local session";
@@ -1746,11 +3040,16 @@ function startIdentityOnboarding(){
   setAssistantRole("onboarding");
   // v7.4E — Tell Lori to briefly explain WHY she needs the three anchors before asking.
   // This sets expectations, builds trust, and gets more accurate answers.
+  // #202: Drop the "Lorevox" etymology lecture — that was the codebase
+  //       project name leaking into the user-facing chat.  User-facing
+  //       product is Lorevox; Lori is the assistant.  Keep the intro
+  //       simple and warm; if asked, Lori is part of Lorevox, no etymology.
   sendSystemPrompt(
     "[SYSTEM: Begin the identity onboarding sequence. " +
-    "Introduce yourself as Lori. " +
-    "You may briefly share what your name means — Lorevox: 'Lore' means stories and oral tradition, " +
-    "'Vox' is Latin for voice, so Lorevox means the voice of your stories. Lori is your nickname from that. " +
+    "Introduce yourself simply as Lori. " +
+    "Do NOT explain where your name comes from. Do NOT mention 'Lorevox' " +
+    "or any name etymology.  If asked, you can say you're part of Lorevox " +
+    "in one short clause, but do not lecture about it.  " +
     "Explain that your purpose is to help them build a Life Archive — a lasting record of their life story " +
     "told in their own voice. " +
     "Then explain you need just three things to get started: their name, their date of birth, and where they were born. " +
@@ -1777,12 +3076,21 @@ function _parseDob(text){
   m = t.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
   if(m) return `${m[3]}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`;
   // Month name forms: "December 24, 1962" / "24 December 1962"
+  // BUG-210: accept ordinal suffixes (1st, 2nd, 3rd, 4th, ...) between
+  // the day digit and the year separator.  Live evidence: Jake said
+  // "December 31st 1937" → was parsed as 1937-01-01 because the original
+  // regexes required digit then comma/whitespace, and "st" is letters.
   const MONTHS = {january:"01",february:"02",march:"03",april:"04",may:"05",
     june:"06",july:"07",august:"08",september:"09",october:"10",november:"11",december:"12"};
+  const ORDINAL = "(?:st|nd|rd|th)?";   // optional ordinal suffix
   const lower = t.toLowerCase();
   for(const [name,num] of Object.entries(MONTHS)){
-    const re1 = new RegExp(name+"\\s+(\\d{1,2})[,\\s]+(\\d{4})");
-    const re2 = new RegExp("(\\d{1,2})\\s+"+name+"[,\\s]+(\\d{4})");
+    // re1: "December 24th, 1962" / "december 24th 1962" / "december 24 1962"
+    const re1 = new RegExp(name+"\\s+(\\d{1,2})"+ORDINAL+"[,\\s]+(\\d{4})");
+    // re2: "24th of December, 1962" / "24th December 1962" / "the 24 December 1962"
+    // BUG-210 extension: accept optional "of" between day and month.
+    const re2 = new RegExp("(\\d{1,2})"+ORDINAL+"\\s+(?:of\\s+)?"+name+"[,\\s]+(\\d{4})");
+    // re3: month-and-year only ("December 1962") — day unknown, returns -01
     const re3 = new RegExp(name+"[,\\s]+(\\d{4})");
     let mm;
     if((mm=lower.match(re1))) return `${mm[2]}-${num}-${mm[1].padStart(2,"0")}`;
@@ -1796,6 +3104,178 @@ function _parseDob(text){
   m = t.match(/\b(19\d{2}|20[0-2]\d)\b/);
   if(m) return `${m[1]}-01-01`;
   return null;
+}
+
+/**
+ * BUG-226: Robust birthplace extractor for identity onboarding.
+ * Handles all four real input shapes seen in live sessions:
+ *   1. "I was born in Lima Peru December 20 1972"   (place before date, digits follow)
+ *   2. "I was born December 20 1972 in Lima Peru"   (place after date)
+ *   3. "I'm from Williston, North Dakota"           (no "born" trigger)
+ *   4. "Lima Peru" / "Mason City Iowa"              (just the place)
+ *
+ * Replaces the prior /\bin\s+([A-Z][a-zA-Z\s,]+?)(?:\.|$)/i regex which
+ * failed on shape 1 because it required period or end-of-string immediately
+ * after the place — Melanie's input "born in Lima Peru December 20 1972"
+ * has digits following Peru, so the prior regex never matched and the
+ * state machine fell through to asking "where were you born?" on a fresh
+ * turn even though Lima Peru was already in the same utterance.
+ *
+ * Returns a clean place name string (e.g. "Lima Peru", "Williston, North Dakota")
+ * or null if no plausible place can be extracted.
+ */
+function _parseBirthplaceFromUtterance(text){
+  if (!text || typeof text !== "string") return null;
+  const t = text.trim();
+  if (t.length < 2 || t.length > 500) return null;
+
+  const MONTHS = "(?:january|february|march|april|may|june|july|august|september|october|november|december)";
+  // Stop tokens — terminate the place capture at the first occurrence of any:
+  //   - a digit (date)
+  //   - a sentence-end punctuation mark
+  //   - a month name (e.g. "Lima Peru December" → stop before December)
+  //   - a conjunction or pronoun starting the next clause
+  //   - "in" (already-consumed "born in"; second "in" is a date qualifier)
+  const STOP_RE = new RegExp(
+    "\\d|" +
+    "[.!?;:]|" +
+    "\\b(?:" + MONTHS + "|when|where|but|so|then|i|we|my|on|at|in|or|and)\\b",
+    "i"
+  );
+
+  // Trigger phrases — strong signal that a place name follows.
+  // Order matters: stronger triggers first.
+  const TRIGGERS = [
+    /\b(?:born|grew\s+up|raised|lived)\s+(?:in|at|near)\s+/i,
+    /\bhail(?:s|ed)?\s+from\s+/i,
+    /\bfrom\s+(?=[A-Z])/i,   // "from <Place>" — only if next word starts capital
+  ];
+
+  function _cleanPlace(raw){
+    if (!raw) return null;
+    let p = String(raw).trim();
+    // Trim trailing comma/period/space
+    p = p.replace(/[,.\s]+$/, "").trim();
+    if (p.length < 2 || p.length > 60) return null;
+    // Reject obvious non-places (articles, pronouns, common single-word replies)
+    if (/^(?:a|an|the|when|where|how|that|hello|yes|no|maybe|sure|okay|i)\b/i.test(p)) return null;
+    // Place must start with a letter (proper noun)
+    if (!/^[A-Za-z]/.test(p)) return null;
+    return p;
+  }
+
+  // Pass 1: try direct triggers
+  for (const trig of TRIGGERS) {
+    const m = t.match(trig);
+    if (!m) continue;
+    const start = m.index + m[0].length;
+    const tail = t.slice(start);
+    const stop = tail.match(STOP_RE);
+    const raw = stop ? tail.slice(0, stop.index) : tail;
+    const place = _cleanPlace(raw);
+    if (place) return place;
+  }
+
+  // Pass 2: "born <date> in <Place>" — date came first, "in" second
+  if (/\bborn\b/i.test(t)) {
+    const inIdx = t.search(/\bin\s+[A-Z]/);
+    if (inIdx >= 0) {
+      const tail = t.slice(inIdx + 3);  // skip "in "
+      const stop = tail.match(STOP_RE);
+      const raw = stop ? tail.slice(0, stop.index) : tail;
+      const place = _cleanPlace(raw);
+      if (place) return place;
+    }
+  }
+
+  // Pass 3 (last resort): the whole utterance IS the place name.
+  // Place-only replies look like proper nouns: every word starts with a
+  // capital (or punctuation like apostrophe/dash). "It was a long time ago"
+  // starts with capital "It" but contains lowercase words — those would
+  // be lowercased in a real place name only at proper-noun boundaries
+  // (which are rare; we accept "of"/"the" in "Land of the Free" if needed
+  // but for birthplace the "all capital-led" rule is safe).
+  if (t.length <= 60 && /^[A-Z]/.test(t) && !STOP_RE.test(t)) {
+    const allCapitalLed = t.split(/\s+/).every(function (w) {
+      return w.length === 0 || /^[A-Z]/.test(w) || /^[,'-]/.test(w);
+    });
+    if (allCapitalLed) return _cleanPlace(t);
+  }
+
+  return null;
+}
+
+/**
+ * BUG-227: Shared name extractor — pulls a plausible first/preferred
+ * name from intro patterns: "my name is X", "call me X", "I'm X",
+ * "I am X", "I go by X", "preferred name is X".
+ *
+ * Returns null if no name pattern matches OR if the matched word is
+ * a common pronoun/word/emotional content (handled by the same
+ * _NOT_A_NAME guard the askName handler uses).
+ *
+ * Used by both the identity onboarding state machine (askName) and
+ * the questionnaire_first walk (BUG-227) so a narrator's intro
+ * captures cleanly regardless of which path is active.
+ */
+function _parseNameFromUtterance(text){
+  if (!text || typeof text !== "string") return null;
+  const t = text.trim();
+  if (t.length < 2) return null;
+
+  const _NOT_A_NAME = new Set([
+    "that","it","i","the","a","an","this","there","here","yes","no","yeah","nope",
+    "okay","ok","well","so","hi","hello","hey","oh","ah","uh","um","my","mine",
+    "what","when","where","why","how","who","which","they","we","you","he","she",
+    "just","not","but","and","or","if","then","was","were","is","am","are",
+    "had","have","has","did","do","does","would","could","should","will","can",
+  ]);
+  const _EMOTIONAL_MARKERS = /\b(hard|difficult|sad|scared|lost|hurt|pain|grief|suffered|struggling|terrible|awful|horrible|tough|heartbroken|afraid|worried|anxious|miss|missed|died|death|trauma|abuse|alone|lonely|crying|tears|broke|broken)\b/i;
+  if (_EMOTIONAL_MARKERS.test(t)) return null;
+
+  // BUG-231: split trigger detection (case-insensitive, /i) from name
+  // capture (case-sensitive). Earlier attempt used /i on the whole regex
+  // and the [A-Z] anchor degraded to [A-Za-z], so "my name is Sarah and i"
+  // captured "Sarah and" instead of stopping at the first lowercase word.
+  // Live evidence 2026-04-25T22:48: "My name is Test Harness Sarah Reed"
+  // captured only "Test" because the prior regex allowed at most "First Last".
+  // Real names range 1-4 capital-led words (Christopher Todd Horne / Janice
+  // Josephine Horne / Test Harness Sarah Reed). Capture 1-4 capital-led
+  // words AFTER the trigger position; stop at any lowercase-led word.
+  const _triggers = [
+    /\bmy\s+(?:\w+\s+)*name\s+is\s+/i,
+    /\bcall\s+me\s+/i,
+    /\bi(?:'m|\s+am)\s+(?:called\s+)?/i,
+    /\bi\s+go\s+by\s+/i,
+    /\byou\s+can\s+call\s+me\s+/i,
+    /\bprefer(?:red)?\s+(?:name\s+is\s+|to\s+be\s+called\s+)?/i,
+  ];
+  const _NAME_CAP = /^([A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+){0,3})/;  // case-SENSITIVE: stops at lowercase word
+  for (const trig of _triggers) {
+    const m = t.match(trig);
+    if (!m) continue;
+    const tail = t.slice(m.index + m[0].length);
+    const nm = tail.match(_NAME_CAP);
+    if (!nm || !nm[1]) continue;
+    const cand = nm[1].trim();
+    const firstWord = cand.split(/\s+/)[0];
+    if (_NOT_A_NAME.has(firstWord.toLowerCase()) || firstWord.length < 2) continue;
+    return cand;
+  }
+  return null;
+}
+
+/**
+ * BUG-226: Bundle name + DOB + POB extraction so any identity-phase
+ * handler can use a single call site. Each field is independent — a
+ * partial extraction (e.g. just dob + pob) is still useful.
+ */
+function _extractIdentityFieldsFromUtterance(text){
+  return {
+    name: _parseNameFromUtterance(text),
+    dob: _parseDob(text),
+    pob: _parseBirthplaceFromUtterance(text),
+  };
 }
 
 /**
@@ -1821,28 +3301,24 @@ async function _advanceIdentityPhase(text){
     // Emotional-content guard: message looks like a statement, not a name
     const _EMOTIONAL_MARKERS = /\b(hard|difficult|sad|scared|lost|hurt|pain|grief|suffered|struggling|terrible|awful|horrible|tough|heartbroken|afraid|worried|anxious|miss|missed|died|death|trauma|abuse|alone|lonely|crying|tears|broke|broken|never|always|sometimes|really|very|so much)\b/i;
 
-    // v7.4E — Structured name extraction: try "my [adj] name is X", "call me X",
-    // "I go by X" patterns BEFORE falling back to first-word extraction.
-    // This handles long sentences like "My special name is Chris or guch by my wife".
-    // We extract only the FIRST name after the pattern — before any "or/and/by/from".
-    const _namePatterns = [
-      /\bmy\s+(?:\w+\s+)*name\s+is\s+([A-Za-z][a-z'-]+)/i,     // "my name is X", "my special name is X"
-      /\bcall\s+me\s+([A-Za-z][a-z'-]+)/i,                       // "call me X"
-      /\bi(?:'m|\s+am)\s+(?:called\s+)?([A-Za-z][a-z'-]+)/i,    // "I'm X", "I am X", "I am called X"
-      /\bi\s+go\s+by\s+([A-Za-z][a-z'-]+)/i,                    // "I go by X"
-      /\byou\s+can\s+call\s+me\s+([A-Za-z][a-z'-]+)/i,          // "you can call me X"
-      /\bprefer(?:red)?\s+(?:name\s+is\s+|to\s+be\s+called\s+)?([A-Za-z][a-z'-]+)/i, // "preferred name is X"
-    ];
+    // BUG-237: use the shared multi-word _parseNameFromUtterance helper
+    // (BUG-231 fix, defined above) instead of an inline limited regex.
+    // Live evidence 2026-04-26T00:30: "My name is Test Harness Sarah Reed"
+    // captured only "Test" because the prior inline regex allowed at most
+    // [A-Za-z][a-z'-]+ (a single word). The shared helper handles 1-4
+    // capital-led words with case-sensitive boundary stops, and shares
+    // the _NOT_A_NAME / _EMOTIONAL_MARKERS guards so behavior is
+    // identical for normal names ("Walter", "Christopher", etc.) — just
+    // also captures multi-word names like "Test Harness Sarah Reed",
+    // "Janice Josephine Horne", "Christopher Todd Horne".
     let patternName = null;
     if (!_EMOTIONAL_MARKERS.test(text)) {
-      for (const pat of _namePatterns) {
-        const m = text.match(pat);
-        if (m && m[1] && !_NOT_A_NAME.has(m[1].toLowerCase()) && m[1].length >= 2) {
-          patternName = m[1];
-          // Capitalize first letter
-          patternName = patternName.charAt(0).toUpperCase() + patternName.slice(1);
-          break;
+      try {
+        if (typeof _parseNameFromUtterance === "function") {
+          patternName = _parseNameFromUtterance(text);
         }
+      } catch (e) {
+        console.warn("[identity] _parseNameFromUtterance threw:", e);
       }
     }
 
@@ -1882,12 +3358,24 @@ async function _advanceIdentityPhase(text){
     // v8.0 FIX: Update narrator header card immediately
     if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
 
-    // v9.0 FIX: Check if the user also provided DOB in the same message.
-    // e.g. "tom and i was born july 3 1942" — extract both, skip the DOB question.
+    // BUG-226: Mirror name into Bio Builder questionnaire.personal so BB
+    // shows what Lori already knows. Idempotent — only fills empty fields.
+    try {
+      if (typeof window.lvBbSyncIdentity === "function") {
+        window.lvBbSyncIdentity(state.profile.basics);
+      }
+    } catch (e) { console.warn("[bb-sync] askName/name-only threw:", e); }
+
+    // v9.0 FIX + BUG-226: Multi-field extraction from single answer.
+    // Live evidence (2026-04-25): Melanie said "My name is Melanie Zollner
+    // I was born in Lima Peru December 20 1972" and the prior code captured
+    // only name + DOB, missing POB because the embedded-POB regex required
+    // period/EOS after the place. Lori then re-asked birthplace — parent UX
+    // failure. New parser + skip-ahead control flow below.
     const _embeddedDob = _parseDob(text);
+    const _embeddedPob = _parseBirthplaceFromUtterance(text);
     if (_embeddedDob) {
       state.session.identityCapture.dob = _embeddedDob;
-      state.session.identityPhase = "askBirthplace";
       if(!state.profile) state.profile = {basics:{}, kinship:[], pets:[]};
       state.profile.basics.dob = _embeddedDob;
       if (typeof LorevoxProjectionSync !== "undefined" && state.interviewProjection) {
@@ -1896,11 +3384,46 @@ async function _advanceIdentityPhase(text){
         });
       }
       if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
-      // Check for embedded birthplace too: "born july 3 1942 in Rugby ND"
-      const _pobInName = text.match(/\bin\s+([A-Z][a-zA-Z\s,]+?)(?:\.|$)/i);
-      if (_pobInName && _pobInName[1] && _pobInName[1].trim().length >= 3) {
-        state.session.identityCapture._embeddedPob = _pobInName[1].trim().replace(/[,.\s]+$/, "");
+
+      // BUG-226: SKIP-AHEAD — if POB also captured in same utterance,
+      // mark all three identity anchors complete in one shot and skip
+      // askBirthplace entirely. Lori must NOT ask for what's already given.
+      if (_embeddedPob) {
+        state.session.identityCapture.birthplace = _embeddedPob;
+        state.profile.basics.pob = _embeddedPob;
+        if (typeof LorevoxProjectionSync !== "undefined" && state.interviewProjection) {
+          LorevoxProjectionSync.projectValue("personal.placeOfBirth", _embeddedPob, {
+            source: "interview", turnId: "identity-pob", confidence: 0.85
+          });
+        }
+        if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
+
+        // Mirror to Bio Builder questionnaire.personal so BB shows what
+        // Lori already knows instead of asking again later.
+        try {
+          if (typeof window.lvBbSyncIdentity === "function") {
+            window.lvBbSyncIdentity(state.profile.basics);
+          }
+        } catch (e) { console.warn("[bb-sync] askName/skip-ahead threw:", e); }
+
+        console.log("[identity] BUG-226: name + DOB + POB extracted from single message:", name, _embeddedDob, _embeddedPob);
+        // Skip directly to person resolution — _resolveOrCreatePerson sets
+        // identityPhase = "complete" and dispatches the session-loop.
+        state.session.identityPhase = "resolving";
+        sendSystemPrompt(
+          `[SYSTEM: SPEAKER IDENTITY — The person is named "${name}", born ${_embeddedDob} in ${_embeddedPob}. ` +
+          `You are Lori, the interviewer. Use "${name}" when addressing the speaker. ` +
+          `These three anchors (name, date of birth, birthplace) were ALL captured from this one message. ` +
+          `Do NOT ask for any of them again — that would be a confidence-killing mistake. ` +
+          `Acknowledge them warmly in one or two sentences (use "${name}" once). ` +
+          `Then ask one open question that invites them to share an early memory or what kind of place ${_embeddedPob} was when they were growing up. One question only.]`
+        );
+        await _resolveOrCreatePerson();
+        return true;
       }
+
+      // Only name + DOB captured — proceed to askBirthplace as before.
+      state.session.identityPhase = "askBirthplace";
       console.log("[identity] Name + DOB extracted from single message:", name, _embeddedDob);
       sendSystemPrompt(
         `[SYSTEM: SPEAKER IDENTITY — The person is named "${name}", born ${_embeddedDob}. ` +
@@ -1909,6 +3432,13 @@ async function _advanceIdentityPhase(text){
         `Then ask where they were born — town, city, or region. One question only.]`
       );
       return true;
+    }
+
+    // BUG-226: name only (no DOB), but maybe POB was given anyway —
+    // capture it for use when askBirthplace fires later. Keeps the
+    // existing askDob → askBirthplace flow intact.
+    if (_embeddedPob) {
+      state.session.identityCapture._embeddedPob = _embeddedPob;
     }
 
     // No embedded DOB — ask for it separately
@@ -1927,7 +3457,6 @@ async function _advanceIdentityPhase(text){
   if(phase === "askDob"){
     const dob = _parseDob(text);
     state.session.identityCapture.dob = dob;  // may be null if unrecognised
-    state.session.identityPhase = "askBirthplace";
 
     // v8.0 FIX: Immediately project DOB into profile and projection state
     if (dob) {
@@ -1942,14 +3471,65 @@ async function _advanceIdentityPhase(text){
       if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
     }
 
-    // v8.0 FIX: Check if POB is embedded in the DOB answer (e.g. "born July 26 1943 in Dartford")
-    const _pobFromDob = text.match(/\bin\s+([A-Z][a-zA-Z\s,]+?)(?:\.|$)/i);
-    if (_pobFromDob && _pobFromDob[1]) {
-      const embeddedPob = _pobFromDob[1].trim().replace(/[,.\s]+$/, "");
-      if (embeddedPob.length >= 3) {
-        state.session.identityCapture._embeddedPob = embeddedPob;
+    // BUG-226: Replace fragile /\bin\s+([A-Z][a-zA-Z\s,]+?)(?:\.|$)/i regex
+    // with the new robust parser. Handles "born July 26 1943 in Dartford"
+    // AND "born in Lima Peru December 20 1972" AND "I was born in Williston
+    // North Dakota in 1949" — the previous regex required period or EOS
+    // immediately after the place, which failed on any utterance with
+    // trailing context.
+    const _embeddedPob = _parseBirthplaceFromUtterance(text);
+
+    // BUG-226: SKIP-AHEAD — if DOB + POB both captured in same answer,
+    // mark all three identity anchors complete (name was set in askName)
+    // and skip askBirthplace entirely. Prevents Lori from re-asking what
+    // the narrator just told her — parent UX failure mode.
+    if (dob && _embeddedPob) {
+      state.session.identityCapture.birthplace = _embeddedPob;
+      if(!state.profile) state.profile = {basics:{}, kinship:[], pets:[]};
+      state.profile.basics.pob = _embeddedPob;
+      if (typeof LorevoxProjectionSync !== "undefined" && state.interviewProjection) {
+        LorevoxProjectionSync.projectValue("personal.placeOfBirth", _embeddedPob, {
+          source: "interview", turnId: "identity-pob", confidence: 0.85
+        });
       }
+      if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
+
+      // BB sync — mirror to questionnaire.personal
+      try {
+        if (typeof window.lvBbSyncIdentity === "function") {
+          window.lvBbSyncIdentity(state.profile.basics);
+        }
+      } catch (e) { console.warn("[bb-sync] askDob/skip-ahead threw:", e); }
+
+      const name = state.session.identityCapture.name || state.profile.basics.preferred || "";
+      console.log("[identity] BUG-226: DOB + POB extracted from askDob answer:", dob, _embeddedPob);
+      state.session.identityPhase = "resolving";
+      sendSystemPrompt(
+        `[SYSTEM: The user just answered with their date of birth AND birthplace in one message: ` +
+        `born ${dob} in ${_embeddedPob}. ` +
+        `${name ? `Their name is "${name}". ` : ""}` +
+        `These three identity anchors are ALL captured. ` +
+        `Do NOT ask for any of them again. ` +
+        `Acknowledge them warmly in one or two sentences. ` +
+        `Then ask one open question that invites them to share an early memory or what kind of place ${_embeddedPob} was when they were growing up. One question only.]`
+      );
+      await _resolveOrCreatePerson();
+      return true;
     }
+
+    // Only DOB captured — store any embedded POB hint and proceed to askBirthplace.
+    state.session.identityPhase = "askBirthplace";
+    if (_embeddedPob) {
+      state.session.identityCapture._embeddedPob = _embeddedPob;
+    }
+
+    // BB sync — mirror DOB to questionnaire.personal
+    try {
+      if (dob && typeof window.lvBbSyncIdentity === "function") {
+        window.lvBbSyncIdentity(state.profile.basics);
+      }
+    } catch (e) { console.warn("[bb-sync] askDob threw:", e); }
+
     sendSystemPrompt(
       `[SYSTEM: The user gave their date of birth as "${text.trim()}". ` +
       `${dob ? "You have parsed it as "+dob+"." : "The date wasn't entirely clear but that's okay — continue."} ` +
@@ -1964,27 +3544,25 @@ async function _advanceIdentityPhase(text){
     // v8.0 FIX: Extract place from the answer instead of using the raw text.
     let birthplace = text.trim();
 
-    // BEST SOURCE: If the DOB answer already contained a place ("born in Dartford"),
-    // prefer that extracted value over anything in this answer.
+    // BEST SOURCE: If askName or askDob already extracted a place from
+    // an earlier utterance, prefer that — narrator may have repeated
+    // themselves or given a different (less precise) answer this turn.
     if (state.session.identityCapture._embeddedPob) {
       birthplace = state.session.identityCapture._embeddedPob;
     } else {
-      // Try structured extraction: "in X", "from X"
-      const _placePatterns = [
-        /\b(?:born|grew up|raised|from|lived)\s+(?:in|at|near)\s+([A-Z][a-zA-Z\s,]+?)(?:\.|,?\s+(?:and|my|I|we|the|where|when|\d))/i,
-      ];
-      for (const pat of _placePatterns) {
-        const m = text.match(pat);
-        if (m && m[1] && m[1].trim().length >= 3 && m[1].trim().length < 80) {
-          birthplace = m[1].trim().replace(/[,.\s]+$/, "");
-          break;
+      // BUG-226: use the canonical parser. Handles all four real input
+      // shapes (place before/after date, "from X", just the place name).
+      const parsed = _parseBirthplaceFromUtterance(text);
+      if (parsed) {
+        birthplace = parsed;
+      } else {
+        // Fallback: whole-text trim (used when the narrator just says
+        // "Lima, Peru" with no surrounding sentence — the parser's
+        // last-resort branch handles that, so this is for malformed input).
+        if (birthplace.length > 80) {
+          const firstClause = text.split(/[.!?,]/)[0].trim();
+          if (firstClause.length < 80) birthplace = firstClause;
         }
-      }
-
-      // If still a long narrative, truncate to first clause
-      if (birthplace.length > 80) {
-        const firstClause = text.split(/[.!?,]/)[0].trim();
-        if (firstClause.length < 80) birthplace = firstClause;
       }
     }
 
@@ -2000,6 +3578,14 @@ async function _advanceIdentityPhase(text){
     }
     // v8.0 FIX: Update narrator header card with POB
     if (typeof lv80UpdateActiveNarratorCard === "function") lv80UpdateActiveNarratorCard();
+
+    // BUG-226: Mirror identity to Bio Builder questionnaire.personal —
+    // all three anchors should now be in BB.
+    try {
+      if (typeof window.lvBbSyncIdentity === "function") {
+        window.lvBbSyncIdentity(state.profile.basics);
+      }
+    } catch (e) { console.warn("[bb-sync] askBirthplace threw:", e); }
 
     state.session.identityPhase = "resolving";
     // Create the person record now that we have the three anchors
@@ -2074,6 +3660,42 @@ async function _resolveOrCreatePerson(){
 
   state.session.identityPhase = "complete";
   setAssistantRole("interviewer");
+
+  // WO-SESSION-LOOP-01: identity intake just finished.  Hand
+  // the steering wheel to the post-identity orchestrator so Lori has a
+  // defined next step (BB walk for questionnaire_first; tier-2 directive
+  // for clear_direct/memory_exercise/companion; no-op for warm_storytelling).
+  // Without this hook, the session dead-ends here a second time.
+  try {
+    if (typeof window.lvSessionLoopOnTurn === "function") {
+      window.lvSessionLoopOnTurn({ trigger: "identity_complete" });
+    }
+  } catch (e) {
+    console.warn("[session-loop] identity_complete dispatch threw:", e);
+  }
+
+  // WO-IDENTITY-TO-LIFEMAP-01: trigger Life Map + Chronology Accordion
+  // refresh so the just-captured DOB / POB / name immediately surface
+  // visible anchors. Life Map already builds 6 default era scaffolds
+  // (Early Childhood / School Years / Adolescence / Early Adulthood /
+  // Midlife / Later Life) from state.profile.basics.dob — those just
+  // need a render kick. Chronology Accordion fetches per-decade from
+  // backend (DOB-gated). Both helpers already exist and are called by
+  // narrator-switch flow (app.js:1935, html:4938); the fresh-onboarding
+  // path was the only gap. Two-call refresh — non-fatal if either
+  // throws.
+  try {
+    if (window.LorevoxLifeMap && typeof window.LorevoxLifeMap.render === "function") {
+      window.LorevoxLifeMap.render(true);
+      console.log("[identity] post-identity Life Map refresh fired");
+    }
+  } catch (e) { console.warn("[lifemap] post-identity render threw:", e); }
+  try {
+    if (typeof window.crInitAccordion === "function") {
+      window.crInitAccordion();
+      console.log("[identity] post-identity Chronology Accordion refresh fired");
+    }
+  } catch (e) { console.warn("[chronology] post-identity init threw:", e); }
 
   // v8.1: Mark this device as onboarded so future startups skip the welcome flow
   // and go straight to the narrator selector instead.
@@ -2151,9 +3773,46 @@ function _isHelpIntent(text){
   return _HELP_KEYWORDS.some(k=>t.includes(k));
 }
 
+/* WO-11C: Trainer active check — single helper used by all input guards.
+   Returns true when trainer is actively running OR when trainer has finished
+   but no narrator has been selected yet (pending-unlock state). */
+function _wo11cIsTrainerActive() {
+  if (!state || !state.trainerNarrators) return false;
+  return !!(state.trainerNarrators.active || state.trainerNarrators._wo11cPendingUnlock);
+}
+
 async function sendUserMessage(){
+  // WO-11C: Block normal send while trainer mode is active.
+  // Trainer is a coaching screen, not a live Lori interview.
+  if (_wo11cIsTrainerActive()) {
+    console.log("[WO-11C] sendUserMessage() BLOCKED — trainer mode active");
+    if (typeof sysBubble === "function") {
+      sysBubble("Complete the trainer first, then we\u2019ll begin your interview.");
+    }
+    return;
+  }
   unlockAudio();
   const text=getv("chatInput").trim(); if(!text) return;
+  // WO-MIC-UI-02A: Confirm send source and content
+  console.log("[WO-MIC-UI-02A] sendUserMessage() — source: #chatInput, length:", text.length, "preview:", text.slice(0, 80));
+  // WO-STT-LIVE-02 (#99) — when no speech capture is staged (or it's
+  // stale / doesn't match the current input), mark the send as typed
+  // so the extraction payload carries transcript_source="typed" and
+  // the backend stamps audio_source on the resulting items. Purely
+  // annotative — typed sends are never forced into confirmation UX.
+  try {
+    if (window.TranscriptGuard) {
+      var _staged = state && state.lastTranscript;
+      var _needle = (_staged && _staged.normalized_text) ? _staged.normalized_text.trim().toLowerCase() : "";
+      var _hay    = text.trim().toLowerCase();
+      var _age    = _staged && _staged.ts ? (Date.now() - _staged.ts) : Infinity;
+      var _stale  = _age > (window.TranscriptGuard.STALE_MS || 30000);
+      var _matches= _needle && _hay.indexOf(_needle) !== -1;
+      if (!_staged || !_staged.source || _stale || !_matches) {
+        window.TranscriptGuard.markTypedInput(text, { turnId: null });
+      }
+    }
+  } catch (_e) { console.warn("[STT-guard] typed mark failed:", _e && _e.message); }
   // Phase Q.4: Block user sends while model is still warming up
   if (!_llmReady) {
     appendBubble("ai", "Lorevox is still warming up — please wait a moment for the model to finish loading.");
@@ -2161,9 +3820,13 @@ async function sendUserMessage(){
   }
   // v7.4D — Phase 7: capture for post-reply fact extraction.
   _lastUserTurn = text;
+  // WO-10: Update conversation state detector
+  _wo10LastUserText = text;
   // v7.4D — stop recording immediately on send so we don't capture background
   // audio or Lori's incoming response. Mic stays off; user re-enables when ready.
   if(isRecording) stopRecording();
+  // WO-10H: Release narrator turn-claim on Send
+  if (typeof wo10hReleaseTurn === "function") wo10hReleaseTurn("send_submitted");
 
   // v7.4D — Phase 6: identity-first onboarding state machine.
   // Route through identity extractor. If _advanceIdentityPhase returns true,
@@ -2179,6 +3842,54 @@ async function sendUserMessage(){
     // Not handled — fall through to normal chat path with IDENTITY MODE active.
   }
 
+  // WO-SESSION-LOOP-01: per-turn dispatch.  Once identity is
+  // complete, every narrator turn pings the orchestrator so it can
+  // advance the questionnaire walk (questionnaire_first / clear_direct)
+  // OR refresh tier-2 directives (memory_exercise / companion).
+  // warm_storytelling is a no-op.  Idempotent — askedKeys ledger
+  // prevents duplicate field asks.
+  if (state.session?.identityPhase === "complete" &&
+      typeof window.lvSessionLoopOnTurn === "function") {
+    try {
+      window.lvSessionLoopOnTurn({ trigger: "narrator_turn", text });
+    } catch (e) {
+      console.warn("[session-loop] narrator_turn dispatch threw:", e);
+    }
+  }
+
+  // BUG-209: archive-writer narrator inline-call DISABLED.
+  // The backend chat_ws path already writes the narrator turn into the
+  // same memory archive.  Calling lvArchiveOnNarratorTurn here caused
+  // every turn to land twice in transcript.jsonl (once as `user` from
+  // chat_ws, once as `narrator` from archive-writer).  Confirmed via
+  // Chris's morning export 2026-04-25.  Backend WS is single source.
+  // The lvArchiveOnNarratorTurn hook remains callable for the
+  // future WO-AUDIO-NARRATOR-ONLY-01 audio-attachment flow if it
+  // needs a paired write — that's a deliberate manual path.
+  // To re-enable: remove this comment and uncomment the original block.
+  //
+  // if (typeof window.lvArchiveOnNarratorTurn === "function") {
+  //   try { window.lvArchiveOnNarratorTurn(text); } catch (_) {}
+  // }
+
+  // WO-AUDIO-NARRATOR-ONLY-01: stop in-progress audio segment + upload.
+  // Generate a client-side turn_id; backend stores audio under that id
+  // in audio/<turn_id>.webm regardless of whether the chat_ws transcript
+  // row eventually links it.  Operator can correlate by timestamp at
+  // review time.  A no-op if audio recorder isn't loaded or recordVoice
+  // is OFF or there's no live segment.
+  if (typeof window.lvNarratorAudioRecorder === "object" && window.lvNarratorAudioRecorder.stop) {
+    try {
+      const _audioTurnId = (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ("t_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10));
+      // Fire-and-forget — don't block sendUserMessage on upload.
+      window.lvNarratorAudioRecorder.stop(_audioTurnId).catch((e) => {
+        console.warn("[narrator-audio] stop+upload threw:", e && e.message || e);
+      });
+    } catch (e) { console.warn("[narrator-audio] turn_id gen threw:", e); }
+  }
+
   // v7.4D — helper-mode detection. If the user appears to be asking how to use
   // the app, switch Lori to helper role for this turn. The role resets to
   // "interviewer" in onAssistantReply() after Lori's response lands.
@@ -2187,6 +3898,10 @@ async function sendUserMessage(){
   }
 
   if(!_bubbleAlreadyAdded){ setv("chatInput",""); appendBubble("user",text); }
+  // BUG-219: clear pre-mic draft snapshot now that the turn has been
+  // committed.  Next mic-arm will capture a fresh snapshot from a
+  // (typically empty) chatInput.
+  _wo8PreMicDraft = "";
   let systemInstruction="";
 
   if(state.interview.session_id&&state.interview.question_id){
@@ -2220,6 +3935,15 @@ async function sendUserMessage(){
   const payload=systemInstruction?`${text}\n\n${systemInstruction}`:text;
 
   if(ws&&wsReady&&!usingFallback){
+    // WO-ARCH-07A — local deterministic turn routing
+    const routedMode = lvRouteTurn(text);
+    state.session.turnMode = routedMode;
+
+    // WO-ARCH-07A — local deterministic memory echo build
+    if (routedMode === TURN_MEMORY_ECHO) {
+      buildMemoryEchoEntity();
+    }
+
     // v7.1: capture runtime71 BEFORE setLoriState("thinking") so transitional
     // badge updates never wipe semantic state (fatigue, cognitive mode, etc.)
     const _rt71 = buildRuntime71();
@@ -2232,14 +3956,24 @@ async function sendUserMessage(){
         console.log("[Lori 7.1] cognitive auto:", _caResult.mode, "("+_caResult.reason+")");
       }
     } catch(e) {}
+    console.log("[WO-ARCH-07A] turn_mode:", routedMode);
     console.log("[Lori 7.1] runtime71 → model:", JSON.stringify(_rt71, null, 2));
+    const _llmT = (window._lv10dLlmParams && window._lv10dLlmParams.temperature) || 0.7;
+    const _llmM = (window._lv10dLlmParams && window._lv10dLlmParams.max_new_tokens) || 512;
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
-      message:payload,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71}}));
+      message:payload,turn_mode:routedMode,params:{person_id:state.person_id,temperature:_llmT,max_new_tokens:_llmM,runtime71:_rt71}}));
     // Safety timeout: if no response within 30s, unstick the UI
     // WO-S3: Guard against stacked unavailable messages — only show once
+    // WO-11: Only show unavailable if WS is genuinely disconnected
     const _sendTimestamp = Date.now();
     setTimeout(()=>{
       if(!currentAssistantBubble){
+        // WO-11: Check if WS is actually healthy before showing error
+        if (ws && wsReady) {
+          console.log("[WO-11][chat-state] 30s timeout but WS is connected — suppressing false unavailable");
+          setLoriState("ready");
+          return;
+        }
         // Prevent stacked error messages: check if a recent error bubble already exists
         const chatLog = document.getElementById("chatLog");
         const lastBubble = chatLog && chatLog.lastElementChild;
@@ -2247,6 +3981,7 @@ async function sendUserMessage(){
           lastBubble.textContent.includes("Chat service unavailable") &&
           (Date.now() - _sendTimestamp) < 35000;
         if (!isRecentError) {
+          console.log("[WO-11][chat-state] Chat unavailable banner SET — WS disconnected");
           appendBubble("ai","Chat service unavailable — start or restart the Lorevox AI backend to enable responses.");
         }
         setLoriState("ready");
@@ -2269,12 +4004,25 @@ async function sendSystemPrompt(instruction){
     setLoriState("thinking");
     currentAssistantBubble=bubble;
     console.log("[Lori 7.1] runtime71 (sys) → model:", JSON.stringify(_rt71sys, null, 2));
+    const _llmTs = (window._lv10dLlmParams && window._lv10dLlmParams.temperature) || 0.7;
+    const _llmMs = (window._lv10dLlmParams && window._lv10dLlmParams.max_new_tokens) || 512;
     ws.send(JSON.stringify({type:"start_turn",session_id:state.chat.conv_id||"default",
-      message:instruction,params:{person_id:state.person_id,temperature:0.7,max_new_tokens:512,runtime71:_rt71sys}}));
+      message:instruction,params:{person_id:state.person_id,temperature:_llmTs,max_new_tokens:_llmMs,runtime71:_rt71sys}}));
     // Safety timeout: if no response within 30s, unstick the UI
+    // WO-11: Only show unavailable if WS is genuinely disconnected
     setTimeout(()=>{
       if(currentAssistantBubble===bubble && _bubbleBody(bubble)?.textContent==="…"){
+        // WO-11: Check if WS is actually healthy before showing error
+        if (ws && wsReady) {
+          console.log("[WO-11][chat-state] System prompt 30s timeout but WS connected — suppressing");
+          setLoriState("ready");
+          currentAssistantBubble=null;
+          // Remove the "…" bubble since WS is fine, just slow
+          try { bubble.remove(); } catch(_) {}
+          return;
+        }
         console.warn("[sendSystemPrompt] 30s timeout — no response from backend");
+        console.log("[WO-11][chat-state] Chat unavailable banner SET (system prompt path)");
         _bubbleBody(bubble).textContent="Chat service unavailable — start or restart the Lorevox AI backend to enable responses.";
         setLoriState("ready");
         currentAssistantBubble=null;
@@ -2387,8 +4135,30 @@ function onAssistantReply(text){
   }
   // v7.4D — Phase 7: fire-and-forget fact extraction after each real turn.
   // Only runs when a person is loaded and onboarding is complete.
-  if(state.person_id && (!state.session?.identityPhase || state.session.identityPhase==="complete")){
+  // WO-13 Phase 3: skip reference narrators entirely — they are read-only
+  // from the narrative memory pipeline and the backend will 403 their writes.
+  if(
+    state.person_id
+    && (!state.session?.identityPhase || state.session.identityPhase==="complete")
+    && !_wo13IsReferenceNarrator(state.person_id)
+  ){
     _extractAndPostFacts(_lastUserTurn, text).catch(()=>{});
+  }
+}
+
+// ── WO-13 Phase 3 — Reference narrator helper ─────────────────────────────
+// Reads narrator_type from the cached /api/people list. Defaults to false
+// (treat as live) when unknown so we fail-open on caching races. The
+// backend guard is the authoritative enforcement.
+function _wo13IsReferenceNarrator(pid){
+  if(!pid) return false;
+  try{
+    const cache = state?.narratorUi?.peopleCache || [];
+    const hit = cache.find(p => (p.id||p.person_id||p.uuid) === pid);
+    if(!hit) return false;
+    return String(hit.narrator_type || "live").toLowerCase() === "reference";
+  }catch{
+    return false;
   }
 }
 
@@ -2460,42 +4230,75 @@ function _lv80DetectDualPersona(text) {
   };
 }
 
+// WO-13 Phase 4 — Five identity-critical fields that can NEVER be mutated by
+// the regex/rules_fallback client extractor. If the extractor would propose one
+// of these, the item is flagged identity_conflict=true in provenance and the
+// status is forced to source_only so the review UI can surface it without the
+// row ever entering the promoted-truth path.
+const _WO13_PROTECTED_IDENTITY_FIELDS = Object.freeze([
+  "personal.fullName",
+  "personal.preferredName",
+  "personal.dateOfBirth",
+  "personal.placeOfBirth",
+  "personal.birthOrder",
+]);
+
 /**
- * Extract atomic facts from a single exchange (user turn + Lori's reply).
- * Returns an array of fact objects ready to POST to /api/facts/add.
- * Each fact includes meaning_tags, narrative_role, experience, and reflection
- * fields (Meaning Engine Phase A+B).
+ * WO-13 Phase 4 — Regex-based proposal extractor (aka "rules_fallback").
+ *
+ * Returns an array of proposal items (NOT legacy fact objects) derived from a
+ * single user turn. Each item has the shape expected by
+ *   POST /api/family-truth/note/{note_id}/propose
+ * i.e. { subject_name, relationship, field, source_says, status, confidence,
+ *        narrative_role, meaning_tags, provenance, extraction_method }.
+ *
+ * This path is intentionally conservative: status defaults to 'needs_verify'
+ * and extraction_method is always 'rules_fallback'. The LLM/hybrid extractor
+ * (server side) will use the same shape but different extraction_method tags.
  */
 function _extractFacts(userText, loriText){
-  const facts = [];
+  const items = [];
   const src   = (userText||"").trim();
-  const t     = src.toLowerCase();
   const pid   = state.person_id;
-  if(!pid || !src) return facts;
+  if(!pid || !src) return items;
 
   const sid = state.chat?.conv_id || null;
+  const narratorName = (state.narratorUi?.currentNarratorName
+    || state.person?.display_name
+    || "").trim();
 
-  const _f = (statement, fact_type, date_text="", date_normalized="", confidence=0.7) => {
-    const meaning_tags   = _lv80DetectMeaningTags(src);
-    const narrative_role = _lv80DetectNarrativeRole(src, fact_type);
-    const persona        = _lv80DetectDualPersona(src);
+  const _meaning = _lv80DetectMeaningTags(src);
+
+  const _propose = (field, source_says, {
+    subject_name = narratorName,
+    relationship = "self",
+    confidence = 0.7,
+    fact_type = "",
+  } = {}) => {
+    const narrative_role = _lv80DetectNarrativeRole(src, fact_type || field);
+    const isProtected = _WO13_PROTECTED_IDENTITY_FIELDS.includes(field);
     return {
-      person_id: pid, statement, fact_type,
-      date_text, date_normalized, confidence,
-      status: "extracted", inferred: false,
-      session_id: sid,
-      meaning_tags,
+      subject_name: subject_name || "",
+      relationship: relationship || "self",
+      field,
+      source_says,
+      status: isProtected ? "source_only" : "needs_verify",
+      confidence: isProtected ? Math.min(confidence, 0.5) : confidence,
       narrative_role,
-      experience: persona.experience,
-      reflection: persona.reflection,
-      meta: { source: "chat_extraction", user_turn: src.slice(0,200) },
+      meaning_tags: _meaning,
+      extraction_method: "rules_fallback",
+      provenance: {
+        source: "chat_extraction",
+        session_id: sid,
+        user_turn: src.slice(0, 200),
+        fact_type: fact_type || "",
+        identity_conflict: isProtected || false,
+        protected_field: isProtected ? field : undefined,
+      },
     };
   };
 
-  // ── Birthplace ───────────────────────────────────────────────
-  // Capture "City" or "City, Country" format.
-  // Pattern A: "born/grew up ... in/at/near City[, Country]"
-  // Pattern B: "I'm/I am from City[, Country]" (no in/at/near needed)
+  // ── Birthplace (PROTECTED: personal.placeOfBirth) ────────────
   let m;
   const _PLACE_CAP = /([A-Z][^,.!?]{1,35}(?:,\s*[A-Z][^,.!?]{1,30})?)/;
   m = src.match(new RegExp(
@@ -2507,70 +4310,153 @@ function _extractFacts(userText, loriText){
   if(!m) m = src.match(new RegExp(
     String.raw`\boriginally\s+from\s+` + _PLACE_CAP.source, "i"
   ));
-  if(m){ const place = m[1].trim(); facts.push(_f(`Born or raised in ${place}`, "birth", place, "", 0.75)); }
+  if(m){
+    const place = m[1].trim();
+    items.push(_propose("personal.placeOfBirth", `Born or raised in ${place}`, {
+      confidence: 0.75, fact_type: "birth",
+    }));
+  }
 
-  // ── Date of birth ─────────────────────────────────────────────
+  // ── Date of birth (PROTECTED: personal.dateOfBirth) ──────────
   m = src.match(/\b(?:born on|born)\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:[,\s]+\d{4})?|\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})/i);
   if(m){
-    const dob = _parseDob(m[1]) || m[1];
-    facts.push(_f(`Date of birth: ${m[1].trim()}`, "birth", m[1].trim(), dob, 0.85));
+    items.push(_propose("personal.dateOfBirth", `Date of birth: ${m[1].trim()}`, {
+      confidence: 0.85, fact_type: "birth",
+    }));
   }
 
   // ── Marriage ─────────────────────────────────────────────────
   m = src.match(/\b(?:married|got married to|my (?:husband|wife|spouse) is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
-  if(m) facts.push(_f(`Married ${m[1].trim()}`, "marriage", "", "", 0.7));
+  if(m) items.push(_propose("marriage", `Married ${m[1].trim()}`, {
+    confidence: 0.7, fact_type: "marriage",
+  }));
 
   // ── Children ─────────────────────────────────────────────────
   m = src.match(/\b(?:my (?:son|daughter|child|kids?|children|boy|girl))[^.!?]{0,20}(?:name(?:d|s)?|is|are|called)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
-  if(m) facts.push(_f(`Child named ${m[1].trim()}`, "family_relationship", "", "", 0.65));
+  if(m) items.push(_propose("family_relationship", `Child named ${m[1].trim()}`, {
+    subject_name: m[1].trim(), relationship: "child",
+    confidence: 0.65, fact_type: "family_relationship",
+  }));
 
-  // ── Employment ────────────────────────────────────────────────
+  // ── Employment ───────────────────────────────────────────────
   m = src.match(/\b(?:worked (?:at|for)|worked as|(?:a |an )?(?:job|career) (?:at|with)|employed (?:at|by)|I was (?:a|an|the))\s+([^.!?,]{3,60})/i);
-  if(m) facts.push(_f(`Worked: ${m[1].trim()}`, "employment_start", "", "", 0.65));
+  if(m) items.push(_propose("employment", `Worked: ${m[1].trim()}`, {
+    confidence: 0.65, fact_type: "employment_start",
+  }));
 
   m = src.match(/\bI(?:'ve)? (?:been |)(?:retired|retiring|left)\s+(?:from\s+)?([^.!?,]{3,60})/i);
-  if(m) facts.push(_f(`Retired or left: ${m[1].trim()}`, "employment_end", "", "", 0.65));
+  if(m) items.push(_propose("employment", `Retired or left: ${m[1].trim()}`, {
+    confidence: 0.65, fact_type: "employment_end",
+  }));
 
   // ── Education ────────────────────────────────────────────────
   m = src.match(/\b(?:graduated from|went to|attended|studied at)\s+([A-Z][^.!?,]{3,60})/i);
-  if(m) facts.push(_f(`Education: ${m[1].trim()}`, "education", "", "", 0.65));
+  if(m) items.push(_propose("education", `Education: ${m[1].trim()}`, {
+    confidence: 0.65, fact_type: "education",
+  }));
 
-  // ── Residence / moves ─────────────────────────────────────────
-  // Gap G-01 fix: added "settled in|ended up in|made.*home in" to catch narrator idioms
-  // like "I settled in San Diego in 1980" which were previously missed.
+  // ── Residence / moves ────────────────────────────────────────
   m = src.match(/\b(?:moved to|we moved to|living in|lived in|grew up in|settled in|ended up in|made (?:my|our) home in)\s+([A-Z][^.!?,]{2,60})/i);
-  if(m) facts.push(_f(`Residence: ${m[1].trim()}`, "residence", "", "", 0.6));
+  if(m) items.push(_propose("residence", `Residence: ${m[1].trim()}`, {
+    confidence: 0.6, fact_type: "residence",
+  }));
 
   // ── Death (family member) ────────────────────────────────────
   m = src.match(/\b(?:my\s+(?:mother|father|mom|dad|sister|brother|wife|husband|spouse|son|daughter|grandpa|grandma|grandfather|grandmother))[^.!?]{0,30}(?:passed away|died|passed|is gone)\b/i);
-  if(m) facts.push(_f(`Family loss: ${m[0].trim()}`, "death", "", "", 0.7));
+  if(m) items.push(_propose("death", `Family loss: ${m[0].trim()}`, {
+    relationship: "family",
+    confidence: 0.7, fact_type: "death",
+  }));
 
-  // Deduplicate by statement (simple string equality)
+  // Deduplicate by (field, source_says)
   const seen = new Set();
-  return facts.filter(f=>{ if(seen.has(f.statement)) return false; seen.add(f.statement); return true; });
+  return items.filter(it => {
+    const key = it.field + "::" + it.source_says;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
- * Fire-and-forget: extract facts from a turn and POST each one to /api/facts/add.
- * Failures are silently ignored — this should never break the UI.
+ * WO-13 Phase 4 — Fire-and-forget: extract proposal items from a turn and
+ * POST them via the two-step family-truth pipeline:
+ *   1. POST /api/family-truth/note    → create shadow note (one per turn)
+ *   2. POST /api/family-truth/note/{id}/propose → batch of proposal items
+ *
+ * Writes are SKIPPED entirely for:
+ *   - reference narrators (Shatner/Dolly/…) — guarded by _wo13IsReferenceNarrator
+ *   - identity phase still in progress (handled by caller)
+ *
+ * The legacy /api/facts/add path is NOT used any more. Failures are silently
+ * ignored — this must never break the chat UI.
  */
 async function _extractAndPostFacts(userText, loriText){
   if(!state.person_id) return;
-  const facts = _extractFacts(userText, loriText);
-  if(!facts.length) return;
-  for(const f of facts){
-    try{
-      await fetch(API.FACTS_ADD, {
-        method:"POST", headers: ctype(), body: JSON.stringify(f),
-      });
-    }catch{ /* silently ignore network errors */ }
+  // Extra defence: reference narrators never get shadow writes.
+  if(typeof _wo13IsReferenceNarrator === "function"
+     && _wo13IsReferenceNarrator(state.person_id)) return;
+
+  // WO-9: Chunk long user turns before extraction for better coverage
+  const chunks = (typeof _wo8ChunkText === "function" && userText && userText.length > 1200)
+    ? _wo8ChunkText(userText, 1200) : [userText];
+
+  const allItems = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const items = _extractFacts(chunks[i], i === chunks.length - 1 ? loriText : "");
+    allItems.push(...items);
   }
-  if(facts.length){
-    console.log(`[facts] extracted ${facts.length} fact(s) from turn.`);
-    // v7.4D ISSUE-15: quietly refresh the archive readiness panel so the user
-    // sees the archive growing without any disruptive notification.
-    if(typeof updateArchiveReadiness === "function") updateArchiveReadiness();
+
+  // Deduplicate proposal items by (field, source_says)
+  const seen = new Set();
+  const deduped = [];
+  for (const it of allItems) {
+    const key = (it.field || "") + "::" + (it.source_says || "");
+    if (!seen.has(key)) { seen.add(key); deduped.push(it); }
   }
+  if(!deduped.length) return;
+
+  // Step 1 — create the shadow note for this turn.
+  let noteId = null;
+  try{
+    const sid = state.chat?.conv_id || "";
+    const turnIdx = state.chat?.turns?.length ?? 0;
+    const narratorName = (state.narratorUi?.currentNarratorName
+      || state.person?.display_name
+      || "ui").trim() || "ui";
+    const body = (userText || "").trim();
+    if(!body) return;
+    const noteReq = {
+      person_id: state.person_id,
+      body: body.slice(0, 8000),
+      source_kind: "chat",
+      source_ref: sid ? `${sid}:${turnIdx}` : String(turnIdx),
+      created_by: narratorName,
+    };
+    const res = await fetch(API.FT_NOTE_ADD, {
+      method: "POST", headers: ctype(), body: JSON.stringify(noteReq),
+    });
+    if(!res.ok){
+      if(res.status === 403){
+        console.log("[family-truth] reference narrator — note creation denied (403).");
+      }
+      return;
+    }
+    const data = await res.json().catch(()=>null);
+    noteId = data && data.note && data.note.id ? data.note.id : null;
+  }catch{ return; }
+  if(!noteId) return;
+
+  // Step 2 — derive structured proposal rows from the note.
+  try{
+    const res = await fetch(API.FT_NOTE_PROPOSE(noteId), {
+      method: "POST", headers: ctype(), body: JSON.stringify({ items: deduped }),
+    });
+    if(!res.ok) return;
+  }catch{ return; }
+
+  console.log(`[family-truth] shadow note ${noteId} → ${deduped.length} proposal row(s) from ${chunks.length} chunk(s).`);
+  if(typeof updateArchiveReadiness === "function") updateArchiveReadiness();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2581,6 +4467,9 @@ function connectWebSocket(){
     ws=new WebSocket(API.CHAT_WS);
     ws.onopen=()=>{
       wsReady=true; usingFallback=false; pill("pillWs",true);
+      console.log("[WO-11][chat-state] WS connected — clearing any stale error state");
+      // WO-11: Clear stale "chat unavailable" state on reconnect
+      setLoriState("ready");
       // WO-2: Send sync_session packet immediately on connect
       if(state.person_id){
         ws.send(JSON.stringify({type:"sync_session",person_id:state.person_id,
@@ -2601,6 +4490,11 @@ function connectWebSocket(){
 function _bubbleBody(el){ return el?.querySelector(".bubble-body")||el; }
 
 function handleWsMessage(j){
+  // WO-ARCH-07A PS2 — structured correction write-back from backend
+  if(j.type==="correction_payload"){
+    applyCorrectionPayload(j.parsed || {}, j.source_text || null);
+    return;
+  }
   if(j.type==="token"||j.type==="delta"){
     if(!currentAssistantBubble){
       currentAssistantBubble=appendBubble("ai","");
@@ -2631,6 +4525,14 @@ function handleWsMessage(j){
   }
   if(j.type==="done"){
     const text=j.final_text||(_bubbleBody(currentAssistantBubble)?.textContent||"");
+
+    // WO-ARCH-07A — propagate turn_mode from backend response
+    if (j.turn_mode) {
+      state.session.lastTurnMode = j.turn_mode;
+      state.session.turnMode = j.turn_mode;
+      state.session.pendingCorrection = (j.turn_mode === TURN_MEMORY_ECHO);
+    }
+
     onAssistantReply(text);
     if(text){
       setv("ivAnswer",text);
@@ -2719,15 +4621,70 @@ let _audioUnlocked = false;
 // auto-restarts are suppressed whenever this flag is set.
 let isLoriSpeaking = false;
 
+// WO-11E: TTS abort mechanism for trainer narration stop
+let _ttsAbortRequested = false;
+let _ttsCurrentSource = null; // current WebAudio BufferSource for mid-chunk abort
+
+/** WO-11E: Immediately stop all queued and playing TTS.
+ *  Used by trainer narration to halt speech on step change or trainer exit.
+ *  Safe to call at any time — no-ops gracefully if nothing is playing. */
+function stopAllTts() {
+  _ttsAbortRequested = true;
+  ttsQueue.length = 0;
+  if (_ttsCurrentSource) {
+    try { _ttsCurrentSource.stop(); } catch(_){}
+    _ttsCurrentSource = null;
+  }
+  if (_ttsAudio) {
+    try { _ttsAudio.pause(); _ttsAudio.currentTime = 0; } catch(_){}
+  }
+  console.log("[WO-11E] stopAllTts() — queue cleared, playback stopped");
+}
+window._wo11eStopTts = stopAllTts;
+
 function unlockAudio(){
   if(_audioUnlocked) return;
-  _audioUnlocked = true;
-  _ttsAudio = new Audio();
-  // Play silence immediately inside the gesture handler to whitelist the element.
-  const silence = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-  _ttsAudio.src = silence;
-  _ttsAudio.play().catch(()=>{});
+
+  // WO-10K: Canonical Web Audio API unlock pattern — create AudioContext,
+  // resume it, and play a 1-sample silent buffer via BufferSource. This is
+  // the most reliable way to satisfy Chrome's autoplay policy and works
+  // even in hidden/background tabs (which break HTMLAudioElement.play()).
+  try {
+    const ctx = window._lvAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    window._lvAudioCtx = ctx;
+    if (ctx.state === "suspended") ctx.resume().catch(()=>{});
+    // Play a 1-sample silent buffer to fully whitelist the context.
+    const silentBuf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = silentBuf;
+    src.connect(ctx.destination);
+    src.start(0);
+    _audioUnlocked = true;
+    console.log("[TTS] AudioContext unlocked via user gesture (state: " + ctx.state + ")");
+  } catch(e){
+    console.warn("[TTS] AudioContext unlock failed: " + (e && e.message || e));
+  }
+
+  // Also keep a persistent HTMLAudioElement as fallback path.
+  try {
+    _ttsAudio = new Audio();
+    _ttsAudio.preload = "auto";
+  } catch(_){}
 }
+
+// WO-10K: Global first-interaction listener — unlock audio on ANY user click/tap/key.
+// This ensures TTS works even if the user's first action isn't Send or Mic.
+(function(){
+  function _globalUnlock(){
+    unlockAudio();
+    document.removeEventListener("click", _globalUnlock, true);
+    document.removeEventListener("touchstart", _globalUnlock, true);
+    document.removeEventListener("keydown", _globalUnlock, true);
+  }
+  document.addEventListener("click", _globalUnlock, true);
+  document.addEventListener("touchstart", _globalUnlock, true);
+  document.addEventListener("keydown", _globalUnlock, true);
+})();
 
 // Strip markdown formatting so TTS doesn't read "asterisk asterisk" etc.
 function _stripMarkdownForTts(text){
@@ -2747,8 +4704,11 @@ function _stripMarkdownForTts(text){
     .trim();
 }
 
-// Split cleaned text into ≤400-char chunks at sentence boundaries.
-function _splitIntoTtsChunks(text, maxLen=400){
+// Split cleaned text into ≤1000-char chunks at sentence boundaries.
+// WO-11E-HL: Raised from 400 to 1000. Lori's trainer intro runs ~700 chars;
+// at 1000 the entire intro fits in a single TTS request, eliminating
+// the mid-sentence pause caused by inter-chunk fetch latency.
+function _splitIntoTtsChunks(text, maxLen=1000){
   const sentences = text.match(/[^.!?]+[.!?]+\s*/g) || [text];
   const chunks = [];
   let current = "";
@@ -2765,6 +4725,10 @@ function _splitIntoTtsChunks(text, maxLen=400){
 }
 
 function enqueueTts(text){
+  // WO-11E: Clear stale abort flag from a previous stopAllTts() call.
+  // Without this, a stop→enqueue sequence leaves the flag set and the
+  // new drainTts() immediately aborts.
+  _ttsAbortRequested = false;
   const cleaned = _stripMarkdownForTts(text);
   _splitIntoTtsChunks(cleaned).forEach(c => ttsQueue.push(c));
   if(!ttsBusy) drainTts();
@@ -2775,8 +4739,18 @@ async function drainTts(){
   // This prevents the STT engine from transcribing Lori's own voice.
   isLoriSpeaking=true;
   if(isRecording) stopRecording();
+  // WO-AUDIO-NARRATOR-ONLY-01: TTS gate ON.  Drops any in-progress
+  // narrator-audio segment without uploading (Lori-audio defense).
+  if (typeof window.lvNarratorAudioRecorder === "object" && window.lvNarratorAudioRecorder.gate) {
+    try { window.lvNarratorAudioRecorder.gate(true); } catch (e) { console.warn("[narrator-audio] gate(true) threw:", e); }
+  }
+  // WO-MIC-UI-02A: Show WAIT state so narrator knows Lori has the floor.
+  // stopRecording() sets MIC OFF, but we override to WAIT while Lori speaks.
+  _setMicVisual("wait");
   try {
     while(ttsQueue.length){
+      // WO-11E: Check abort flag between chunks (trainer stop)
+      if (_ttsAbortRequested) { console.log("[WO-11E] TTS abort — breaking drain loop"); break; }
       const chunk=ttsQueue.shift();
       try{
         const r=await fetch(TTS_ORIG+"/api/tts/speak_stream",{method:"POST",headers:ctype(),
@@ -2791,12 +4765,84 @@ async function drainTts(){
           const raw=atob(obj.wav_b64);
           const bytes=new Uint8Array(raw.length);
           for(let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i);
-          const blob=new Blob([bytes],{type:"audio/wav"});
-          const url=URL.createObjectURL(blob);
-          const a=_ttsAudio||new Audio();
-          a.src=url;
-          await new Promise(res=>{ a.onended=a.onerror=res; a.play().catch(res); });
-          URL.revokeObjectURL(url);
+
+          // WO-10K: Use Web Audio API (AudioContext + BufferSource) instead of
+          // HTMLAudioElement. HTMLAudioElement.play() hangs on blob URLs in hidden
+          // tabs and has flaky autoplay whitelisting. AudioContext is already
+          // running (unlocked by first user gesture) and has reliable onended.
+          let playedViaWebAudio = false;
+          if (window._lvAudioCtx) {
+            try {
+              if (window._lvAudioCtx.state === "suspended") {
+                try { await window._lvAudioCtx.resume(); } catch(_){}
+              }
+              // decodeAudioData mutates the buffer, so pass a copy
+              const audioBuffer = await window._lvAudioCtx.decodeAudioData(bytes.buffer.slice(0));
+              await new Promise(res => {
+                const src = window._lvAudioCtx.createBufferSource();
+                _ttsCurrentSource = src; // WO-11E: store for abort
+                src.buffer = audioBuffer;
+                src.connect(window._lvAudioCtx.destination);
+                // Safety timeout: duration + 2s margin
+                const safetyMs = Math.ceil(audioBuffer.duration * 1000) + 2000;
+                const _playTimeout = setTimeout(() => {
+                  console.warn("[TTS] WebAudio playback timed out after " + safetyMs + "ms — forcing continue");
+                  try { src.stop(); } catch(_){}
+                  res();
+                }, safetyMs);
+                src.onended = () => { clearTimeout(_playTimeout); res(); };
+                try {
+                  src.start(0);
+                  // WO-11E-HL: Signal the exact moment audio begins playing.
+                  // The highlight sequencer waits for this instead of guessing.
+                  if (typeof window._wo11eTtsPlaybackStarted === "function") {
+                    try { window._wo11eTtsPlaybackStarted(); } catch(_){}
+                    window._wo11eTtsPlaybackStarted = null; // fire only once per narration
+                  }
+                } catch(e) {
+                  clearTimeout(_playTimeout);
+                  console.warn("[TTS] WebAudio start failed: " + e.message);
+                  res();
+                }
+              });
+              playedViaWebAudio = true;
+            } catch(e) {
+              console.warn("[TTS] WebAudio decode/play failed, falling back to HTMLAudio: " + (e && e.message || e));
+            }
+          }
+
+          // Fallback: HTMLAudioElement (only if WebAudio path didn't run)
+          if (!playedViaWebAudio) {
+            const blob=new Blob([bytes],{type:"audio/wav"});
+            const url=URL.createObjectURL(blob);
+            const a=_ttsAudio||new Audio();
+            a.src=url;
+            if(!_audioUnlocked){
+              console.warn("[TTS] Audio not unlocked yet — skipping chunk (waiting for user gesture)");
+              URL.revokeObjectURL(url);
+              continue;
+            }
+            // WO-10J/K: Timeout safeguard — prevents isLoriSpeaking from getting
+            // stuck if audio.play() hangs for any reason (network, decode, edge case).
+            await new Promise(res=>{
+              const _playTimeout=setTimeout(()=>{
+                console.warn("[TTS] HTMLAudio playback timed out after 15s — forcing continue");
+                try{ a.pause(); a.currentTime=0; }catch(_){}
+                res();
+              }, 15000);
+              const _done=()=>{ clearTimeout(_playTimeout); res(); };
+              a.onended=_done;
+              a.onerror=_done;
+              a.play().then(()=>{
+                // WO-11E-HL: Signal playback started (HTMLAudio fallback path)
+                if (typeof window._wo11eTtsPlaybackStarted === "function") {
+                  try { window._wo11eTtsPlaybackStarted(); } catch(_){}
+                  window._wo11eTtsPlaybackStarted = null;
+                }
+              }).catch(_done);
+            });
+            URL.revokeObjectURL(url);
+          }
         }
       }catch{}
     }
@@ -2806,6 +4852,31 @@ async function drainTts(){
     // stuck true permanently, silently suppressing all STT forever.
     isLoriSpeaking=false;
     ttsBusy=false;
+    // WO-AUDIO-NARRATOR-ONLY-01: TTS gate OFF.  Recorder will wait
+    // 700ms before clearing the gate (audible-but-flag-cleared edge).
+    if (typeof window.lvNarratorAudioRecorder === "object" && window.lvNarratorAudioRecorder.gate) {
+      try { window.lvNarratorAudioRecorder.gate(false); } catch (e) { console.warn("[narrator-audio] gate(false) threw:", e); }
+    }
+    // WO-11E: Reset abort state and clear source ref
+    _ttsAbortRequested = false;
+    _ttsCurrentSource = null;
+    // WO-MIC-UI-02A: Clear WAIT visual now that Lori is done speaking.
+    // If WO-10H auto-starts recording below, startRecording() will set LISTENING.
+    _setMicVisual(false);
+
+    // WO-11E: Trainer narration completion callback
+    if (typeof window._wo11eTtsFinishedCallback === "function") {
+      try { window._wo11eTtsFinishedCallback(); } catch(_){}
+      window._wo11eTtsFinishedCallback = null;
+    }
+
+    // WO-10H: Record TTS finish time and transition narrator turn-claim if pending.
+    if (state.narratorTurn) {
+      state.narratorTurn.ttsFinishedAt = Date.now();
+      if (state.narratorTurn.state === "awaiting_tts_end") {
+        _wo10hTransitionToArmed();
+      }
+    }
   }
 }
 
@@ -2830,7 +4901,27 @@ async function drainTts(){
    Invariant: isLoriSpeaking must NEVER be left stuck at true.
    The finally{} block in drainTts() is the enforced safety net.
 ═══════════════════════════════════════════════════════════════ */
-function toggleRecording(){ unlockAudio(); isRecording?stopRecording():startRecording(); }
+function toggleRecording(){
+  // WO-11C: Block mic while trainer mode is active.
+  if (_wo11cIsTrainerActive()) {
+    console.log("[WO-11C] toggleRecording() BLOCKED — trainer mode active");
+    if (typeof sysBubble === "function") {
+      sysBubble("Complete the trainer first, then we\u2019ll begin your interview.");
+    }
+    return;
+  }
+  // WO-MIC-UI-02A: Targeted debug logging — mic click entry point
+  console.log("[WO-MIC-UI-02A] toggleRecording() — isRecording:", isRecording,
+    "isLoriSpeaking:", isLoriSpeaking,
+    "FocusCanvas open:", (typeof FocusCanvas !== "undefined" && FocusCanvas.isOpen && FocusCanvas.isOpen()));
+  unlockAudio();
+  // WO-10H: If Lori is still speaking TTS, claim next turn instead of starting immediately.
+  if (isLoriSpeaking && !isRecording) {
+    _wo10hClaimTurn();
+    return;
+  }
+  isRecording?stopRecording():startRecording();
+}
 // HTML button calls toggleMic() — alias to toggleRecording.
 function toggleMic(){ toggleRecording(); }
 // Normalise spoken punctuation words produced by Web Speech API.
@@ -2861,6 +4952,9 @@ function _normalisePunctuation(t){
 // v7.4D — Voice send commands. Any of these exact phrases (case-insensitive,
 // trimmed) will trigger Send instead of being typed into the input box.
 const _SEND_COMMANDS = new Set(["send","send it","okay send","ok send","go ahead","send message"]);
+// WO-9: Voice send shortcut disabled by default — elderly narrators trigger it accidentally.
+// Set window._wo9VoiceSendEnabled = true in console or config to re-enable.
+let _wo9VoiceSendEnabled = window._wo9VoiceSendEnabled || false;
 
 function _ensureRecognition(){
   if(recognition) return recognition;
@@ -2879,26 +4973,69 @@ function _ensureRecognition(){
     if(!fin) return;
     const trimmed=fin.trim().toLowerCase();
     // v7.4D — check for voice send command before appending to input.
-    if(_SEND_COMMANDS.has(trimmed)){
+    // WO-9: Only if voice send is explicitly enabled
+    if(_wo9VoiceSendEnabled && _SEND_COMMANDS.has(trimmed)){
       stopRecording();
       sendUserMessage();
       return;
     }
-    setv("chatInput",getv("chatInput")+_normalisePunctuation(fin));
+    const _normalized02a = _normalisePunctuation(fin);
+    setv("chatInput",getv("chatInput")+_normalized02a);
+    // WO-MIC-UI-02A: Confirm text reaches main surface
+    console.log("[WO-MIC-UI-02A] Final text → #chatInput:", _normalized02a.slice(0, 60));
+    // WO-STT-LIVE-02 (#99) — stage the final transcript so the extraction
+    // payload builder can attach source="web_speech" + confidence +
+    // fragile-fact flags. No-op if transcript-guard didn't load.
+    try {
+      if (window.TranscriptGuard && typeof window.TranscriptGuard.populateFromRecognition === "function") {
+        window.TranscriptGuard.populateFromRecognition(e, {
+          normalize: _normalisePunctuation,
+          turnId:    (state.interview && state.interview.session_id) ? ("turn-" + Date.now()) : null,
+        });
+      }
+    } catch (_guardErr) {
+      console.warn("[STT-guard] stage failed:", _guardErr && _guardErr.message);
+    }
   };
   // v7.4D — only auto-restart if user explicitly left mic on AND Lori is not speaking.
   // This prevents the engine from restarting mid-TTS and catching Lori's audio.
   recognition.onend=()=>{ if(isRecording && !isLoriSpeaking){ try{ recognition.start(); }catch(e){ console.warn("[STT] auto-restart failed:",e.message); } } };
+  // WO-07: no-speech error cascade mitigation for elderly narrators.
+  // Web Speech API fires no-speech every ~5s during silence (Kent's natural pauses).
+  // Counter tracks consecutive no-speech events; backoff reduces log spam.
+  let _noSpeechCount = 0;
+  const _NO_SPEECH_LOG_INTERVAL = 5;  // Only log every Nth no-speech event
+  // WO-MIC-UI-02A: Raised from 10 to 20 — Kent and Janice pause naturally for
+  // 30-90 seconds while thinking. 10 events (~50s) was too aggressive.
+  const _NO_SPEECH_GENTLE_THRESHOLD = 20;  // After 20, show gentle nudge once
+
+  recognition.onresult = (function(origOnResult) {
+    return function(e) {
+      _noSpeechCount = 0;  // Reset on any speech detected
+      return origOnResult(e);
+    };
+  })(recognition.onresult);
+
   // v8.0 — error handler: surface recognition failures to the user.
   recognition.onerror=e=>{
-    console.error("[STT] recognition error:",e.error,e.message);
     if(e.error==="not-allowed"){
+      console.error("[STT] recognition error:",e.error,e.message);
       stopRecording();
+      // WO-MIC-UI-02A: Show persistent BLOCKED visual state
+      _setMicVisual("blocked");
       sysBubble("🎤 Microphone access was denied. Please allow microphone in your browser settings and try again.");
     } else if(e.error==="no-speech"){
-      // Benign — no speech detected, recognition will auto-restart via onend
-      console.log("[STT] no speech detected — waiting…");
+      // WO-07: Suppress cascade — only log periodically, gentle nudge after threshold
+      _noSpeechCount++;
+      if(_noSpeechCount % _NO_SPEECH_LOG_INTERVAL === 1){
+        console.log("[STT] no speech detected (count: " + _noSpeechCount + ") — waiting…");
+      }
+      if(_noSpeechCount === _NO_SPEECH_GENTLE_THRESHOLD && typeof sysBubble === "function"){
+        // WO-MIC-UI-02A: Calmer message — Kent/Janice may be gathering thoughts
+        sysBubble("🎤 The microphone is still on — no rush, speak whenever you're ready.");
+      }
     } else if(e.error==="network"){
+      console.error("[STT] recognition error:",e.error,e.message);
       stopRecording();
       sysBubble("🎤 Speech recognition requires an internet connection (Chrome sends audio to Google's servers). Please check your connection.");
     } else if(e.error==="service-not-allowed"){
@@ -2913,12 +5050,37 @@ function _ensureRecognition(){
   return recognition;
 }
 function startRecording(){
+  // WO-11C: Block mic start while trainer mode is active.
+  if (_wo11cIsTrainerActive()) {
+    console.log("[WO-11C] startRecording() BLOCKED — trainer mode active");
+    return;
+  }
   const r=_ensureRecognition(); if(!r) return;
+  // BUG-219: snapshot any text the narrator already typed BEFORE we
+  // start collecting STT chunks.  WO-8 voice-turn accumulator joins
+  // _wo8VoiceTurnChunks into chatInput; without a snapshot of the
+  // pre-mic draft, that overwrites typed text.  We prepend this
+  // snapshot when rendering the chunks.  Cleared on send / finalize.
+  try {
+    const _existingDraft = (typeof getv === "function" ? getv("chatInput") : "") || "";
+    // Only capture if there's something meaningful to preserve AND we're
+    // not already in a voice-turn (re-arm should not overwrite the snapshot).
+    if (_existingDraft.trim().length > 0 && !_wo8LongTurnMode && _wo8VoiceTurnChunks.length === 0) {
+      _wo8PreMicDraft = _existingDraft;
+      console.log("[BUG-219] pre-mic draft snapshot: " + JSON.stringify(_existingDraft.slice(0, 60)));
+    }
+  } catch (_) {}
   try{
     r.start(); isRecording=true;
     _setMicVisual(true);
     setLoriState("listening");
     console.log("[STT] recognition started");
+    // WO-AUDIO-NARRATOR-ONLY-01: arm audio segment alongside STT.
+    // Recorder gates itself on isLoriSpeaking and recordVoice toggle;
+    // a no-op when those are off.
+    if (typeof window.lvNarratorAudioRecorder === "object" && window.lvNarratorAudioRecorder.start) {
+      try { window.lvNarratorAudioRecorder.start(); } catch (e) { console.warn("[narrator-audio] start threw:", e); }
+    }
   }catch(e){
     console.error("[STT] start() failed:",e.message);
     // "already started" — just update state
@@ -2937,15 +5099,39 @@ function stopRecording(){
 }
 // v8.0 — mic button visual state. Adds/removes a CSS class instead of
 // replacing innerHTML (which destroyed the SVG icon).
+/* WO-MIC-UI-02A: Expanded mic visual states.
+   States: true/"listening" (red pulse), false/"off" (grey), "wait" (amber),
+           "blocked" (red static, no pulse).
+   The label and button styling communicate clearly to elderly narrators what
+   the mic is doing at all times. */
 function _setMicVisual(active){
   const btn=document.getElementById("btnMic");
   if(!btn) return;
-  if(active){
+  const label=document.getElementById("btnMicLabel");
+
+  // Clear all mic state classes first
+  btn.classList.remove("mic-active", "mic-wait", "mic-blocked");
+  if(label) label.classList.remove("mic-label-active", "mic-label-wait", "mic-label-blocked");
+
+  if(active === "wait"){
+    // WAIT — LORI IS SPEAKING: amber glow, narrator knows Lori has the floor
+    btn.classList.add("mic-wait");
+    btn.title="Lori is speaking — mic will resume when she finishes";
+    if(label){ label.textContent="WAIT — LORI IS SPEAKING"; label.classList.add("mic-label-wait"); }
+    console.log("[WO-MIC-UI-02A] Mic visual → WAIT (Lori speaking)");
+  } else if(active === "blocked"){
+    // BLOCKED — permission denied or hardware unavailable
+    btn.classList.add("mic-blocked");
+    btn.title="Microphone is blocked — check browser permissions";
+    if(label){ label.textContent="MIC BLOCKED"; label.classList.add("mic-label-blocked"); }
+    console.log("[WO-MIC-UI-02A] Mic visual → BLOCKED");
+  } else if(active){
     btn.classList.add("mic-active");
     btn.title="Microphone is on — click to stop";
+    if(label){ label.textContent="LISTENING"; label.classList.add("mic-label-active"); }
   } else {
-    btn.classList.remove("mic-active");
     btn.title="Click to toggle microphone";
+    if(label){ label.textContent="MIC OFF"; }
   }
 }
 
@@ -3006,6 +5192,11 @@ function initTimelineSpine() {
   renderTimeline();
   updateArchiveReadiness();
   sysBubble("◉ Timeline spine initialized — Pass 2A (Timeline Walk) ready.");
+
+  // WO-CR-01: Initialize chronology accordion after spine is ready
+  if (typeof crInitAccordion === "function") {
+    try { crInitAccordion(); } catch (_) {}
+  }
 }
 
 /* ── v7.1 — update all runtime badge elements in the UI ──── */
@@ -3051,6 +5242,1291 @@ function update71RuntimeUI() {
   const sumSeed = document.getElementById("summarySeed");
   if (sumSeed) sumSeed.classList.toggle("hidden", !spineReady);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-8 — TRANSCRIPT HISTORY, THREAD ANCHOR, VOICE TURN
+           IMPROVEMENTS, AND RESUME LOGIC
+   Kent Interaction Fixes: Voice Continuity, Transcript History,
+   Resume, and Long-Turn Reliability.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── WO-8 Phase 2: Transcript History ────────────────────────── */
+
+/**
+ * Load and display archived transcript history when a narrator is opened.
+ * Replaces the blank chat area with prior conversation turns.
+ * Each turn shows speaker label and timestamp.
+ */
+async function wo8LoadTranscriptHistory(pid) {
+  if (!pid) return;
+  try {
+    const url = API.TRANSCRIPT_HISTORY(pid, "");
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) { console.log("[WO-8] No transcript history for", pid); return; }
+    const data = await res.json();
+    const events = data.events || [];
+    if (!events.length) { console.log("[WO-8] Transcript empty for", pid); return; }
+
+    const chatEl = document.getElementById("chatMessages");
+    if (!chatEl) return;
+
+    // Clear existing bubbles before loading history
+    chatEl.innerHTML = "";
+
+    // Add session divider
+    const divider = document.createElement("div");
+    divider.className = "wo8-session-divider";
+    divider.innerHTML = '<span class="wo8-divider-label">Prior conversation</span>';
+    chatEl.appendChild(divider);
+
+    // Render each archived turn (WO-9: filter/collapse system messages)
+    events.forEach(ev => {
+      const role = (ev.role || "").toLowerCase();
+      const content = (ev.content || "").trim();
+      if (!content) return;
+
+      // WO-9: Classify system messages and skip internal ones
+      const isSystemMsg = content.startsWith("[SYSTEM:") || role === "system";
+      if (isSystemMsg) {
+        // Skip internal system prompts — don't show to narrator
+        // But log for debugging
+        console.log("[WO-9] Skipping system message in transcript render:", content.slice(0, 60));
+        return;
+      }
+
+      const bubbleRole = role === "assistant" ? "ai" : role === "user" ? "user" : "sys";
+      const bubble = appendBubble(bubbleRole, content);
+
+      // Add timestamp badge if available
+      if (ev.ts && bubble) {
+        try {
+          const dt = new Date(ev.ts);
+          const timeStr = dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          const dateStr = dt.toLocaleDateString([], { month: "short", day: "numeric" });
+          const tsBadge = document.createElement("div");
+          tsBadge.className = "wo8-timestamp";
+          tsBadge.textContent = `${dateStr} ${timeStr}`;
+          bubble.appendChild(tsBadge);
+        } catch (_) {}
+      }
+    });
+
+    // Add a separator before new conversation
+    const newDiv = document.createElement("div");
+    newDiv.className = "wo8-session-divider";
+    newDiv.innerHTML = '<span class="wo8-divider-label">Continuing</span>';
+    chatEl.appendChild(newDiv);
+
+    // Scroll to bottom
+    if (typeof window._scrollChatToBottom === "function") {
+      window._scrollChatToBottom();
+    } else {
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    console.log("[WO-8] Loaded", events.length, "transcript events for", pid.slice(0, 8));
+  } catch (e) {
+    console.log("[WO-8] Transcript history load failed:", e.message);
+  }
+}
+
+/**
+ * Export transcript for current narrator.
+ * Opens download link for .txt or .json format.
+ */
+function wo8ExportTranscript(format, allSessions) {
+  const pid = state.person_id;
+  if (!pid) { sysBubble("No narrator selected."); return; }
+  let url;
+  if (allSessions) {
+    // WO-9: Export all sessions combined
+    url = format === "json"
+      ? API.TRANSCRIPT_EXPORT_ALL_JSON(pid)
+      : API.TRANSCRIPT_EXPORT_ALL_TXT(pid);
+  } else {
+    url = format === "json"
+      ? API.TRANSCRIPT_EXPORT_JSON(pid, "")
+      : API.TRANSCRIPT_EXPORT_TXT(pid, "");
+  }
+  window.open(url, "_blank");
+}
+window.wo8ExportTranscript = wo8ExportTranscript;
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-10 Phase 6: Transcript Viewer
+   Phase 7: Resume Preview
+   Phase 8: Session Timeline
+   Rendered in #wo10TranscriptPopover tabs.
+═══════════════════════════════════════════════════════════════ */
+
+let _wo10ShowSystem = false;
+
+function wo10SwitchTab(tabName) {
+  document.querySelectorAll(".wo10-tab").forEach(t => t.classList.toggle("active", t.dataset.wo10Tab === tabName));
+  document.getElementById("wo10TabTranscript").style.display = tabName === "transcript" ? "" : "none";
+  document.getElementById("wo10TabResume").style.display = tabName === "resume" ? "" : "none";
+  document.getElementById("wo10TabTimeline").style.display = tabName === "timeline" ? "" : "none";
+  // Load data on tab switch
+  if (tabName === "transcript") wo10LoadTranscriptViewer();
+  if (tabName === "resume") wo10LoadResumePreview();
+  if (tabName === "timeline") wo10LoadSessionTimeline();
+}
+window.wo10SwitchTab = wo10SwitchTab;
+
+function wo10ToggleSystemMessages() {
+  _wo10ShowSystem = !_wo10ShowSystem;
+  const btn = document.getElementById("wo10ToggleSystem");
+  if (btn) btn.textContent = _wo10ShowSystem ? "Hide System" : "Show System";
+  document.querySelectorAll(".wo10-event.system").forEach(el => {
+    el.classList.toggle("show-system", _wo10ShowSystem);
+  });
+}
+window.wo10ToggleSystemMessages = wo10ToggleSystemMessages;
+
+function wo10ClassifyEvent(evt) {
+  const text = String(evt?.content || "");
+  const role = (evt?.role || "").toLowerCase();
+  if (text.startsWith("[SYSTEM:") || role === "system") return "system";
+  if (role === "assistant") return "lori";
+  return "narrator";
+}
+
+async function wo10LoadTranscriptViewer() {
+  const pid = state.person_id;
+  const container = document.getElementById("wo10TranscriptContent");
+  if (!container || !pid) {
+    if (container) container.innerHTML = '<p style="color:#64748b">No narrator selected.</p>';
+    return;
+  }
+  container.innerHTML = '<p style="color:#64748b">Loading transcript...</p>';
+
+  try {
+    // Load sessions list first
+    const sessRes = await fetch(API.TRANSCRIPT_SESSIONS(pid), { signal: AbortSignal.timeout(8000) });
+    if (!sessRes.ok) throw new Error("No sessions");
+    const sessData = await sessRes.json();
+    const sessions = (sessData.sessions || []).sort((a, b) => (a.started_at || "").localeCompare(b.started_at || ""));
+
+    // Load last 2 sessions for display
+    const recentSessions = sessions.slice(-2);
+    let html = "";
+
+    for (const sess of recentSessions) {
+      const sid = sess.session_id;
+      const evtRes = await fetch(API.TRANSCRIPT_HISTORY(pid, sid), { signal: AbortSignal.timeout(8000) });
+      if (!evtRes.ok) continue;
+      const evtData = await evtRes.json();
+      const events = evtData.events || [];
+
+      // Session divider
+      const dateStr = sess.started_at ? new Date(sess.started_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "";
+      html += `<div class="wo10-divider">${sess.title || "Session"} ${dateStr ? " — " + dateStr : ""}</div>`;
+
+      for (const evt of events) {
+        const cls = wo10ClassifyEvent(evt);
+        const roleName = cls === "narrator" ? (state.profile?.basics?.preferred || "Narrator")
+          : cls === "lori" ? "Lori" : "System";
+        let tsStr = "";
+        if (evt.ts) {
+          try { tsStr = new Date(evt.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+          catch (_) {}
+        }
+        const content = (evt.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        html += `<div class="wo10-event ${cls}${_wo10ShowSystem && cls === "system" ? " show-system" : ""}">`;
+        html += `<div class="wo10-event-role">${roleName}${tsStr ? `<span class="wo10-event-ts">${tsStr}</span>` : ""}</div>`;
+        html += `<div class="wo10-event-text">${content}</div></div>`;
+      }
+    }
+
+    container.innerHTML = html || '<p style="color:#64748b">No transcript events found.</p>';
+  } catch (e) {
+    container.innerHTML = `<p style="color:#f87171">Failed to load transcript: ${e.message}</p>`;
+  }
+}
+
+async function wo10LoadResumePreview() {
+  const pid = state.person_id;
+  const container = document.getElementById("wo10ResumeContent");
+  if (!container || !pid) {
+    if (container) container.innerHTML = '<p style="color:#64748b">No narrator selected.</p>';
+    return;
+  }
+  container.innerHTML = '<p style="color:#64748b">Loading resume preview...</p>';
+
+  try {
+    const res = await fetch(API.RESUME_PREVIEW(pid), { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error("No preview data");
+    const data = await res.json();
+
+    const conf = data.confidence || {};
+    const confLevel = conf.level || "low";
+    const confScore = ((conf.score || 0) * 100).toFixed(0);
+    const thread = data.selected_thread;
+    const threads = data.all_threads || [];
+    const scoredItems = data.scored_items || [];
+    const recentTurns = data.recent_turns || [];
+    const narName = state.profile?.basics?.preferred || "Narrator";
+
+    let html = "";
+
+    // Confidence card
+    html += '<div class="wo10-resume-card">';
+    html += `<div class="wo10-resume-label">Resume Confidence</div>`;
+    html += `<span class="wo10-confidence ${confLevel}">${confLevel.toUpperCase()} (${confScore}%)</span>`;
+    if (conf.reasons) {
+      html += `<div style="margin-top:8px;font-size:12px;color:#64748b">${conf.reasons.join(", ")}</div>`;
+    }
+    html += '</div>';
+
+    // Selected thread
+    if (thread) {
+      html += '<div class="wo10-resume-card">';
+      html += '<div class="wo10-resume-label">Selected Thread</div>';
+      html += `<div class="wo10-resume-value">${thread.topic_label || "General"}</div>`;
+      if (thread.subtopic_label) html += `<div style="font-size:12px;color:#94a3b8">Subtopic: ${thread.subtopic_label}</div>`;
+      if (thread.related_era) html += `<div style="font-size:12px;color:#94a3b8">Era: ${thread.related_era}</div>`;
+      if (thread.summary) html += `<div style="margin-top:6px;font-size:13px;color:#e2e8f0">${thread.summary.slice(0, 250)}</div>`;
+      html += '</div>';
+    }
+
+    // All threads (with override buttons)
+    if (threads.length > 0) {
+      html += '<div class="wo10-resume-card">';
+      html += '<div class="wo10-resume-label">Active Threads</div>';
+      for (const t of threads) {
+        const isSelected = thread && t.thread_id === thread.thread_id;
+        html += `<span class="wo10-thread-chip ${t.status || 'active'}"`;
+        html += ` onclick="wo10SelectThread('${t.thread_id}')"`;
+        html += ` title="${t.summary ? t.summary.slice(0, 100) : ''}"`;
+        html += `>${isSelected ? "▶ " : ""}${t.topic_label || "?"} (${(t.score || 0).toFixed(1)})</span>`;
+      }
+      html += '</div>';
+    }
+
+    // Key memory items
+    if (scoredItems.length > 0) {
+      html += '<div class="wo10-resume-card">';
+      html += '<div class="wo10-resume-label">Key Memory</div>';
+      for (const item of scoredItems.slice(0, 6)) {
+        const kind = item.kind || "fact";
+        html += `<div style="font-size:13px;margin-bottom:4px;color:#e2e8f0">[${kind}] ${(item.text || "").slice(0, 120)}</div>`;
+      }
+      html += '</div>';
+    }
+
+    // Recent turns
+    if (recentTurns.length > 0) {
+      html += '<div class="wo10-resume-card">';
+      html += '<div class="wo10-resume-label">Recent Exchange</div>';
+      for (const t of recentTurns) {
+        const role = (t.role || "").toLowerCase() === "user" ? narName : "Lori";
+        html += `<div style="font-size:13px;margin-bottom:4px"><strong>${role}:</strong> ${(t.content || "").slice(0, 150)}</div>`;
+      }
+      html += '</div>';
+    }
+
+    // Operator controls
+    html += '<div style="margin-top:16px">';
+    html += '<button class="wo10-btn primary" onclick="wo10UseResume(\'use\')">Use This Resume</button>';
+    html += '<button class="wo10-btn" onclick="wo10UseResume(\'continue\')">Continue Last Topic</button>';
+    html += '<button class="wo10-btn" onclick="wo10UseResume(\'fresh\')">Start Fresh Gently</button>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<p style="color:#f87171">Failed to load resume preview: ${e.message}</p>`;
+  }
+}
+
+function wo10SelectThread(threadId) {
+  state.wo10 = state.wo10 || {};
+  state.wo10.manualResumeThreadId = threadId;
+  console.log("[WO-10] Operator selected thread:", threadId);
+  // Refresh preview
+  wo10LoadResumePreview();
+}
+window.wo10SelectThread = wo10SelectThread;
+
+function wo10UseResume(action) {
+  const pid = state.person_id;
+  if (!pid) return;
+  const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
+
+  let prompt = "";
+  if (action === "use") {
+    // Build and send the resume prompt immediately
+    _wo9BuildResumePrompt(pid).then(p => {
+      if (p && _llmReady) sendSystemPrompt(p);
+      else if (p) wo9SendOrQueueSystemPrompt(p);
+    });
+    console.log("[WO-10] Operator: use selected resume");
+  } else if (action === "continue") {
+    prompt = `[SYSTEM: ${name} is returning. Continue from whatever topic was active last time. Welcome them warmly and ask ONE follow-up question.]`;
+    if (_llmReady) sendSystemPrompt(prompt); else wo9SendOrQueueSystemPrompt(prompt);
+    console.log("[WO-10] Operator: continue last topic");
+  } else if (action === "fresh") {
+    prompt = `[SYSTEM: ${name} is returning. Start fresh gently — ask where they'd like to begin today without assuming any topic. Be warm and open.]`;
+    if (_llmReady) sendSystemPrompt(prompt); else wo9SendOrQueueSystemPrompt(prompt);
+    console.log("[WO-10] Operator: start fresh");
+  }
+
+  // Close the popover
+  try { document.getElementById("wo10TranscriptPopover")?.hidePopover(); } catch (_) {}
+}
+window.wo10UseResume = wo10UseResume;
+
+async function wo10LoadSessionTimeline() {
+  const pid = state.person_id;
+  const container = document.getElementById("wo10TimelineContent");
+  if (!container || !pid) {
+    if (container) container.innerHTML = '<p style="color:#64748b">No narrator selected.</p>';
+    return;
+  }
+  container.innerHTML = '<p style="color:#64748b">Loading timeline...</p>';
+
+  try {
+    const res = await fetch(API.SESSION_TIMELINE(pid), { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error("No timeline data");
+    const data = await res.json();
+    const sessions = data.sessions || [];
+
+    if (!sessions.length) {
+      container.innerHTML = '<p style="color:#64748b">No sessions yet.</p>';
+      return;
+    }
+
+    let html = '<div style="font-size:12px;color:#64748b;margin-bottom:12px">Session history and dominant threads</div>';
+    for (const s of sessions) {
+      const dateStr = s.started_at ? new Date(s.started_at).toLocaleDateString([], { month: "short", day: "numeric" }) : "?";
+      const topic = s.topic_label || "(no topic detected)";
+      const era = s.active_era ? ` [${s.active_era.replace(/_/g, " ")}]` : "";
+      html += `<div class="wo10-timeline-row">`;
+      html += `<div class="wo10-timeline-date">${dateStr}</div>`;
+      html += `<div class="wo10-timeline-topic">${topic}${era}</div>`;
+      html += `<div class="wo10-timeline-turns">${s.turn_count || 0} turns</div>`;
+      html += `</div>`;
+    }
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<p style="color:#f87171">Failed to load timeline: ${e.message}</p>`;
+  }
+}
+
+// Auto-load transcript when popover opens
+(function() {
+  const pop = document.getElementById("wo10TranscriptPopover");
+  if (pop) {
+    pop.addEventListener("toggle", (e) => {
+      if (e.newState === "open") wo10LoadTranscriptViewer();
+    });
+  }
+})();
+
+/* ── WO-8 Phase 3: Voice Turn Improvements ───────────────────── */
+
+/**
+ * WO-10B: Transcript growth tracker for no-interruption engine.
+ * Updated every time we get a final speech recognition result.
+ * lv80FireCheckIn() checks this to avoid interrupting active speech.
+ */
+let _wo10bLastTranscriptGrowthTs = 0;
+window._wo10bLastTranscriptGrowthTs = 0;  // expose for idle guard
+
+/**
+ * WO-10B: Conversation state tracker for no-interruption engine.
+ * Updated after each narrator turn finalization.
+ */
+let _wo10bCurrentConversationState = null;
+window._wo10bCurrentConversationState = null;  // expose for idle guard
+
+/**
+ * WO-8 voice turn state.
+ * Tracks long-turn capture mode with operator controls.
+ */
+let _wo8VoicePaused = false;
+let _wo8VoiceTurnChunks = [];  // accumulate speech chunks for the current turn
+let _wo8VoiceTurnStart = null;
+let _wo8LongTurnMode = false;  // true when narrator is in extended speech
+/* BUG-219: pre-mic typed draft preservation.
+   When the narrator types something then toggles the mic on, the WO-8
+   voice-turn accumulator was overwriting chatInput with chunks.join(" "),
+   wiping any text the narrator had typed.  Now we snapshot the existing
+   chatInput value at mic-arm time and prepend it to the chunks display.
+   Cleared on send or finalize.  Acceptance per BUG-219:
+     1. Type "My father was"  →  2. Click mic  →  3. Say "Kent Horne"
+     4. chatInput should read "My father was Kent Horne"  (not just "Kent Horne") */
+let _wo8PreMicDraft = "";
+
+/**
+ * WO-8: Enhanced recognition result handler that accumulates speech
+ * chunks without auto-sending, allowing long natural pauses.
+ * The narrator must explicitly end their turn (Done button or voice command).
+ */
+function _wo8HandleRecognitionResult(e) {
+  // Guard: if Lori is speaking, discard
+  if (isLoriSpeaking) {
+    console.warn("[WO-8 STT] Recognition while Lori speaking — discarded.");
+    return;
+  }
+  // Guard: if paused
+  if (_wo8VoicePaused) return;
+
+  let fin = "";
+  let interim = "";
+  for (let i = e.resultIndex; i < e.results.length; i++) {
+    if (e.results[i].isFinal) {
+      fin += e.results[i][0].transcript;
+    } else {
+      interim += e.results[i][0].transcript;
+    }
+  }
+
+  // WO-MIC-UI-02A: wo8VoiceStatus was a competing interim display. Keep updating
+  // for diagnostics but ensure it stays hidden — narrator sees only #chatInput.
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl && interim) {
+    statusEl.textContent = interim;
+    statusEl.className = "wo8-voice-status wo8-listening wo8-hidden";
+  }
+
+  if (!fin) return;
+
+  // WO-10B: Stamp transcript growth — narrator is actively speaking
+  _wo10bLastTranscriptGrowthTs = Date.now();
+  window._wo10bLastTranscriptGrowthTs = _wo10bLastTranscriptGrowthTs;
+
+  const normalized = _normalisePunctuation(fin);
+  const trimmed = normalized.trim().toLowerCase();
+
+  // Check for voice commands — WO-9: only if explicitly enabled
+  if (_wo9VoiceSendEnabled && _SEND_COMMANDS.has(trimmed)) {
+    _wo8FinalizeTurn();
+    return;
+  }
+
+  // Accumulate the chunk
+  _wo8VoiceTurnChunks.push({
+    text: normalized,
+    ts: Date.now(),
+  });
+  if (!_wo8VoiceTurnStart) _wo8VoiceTurnStart = Date.now();
+  _wo8LongTurnMode = true;
+
+  // Update the chat input with accumulated text.
+  // BUG-219: prepend any pre-mic typed draft so toggling the mic doesn't
+  // wipe what the narrator was already typing.  Single space separator.
+  const _chunkText = _wo8VoiceTurnChunks.map(c => c.text).join(" ");
+  const _draft = (_wo8PreMicDraft || "").trim();
+  const fullText = _draft ? (_draft + " " + _chunkText) : _chunkText;
+  setv("chatInput", fullText);
+
+  // WO-MIC-UI-02A: #wo8LiveTranscript was a competing visible surface that confused
+  // narrators ("text appears underneath"). The canonical display is now #chatInput only.
+  // We still write to wo8LiveTranscript for debug/diagnostics but keep it hidden.
+  const transcriptEl = document.getElementById("wo8LiveTranscript");
+  if (transcriptEl) {
+    transcriptEl.textContent = fullText;
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    // Ensure it stays hidden — single surface authority
+    if (!transcriptEl.classList.contains("wo8-hidden")) {
+      transcriptEl.classList.add("wo8-hidden");
+    }
+  }
+
+  // Clear interim display
+  if (statusEl) {
+    statusEl.textContent = "Listening…";
+    statusEl.className = "wo8-voice-status wo8-listening";
+  }
+
+  console.log("[WO-8] Voice chunk accumulated. Total chunks:", _wo8VoiceTurnChunks.length,
+    "Total chars:", fullText.length);
+}
+
+/**
+ * WO-8: Finalize the voice turn — send the accumulated text.
+ */
+function _wo8FinalizeTurn() {
+  if (!_wo8VoiceTurnChunks.length) return;
+
+  // BUG-219: include any pre-mic typed draft as a prefix.
+  const _chunkTextFinal = _wo8VoiceTurnChunks.map(c => c.text).join(" ");
+  const _draftFinal = (_wo8PreMicDraft || "").trim();
+  const fullText = _draftFinal ? (_draftFinal + " " + _chunkTextFinal) : _chunkTextFinal;
+  setv("chatInput", fullText);
+
+  // Stop recording before sending
+  if (isRecording) stopRecording();
+
+  // Reset turn state (including BUG-219 draft snapshot)
+  _wo8VoiceTurnChunks = [];
+  _wo8VoiceTurnStart = null;
+  _wo8LongTurnMode = false;
+  _wo8PreMicDraft = "";
+
+  // Clear live transcript
+  const transcriptEl = document.getElementById("wo8LiveTranscript");
+  if (transcriptEl) transcriptEl.textContent = "";
+
+  // Update status
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Processing…";
+    statusEl.className = "wo8-voice-status wo8-processing";
+  }
+
+  // Send
+  sendUserMessage();
+}
+window._wo8FinalizeTurn = _wo8FinalizeTurn;
+
+/**
+ * WO-8: Pause voice capture without ending the turn.
+ */
+function wo8PauseListening() {
+  _wo8VoicePaused = true;
+  window._wo8VoicePaused = true;           // expose for lv80FireCheckIn guard
+  if (recognition) { try { recognition.stop(); } catch (_) {} }
+  // WO-8 fix: suppress Lori's idle nudge timer while paused
+  if (typeof lv80ClearIdle === "function") lv80ClearIdle();
+  console.log("[WO-8] Paused — mic stopped, idle nudge suppressed.");
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Paused";
+    statusEl.className = "wo8-voice-status wo8-paused";
+  }
+  _updateWo8Controls();
+}
+window.wo8PauseListening = wo8PauseListening;
+
+/**
+ * WO-8: Resume voice capture after pause.
+ */
+function wo8ResumeListening() {
+  _wo8VoicePaused = false;
+  window._wo8VoicePaused = false;          // sync window flag
+  if (!isRecording) startRecording();
+  else { try { recognition.start(); } catch (_) {} }
+  // WO-8 fix: re-arm Lori's idle nudge timer on resume
+  if (typeof lv80ArmIdle === "function") lv80ArmIdle("resume_from_pause");
+  console.log("[WO-8] Resumed — mic active, idle nudge re-armed.");
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Listening…";
+    statusEl.className = "wo8-voice-status wo8-listening";
+  }
+  _updateWo8Controls();
+}
+window.wo8ResumeListening = wo8ResumeListening;
+
+/**
+ * WO-8: Send now button — end turn immediately.
+ */
+function wo8SendNow() {
+  _wo8FinalizeTurn();
+}
+window.wo8SendNow = wo8SendNow;
+
+/**
+ * WO-8: Update visibility of voice controls.
+ */
+function _updateWo8Controls() {
+  const pauseBtn = document.getElementById("wo8PauseBtn");
+  const resumeBtn = document.getElementById("wo8ResumeBtn");
+  const sendBtn = document.getElementById("wo8SendNowBtn");
+
+  if (pauseBtn) pauseBtn.classList.toggle("hidden", _wo8VoicePaused || !isRecording);
+  if (resumeBtn) resumeBtn.classList.toggle("hidden", !_wo8VoicePaused);
+  if (sendBtn) sendBtn.classList.toggle("hidden", !_wo8VoiceTurnChunks.length);
+}
+
+/* ── WO-8 Phase 4: Chunked extraction for long turns ─────────── */
+
+/**
+ * WO-8: Chunk a long text into extraction-friendly segments.
+ * Each chunk is roughly sentence-bounded and under maxLen tokens.
+ */
+function _wo8ChunkText(text, maxLen) {
+  maxLen = maxLen || 1500; // ~1500 chars per chunk
+  if (text.length <= maxLen) return [text];
+
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+  const chunks = [];
+  let current = "";
+
+  for (const s of sentences) {
+    if ((current + s).length > maxLen && current.length > 0) {
+      chunks.push(current.trim());
+      current = s;
+    } else {
+      current += s;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+}
+
+/* ── WO-8 Phase 5: Thread Anchor & Resume ────────────────────── */
+
+/**
+ * WO-8: Save the current thread anchor after each meaningful exchange.
+ * Called from onAssistantReply when a real conversation turn completes.
+ */
+async function _wo8SaveThreadAnchor(userText, loriText) {
+  const pid = state.person_id;
+  if (!pid) return;
+
+  // Build a topic summary from the last exchange
+  const combined = (userText || "").slice(0, 500) + " " + (loriText || "").slice(0, 500);
+
+  // Simple topic extraction — look for era/subject signals
+  let topicLabel = "";
+  let topicSummary = "";
+
+  // Try to detect the active topic from the user's words
+  const topicPatterns = [
+    { rx: /\b(army|military|service|enlist|deploy|stationed)\b/i, label: "Military service" },
+    { rx: /\b(leav|left|moved|moving|went)\s+(home|away|out)\b/i, label: "Leaving home" },
+    { rx: /\b(school|college|university|graduate|diploma)\b/i, label: "Education" },
+    { rx: /\b(married|wedding|wife|husband|spouse|partner)\b/i, label: "Marriage & family" },
+    { rx: /\b(job|work|career|hired|company|boss|retire)\b/i, label: "Career" },
+    { rx: /\b(child|kids|son|daughter|baby|born|pregnant)\b/i, label: "Children & family" },
+    { rx: /\b(church|faith|god|religion|pray)\b/i, label: "Faith & spirituality" },
+    { rx: /\b(sick|hospital|health|surgery|doctor|cancer|heart)\b/i, label: "Health" },
+    { rx: /\b(farm|ranch|land|crop|cattle|harvest)\b/i, label: "Farm & rural life" },
+    { rx: /\b(brother|sister|sibling|twin)\b/i, label: "Siblings" },
+    { rx: /\b(mom|mother|dad|father|parent|grandma|grandpa)\b/i, label: "Parents & family" },
+    { rx: /\b(passed away|died|death|funeral|burial|cemetery)\b/i, label: "Loss & grief" },
+  ];
+
+  for (const p of topicPatterns) {
+    if (p.rx.test(combined)) {
+      topicLabel = p.label;
+      break;
+    }
+  }
+
+  // Build a brief summary from the user's turn
+  topicSummary = (userText || "").slice(0, 300);
+
+  const activeEra = getCurrentEra() || "";
+
+  // WO-9: Extract continuation keywords from the exchange
+  const words = combined.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 4);
+  const wordFreq = {};
+  words.forEach(w => { wordFreq[w] = (wordFreq[w] || 0) + 1; });
+  const continuationKeywords = Object.entries(wordFreq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(e => e[0]);
+
+  try {
+    await fetch(API.THREAD_ANCHOR_PUT, {
+      method: "POST",
+      headers: ctype(),
+      body: JSON.stringify({
+        person_id: pid,
+        session_id: state.chat?.conv_id || "",
+        topic_label: topicLabel,
+        topic_summary: topicSummary,
+        active_era: activeEra,
+        last_narrator_turns: [userText || ""],
+        // WO-9 stronger continuity fields
+        subtopic_label: "",
+        continuation_keywords: continuationKeywords,
+        last_meaningful_user_turn: (userText || "").slice(0, 500),
+        last_meaningful_assistant_turn: (loriText || "").slice(0, 500),
+      }),
+    });
+    console.log("[WO-9] Thread anchor saved:", topicLabel || "(general)", "era:", activeEra || "(none)",
+      "keywords:", continuationKeywords.slice(0, 5).join(", "));
+  } catch (e) {
+    console.log("[WO-9] Thread anchor save failed:", e.message);
+  }
+
+  // WO-9: Save rolling summary after each exchange
+  _wo9SaveRollingSummary(userText, loriText, topicLabel).catch(() => {});
+  // WO-10: Update multi-thread tracker via rolling summary endpoint
+  _wo10UpdateThreads(topicLabel, activeEra, userText, loriText).catch(() => {});
+}
+
+/**
+ * WO-9: Save rolling summary after each meaningful exchange.
+ * Accumulates key facts, tracks emotional tone and open threads.
+ */
+async function _wo9SaveRollingSummary(userText, loriText, topicLabel) {
+  const pid = state.person_id;
+  if (!pid) return;
+
+  // Load existing summary to merge
+  let existing = {};
+  try {
+    const resp = await fetch(API.ROLLING_SUMMARY_GET(pid));
+    if (resp.ok) {
+      const data = await resp.json();
+      existing = data.summary || {};
+    }
+  } catch (_) { /* first time, no summary yet */ }
+
+  // Accumulate key facts from user text (simple extraction: sentences with proper nouns, dates, names)
+  const prevFacts = existing.key_facts_mentioned || [];
+  const newFacts = [];
+  if (userText) {
+    // Extract sentences that contain dates, names, or specific details
+    const sentences = userText.match(/[^.!?]+[.!?]+/g) || [userText];
+    for (const s of sentences) {
+      const trimmed = s.trim();
+      if (trimmed.length > 20 && trimmed.length < 300) {
+        // Look for factual content: dates, proper nouns, numbers
+        if (/\b(19|20)\d{2}\b/.test(trimmed) || /\b[A-Z][a-z]+\b/.test(trimmed) || /\d+/.test(trimmed)) {
+          newFacts.push(trimmed);
+        }
+      }
+    }
+  }
+  const allFacts = [...prevFacts, ...newFacts].slice(-50);
+
+  // Detect emotional tone
+  let tone = existing.emotional_tone || "neutral";
+  if (userText) {
+    const lower = userText.toLowerCase();
+    if (/\b(sad|cried|crying|tears|miss|grief|lost)\b/.test(lower)) tone = "reflective/emotional";
+    else if (/\b(funny|laugh|hilarious|joke|grin)\b/.test(lower)) tone = "lighthearted";
+    else if (/\b(proud|accomplish|achieve|medal|honor)\b/.test(lower)) tone = "proud";
+    else if (/\b(angry|mad|furious|upset|unfair)\b/.test(lower)) tone = "frustrated";
+    else tone = "engaged";
+  }
+
+  // Track the last question Lori asked
+  let lastQuestion = existing.last_question_asked || "";
+  if (loriText) {
+    const questions = loriText.match(/[^.!]+\?/g);
+    if (questions && questions.length > 0) {
+      lastQuestion = questions[questions.length - 1].trim();
+    }
+  }
+
+  // Open threads — topics mentioned but not fully explored
+  const openThreads = existing.open_threads || [];
+  if (topicLabel && !openThreads.includes(topicLabel)) {
+    openThreads.push(topicLabel);
+  }
+
+  try {
+    await fetch(API.ROLLING_SUMMARY_PUT, {
+      method: "POST",
+      headers: ctype(),
+      body: JSON.stringify({
+        person_id: pid,
+        topic_thread: topicLabel || existing.topic_thread || "",
+        key_facts_mentioned: allFacts,
+        emotional_tone: tone,
+        last_question_asked: lastQuestion,
+        narrator_preferences: existing.narrator_preferences || [],
+        open_threads: openThreads.slice(-10),
+      }),
+    });
+    console.log("[WO-9] Rolling summary saved, facts:", allFacts.length, "tone:", tone);
+  } catch (e) {
+    console.log("[WO-9] Rolling summary save failed:", e.message);
+  }
+}
+
+/**
+ * WO-10: Update multi-thread tracker.
+ * Calls the backend update_active_threads via rolling summary update.
+ * Thread tracking is done server-side in archive.py.
+ */
+async function _wo10UpdateThreads(topicLabel, era, userText, loriText) {
+  const pid = state.person_id;
+  if (!pid || !topicLabel) return;
+  try {
+    // WO-10B: Preserve more of long turns (500 chars instead of 300)
+    // so backend thread scoring can assess narrative richness
+    await fetch(API.UPDATE_THREADS, {
+      method: "POST",
+      headers: ctype(),
+      body: JSON.stringify({
+        person_id: pid,
+        topic_label: topicLabel,
+        era: era || "",
+        user_text: (userText || "").slice(0, 500),
+        lori_text: (loriText || "").slice(0, 500),
+      }),
+    });
+    console.log("[WO-10] Thread update sent for:", topicLabel);
+  } catch (e) {
+    console.log("[WO-10] Thread update failed:", e.message);
+  }
+}
+
+/**
+ * WO-9: Build resume system prompt from archive memory.
+ * Uses: thread anchor + rolling summary + recent archive turns.
+ * Falls back to WO-8 minimal anchor if rolling summary is unavailable.
+ * Returns null if no anchor exists (first session).
+ */
+async function _wo9BuildResumePrompt(pid) {
+  if (!pid) return null;
+  try {
+    // Fetch all three memory sources in parallel
+    const [anchorRes, summaryRes, turnsRes] = await Promise.all([
+      fetch(API.THREAD_ANCHOR_GET(pid, ""), { signal: AbortSignal.timeout(5000) }),
+      fetch(API.ROLLING_SUMMARY_GET(pid), { signal: AbortSignal.timeout(5000) }).catch(() => null),
+      fetch(API.RECENT_TURNS(pid, "", 4), { signal: AbortSignal.timeout(5000) }).catch(() => null),
+    ]);
+
+    // Parse anchor (required)
+    if (!anchorRes.ok) return null;
+    const anchorData = await anchorRes.json();
+    const anchor = anchorData.anchor;
+    if (!anchor || !anchor.topic_summary) return null;
+
+    // Parse rolling summary (optional)
+    let summary = {};
+    if (summaryRes && summaryRes.ok) {
+      const sData = await summaryRes.json();
+      summary = sData.summary || {};
+    }
+
+    // Parse recent turns (optional)
+    let recentTurns = [];
+    if (turnsRes && turnsRes.ok) {
+      const tData = await turnsRes.json();
+      recentTurns = tData.turns || [];
+    }
+
+    const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
+    const topicLabel = anchor.topic_label || "your conversation";
+    const era = anchor.active_era || "";
+
+    let resumeText = `[SYSTEM: RESUME SESSION — ${name} is returning to continue their interview.\n`;
+
+    // Thread anchor context
+    resumeText += `Last topic: "${topicLabel}".\n`;
+    if (anchor.subtopic_label) {
+      resumeText += `Subtopic: "${anchor.subtopic_label}".\n`;
+    }
+    if (era) {
+      resumeText += `Active era: "${era.replace(/_/g, " ")}".\n`;
+    }
+
+    // WO-9: Include last meaningful exchange from anchor
+    if (anchor.last_meaningful_user_turn) {
+      resumeText += `\nLast exchange:\n`;
+      resumeText += `  ${name}: "${anchor.last_meaningful_user_turn.slice(0, 300)}"\n`;
+      if (anchor.last_meaningful_assistant_turn) {
+        resumeText += `  Lori: "${anchor.last_meaningful_assistant_turn.slice(0, 300)}"\n`;
+      }
+    }
+
+    // WO-9: Rolling summary context
+    if (summary.emotional_tone) {
+      resumeText += `\nNarrator mood: ${summary.emotional_tone}.\n`;
+    }
+    if (summary.key_facts_mentioned && summary.key_facts_mentioned.length > 0) {
+      const recentFacts = summary.key_facts_mentioned.slice(-5);
+      resumeText += `Key facts from recent conversation: ${recentFacts.join("; ").slice(0, 400)}.\n`;
+    }
+    if (summary.open_threads && summary.open_threads.length > 0) {
+      resumeText += `Open threads to explore: ${summary.open_threads.join(", ")}.\n`;
+    }
+    if (summary.last_question_asked) {
+      resumeText += `Your last question to ${name}: "${summary.last_question_asked.slice(0, 200)}"\n`;
+    }
+
+    // WO-9: Recent archive turns for richer context
+    if (recentTurns.length > 0) {
+      resumeText += `\nRecent conversation excerpt:\n`;
+      for (const t of recentTurns.slice(-4)) {
+        const role = (t.role || "").toLowerCase();
+        const label = role === "user" ? name : "Lori";
+        resumeText += `  ${label}: "${(t.content || "").slice(0, 150)}"\n`;
+      }
+    }
+
+    // Continuation keywords for context
+    if (anchor.continuation_keywords && anchor.continuation_keywords.length > 0) {
+      resumeText += `\nContext keywords: ${anchor.continuation_keywords.join(", ")}.\n`;
+    }
+
+    resumeText += `\nContinue from this topic — do NOT restart with generic identity questions about birthplace or childhood `;
+    resumeText += `unless "${topicLabel}" was specifically about those topics. `;
+    resumeText += `Welcome them back warmly and naturally, referencing what they were telling you last time. `;
+    resumeText += `Ask ONE follow-up question that continues the thread.]`;
+
+    console.log("[WO-9] Resume prompt built from archive memory:",
+      "topic:", topicLabel, "era:", era,
+      "summary:", !!summary.topic_thread, "turns:", recentTurns.length);
+    return resumeText;
+  } catch (e) {
+    console.log("[WO-9] Resume prompt build failed:", e.message);
+    return null;
+  }
+}
+
+/**
+ * WO-11 (TRAINER MODE REPAIR): Start normal interview after trainer
+ * coaching flow completes — now meta-aware.
+ *
+ * Called by LorevoxTrainerNarrators.finish(meta) when the user clicks
+ * "Start Interview" or "Skip". The meta object carries the trainer style
+ * captured BEFORE finish() flipped active=false, so the handoff knows
+ * which trainer just ran and can flavor:
+ *   - the assistant intro bubble (structured vs storyteller wording)
+ *   - a one-shot system prompt that nudges the next model reply into
+ *     the trainer style (no backend role change required)
+ *
+ * If meta is missing/empty, falls back to the previous neutral intro.
+ */
+window.lv80StartTrainerInterview = async function (meta) {
+  try {
+    var m = (meta && typeof meta === "object") ? meta : {};
+    var style = (m.style === "structured" || m.style === "storyteller") ? m.style : null;
+
+    // WO-11: Trainer is done — restore narrator for actual interview.
+    // The trainer finish() already set active=false. Now we need to
+    // restore the real narrator context before injecting the style hint.
+    console.log("[WO-11][trainer] Trainer interview handoff — style:", style);
+
+    // Restore narrator after trainer exit — opens narrator selector
+    if (typeof _wo11RestoreNarratorAfterTrainer === "function") {
+      _wo11RestoreNarratorAfterTrainer();
+    }
+
+    // Note: The style hint will be applied by the user selecting a narrator
+    // and the interview beginning naturally. We stash the trainer style so
+    // it can flavor the first system prompt when they do pick a narrator.
+    state.trainerNarrators = state.trainerNarrators || {};
+    state.trainerNarrators._pendingStyleHint = m.promptHint || null;
+    state.trainerNarrators._pendingStyle = style;
+
+    if (typeof update71RuntimeUI === "function") update71RuntimeUI();
+  } catch (e) {
+    console.warn("[WO-11] unable to start trainer interview", e);
+  }
+};
+
+/**
+ * WO-11B: Hard reset helper for trainer/capture state.
+ * Clears trainer flow, listening state, mic UI, and pending capture.
+ * Called on: startup, narrator switch, trainer finish, trainer skip.
+ */
+window.lv80ClearTrainerAndCaptureState = function () {
+  // WO-11: If trainer was active with a suspended narrator, restore first
+  try {
+    var ts = state && state.trainerNarrators;
+    if (ts && ts.active && ts.suspendedNarratorId) {
+      console.log("[WO-11][trainer] clearTrainer detected active trainer with suspended narrator — restoring");
+      if (typeof _wo11RestoreNarratorAfterTrainer === "function") {
+        _wo11RestoreNarratorAfterTrainer();
+      }
+    }
+  } catch (_) {}
+
+  try {
+    if (window.LorevoxTrainerNarrators) {
+      window.LorevoxTrainerNarrators.reset();
+    }
+  } catch (_) {}
+
+  try {
+    listeningPaused = false;
+  } catch (_) {}
+
+  try {
+    if (typeof recognition !== "undefined" && recognition) {
+      recognition.onend = recognition.onend || null;
+      recognition.stop();
+    }
+  } catch (_) {}
+
+  try {
+    isRecording = false;
+  } catch (_) {}
+
+  try {
+    const mic = document.getElementById("btnMic");
+    if (mic) mic.classList.remove("mic-active");
+  } catch (_) {}
+
+  try {
+    const pauseBtn = document.getElementById("btnPause");
+    if (pauseBtn) {
+      pauseBtn.classList.remove("paused");
+      pauseBtn.textContent = "Pause";
+    }
+  } catch (_) {}
+};
+
+/**
+ * WO-11B: Pause/Resume listening toggle.
+ * Pause stops speech recognition immediately and prevents auto-restart.
+ * Resume returns to ready state — capture does not auto-restart.
+ */
+window.lv80TogglePauseListening = function () {
+  try {
+    const pauseBtn = document.getElementById("btnPause");
+
+    if (!listeningPaused) {
+      listeningPaused = true;
+
+      try {
+        if (typeof recognition !== "undefined" && recognition) {
+          recognition.stop();
+        }
+      } catch (_) {}
+
+      isRecording = false;
+
+      const mic = document.getElementById("btnMic");
+      if (mic) mic.classList.remove("mic-active");
+
+      if (pauseBtn) {
+        pauseBtn.classList.add("paused");
+        pauseBtn.textContent = "Resume";
+      }
+
+      console.log("[WO-11B] listening paused");
+      return;
+    }
+
+    listeningPaused = false;
+
+    if (pauseBtn) {
+      pauseBtn.classList.remove("paused");
+      pauseBtn.textContent = "Pause";
+    }
+
+    console.log("[WO-11B] listening resumed");
+  } catch (e) {
+    console.warn("[WO-11B] pause toggle failed", e);
+  }
+};
+
+/**
+ * WO-8: Fire resume system prompt when narrator is opened.
+ * Hooks into the narrator load flow after identity is confirmed ready.
+ */
+async function wo8OnNarratorReady(pid) {
+  if (!pid) return;
+
+  // Phase 2: Load transcript history
+  await wo8LoadTranscriptHistory(pid);
+
+  // WO-13: Hard gate — if this narrator has NO prior user-authored turns,
+  // suppress every resume prompt variant (auto-resume, soft confirm, bridge,
+  // cognitive re-entry, operator preview). Every narrator switch creates a
+  // fresh conv_id, so "resuming" is a misnomer for first-contact narrators
+  // and the system prompt pollutes the turns table with fake user rows.
+  const _priorUserTurns = Number((state.session && state.session.priorUserTurns) || 0);
+  if (_priorUserTurns === 0) {
+    console.log("[WO-13] wo8OnNarratorReady: suppressing resume prompt — no prior user turns for " + pid.slice(0, 8));
+    return;
+  }
+
+  // WO-9/WO-10B/WO-10C: Resume flow — gated by operator mode, confidence, and CSM
+  if (hasIdentityBasics74()) {
+
+    // WO-10C: Cognitive Support Mode — replace ALL resume with gentle re-entry.
+    // Never interrogative, never assume they remember where they left off.
+    // The re-entry is a warm invitation, not a conversation resume.
+    if (typeof getCognitiveSupportMode === "function" && getCognitiveSupportMode()) {
+      const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "";
+      const greeting = name ? `${name}, ` : "";
+      const reentryPrompt = `[SYSTEM: COGNITIVE SUPPORT MODE RE-ENTRY. ${greeting}is here. `
+        + "This narrator has cognitive difficulty. Do NOT ask where you left off. Do NOT reference previous sessions. "
+        + "Do NOT ask 'Do you remember?' Welcome them with pure warmth — as if this is a fresh, gentle visit. "
+        + "Example: 'Hello " + (name || "there") + ", it's so good to see you. I'm Lori, and I'm here to keep you company.' "
+        + "One or two short, warm sentences. Then wait. Let them lead. Do not ask a question.]";
+      console.log("[WO-10C] Cognitive support mode — gentle re-entry, no resume.");
+      setTimeout(() => {
+        if (_llmReady) sendSystemPrompt(reentryPrompt);
+        else wo9SendOrQueueSystemPrompt(reentryPrompt);
+      }, 1200); // slightly longer delay — no rush
+      return;
+    }
+
+    // WO-10B: If operator mode is ON, show Resume Preview instead of auto-resuming
+    if (window.LOREVOX_OPERATOR_MODE) {
+      console.log("[WO-10B] Operator mode ON — showing Resume Preview, blocking auto-resume.");
+      // Open the transcript popover to Resume Preview tab
+      try {
+        const pop = document.getElementById("wo10TranscriptPopover");
+        if (pop && typeof pop.showPopover === "function") pop.showPopover();
+        // Switch to Resume Preview tab
+        if (typeof wo10SwitchTab === "function") wo10SwitchTab("resume");
+      } catch (_) {}
+      // Load the resume preview data
+      if (typeof wo10LoadResumePreview === "function") wo10LoadResumePreview();
+      // DO NOT auto-send — operator must click Use/Continue/Fresh
+      return;
+    }
+
+    // WO-10B: Operator mode OFF — check resume confidence before auto-resume
+    const resumePrompt = await _wo9BuildResumePrompt(pid);
+    if (resumePrompt) {
+      // Fetch confidence level to decide auto-resume behavior
+      let confLevel = "medium";
+      try {
+        // WO-10K: API.RESUME_PREVIEW is a function, not a string — call it properly
+        const r = await fetch(API.RESUME_PREVIEW(pid));
+        if (r.ok) {
+          const data = await r.json();
+          confLevel = (data.confidence && data.confidence.level) || "medium";
+        }
+      } catch (_) {}
+
+      if (confLevel === "high") {
+        // HIGH confidence: auto-resume directly
+        console.log("[WO-10B] High confidence — auto-resuming.");
+        setTimeout(() => {
+          if (_llmReady) sendSystemPrompt(resumePrompt);
+          else wo9SendOrQueueSystemPrompt(resumePrompt);
+        }, 800);
+      } else if (confLevel === "medium") {
+        // MEDIUM confidence: use soft confirm prompt instead of strong resume
+        const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
+        const softPrompt = `[SYSTEM: ${name} is returning. You have some context from last time but are not fully sure where you left off. Welcome them warmly and gently check: "Last time I think we were talking about... shall we pick up there, or would you like to go somewhere else?" One sentence only.]`;
+        console.log("[WO-10B] Medium confidence — soft confirm resume.");
+        setTimeout(() => {
+          if (_llmReady) sendSystemPrompt(softPrompt);
+          else wo9SendOrQueueSystemPrompt(softPrompt);
+        }, 800);
+      } else {
+        // LOW confidence: gentle bridge, no assumption about topic
+        const name = state.profile?.basics?.preferred || state.profile?.basics?.fullname || "the narrator";
+        const bridgePrompt = `[SYSTEM: ${name} is returning. You do not have strong context from last time. Welcome them warmly and ask an open question like "What's on your mind today?" or "Where would you like to start?" Do NOT assume any specific topic. One sentence only.]`;
+        console.log("[WO-10B] Low confidence — gentle bridge.");
+        setTimeout(() => {
+          if (_llmReady) sendSystemPrompt(bridgePrompt);
+          else wo9SendOrQueueSystemPrompt(bridgePrompt);
+        }, 800);
+      }
+    }
+  }
+}
+window.wo8OnNarratorReady = wo8OnNarratorReady;
+
+/* ── WO-8 Phase 6: Anti-drift for identity extraction ────────── */
+
+/**
+ * WO-8: Check if a system prompt is drifting toward identity grounding
+ * when the active thread is elsewhere.
+ * Returns the corrected prompt if drift is detected, null otherwise.
+ */
+function _wo8CheckContinuityDrift(prompt) {
+  if (!prompt) return null;
+  // If we have no thread anchor, no drift detection needed
+  if (!state._wo8LastTopicLabel) return null;
+
+  const lowerPrompt = prompt.toLowerCase();
+  const identityPatterns = /\b(birthplace|born in|hometown|grew up in|childhood home|where.*born|stanley|north dakota|fargo)\b/i;
+  const topicLabel = state._wo8LastTopicLabel || "";
+
+  // If prompt is pulling toward identity AND the last topic was different
+  if (identityPatterns.test(lowerPrompt) && topicLabel &&
+      !topicLabel.toLowerCase().includes("childhood") &&
+      !topicLabel.toLowerCase().includes("birth")) {
+    console.log("[WO-8] Continuity drift detected — suppressing identity grounding in favor of:", topicLabel);
+    return true; // Signal drift — caller should prefer thread-based question
+  }
+  return null;
+}
+
+/* ── WO-8: Inject into existing hooks ────────────────────────── */
+
+// Store the original onAssistantReply to chain our hook
+const _wo8OrigOnAssistantReply = onAssistantReply;
+onAssistantReply = function(text) {
+  // Call original
+  _wo8OrigOnAssistantReply(text);
+
+  // WO-8: Save thread anchor after each real reply
+  if (text && state.person_id && _lastUserTurn) {
+    _wo8SaveThreadAnchor(_lastUserTurn, text).catch(() => {});
+  }
+
+  // WO-8: Update voice status
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl && statusEl.className.includes("wo8-processing")) {
+    statusEl.textContent = "Ready";
+    statusEl.className = "wo8-voice-status wo8-ready";
+  }
+};
+
+// Store topic label in state for drift detection
+state._wo8LastTopicLabel = "";
+
+/* ── WO-8: Override recognition result for enhanced long-turn mode ── */
+
+/**
+ * WO-8: Install enhanced recognition handler.
+ * Call after _ensureRecognition() to replace the default onresult.
+ */
+function _wo8InstallEnhancedVoice() {
+  if (!recognition) return;
+
+  // Save original for fallback
+  const origOnResult = recognition.onresult;
+
+  recognition.onresult = function(e) {
+    // If in long-turn mode (mic is on and chunks are accumulating), use WO-8 handler
+    if (_wo8LongTurnMode || _wo8VoiceTurnChunks.length > 0) {
+      _wo8HandleRecognitionResult(e);
+      return;
+    }
+    // Otherwise, use the WO-8 handler for all voice input (it also handles send commands)
+    _wo8HandleRecognitionResult(e);
+  };
+
+  // Enhanced onend: don't auto-restart if paused
+  recognition.onend = function() {
+    if (isRecording && !isLoriSpeaking && !_wo8VoicePaused) {
+      try { recognition.start(); } catch (e) {
+        console.warn("[WO-8 STT] auto-restart failed:", e.message);
+      }
+    }
+  };
+
+  console.log("[WO-8] Enhanced voice handlers installed.");
+}
+
+// Patch startRecording to install enhanced handlers
+const _wo8OrigStartRecording = startRecording;
+startRecording = function() {
+  _wo8VoiceTurnChunks = [];
+  _wo8VoiceTurnStart = null;
+  _wo8LongTurnMode = false;
+  _wo8VoicePaused = false;
+  // BUG-219: clear pre-mic draft snapshot here so original startRecording's
+  // capture step has a clean slate.  Original captures the CURRENT chatInput
+  // value (whatever the narrator just typed) AFTER this reset.
+  _wo8PreMicDraft = "";
+  _wo8OrigStartRecording();
+  // Install enhanced handlers after recognition is created
+  setTimeout(() => _wo8InstallEnhancedVoice(), 100);
+  _updateWo8Controls();
+  // Update status display
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Listening…";
+    statusEl.className = "wo8-voice-status wo8-listening";
+  }
+};
+
+// Patch stopRecording to clean up
+const _wo8OrigStopRecording = stopRecording;
+stopRecording = function() {
+  _wo8OrigStopRecording();
+  _wo8VoicePaused = false;
+  _updateWo8Controls();
+  const statusEl = document.getElementById("wo8VoiceStatus");
+  if (statusEl) {
+    statusEl.textContent = "Mic off";
+    statusEl.className = "wo8-voice-status";
+  }
+};
 
 /* ═══════════════════════════════════════════════════════════════
    UTILITIES
@@ -3119,7 +6595,17 @@ function appendLoriOnboardingMessage(text) {
 }
 
 async function beginCameraConsent74(opts = {}) {
-  if (typeof state === "undefined" || !state.session?.onboarding) return false;
+  if (typeof state === "undefined") return false;
+  // #145: lazy-init onboarding — narrator-switch handler rebuilds state.session
+  // from scratch and the original static-init object in state.js is lost.
+  // Without this, the Cam button silently no-ops on every post-first-load narrator.
+  if (!state.session) state.session = {};
+  if (!state.session.onboarding) {
+    state.session.onboarding = {
+      complete: false, cameraForPacing: false, profilePhotoEnabled: false,
+      questionsAsked: false, profilePhotoCaptured: false, ttsPace: "normal",
+    };
+  }
 
   state.session.onboarding.cameraForPacing = !!opts.cameraForPacing;
   state.session.onboarding.profilePhotoEnabled = !!opts.profilePhotoEnabled;
@@ -3152,7 +6638,15 @@ async function beginCameraConsent74(opts = {}) {
 }
 
 function finalizeOnboarding74() {
-  if (typeof state === "undefined" || !state.session?.onboarding) return;
+  if (typeof state === "undefined") return;
+  // #145: lazy-init — same reason as beginCameraConsent74 above.
+  if (!state.session) state.session = {};
+  if (!state.session.onboarding) {
+    state.session.onboarding = {
+      complete: false, cameraForPacing: false, profilePhotoEnabled: false,
+      questionsAsked: false, profilePhotoCaptured: false, ttsPace: "normal",
+    };
+  }
 
   if (window.AffectBridge74) {
     window.AffectBridge74.finalizeBaseline();
@@ -3161,4 +6655,757 @@ function finalizeOnboarding74() {
   state.session.onboarding.complete = true;
 
   appendLoriOnboardingMessage("Whenever you're ready, we can begin at the beginning. I'll start by helping place your story in time.");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-10H: Narrator Turn-Claim Contract
+   Explicit state machine for respectful narrator floor-claiming.
+   States: idle → awaiting_tts_end → armed_for_narrator → recording → idle
+═══════════════════════════════════════════════════════════════ */
+
+const WO10H_SILENT_WAIT_MS   = 45000;   // 0-45s: silent wait
+const WO10H_VISUAL_CUE_MS    = 45000;   // 45-60s: subtle visual cue
+const WO10H_CHECKIN_MS        = 60000;   // 60s: one gentle check-in
+
+let _wo10hTimeoutTimer    = null;
+let _wo10hVisualCueTimer  = null;
+
+/** Narrator claims the next turn while Lori TTS is still speaking. */
+function _wo10hClaimTurn() {
+  if (!state.narratorTurn) return;
+  state.narratorTurn.state            = "awaiting_tts_end";
+  state.narratorTurn.claimTimestamp    = Date.now();
+  state.narratorTurn.interruptionBlock = "narrator_claimed_turn";
+  state.narratorTurn.checkInFired      = false;
+  state.narratorTurn.timeoutDeadline   = null;
+
+  // Suppress idle nudges while narrator owns the floor
+  if (typeof lv80ClearIdle === "function") lv80ClearIdle();
+
+  console.log("[WO-10H] Narrator claimed turn — awaiting TTS end.");
+  _wo10hSyncUI();
+}
+window._wo10hClaimTurn = _wo10hClaimTurn;
+
+/** Transition from awaiting_tts_end → armed_for_narrator. Called from drainTts finally. */
+function _wo10hTransitionToArmed() {
+  if (!state.narratorTurn) return;
+  state.narratorTurn.state            = "armed_for_narrator";
+  state.narratorTurn.ttsFinishedAt    = Date.now();
+  state.narratorTurn.interruptionBlock = "narrator_claimed_turn";
+  state.narratorTurn.timeoutDeadline   = Date.now() + WO10H_CHECKIN_MS;
+
+  // Suppress all idle/nudge timers — narrator owns the floor
+  if (typeof lv80ClearIdle === "function") lv80ClearIdle();
+
+  console.log("[WO-10H] TTS finished — narrator armed. Starting capture.");
+
+  // Start recording now that TTS is done
+  if (!isRecording && !_wo8VoicePaused && !listeningPaused) {
+    startRecording();
+    state.narratorTurn.state = "recording";
+  }
+
+  // Arm timeout timers
+  _wo10hArmTimeout();
+  _wo10hSyncUI();
+}
+window._wo10hTransitionToArmed = _wo10hTransitionToArmed;
+
+/** Arm the staged timeout: visual cue at 45s, gentle check-in at 60s. */
+function _wo10hArmTimeout() {
+  _wo10hClearTimeout();
+  if (!state.narratorTurn) return;
+
+  // Visual cue at 45s
+  _wo10hVisualCueTimer = setTimeout(function () {
+    if (state.narratorTurn.state === "idle") return;
+    // Show subtle visual cue
+    const cue = document.getElementById("lv80IdleCue");
+    if (cue) cue.classList.add("visible");
+    console.log("[WO-10H] Visual cue — narrator still has floor.");
+  }, WO10H_VISUAL_CUE_MS);
+
+  // Gentle check-in at 60s — fires only once
+  _wo10hTimeoutTimer = setTimeout(function () {
+    if (state.narratorTurn.state === "idle") return;
+    if (state.narratorTurn.checkInFired) return;
+
+    state.narratorTurn.state = "timeout_check";
+    state.narratorTurn.checkInFired = true;
+
+    console.log("[WO-10H] Timeout check-in — one gentle prompt.");
+
+    // Send one soft, non-intrusive check-in
+    if (typeof sendSystemPrompt === "function") {
+      sendSystemPrompt("[SYSTEM: The narrator claimed the floor but has not submitted yet. This is normal — they may be thinking or typing. Offer ONE very gentle, non-intrusive presence statement. Say something like: 'Take your time. I'm here when you're ready.' Do NOT ask a new question. Do NOT give a memory nudge. Do NOT comment on the silence. One short sentence maximum.]");
+    }
+
+    // Return to armed state after check-in — do NOT clear the claim
+    state.narratorTurn.state = "armed_for_narrator";
+    _wo10hSyncUI();
+  }, WO10H_CHECKIN_MS);
+}
+
+function _wo10hClearTimeout() {
+  if (_wo10hTimeoutTimer) { clearTimeout(_wo10hTimeoutTimer); _wo10hTimeoutTimer = null; }
+  if (_wo10hVisualCueTimer) { clearTimeout(_wo10hVisualCueTimer); _wo10hVisualCueTimer = null; }
+  const cue = document.getElementById("lv80IdleCue");
+  if (cue) cue.classList.remove("visible");
+}
+
+/** Clear narrator turn-claim and return to idle. Called on Send, Cancel, or explicit reset. */
+function wo10hReleaseTurn(reason) {
+  if (!state.narratorTurn) return;
+  const prev = state.narratorTurn.state;
+  state.narratorTurn.state            = "idle";
+  state.narratorTurn.claimTimestamp    = null;
+  state.narratorTurn.timeoutDeadline   = null;
+  state.narratorTurn.interruptionBlock = null;
+  state.narratorTurn.checkInFired      = false;
+  _wo10hClearTimeout();
+
+  if (prev !== "idle") {
+    console.log("[WO-10H] Turn released:", reason || "unknown");
+  }
+  _wo10hSyncUI();
+}
+window.wo10hReleaseTurn = wo10hReleaseTurn;
+
+/** Cancel a pending claim (e.g. narrator decides not to speak). */
+function wo10hCancelClaim() {
+  if (isRecording) stopRecording();
+  wo10hReleaseTurn("narrator_cancelled");
+}
+window.wo10hCancelClaim = wo10hCancelClaim;
+
+/** Check if narrator turn interruption blocking is active. Used by idle/nudge guards. */
+function wo10hIsNarratorTurnActive() {
+  return state.narratorTurn && state.narratorTurn.state !== "idle";
+}
+window.wo10hIsNarratorTurnActive = wo10hIsNarratorTurnActive;
+
+/** Called when narrator shows activity (typing, speaking) — re-arm timeout. */
+function _wo10hOnNarratorActivity() {
+  if (!state.narratorTurn || state.narratorTurn.state === "idle") return;
+  // Reset timeout deadlines since narrator is active
+  state.narratorTurn.timeoutDeadline = Date.now() + WO10H_CHECKIN_MS;
+  _wo10hArmTimeout();
+}
+window._wo10hOnNarratorActivity = _wo10hOnNarratorActivity;
+
+/** Sync header controls and Bug Panel UI for turn state. */
+function _wo10hSyncUI() {
+  // Sync header mic button to show claim state
+  const micBtn = document.getElementById("lv10dMicBtn");
+  const micLabel = document.getElementById("lv10dMicLabel");
+  if (micBtn && state.narratorTurn) {
+    if (state.narratorTurn.state === "awaiting_tts_end") {
+      micBtn.classList.remove("active", "paused");
+      micBtn.classList.add("paused"); // yellow = waiting
+      if (micLabel) micLabel.textContent = "Mic (Claiming…)";
+    } else if (state.narratorTurn.state === "armed_for_narrator" || state.narratorTurn.state === "recording") {
+      micBtn.classList.remove("paused");
+      micBtn.classList.add("active");
+      if (micLabel) micLabel.textContent = "Mic (Your Turn)";
+    }
+  }
+}
+window._wo10hSyncUI = _wo10hSyncUI;
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-10D: Header Input Controls + Bug Panel
+   Persistent header Mic / Camera toggles wired to real functions.
+   Bug Panel with live diagnostics, LLM tuning (WO-10E), route checks.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── WO-10D: LLM tuning parameters (WO-10E) ── */
+window._lv10dLlmParams = { temperature: 0.7, max_new_tokens: 512 };
+
+function lv10dSetLlmParam(key, value) {
+  window._lv10dLlmParams[key] = Number(value);
+  console.log("[WO-10E] LLM param set:", key, "=", Number(value));
+}
+window.lv10dSetLlmParam = lv10dSetLlmParam;
+
+/* ── WO-10D: Header Mic toggle ──
+   Wires to real wo8PauseListening / wo8ResumeListening when WO-8 voice
+   is active, otherwise uses toggleRecording / stopRecording. */
+function lv10dToggleMic() {
+  // If WO-8 voice is paused, resume it
+  if (_wo8VoicePaused || listeningPaused) {
+    if (typeof wo8ResumeListening === "function") wo8ResumeListening();
+    // Also clear WO-11B pause
+    listeningPaused = false;
+    const pauseBtn = document.getElementById("btnPause");
+    if (pauseBtn) { pauseBtn.classList.remove("paused"); pauseBtn.textContent = "Pause"; }
+    lv10dSyncHeaderControls();
+    return;
+  }
+  // If mic is active, pause/stop it
+  if (isRecording) {
+    if (typeof wo8PauseListening === "function") wo8PauseListening();
+    lv10dSyncHeaderControls();
+    return;
+  }
+  // Mic is off — start recording
+  if (typeof startRecording === "function") startRecording();
+  lv10dSyncHeaderControls();
+}
+window.lv10dToggleMic = lv10dToggleMic;
+
+/* ── WO-10D: Header Camera toggle ──
+   Camera ON must go through consent path. Camera OFF calls stopEmotionEngine. */
+function lv10dToggleCamera() {
+  if (cameraActive) {
+    if (typeof stopEmotionEngine === "function") stopEmotionEngine();
+    lv10dSyncHeaderControls();
+    return;
+  }
+  // Camera ON — must go through consent
+  if (typeof beginCameraConsent74 === "function") {
+    beginCameraConsent74({ cameraForPacing: true, profilePhotoEnabled: false }).then(function () {
+      lv10dSyncHeaderControls();
+    });
+  } else if (typeof startEmotionEngine === "function") {
+    startEmotionEngine().then(function () {
+      lv10dSyncHeaderControls();
+    });
+  }
+}
+window.lv10dToggleCamera = lv10dToggleCamera;
+
+/* ── WO-10D: Sync header control visuals from real state ── */
+function lv10dSyncHeaderControls() {
+  const micBtn = document.getElementById("lv10dMicBtn");
+  const camBtn = document.getElementById("lv10dCamBtn");
+  const micLabel = document.getElementById("lv10dMicLabel");
+  const camLabel = document.getElementById("lv10dCamLabel");
+
+  if (micBtn) {
+    micBtn.classList.remove("active", "paused");
+    if (_wo8VoicePaused || listeningPaused) {
+      micBtn.classList.add("paused");
+      if (micLabel) micLabel.textContent = "Mic (Paused)";
+    } else if (isRecording) {
+      micBtn.classList.add("active");
+      if (micLabel) micLabel.textContent = "Mic (On)";
+    } else {
+      if (micLabel) micLabel.textContent = "Mic";
+    }
+  }
+
+  if (camBtn) {
+    camBtn.classList.remove("active", "paused");
+    if (cameraActive) {
+      camBtn.classList.add("active");
+      if (camLabel) camLabel.textContent = "Cam (On)";
+    } else {
+      if (camLabel) camLabel.textContent = "Cam";
+    }
+  }
+
+  // Also sync inputState for Bug Panel
+  if (state.inputState) {
+    state.inputState.micActive = !!isRecording;
+    state.inputState.micPaused = !!(_wo8VoicePaused || listeningPaused);
+    state.inputState.cameraActive = !!cameraActive;
+    state.inputState.cameraConsent = !!(state.session?.onboarding?.cameraForPacing);
+  }
+}
+window.lv10dSyncHeaderControls = lv10dSyncHeaderControls;
+
+/* ── WO-10D: Bug Panel refresh ── */
+let _lv10dBugPanelTimer = null;
+
+function lv10dRefreshBugPanel() {
+  const panel = document.getElementById("lv10dBugPanel");
+  if (!panel) return;
+
+  // Sync header controls first
+  lv10dSyncHeaderControls();
+
+  const _v = (id, text, cls) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = "lv10d-bp-value" + (cls ? " " + cls : "");
+  };
+
+  // Session
+  const narratorName = document.getElementById("lv80ActiveNarratorName");
+  _v("lv10dBpNarrator", narratorName?.textContent || "—");
+  _v("lv10dBpPid", state.person_id || "—", state.person_id ? "" : "off");
+  _v("lv10dBpMode", getCurrentMode());
+  _v("lv10dBpPassEra", getCurrentPass() + " / " + (getCurrentEra() || "—"));
+  _v("lv10dBpRole", getAssistantRole());
+  _v("lv10dBpLlmReady", _llmReady ? "Yes" : "No", _llmReady ? "ok" : "err");
+
+  // Inputs
+  _v("lv10dBpMic", isRecording ? "ON" : "OFF", isRecording ? "ok" : "off");
+  _v("lv10dBpPaused", listeningPaused ? "YES" : "no", listeningPaused ? "warn" : "");
+  _v("lv10dBpWo8Paused", _wo8VoicePaused ? "YES" : "no", _wo8VoicePaused ? "warn" : "");
+  _v("lv10dBpCam", cameraActive ? "ON" : "OFF", cameraActive ? "ok" : "off");
+  _v("lv10dBpEmotion", emotionAware ? "ON" : "OFF", emotionAware ? "ok" : "off");
+
+  // WO-04: Camera preview, facial consent, STT engine
+  const previewEl = document.getElementById("lv74-cam-preview");
+  const previewVisible = previewEl && !previewEl.classList.contains("lv74-preview-hidden");
+  _v("lv10dBpCamPreview", previewEl ? (previewVisible ? "Visible" : "Hidden") : "Not created", previewEl ? (previewVisible ? "ok" : "warn") : "off");
+
+  const fcGranted = typeof FacialConsent !== "undefined" && FacialConsent.isGranted();
+  const fcDeclined = typeof FacialConsent !== "undefined" && FacialConsent.isDeclined();
+  _v("lv10dBpFacialConsent", fcGranted ? "Granted" : (fcDeclined ? "Declined" : "Pending"), fcGranted ? "ok" : (fcDeclined ? "err" : "warn"));
+
+  let consentStored = false;
+  try { consentStored = localStorage.getItem("lorevox_facial_consent_granted") === "true"; } catch(_){}
+  _v("lv10dBpConsentStored", consentStored ? "Yes (persistent)" : "No", consentStored ? "ok" : "off");
+
+  const hasSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  _v("lv10dBpSttEngine", hasSR ? "Web Speech API" : "None (browser unsupported)", hasSR ? "ok" : "err");
+
+  // Affect / visual signals
+  const vs = state.session?.visualSignals;
+  const hasFresh = !!(vs?.affectState && vs?.timestamp && (Date.now() - vs.timestamp < 8000));
+  _v("lv10dBpAffect", hasFresh ? vs.affectState + " (" + (vs.confidence * 100).toFixed(0) + "%)" : (state.runtime?.affectState || "neutral"), hasFresh ? "ok" : "off");
+  _v("lv10dBpSignalAge", vs?.timestamp ? ((Date.now() - vs.timestamp) / 1000).toFixed(1) + "s" : "—", hasFresh ? "" : (vs?.timestamp ? "warn" : "off"));
+
+  // WO-10H: Narrator turn-state
+  const nt = state.narratorTurn;
+  if (nt) {
+    const turnCls = nt.state === "idle" ? "off" : (nt.state === "awaiting_tts_end" ? "warn" : "ok");
+    _v("lv10dBpTurnState", nt.state, turnCls);
+    _v("lv10dBpTtsActive", isLoriSpeaking ? "YES" : "no", isLoriSpeaking ? "warn" : "");
+    _v("lv10dBpTtsFinished", nt.ttsFinishedAt ? new Date(nt.ttsFinishedAt).toLocaleTimeString() : "—", nt.ttsFinishedAt ? "" : "off");
+    _v("lv10dBpTurnClaimed", nt.claimTimestamp ? ((Date.now() - nt.claimTimestamp) / 1000).toFixed(1) + "s ago" : "no", nt.claimTimestamp ? "ok" : "off");
+    _v("lv10dBpInterruptBlock", nt.interruptionBlock || "none", nt.interruptionBlock ? "warn" : "");
+    _v("lv10dBpTimeoutAt", nt.timeoutDeadline ? ((nt.timeoutDeadline - Date.now()) / 1000).toFixed(0) + "s" : "—", nt.timeoutDeadline ? (nt.timeoutDeadline < Date.now() ? "err" : "warn") : "off");
+  }
+
+  // Memory — check asynchronously
+  _v("lv10dBpRollingSummary", "—", "off");
+  _v("lv10dBpRecentTurns", "—", "off");
+  if (state.person_id) {
+    const pid = state.person_id;
+    // Rolling summary check
+    fetch(ORIGIN + "/api/transcript/rolling-summary?person_id=" + pid, { method: "GET" })
+      .then(r => { _v("lv10dBpRollingSummary", r.ok ? "OK (" + r.status + ")" : "ERR " + r.status, r.ok ? "ok" : "err"); })
+      .catch(() => { _v("lv10dBpRollingSummary", "UNREACHABLE", "err"); });
+    // Recent turns check
+    fetch(ORIGIN + "/api/transcript/recent-turns?person_id=" + pid + "&session_id=default&limit=1", { method: "GET" })
+      .then(r => { _v("lv10dBpRecentTurns", r.ok ? "OK (" + r.status + ")" : "ERR " + r.status, r.ok ? "ok" : "err"); })
+      .catch(() => { _v("lv10dBpRecentTurns", "UNREACHABLE", "err"); });
+  }
+
+  // Services
+  _v("lv10dBpWs", (ws && wsReady) ? "Connected" : (usingFallback ? "Fallback (SSE)" : "Disconnected"), (ws && wsReady) ? "ok" : "err");
+  // WO-10K: Use real health routes — /api/ping for API, /api/health for TTS
+  fetch(ORIGIN + "/api/ping", { method: "GET", signal: AbortSignal.timeout(3000) })
+    .then(r => { _v("lv10dBpApi", r.ok ? "OK" : "ERR " + r.status, r.ok ? "ok" : "err"); })
+    .catch(() => { _v("lv10dBpApi", "DOWN", "err"); });
+  fetch(TTS_ORIG + "/api/health", { method: "GET", signal: AbortSignal.timeout(3000) })
+    .then(r => { _v("lv10dBpTts", r.ok ? "OK" : "ERR " + r.status, r.ok ? "ok" : "err"); })
+    .catch(() => { _v("lv10dBpTts", "DOWN", "err"); });
+
+  // Warnings
+  const warnings = [];
+  if (!_llmReady) warnings.push("LLM not ready — model still warming up");
+  if (!(ws && wsReady)) warnings.push("WebSocket disconnected");
+  if (vs?.timestamp && (Date.now() - vs.timestamp >= 8000) && cameraActive) warnings.push("Visual signal stale (>8s) — camera may have frozen");
+  if (cameraActive && !emotionAware) warnings.push("Camera active but emotionAware is false — state inconsistency");
+  if (listeningPaused && isRecording) warnings.push("Mic recording while listening is paused — state conflict");
+  if (nt && nt.state === "awaiting_tts_end" && !isLoriSpeaking) warnings.push("Turn state stuck in awaiting_tts_end but TTS is not active");
+  if (nt && nt.state !== "idle" && nt.checkInFired) warnings.push("Check-in already fired for this claimed turn");
+  // WO-04: Consent/camera consistency checks
+  if (emotionAware && typeof FacialConsent !== "undefined" && FacialConsent.isDeclined()) warnings.push("emotionAware=true but facial consent was declined — camera will not start");
+  if (cameraActive && !document.getElementById("lv74-cam-preview")) warnings.push("Camera active but preview DOM not created — camera-preview.js may not be loaded");
+
+  const warnList = document.getElementById("lv10dBpWarnings");
+  if (warnList) {
+    if (warnings.length === 0) {
+      warnList.innerHTML = '<li style="color:#4ade80;">No warnings</li>';
+    } else {
+      warnList.innerHTML = warnings.map(w => '<li>' + w.replace(/</g, '&lt;') + '</li>').join("");
+    }
+  }
+}
+window.lv10dRefreshBugPanel = lv10dRefreshBugPanel;
+
+/* ── WO-10D: Route health check ── */
+async function lv10dCheckRoutes() {
+  const routes = [
+    { label: "ping",            url: ORIGIN + "/api/ping" },
+    { label: "rolling-summary", url: ORIGIN + "/api/transcript/rolling-summary?person_id=" + (state.person_id || "test") },
+    { label: "recent-turns",   url: ORIGIN + "/api/transcript/recent-turns?person_id=" + (state.person_id || "test") + "&session_id=default&limit=1" },
+    { label: "history",        url: ORIGIN + "/api/transcript/history?person_id=" + (state.person_id || "test") },
+    { label: "sessions",       url: ORIGIN + "/api/transcript/sessions?person_id=" + (state.person_id || "test") },
+    { label: "thread-anchor",  url: ORIGIN + "/api/transcript/thread-anchor?person_id=" + (state.person_id || "test") },
+  ];
+  const results = [];
+  for (const r of routes) {
+    try {
+      const resp = await fetch(r.url, { method: "GET", signal: AbortSignal.timeout(5000) });
+      results.push(r.label + ": " + resp.status + (resp.ok ? " OK" : " FAIL"));
+    } catch (e) {
+      results.push(r.label + ": UNREACHABLE");
+    }
+  }
+  console.log("[WO-10D] Route check:\n" + results.join("\n"));
+  alert("Route Check Results:\n\n" + results.join("\n"));
+}
+window.lv10dCheckRoutes = lv10dCheckRoutes;
+
+/* ── WO-10D: Copy diagnostics to clipboard ── */
+function lv10dCopyDiag() {
+  const diag = {
+    ts: new Date().toISOString(),
+    narrator: document.getElementById("lv80ActiveNarratorName")?.textContent || null,
+    person_id: state.person_id,
+    mode: getCurrentMode(),
+    pass: getCurrentPass(),
+    era: getCurrentEra(),
+    role: getAssistantRole(),
+    llmReady: _llmReady,
+    mic: { recording: isRecording, paused: listeningPaused, wo8Paused: _wo8VoicePaused },
+    camera: { active: cameraActive, emotionAware: emotionAware, previewVisible: !!document.getElementById("lv74-cam-preview") },
+    facialConsent: { granted: typeof FacialConsent !== "undefined" && FacialConsent.isGranted(), stored: (() => { try { return localStorage.getItem("lorevox_facial_consent_granted") === "true"; } catch(_) { return false; } })() },
+    visualSignals: state.session?.visualSignals || null,
+    ws: { connected: !!(ws && wsReady), fallback: usingFallback },
+    llmParams: window._lv10dLlmParams,
+  };
+  const text = JSON.stringify(diag, null, 2);
+  navigator.clipboard.writeText(text).then(() => {
+    console.log("[WO-10D] Diagnostics copied to clipboard.");
+    alert("Diagnostics copied to clipboard.");
+  }).catch(() => {
+    console.log("[WO-10D] Diagnostics:\n" + text);
+    alert("Copy failed — see console for diagnostics.");
+  });
+}
+window.lv10dCopyDiag = lv10dCopyDiag;
+
+/* ── WO-10D: Auto-refresh Bug Panel while open ── */
+(function () {
+  const panel = document.getElementById("lv10dBugPanel");
+  if (!panel) return;
+  panel.addEventListener("toggle", function (e) {
+    if (panel.matches(":popover-open")) {
+      lv10dRefreshBugPanel();
+      _lv10dBugPanelTimer = setInterval(lv10dRefreshBugPanel, 2000);
+    } else {
+      if (_lv10dBugPanelTimer) { clearInterval(_lv10dBugPanelTimer); _lv10dBugPanelTimer = null; }
+    }
+  });
+})();
+
+/* ── WO-10D: Periodic header control sync (every 1s) ── */
+setInterval(lv10dSyncHeaderControls, 1000);
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-KAWA-UI-01A — River View (Kawa) UI renderers
+═══════════════════════════════════════════════════════════════ */
+
+function _escKawa(s){
+  return String(s || "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;");
+}
+
+function renderKawaUI(){
+  const root = document.getElementById("kawaPanel");
+  if (!root) return;
+
+  const kawa = state?.kawa || {};
+  const segs = Array.isArray(kawa.segmentList) ? kawa.segmentList : [];
+  const active = kawa.activeSegment;
+
+  /* ── Segment list ───────────────────────────────────────────── */
+  const listHtml = segs.length ? segs.map(seg => {
+    const isActive = seg.segment_id === kawa.activeSegmentId;
+    const flow = seg?.kawa?.water?.flow_state || "unknown";
+    const status = seg?.provenance?.confirmed ? "confirmed" : "proposed";
+    const label = _escKawa(seg?.anchor?.label || seg?.segment_id);
+    const year = seg?.anchor?.year != null ? seg.anchor.year : "";
+    return `
+      <button class="kawa-segment-row ${isActive ? "active" : ""}" onclick="kawaSelectSegment('${seg.segment_id}')">
+        <div class="kawa-row-top">
+          <span class="kawa-row-year">${year}</span>
+          <span class="kawa-row-label">${label}</span>
+        </div>
+        <div class="kawa-row-meta">
+          <span>Flow: ${flow}</span>
+          <span class="kawa-badge ${status}">${status}</span>
+        </div>
+      </button>
+    `;
+  }).join("") : '<div class="kawa-empty">No river segments yet.</div>';
+
+  /* ── Detail pane ────────────────────────────────────────────── */
+  const detailHtml = active ? `
+    <div class="kawa-detail">
+      <div class="kawa-toolbar">
+        <button onclick="kawaBuildFromCurrentAnchor()">Rebuild</button>
+        <button onclick="kawaSaveActive(false)" ${kawa.isDirty ? "" : "disabled"}>Save</button>
+        <button onclick="kawaSaveActive(true)">Confirm Segment</button>
+      </div>
+
+      <section class="kawa-card">
+        <h3>Flow</h3>
+        <label>Flow State</label>
+        <select onchange="_bindKawaField('kawa.water.flow_state', this.value)">
+          ${["unknown","blocked","constricted","steady","open","strong"].map(x =>
+            '<option value="' + x + '"' + (active?.kawa?.water?.flow_state === x ? " selected" : "") + '>' + x + '</option>'
+          ).join("")}
+        </select>
+        <label>Summary</label>
+        <textarea oninput="_bindKawaField('kawa.water.summary', this.value)">${_escKawa(active?.kawa?.water?.summary || "")}</textarea>
+      </section>
+
+      <section class="kawa-card">
+        <h3>Rocks</h3>
+        ${_renderKawaItemList("rocks", active?.kawa?.rocks || [])}
+      </section>
+
+      <section class="kawa-card">
+        <h3>Driftwood</h3>
+        ${_renderKawaItemList("driftwood", active?.kawa?.driftwood || [])}
+      </section>
+
+      <section class="kawa-card">
+        <h3>Banks</h3>
+        ${_renderKawaBanks(active?.kawa?.banks || {})}
+      </section>
+
+      <section class="kawa-card">
+        <h3>Spaces</h3>
+        ${_renderKawaItemList("spaces", active?.kawa?.spaces || [])}
+      </section>
+
+      <section class="kawa-card">
+        <h3>Narrator Voice</h3>
+        <label>Note</label>
+        <textarea oninput="_bindKawaField('narrator_note', this.value)">${_escKawa(active?.narrator_note || "")}</textarea>
+        <label>Quote</label>
+        <textarea oninput="_bindKawaField('narrator_quote', this.value)">${_escKawa(active?.narrator_quote || "")}</textarea>
+      </section>
+
+      <section class="kawa-card">
+        <h3>Status</h3>
+        <div>Anchor: ${_escKawa(active?.anchor?.label || "")}</div>
+        <div>Year: ${active?.anchor?.year ?? ""}</div>
+        <div>Source: ${active?.provenance?.source || "unknown"}</div>
+        <div>Memoir Mode: ${typeof getMemoirMode === "function" ? getMemoirMode() : "chronology"}</div>
+        <div class="kawa-badge ${active?.provenance?.confirmed ? "confirmed" : "proposed"}">${active?.provenance?.confirmed ? "Confirmed" : "Proposed"}</div>
+        ${active?.provenance?.confirmed ? '<div class="river-informed-badge">eligible for river-informed memoir</div>' : ""}
+        ${kawa.isDirty ? '<div class="kawa-dirty">Unsaved river edits</div>' : ""}
+      </section>
+    </div>
+  ` : `
+    <div class="kawa-empty-detail">
+      <p>No active river segment.</p>
+      <button onclick="kawaBuildFromCurrentAnchor()">Build Proposal</button>
+    </div>
+  `;
+
+  /* ── Assemble layout ────────────────────────────────────────── */
+  root.innerHTML = `
+    <div class="kawa-layout">
+      <aside class="kawa-sidebar">
+        <div class="kawa-sidebar-head">
+          <h2>Memory River</h2>
+          <button onclick="kawaBuildFromCurrentAnchor()">+ Build Proposal</button>
+        </div>
+        <div id="kawaStrip">${_renderKawaStrip(segs)}</div>
+        <div class="kawa-segment-list">${listHtml}</div>
+      </aside>
+      <main class="kawa-main">${detailHtml}</main>
+    </div>
+  `;
+}
+
+/* ── Helper renderers ───────────────────────────────────────── */
+
+function _renderKawaItemList(kind, items){
+  const rows = (items || []).map((item, idx) => `
+    <div class="kawa-item ${kind}">
+      <input value="${_escKawa(item.label || "")}" placeholder="label"
+             oninput="_updateKawaListItem('${kind}', ${idx}, 'label', this.value)">
+      <textarea placeholder="notes"
+                oninput="_updateKawaListItem('${kind}', ${idx}, 'notes', this.value)">${_escKawa(item.notes || "")}</textarea>
+      <div class="kawa-item-actions">
+        <span class="kawa-confidence">confidence: ${item.confidence ?? 0}</span>
+        <button onclick="_deleteKawaListItem('${kind}', ${idx})">Delete</button>
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <div>${rows || '<div class="kawa-empty">No ' + kind + ' yet.</div>'}</div>
+    <button onclick="_addKawaListItem('${kind}')">+ Add ${kind.slice(0, -1) || kind}</button>
+  `;
+}
+
+function _renderKawaBanks(banks){
+  const sections = ["social","physical","cultural","institutional"];
+  return sections.map(sec => `
+    <div class="kawa-bank-group">
+      <h4>${sec}</h4>
+      ${(banks[sec] || []).map((val, idx) => `
+        <div class="kawa-bank-item">
+          <input value="${_escKawa(val || "")}" oninput="_updateKawaBank('${sec}', ${idx}, this.value)">
+          <button onclick="_deleteKawaBank('${sec}', ${idx})">Delete</button>
+        </div>
+      `).join("")}
+      <button onclick="_addKawaBank('${sec}')">+ Add ${sec}</button>
+    </div>
+  `).join("");
+}
+
+function _renderKawaStrip(segs){
+  if (!Array.isArray(segs) || !segs.length) return "";
+  return `
+    <div class="kawa-strip">
+      ${segs.map(seg => {
+        const flow = seg?.kawa?.water?.flow_state || "unknown";
+        const label = _escKawa(seg?.anchor?.label || seg?.segment_id);
+        return '<button class="kawa-strip-seg flow-' + flow + '" onclick="kawaSelectSegment(\'' + seg.segment_id + '\')">' + label + '</button>';
+      }).join("")}
+    </div>
+  `;
+}
+
+/* ── List item CRUD ─────────────────────────────────────────── */
+
+function _addKawaListItem(kind){
+  const seg = state?.kawa?.activeSegment;
+  if (!seg) return;
+  seg.kawa[kind] = seg.kawa[kind] || [];
+  seg.kawa[kind].push({ label: "", notes: "", confidence: 0 });
+  kawaMarkDirty();
+}
+
+function _updateKawaListItem(kind, idx, field, value){
+  const seg = state?.kawa?.activeSegment;
+  if (!seg?.kawa?.[kind]?.[idx]) return;
+  seg.kawa[kind][idx][field] = value;
+  kawaMarkDirty();
+}
+
+function _deleteKawaListItem(kind, idx){
+  const seg = state?.kawa?.activeSegment;
+  if (!seg?.kawa?.[kind]) return;
+  seg.kawa[kind].splice(idx, 1);
+  kawaMarkDirty();
+}
+
+function _addKawaBank(kind){
+  const seg = state?.kawa?.activeSegment;
+  if (!seg) return;
+  seg.kawa.banks = seg.kawa.banks || {};
+  seg.kawa.banks[kind] = seg.kawa.banks[kind] || [];
+  seg.kawa.banks[kind].push("");
+  kawaMarkDirty();
+}
+
+function _updateKawaBank(kind, idx, value){
+  const seg = state?.kawa?.activeSegment;
+  if (!seg?.kawa?.banks?.[kind]) return;
+  seg.kawa.banks[kind][idx] = value;
+  kawaMarkDirty();
+}
+
+function _deleteKawaBank(kind, idx){
+  const seg = state?.kawa?.activeSegment;
+  if (!seg?.kawa?.banks?.[kind]) return;
+  seg.kawa.banks[kind].splice(idx, 1);
+  kawaMarkDirty();
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   WO-KAWA-02A — Mode setters + memoir Kawa overlay
+═══════════════════════════════════════════════════════════════ */
+
+function setInterviewMode(mode){
+  if (typeof setKawaMode === "function") setKawaMode(mode);
+  if (typeof renderKawaUI === "function") renderKawaUI();
+}
+
+function setMemoirMode(mode){
+  if (state?.session) state.session.memoirMode = mode;
+  if (state?.kawa?.memoir) state.kawa.memoir.organizationMode = mode;
+  // Re-render memoir chapters to reflect the new mode
+  if (typeof renderMemoirChapters === "function") renderMemoirChapters();
+}
+
+/**
+ * Build a Kawa river overlay for each chapter that has a confirmed segment.
+ * Returns the chapters array with river overlay appended in chronology_river mode,
+ * or a completely restructured array in river_organized mode.
+ * In plain chronology mode, returns chapters unchanged.
+ */
+function applyKawaToMemoirChapters(chapters){
+  const mode = typeof getMemoirMode === "function" ? getMemoirMode() : "chronology";
+  const segs = state?.kawa?.segmentList || [];
+  if (mode === "chronology" || !segs.length) return chapters;
+
+  if (mode === "chronology_river") {
+    return chapters.map(ch => {
+      const seg = segs.find(s =>
+        s?.provenance?.confirmed &&
+        (s?.anchor?.ref_id === ch.event_id || s?.anchor?.label === ch.title || s?.anchor?.label === ch.label)
+      );
+      if (!seg) return ch;
+      const overlay = typeof buildKawaOverlayText === "function" ? buildKawaOverlayText(seg) : "";
+      if (!overlay) return ch;
+      return {
+        ...ch,
+        river_overlay: overlay,
+        river_informed: true,
+        body: ch.body ? `${ch.body}\n\n${overlay}` : overlay
+      };
+    });
+  }
+
+  if (mode === "river_organized") {
+    const confirmed = segs.filter(s => s?.provenance?.confirmed);
+    if (!confirmed.length) return chapters;
+    const groups = {
+      "Seasons of Open Water": [],
+      "Rocks That Changed the Course": [],
+      "Driftwood That Kept the River Moving": [],
+      "The Banks Around My Life": [],
+      "Where Space Opened Again": []
+    };
+
+    confirmed.forEach(seg => {
+      const flow = seg?.kawa?.water?.flow_state || "";
+      if (["open","strong"].includes(flow)) groups["Seasons of Open Water"].push(seg);
+      if ((seg?.kawa?.rocks || []).length) groups["Rocks That Changed the Course"].push(seg);
+      if ((seg?.kawa?.driftwood || []).length) groups["Driftwood That Kept the River Moving"].push(seg);
+      if ([
+        ...(seg?.kawa?.banks?.social || []),
+        ...(seg?.kawa?.banks?.physical || []),
+        ...(seg?.kawa?.banks?.cultural || []),
+        ...(seg?.kawa?.banks?.institutional || [])
+      ].length) groups["The Banks Around My Life"].push(seg);
+      if ((seg?.kawa?.spaces || []).length) groups["Where Space Opened Again"].push(seg);
+    });
+
+    return Object.entries(groups)
+      .filter(([, arr]) => arr.length)
+      .map(([title, arr], idx) => ({
+        id: `river_${idx}`,
+        title,
+        label: title,
+        river_informed: true,
+        body: arr.map(seg =>
+          typeof buildKawaOverlayText === "function" ? buildKawaOverlayText(seg) : ""
+        ).filter(Boolean).join("\n\n")
+      }));
+  }
+
+  return chapters;
 }

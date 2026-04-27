@@ -326,6 +326,16 @@
     var host = _el("bioBuilderPopover");
     if (!host || (!host.hasAttribute("open") && !host.matches(":popover-open"))) return;
     var pid = _currentPersonId();
+    // BUG-220A: log + reconcile scope mismatch BEFORE any tab renders.
+    // _personChanged is the canonical reset; the log line below is the
+    // harness-checkable signal that a stale render was blocked.
+    try {
+      var _bbState = (typeof state !== "undefined" && state.bioBuilder) || null;
+      if (_bbState && _bbState.personId && pid && _bbState.personId !== pid) {
+        console.warn("[bb-scope] blocked stale render " +
+          (_bbState.personId || "").slice(0, 8) + " -> " + pid.slice(0, 8));
+      }
+    } catch (_) {}
     _personChanged(pid);
     _renderHeader();
     _renderTabs();
@@ -338,13 +348,19 @@
     var name = _currentPersonName();
     if (!pid) {
       subtitle.textContent = "No narrator selected — choose one above to begin";
+    } else if (name) {
+      // BUG-220A: render narrator name prominently so operator can verify
+      // which narrator the popover is bound to before trusting any data.
+      subtitle.textContent = "Capturing biography for " + name;
     } else {
-      subtitle.textContent = name ? "Capturing biography for " + name : "Capturing biography";
+      // Fail-loud: if PID is set but profile name didn't load, show the
+      // pid prefix so it's obvious WHICH narrator we think we're on.
+      subtitle.textContent = "Capturing biography for narrator " + pid.slice(0, 8);
     }
   }
 
   function _renderTabs() {
-    ["bbTabCapture","bbTabQuestionnaire","bbTabSources","bbTabCandidates","bbTabFamilyTree","bbTabLifeThreads"].forEach(function (tid) {
+    ["bbTabCapture","bbTabQuestionnaire","bbTabSources","bbTabCandidates","bbTabFamilyTree","bbTabLifeThreads","bbTabShadowReview","bbTabConflicts"].forEach(function (tid) {
       var el = _el(tid); if (!el) return;
       el.classList.toggle("bb-tab-active", el.dataset.tab === _activeTab);
     });
@@ -354,12 +370,63 @@
     var content = _el("bbTabContent"); if (!content) return;
     content.innerHTML = "";
     var pid = _currentPersonId();
+    // BUG-220A: fail-closed scope guard. Every tab render path reads
+    // state.bioBuilder.* via _bb(); if bb.personId hasn't reconciled to
+    // the active narrator yet (race between _personChanged async restore
+    // and the tab render), refuse to paint stale data and surface a
+    // loading state. Operator can hit refresh / retry once bb.personId
+    // catches up. Applies uniformly to all tabs.
+    var _bbState = (typeof state !== "undefined" && state.bioBuilder) || null;
+    if (pid && _bbState && _bbState.personId && _bbState.personId !== pid) {
+      console.warn("[bb-scope] tab render deferred — bb.personId=" +
+        (_bbState.personId || "").slice(0, 8) + " active=" + pid.slice(0, 8));
+      content.innerHTML =
+        '<div class="bb-empty-state" style="padding:2rem;text-align:center;color:#94a3b8;">' +
+          '<div style="font-size:1.1rem;margin-bottom:.5rem;">Loading active narrator questionnaire…</div>' +
+          '<div style="font-size:.85rem;opacity:.7;">' +
+            'Switching scope (' + (_bbState.personId || "").slice(0, 8) + ' → ' + pid.slice(0, 8) + ')' +
+          '</div>' +
+        '</div>';
+      return;
+    }
     if      (_activeTab === "capture")       _renderCaptureTab(content, pid);
     else if (_activeTab === "questionnaire") _renderQuestionnaireTab(content, pid, _activeSection, _renderActiveTab);
     else if (_activeTab === "sources")       _renderSourcesTab(content, pid);
     else if (_activeTab === "candidates")    _renderCandidatesTab(content, pid);
     else if (_activeTab === "familyTree")    _renderFamilyTreeTab(content, pid);
     else if (_activeTab === "lifeThreads")   _renderLifeThreadsTab(content, pid);
+    else if (_activeTab === "shadowReview") _renderShadowReviewTab(content, pid);
+    else if (_activeTab === "conflicts")    _renderConflictsTab(content, pid);
+  }
+
+  function _renderShadowReviewTab(container, pid) {
+    if (!pid) {
+      container.innerHTML = _emptyStateHtml(
+        "No narrator selected",
+        "Choose a narrator from the dropdown above to review their sources.",
+        []
+      );
+      return;
+    }
+    container.innerHTML = '<div id="shadowReviewRoot"></div>';
+    if (window.LorevoxShadowReview && window.LorevoxShadowReview.init) {
+      window.LorevoxShadowReview.init("shadowReviewRoot");
+    }
+  }
+
+  function _renderConflictsTab(container, pid) {
+    if (!pid) {
+      container.innerHTML = _emptyStateHtml(
+        "No narrator selected",
+        "Choose a narrator from the dropdown above to review conflicts.",
+        []
+      );
+      return;
+    }
+    container.innerHTML = '<div id="conflictConsoleRoot"></div>';
+    if (window.LorevoxConflictConsole && window.LorevoxConflictConsole.init) {
+      window.LorevoxConflictConsole.init("conflictConsoleRoot");
+    }
   }
 
   /* ── Quick Capture Tab ──────────────────────────────────── */
