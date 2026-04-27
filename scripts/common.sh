@@ -137,3 +137,17 @@ show_vram() {
     nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv,noheader 2>/dev/null || true
   fi
 }
+
+# Open the v10 UI in the host's default browser. Called from the launcher
+# scripts after API + TTS + LLM warmup all complete. WSL2 hosts route
+# this through cmd.exe /c start; pure-Linux hosts try xdg-open. Either
+# way, failure is non-fatal — the script keeps running and prints the
+# URL for the operator to open manually.
+open_ui_in_windows() {
+  local url="${1:-http://127.0.0.1:${UI_PORT}/ui/lorevox10.0.html}"
+  if command -v cmd.exe >/dev/null 2>&1; then
+    cmd.exe /c start "" "$url" 2>/dev/null || true
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$url" >/dev/null 2>&1 || true
+  fi
+}

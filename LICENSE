@@ -112,28 +112,92 @@ under any terms:
   - Any other Lorevox-derived product names, sub-product names,
     or branded surfaces released by the copyright holder
 
-The expressive embodiments of the following systems — that is,
-the source code, prompt text, schemas, and documentation that
-implement them in this codebase — are also part of the reserved
-rights:
-  - The Archive → History → Memoir three-layer architecture as
-    expressed in this codebase
-  - The runtime71 cognitive state system and its prompt
-    composition pipeline
-  - The multi-pass interview model (Pass 1 / Pass 2A / Pass 2B)
-    and the Timeline Spine structure
-  - The four-layer family-truth pipeline (shadow archive /
-    proposal layer / human review / promoted truth)
-  - The Cognitive Support Model and dementia-safe pacing ladder
-    (protected silence intervals, invitational re-entry, no-
-    correction posture)
-  - The memoir schema and biographical data structures
+Lorevox's proprietary protected materials — the expressive
+embodiments of which (source code, prompt text, schemas,
+documentation, UI text, and the specific implementations in this
+codebase) are reserved — include:
+
+  Persona, prompts, and behavioral DNA
+    - The Lori interviewer persona, voice, and character design
+    - The prompt_composer pipeline, system prompt templates,
+      and behavioral directive language
+    - Pass / era / mode rules
+    - Transparency and privacy response rules
+    - Distress, fatigue, and cognitive-mode instructions
+    - The Cognitive Support Model and dementia-safe pacing ladder
+      (protected silence intervals, invitational re-entry, no-
+      correction posture, single-thread context, visual-as-
+      patience, invitational prompts)
+
+  Cognitive-state runtime
+    - The runtime71 cognitive-state system and its prompt-
+      composition pipeline
+    - The buildRuntime71 assembly logic that situates each chat
+      turn with pass, era, mode, affect, fatigue, paired-interview
+      state, identity phase, speaker anchoring, memoir context,
+      device context, media count, and projection-family snapshot
+    - The setLoriState propagation and cognitive-mode cascade
+    - The canonical front-end memory model expressed in state.js
+      (state.session, state.runtime, state.interviewProjection,
+      identity onboarding state machine, locked-field model,
+      sync rules, narrator-scoped lifecycle)
+
+  Truth governance
+    - The Archive → History → Memoir three-layer architecture as
+      expressed in this codebase
+    - The four-layer family-truth pipeline (shadow archive /
+      proposal layer / human review / promoted truth)
+    - The interview projection map (field-path mapping, write-mode
+      rules including prefill_if_blank / candidate_only /
+      suggest_only, protected identity fields, era-tagged question
+      routing, conversational question text, repeatable family
+      templates)
+    - The projection-sync engine and human-edit authority logic
+      (lock rules, protected identity conflict handling,
+      suggestion queue, accepted-suggestion locking, sync-log
+      audit trail, candidate-only vs direct-write behavior,
+      narrator reset and restore logic)
+    - The Bio Builder candidate-shaping pipeline (source intake
+      structure, candidate shaping, provenance model, duplicate
+      guard, "candidate is not fact" rules, promotion boundary)
+    - Narrator-scoped state isolation (per-person Bio Builder
+      state, draft persistence keys, backend-first questionnaire
+      persistence, quick-capture restoration, anti-cross-
+      narrator-contamination guards)
+    - The Bio Builder QC pipeline (atomic claim splitting,
+      family-relation qualifier detection, duplicate and overlap
+      comparison, provenance labeling, review-readiness scoring)
+    - The Bio Review and Phase F approved-only downstream sync
+      (approve / edit / reject logic, promotion adapters, Phase F
+      orchestration, anti-leakage tests, approved-only sync,
+      review-queue behavior)
+    - The Life Map read-only navigation contract (no-parallel-
+      state rule, timeline spine navigation, era-node behavior,
+      scaffold-period logic)
+    - The multi-pass interview model (Pass 1 / Pass 2A / Pass 2B)
+      and the Timeline Spine structure
+    - The memoir schema and biographical data structures
+
+  Privacy, safety, and capture surface
+    - The MediaPipe Face Mesh → affect-state → runtime71
+      pipeline, with consent-first activation, debounced
+      transmission, and the boundary that no video, no raw
+      landmarks, and no raw emotion labels leave the browser
+    - The local, non-LLM safety scan and crisis-routing layer
+    - The Focus Canvas storytelling capture surface and its
+      narrator-identity-anchored chat behavior
+    - The memoir DOCX export pipeline
 
 (Note: copyright protects expressive implementation, not abstract
 ideas or methodologies. Independently-developed implementations
 of similar architectures by third parties are not within the
-scope of these reservations; what is reserved is the expression
-in this codebase and any derivative works of it.)
+scope of these reservations. What is reserved is the expression
+in this codebase — the specific source code, prompt text, schemas,
+UI language, documentation, workflow expressions, and behavioral
+implementations — together with any derivative works of them.
+Anyone is free to build a different AI memoir tool. No one is
+free to copy this one's code, prompts, persona, schemas, or
+expressed implementation.)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
