@@ -1,0 +1,177 @@
+{
+  "run_at": "2026-03-17T18:25:49",
+  "model": "/mnt/c/Llama-3.1-8B/hf/Meta-Llama-3.1-8B-Instruct",
+  "overall": 39,
+  "grade": "F",
+  "passing": "0/8",
+  "results": [
+    {
+      "group": "1",
+      "name": "Timeline Seed Enforcement (Pass 1)",
+      "score": 40,
+      "grade": "F",
+      "passed": false,
+      "breakdown": {
+        "required": 0,
+        "forbidden": 20,
+        "structural": 10,
+        "discipline": 10
+      },
+      "details": [
+        "\u2717 No required signals found",
+        "\u2717 Doesn't ask for birth info",
+        "\u2713 Response concise (< 120 words)"
+      ],
+      "words": 6,
+      "questions": 0,
+      "elapsed_s": 0.0
+    },
+    {
+      "group": "2",
+      "name": "Pass 2A / Early Childhood",
+      "score": 40,
+      "grade": "F",
+      "passed": false,
+      "breakdown": {
+        "required": 0,
+        "forbidden": 20,
+        "structural": 10,
+        "discipline": 10
+      },
+      "details": [
+        "\u2717 No required signals found",
+        "\u2717 Not clearly place-anchored",
+        "\u2713 Correctly broad (not a scene demand)"
+      ],
+      "words": 6,
+      "questions": 0,
+      "elapsed_s": 0.0
+    },
+    {
+      "group": "3",
+      "name": "Era Switch \u2014 School Years",
+      "score": 40,
+      "grade": "F",
+      "passed": false,
+      "breakdown": {
+        "required": 0,
+        "forbidden": 20,
+        "structural": 10,
+        "discipline": 10
+      },
+      "details": [
+        "\u2717 No required signals found",
+        "\u2717 Not school-specific",
+        "\u2713 No regression to earlier era"
+      ],
+      "words": 6,
+      "questions": 0,
+      "elapsed_s": 0.0
+    },
+    {
+      "group": "4A",
+      "name": "Pass 2A \u2014 Chronological breadth",
+      "score": 50,
+      "grade": "C",
+      "passed": false,
+      "breakdown": {
+        "required": 0,
+        "forbidden": 20,
+        "structural": 20,
+        "discipline": 10
+      },
+      "details": [
+        "\u2717 No required signals found",
+        "\u2713 Broad question (not a scene demand)",
+        "\u2717 Missing place/daily-life framing"
+      ],
+      "words": 6,
+      "questions": 0,
+      "elapsed_s": 0.0
+    },
+    {
+      "group": "4B",
+      "name": "Pass 2B \u2014 Narrative Depth",
+      "score": 30,
+      "grade": "F",
+      "passed": false,
+      "breakdown": {
+        "required": 0,
+        "forbidden": 20,
+        "structural": 0,
+        "discipline": 10
+      },
+      "details": [
+        "\u2717 No required signals found",
+        "\u2717 Not a scene demand \u2014 still broad (Pass 2A style)",
+        "\u2717 Missing sensory detail language"
+      ],
+      "words": 6,
+      "questions": 0,
+      "elapsed_s": 0.0
+    },
+    {
+      "group": "5",
+      "name": "Cognitive Recognition Mode",
+      "score": 30,
+      "grade": "F",
+      "passed": false,
+      "breakdown": {
+        "required": 0,
+        "forbidden": 20,
+        "structural": 0,
+        "discipline": 10
+      },
+      "details": [
+        "\u2717 No required signals found",
+        "\u2717 No choice pattern \u2014 still open-ended recall",
+        "\u2717 No question asked at all"
+      ],
+      "words": 6,
+      "questions": 0,
+      "elapsed_s": 0.0
+    },
+    {
+      "group": "6",
+      "name": "High Fatigue Response",
+      "score": 45,
+      "grade": "F",
+      "passed": false,
+      "breakdown": {
+        "required": 0,
+        "forbidden": 20,
+        "structural": 15,
+        "discipline": 10
+      },
+      "details": [
+        "\u2717 No required signals found",
+        "\u2717 No pause offer",
+        "\u2713 Short response (6 words \u2264 80)"
+      ],
+      "words": 6,
+      "questions": 0,
+      "elapsed_s": 0.0
+    },
+    {
+      "group": "7b",
+      "name": "Affect + Grounding Mode",
+      "score": 40,
+      "grade": "F",
+      "passed": false,
+      "breakdown": {
+        "required": 0,
+        "forbidden": 20,
+        "structural": 10,
+        "discipline": 10
+      },
+      "details": [
+        "\u2717 No required signals found",
+        "\u2717 No empathetic acknowledgment \u2014 jumped to question",
+        "\u2713 Response brief (6 words)"
+      ],
+      "words": 6,
+      "questions": 0,
+      "elapsed_s": 0.0
+    }
+  ]
+}
