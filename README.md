@@ -733,32 +733,69 @@ Phase D addressed four operational risk areas. All fixes are verified and active
 
 ---
 
-## Status — v9.0
+## Status — v10.0 (as of 2026-04-28)
 
-### Pre-production ready
+### v10.0 distillation pass complete
 
-- 20-run deep runtime test: 20/20 PASS, 0 critical failures
-- Phase D work orders complete (VRAM guard, identity handshake)
-- Phase N complete (Focus Canvas, clean-restart, narrator identity labels, Bio Builder isolation)
-- Startup orchestration verified (service isolation, rapid restart, clean-restart flow)
-- Full test harness active (health, API, DB, E2E)
-- All startup scripts, shortcuts, and test scripts updated for 9.0
-- No drift across repeated runs
-- Architecture integrity confirmed (Phase F anti-leakage, meaning engine, affect pipeline, identity gate)
-- All core invariants holding
-- Trust/privacy alignment enforced (TRANSPARENCY RULE, consent gate, local-only processing)
+The v9.0 core is preserved (`ui/lori9.0.html` and `server.STALE_do_not_import/` as historical reference). The v10 entry point at `ui/lorevox10.0.html` consolidates everything proven against real older-adult narrators in the Hornelore R&D crucible: four-layer truth pipeline, photo system, document archive, memory archive, three-tab UI shell, narrator room, cognitive support model, Bio Builder hardening, operator UI Health Check harness, chronology accordion. All 9.0 core invariants holding.
 
-### Active development front: Hornelore (the R&D crucible)
+### Three active lanes
 
-Lorevox 9.0 core is stable. Active feature development happens in Hornelore — a family-locked private build seeded with three real older-adult narrators (Chris, Kent, Janice) where each candidate feature is exercised against actual aging-parent use before being considered for promotion to the public Lorevox product.
+Active feature development runs in Hornelore (the family-locked R&D crucible) and promotes to Lorevox by deliberate decision. Three parallel lanes with separate posture and acceptance criteria:
 
-The relationship is one-way and deliberate: Hornelore is the lab; Lorevox is the gold. Features move only by promotion, after they prove themselves with real narrators — never by file-parity backport. Each promotion strips out Horne-family-specific assumptions (closed narrator universe, pre-seeded identity, family templates, dev utilities) and generalizes the surviving capability for arbitrary narrators.
+#### Lane 1 — Extractor (regression-gated)
+
+- **Active baseline:** `r5h` (70/104, v3=41/62, v2=35/62, mnw=2). r5h-postpatch (2026-04-27) confirmed byte-stable.
+- **Top of queue:** `WO-EX-BINDING-01` — binding-layer fix delivered as PATCH 1-5 inside the SPANTAG Pass 2 prompt + binding contract. Targets the field-path-mismatch + schema-gap cluster (84 of 72 r5f-spantag-on-v4 failures) by routing SPANTAG output through the existing comprehensive `_FIELD_ALIASES` machinery.
+- **SPANTAG state:** OFF in production until BINDING-01 lands. v3 default-on attempt produced -39 cases due to binding-layer hallucination; v4 confirmed value-coerce + HF_HUB_OFFLINE patches (no HTTP 500s) + captured BINDING-01 input data.
+- Queue: BINDING-01 → SCHEMA-ANCESTOR-EXPAND-01 → VALUE-ALT-CREDIT-01 → SPANTAG re-enable evaluation.
+
+#### Lane 2 — Lori behavior (parent-session-gated)
+
+In-session listener behavior. Three new WOs authored 2026-04-27 cover the pre-parent-session blockers:
+
+- **`WO-LORI-SAFETY-INTEGRATION-01`** — wires existing `safety.py` pattern detector (50+ regexes, 7 categories, 0.70 threshold, false-positive guards, soft-mode tracking) into the chat WebSocket path (currently zero deterministic safety on chat); adds operator notification surface; LLM second-layer for indirect ideation; warm-first IDEATION/DISTRESSED prompt block additive to existing ACUTE SAFETY RULE; Friendship Line resource extension. Companion not clinician — no scoring, no diagnostic profile, no longitudinal report.
+- **`WO-LORI-SESSION-AWARENESS-01`** — four-phase active-listener WO. Concept: Adaptive Narrator Silence Ladder. Memory echo crash fix (one-line `chat_ws.py` import) + Peek-at-Memoir consultation + interview discipline composer guard (≤55 words / 1 question / 1 ask, intent-aware tiers) + MediaPipe attention cue + per-narrator pacing-fit silence ladder. Banned vocabulary list as structural constraint (no "cognitive decline" / "MCI" / "diagnostic" / "severity" / "drift score" / "CDTD" anywhere in code, logs, prompts, UI).
+- **`WO-LORI-RESPONSE-HARNESS-01`** — response-quality test harness orthogonal to extraction evals. Answers "Did Lori respond like a good interviewer?" via 10 metrics across 5 test types (interview discipline, memory echo, passive waiting, safety, regression replay). Bug Panel summaries + Test Lab runs scenarios. Deterministic scoring foundational; LLM-judged metrics never load-bearing.
+
+#### Lane 3 — MediaPipe / multimodal (post-parent-session)
+
+- **`WO-AFFECT-ANCHOR-01`** — multimodal affect anchoring via shared-clock fusion (Whisper word-timestamps + MediaPipe + light acoustic features + optional Tier 2 video). Audio + facial signals share the audio capture clock so a moment of weight in a narrator's voice anchors to the words and the face that produced it. The memoir stops being a transcript and becomes a multimodal artifact — a granddaughter who never met the narrator can click an extracted fact and hear her say it, see her face when she said it, feel the pause before the word. Parked behind BINDING-01 + parent-session readiness.
+
+### Local-first AI commitment
+
+Every model layer (STT, LLM, facial signal, acoustic features, TTS) runs on the narrator's machine. This is a standing architectural commitment, not a default we plan to revisit later under cost pressure. No external API calls for any modality including facial recognition, speech-to-text, and emotion inference. The single network exit is Nominatim reverse-geocoding for photo EXIF (a public OSM endpoint, not an authenticated cloud API), and that's the only one in the system; everything narrator-touching stays on the device.
+
+The architecture is deliberately modular so that as better local models appear and consumer hardware advances (more VRAM, faster CPUs, on-device NPUs), upstream signal extractors can be swapped without rewiring downstream consumers. The fusion layer's contract stays stable; only the upstream extractors change.
+
+### Hornelore → Lorevox promotion
+
+Lorevox is the public product line; Hornelore is the family-locked R&D crucible. Features move by deliberate promotion only — never by file-parity backport. Each promotion strips Horne-family-specific assumptions (closed narrator universe, pre-seeded identity, family templates, dev utilities) and generalizes the surviving capability for arbitrary narrators.
 
 The current promotion queue is captured under "Hornelore Promotion Queue (2026-04)" in the Shipped vs Pending section above. It separates candidates into three buckets: proven-and-ready-to-promote, in-flux-and-held-in-Hornelore, and Hornelore-only-by-design.
 
-### One tracked issue before first narrator session
+### Operator startup expectation
 
-**ISSUE-17 — Camera stream unification.** The draggable preview and emotion engine currently call `getUserMedia` separately. On some browsers this may surface a second permission dialog. Fix: pass the existing emotion engine MediaStream into the preview element. Priority: low but should resolve before first narrator session.
+Cold boot is ~4 minutes. HTTP listener up at ~60-70 seconds; LLM weights + extractor warmup continue another 2-3 minutes. A `curl /health` check is not sufficient — it only proves the socket is listening, not that the extractor can serve a real request in <30s. Eval harnesses must wait for the warmup probe to report `roundtrip <30s` before timing-sensitive runs.
+
+### Pre-parent-session readiness
+
+Before first contact with real outside-family narrators, the following gates apply (extending the original 7-gate readiness checklist):
+
+- [ ] Memory echo import hotfix landed + regression test (one-line `chat_ws.py` fix)
+- [ ] Safety detection wired into `/api/chat/ws` (currently only on `/api/interview/answer`)
+- [ ] LORI_INTERVIEW_DISCIPLINE prompt block + runtime filter live
+- [ ] Operator notification surface live (Bug Panel banner + between-session digest)
+- [ ] LLM safety second-layer live
+- [ ] IDEATION/DISTRESSED prompt block additive to ACUTE rule
+- [ ] Friendship Line resource added (1-800-971-0016, staffed for 60+)
+- [ ] Red-team safety pack passes (zero false negatives on suicidal_ideation across both chat AND interview paths)
+- [ ] Operator runbook written
+- [ ] Onboarding consent disclosure language added
+
+### One pre-existing tracked issue
+
+**ISSUE-17 — Camera stream unification.** The draggable preview and emotion engine currently call `getUserMedia` separately. On some browsers this may surface a second permission dialog. Fix: pass the existing emotion engine MediaStream into the preview element. Low priority but should resolve before first narrator session.
 
 ---
 
@@ -778,4 +815,4 @@ See [LICENSE](LICENSE) for complete terms (Version 1.1 — 2026). For permission
 
 ---
 
-*Lorevox 9.0 — local-first, privacy-first, human-first. Every word they speak is the ground truth. Lori is the app.*
+*Lorevox 10.0 — local-first, privacy-first, human-first. Every word they speak is the ground truth. Lori is the app.*
