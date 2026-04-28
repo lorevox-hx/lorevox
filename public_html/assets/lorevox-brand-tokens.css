@@ -1,0 +1,35 @@
+/* Lorevox / Hornelore Brand Tokens v1 */
+:root {
+  --lv-archive-black: #0F0F1A;
+  --lv-slate-panel: #1E293B;
+  --lv-text-frost: #E2E8F0;
+  --lv-muted-text: #94A3B8;
+  --lv-deep-muted: #475569;
+  --lv-memory-indigo: #6366F1;
+  --lv-soft-indigo: #A5B4FC;
+  --lv-patina-teal: #14B8A6;
+  --lv-patina-glow: #5EEAD4;
+  --lv-old-bronze: #8B5A2B;
+  --lv-warm-copper: #B87333;
+  --lv-stone-light: #E5E2DA;
+  --lv-stone-mid: #9A9488;
+  --lv-iron-shadow: #2B2C2C;
+
+  --lv-radius-card: 12px;
+  --lv-radius-pill: 999px;
+  --lv-shadow-deep: 0 24px 64px rgba(0,0,0,0.60);
+  --lv-font-ui: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --lv-font-display: Georgia, "Times New Roman", serif;
+}
+
+.lv-brand-panel {
+  background: var(--lv-archive-black);
+  color: var(--lv-text-frost);
+  border: 1px solid rgba(99,102,241,0.20);
+  border-radius: var(--lv-radius-card);
+  box-shadow: var(--lv-shadow-deep);
+}
+
+.lv-brand-accent { color: var(--lv-soft-indigo); }
+.lv-brand-patina { color: var(--lv-patina-glow); }
+.lv-brand-bronze { color: var(--lv-warm-copper); }
