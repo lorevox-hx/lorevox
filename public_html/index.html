@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0F0F1A" />
+<title>Lorevox — Private AI Memoir Studio</title>
+<meta name="description" content="Lorevox helps older adults preserve their life stories through guided conversation, strengthening memory, identity, and family connection. Local-first, privacy-conscious, human-authored." />
+<meta property="og:title" content="Lorevox — Private AI Memoir Studio" />
+<meta property="og:description" content="A local-first life-story platform built around how older adults remember." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="assets/lorevox-og.png" />
+<link rel="icon" type="image/png" href="assets/favicon.png" />
+<link rel="apple-touch-icon" href="assets/lorevox-app-icon-512.png" />
+<link rel="stylesheet" href="assets/lorevox-brand-tokens.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--lv-archive-black);
+    color: var(--lv-text-frost);
+    font-family: var(--lv-font-ui);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 20% 12%, rgba(99,102,241,0.12) 0%, transparent 45%),
+      radial-gradient(circle at 80% 80%, rgba(20,184,166,0.07) 0%, transparent 55%);
+    background-attachment: fixed;
+  }
+
+  img { max-width: 100%; height: auto; display: block; }
+
+  a { color: var(--lv-soft-indigo); text-decoration: none; }
+  a:hover { color: var(--lv-patina-glow); }
+
+  .container { max-width: 1160px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* ─── Top bar ─── */
+  .topbar {
+    position: sticky; top: 0; z-index: 80;
+    background: rgba(15,15,26,0.85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--lv-line, rgba(255,255,255,0.08));
+    padding: 0.7rem 0;
+  }
+  .topbar .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1.5rem;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 0.7rem;
+    text-decoration: none;
+  }
+  .brand img {
+    height: 44px; width: auto; display: block;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+  }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.05; }
+  .brand-text .word {
+    font-family: var(--lv-font-display);
+    font-size: 1.25rem; font-weight: 700;
+    color: var(--lv-text-frost); letter-spacing: 0.01em;
+  }
+  .brand-text .sub {
+    font-size: 0.7rem; color: var(--lv-muted-text);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    font-weight: 500;
+  }
+  nav.primary { display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem; align-items: center; }
+  nav.primary a {
+    color: var(--lv-text-frost); opacity: 0.78;
+    font-size: 0.82rem; font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 0.35rem 0.1rem;
+    border-bottom: 1px solid transparent;
+  }
+  nav.primary a:hover, nav.primary a:focus { opacity: 1; color: var(--lv-soft-indigo); border-bottom-color: var(--lv-soft-indigo); outline: none; }
+  nav.primary a.repo {
+    border: 1px solid var(--lv-soft-indigo); color: var(--lv-soft-indigo);
+    border-radius: 999px; padding: 0.4rem 0.95rem;
+    opacity: 1; transition: background 0.15s;
+  }
+  nav.primary a.repo:hover { background: var(--lv-soft-indigo); color: var(--lv-archive-black); border-bottom-color: transparent; }
+
+  /* ─── Hero ─── */
+  .hero { padding: clamp(2.5rem, 5vw, 4.5rem) 0 clamp(2.5rem, 4vw, 3.5rem); }
+  .hero .container {
+    display: grid; grid-template-columns: 1.25fr 1fr;
+    gap: clamp(2rem, 4vw, 3.5rem);
+    align-items: center;
+  }
+  @media (max-width: 880px) {
+    .hero .container { grid-template-columns: 1fr; gap: 2.2rem; }
+  }
+  .hero .kicker {
+    display: inline-block;
+    color: var(--lv-soft-indigo);
+    font-size: 0.75rem; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 1.1rem;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid rgba(165,180,252,0.3);
+    border-radius: 999px;
+    background: rgba(165,180,252,0.06);
+  }
+  .hero h1 {
+    font-family: var(--lv-font-display);
+    font-weight: 700;
+    font-size: clamp(2rem, 4.6vw, 3.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin: 0 0 1.3rem;
+    color: var(--lv-text-frost);
+  }
+  .hero .lede {
+    font-size: clamp(1.02rem, 1.3vw, 1.13rem);
+    line-height: 1.6;
+    color: var(--lv-muted-text);
+    margin: 0 0 1.4rem;
+    max-width: 56ch;
+  }
+  .hero .cta-row {
+    display: flex; flex-wrap: wrap; gap: 0.7rem;
+    margin-top: 1.4rem;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.78rem 1.3rem;
+    font-family: var(--lv-font-ui);
+    font-weight: 600; font-size: 0.88rem;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    border-radius: 999px;
+    border: 1px solid var(--lv-soft-indigo);
+    color: var(--lv-text-frost);
+    background: rgba(99,102,241,0.12);
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:hover, .btn:focus { background: var(--lv-memory-indigo); border-color: var(--lv-memory-indigo); color: white; outline: none; }
+  .btn-primary {
+    background: var(--lv-memory-indigo);
+    border-color: var(--lv-memory-indigo);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--lv-soft-indigo); border-color: var(--lv-soft-indigo); color: var(--lv-archive-black); }
+  .btn-ghost { background: transparent; border-color: rgba(255,255,255,0.18); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.06); border-color: var(--lv-soft-indigo); color: var(--lv-soft-indigo); }
+  .hero .note {
+    margin-top: 1.5rem; font-size: 0.83rem; color: var(--lv-deep-muted);
+    line-height: 1.5; max-width: 50ch;
+  }
+
+  /* Founder card on right */
+  .founder-card {
+    background: var(--lv-slate-panel);
+    border: 1px solid rgba(99,102,241,0.18);
+    border-radius: var(--lv-radius-card);
+    padding: 1.5rem;
+    box-shadow: var(--lv-shadow-deep);
+  }
+  .founder-tag {
+    color: var(--lv-patina-glow);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .founder-card .portrait {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    background: var(--lv-iron-shadow);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .founder-card .portrait img {
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+  }
+  .founder-card .built-by {
+    font-size: 0.72rem; color: var(--lv-muted-text);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    font-weight: 500; margin-bottom: 0.3rem;
+  }
+  .founder-card h3 {
+    margin: 0 0 0.5rem;
+    font-family: var(--lv-font-display);
+    font-size: 1.15rem; font-weight: 700;
+    color: var(--lv-text-frost);
+  }
+  .founder-card .btn-why {
+    display: inline-flex;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--lv-soft-indigo);
+    border-color: rgba(165,180,252,0.35);
+    background: rgba(99,102,241,0.08);
+    margin: 0 0 0.9rem;
+  }
+  .founder-card .btn-why:hover {
+    background: rgba(99,102,241,0.16);
+    border-color: var(--lv-soft-indigo);
+    color: var(--lv-text-frost);
+  }
+  .founder-card p {
+    margin: 0 0 0.8rem; color: var(--lv-muted-text);
+    font-size: 0.9rem; line-height: 1.55;
+  }
+  .founder-card .quote {
+    border-left: 2px solid var(--lv-patina-teal);
+    padding-left: 0.9rem;
+    color: var(--lv-soft-indigo);
+    font-family: var(--lv-font-display);
+    font-style: italic;
+    font-size: 0.92rem;
+    margin: 0;
+  }
+
+  /* ─── Section ─── */
+  section.band {
+    padding: clamp(3rem, 5vw, 5rem) 0;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  section.band .eyebrow {
+    color: var(--lv-soft-indigo);
+    font-size: 0.74rem; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 0.8rem;
+  }
+  section.band h2 {
+    font-family: var(--lv-font-display);
+    font-weight: 700;
+    font-size: clamp(1.7rem, 3.2vw, 2.4rem);
+    line-height: 1.15;
+    margin: 0 0 1.2rem;
+    color: var(--lv-text-frost);
+  }
+  section.band .lede {
+    font-size: 1.05rem; line-height: 1.65;
+    color: var(--lv-muted-text);
+    max-width: 60ch;
+    margin: 0 0 2.2rem;
+  }
+
+  /* Core model — flow diagram */
+  .core-model { text-align: center; }
+  .flow-arrow {
+    display: inline-block;
+    font-family: var(--lv-font-display);
+    font-weight: 700;
+    font-size: clamp(1.05rem, 1.7vw, 1.4rem);
+    color: var(--lv-soft-indigo);
+    letter-spacing: 0.05em;
+    padding: 0.7rem 1.2rem;
+    border: 1px solid rgba(165,180,252,0.3);
+    border-radius: 999px;
+    background: rgba(99,102,241,0.08);
+    margin-bottom: 2rem;
+  }
+  .core-model .lede { margin-left: auto; margin-right: auto; }
+  .flow-stages {
+    display: flex; flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin: 2rem 0 2.5rem;
+  }
+  .flow-stages .stage {
+    background: var(--lv-slate-panel);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--lv-text-frost);
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  .flow-stages .arrow { color: var(--lv-deep-muted); padding: 0.5rem 0.2rem; align-self: center; }
+  .three-layer {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem;
+    margin-top: 1.5rem;
+    text-align: left;
+  }
+  @media (max-width: 760px) {
+    .three-layer { grid-template-columns: 1fr; }
+  }
+  .layer-card {
+    background: var(--lv-slate-panel);
+    border: 1px solid rgba(99,102,241,0.18);
+    border-radius: var(--lv-radius-card);
+    padding: 1.5rem;
+  }
+  .layer-card .label {
+    font-family: var(--lv-font-display);
+    font-weight: 700;
+    color: var(--lv-soft-indigo);
+    font-size: 1.1rem;
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.02em;
+  }
+  .layer-card p { margin: 0; color: var(--lv-muted-text); font-size: 0.95rem; line-height: 1.6; }
+
+  /* What is / what is not / why — 3-card grid */
+  .three-card {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
+  }
+  @media (max-width: 880px) { .three-card { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .three-card { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--lv-slate-panel);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--lv-radius-card);
+    padding: 1.6rem 1.5rem;
+  }
+  .card h3 {
+    font-family: var(--lv-font-display);
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin: 0 0 1rem;
+    color: var(--lv-text-frost);
+  }
+  .card.is h3 { color: var(--lv-soft-indigo); }
+  .card.is-not h3 { color: var(--lv-warm-copper); }
+  .card.why h3 { color: var(--lv-patina-glow); }
+  .card ul { list-style: none; padding: 0; margin: 0; }
+  .card ul li {
+    padding-left: 1.1rem; position: relative;
+    margin-bottom: 0.5rem;
+    color: var(--lv-muted-text);
+    font-size: 0.93rem; line-height: 1.55;
+  }
+  .card ul li::before {
+    content: "·"; position: absolute; left: 0;
+    color: var(--lv-soft-indigo); font-weight: 700;
+  }
+  .card.is-not ul li::before { color: var(--lv-warm-copper); }
+  .card.why p { margin: 0 0 0.7rem; color: var(--lv-muted-text); font-size: 0.93rem; line-height: 1.6; }
+
+  /* Extraction subgrid */
+  .feature-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.4rem;
+  }
+  @media (max-width: 760px) { .feature-grid { grid-template-columns: 1fr; } }
+  .feature {
+    background: var(--lv-slate-panel);
+    border: 1px solid rgba(165,180,252,0.12);
+    border-radius: var(--lv-radius-card);
+    padding: 1.4rem;
+  }
+  .feature h3 {
+    font-family: var(--lv-font-display);
+    font-size: 1.05rem; font-weight: 700;
+    margin: 0 0 0.6rem;
+    color: var(--lv-soft-indigo);
+  }
+  .feature p { margin: 0; color: var(--lv-muted-text); font-size: 0.93rem; line-height: 1.6; }
+
+  /* Capture cards (audio / video / timestamps) */
+  .capture-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem;
+    margin-top: 1.5rem;
+  }
+  @media (max-width: 880px) { .capture-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 580px) { .capture-grid { grid-template-columns: 1fr; } }
+  .capture-card {
+    background: var(--lv-slate-panel);
+    border: 1px solid rgba(94,234,212,0.18);
+    border-radius: var(--lv-radius-card);
+    padding: 1.4rem;
+  }
+  .capture-card .cap-icon {
+    color: var(--lv-patina-glow);
+    font-weight: 700; font-size: 0.7rem;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-bottom: 0.55rem;
+  }
+  .capture-card h3 {
+    font-family: var(--lv-font-display);
+    font-weight: 700; font-size: 1.05rem;
+    margin: 0 0 0.6rem; color: var(--lv-text-frost);
+  }
+  .capture-card p { margin: 0; color: var(--lv-muted-text); font-size: 0.93rem; line-height: 1.6; }
+
+  /* Local-first pills */
+  .local-pills {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+  .local-pills .pill {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid rgba(165,180,252,0.3);
+    border-radius: 999px;
+    font-size: 0.78rem; font-weight: 500;
+    color: var(--lv-soft-indigo);
+    background: rgba(99,102,241,0.06);
+    letter-spacing: 0.02em;
+  }
+  .local-pills .pill.accent {
+    background: var(--lv-memory-indigo);
+    border-color: var(--lv-memory-indigo);
+    color: white;
+  }
+
+  /* Lab → gold */
+  .lab-gold {
+    background: linear-gradient(180deg, var(--lv-archive-black) 0%, rgba(184,115,51,0.06) 100%);
+  }
+  .lab-gold .eyebrow { color: var(--lv-warm-copper); }
+  .lab-gold .pair {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  @media (max-width: 760px) { .lab-gold .pair { grid-template-columns: 1fr; } }
+  .lab-card {
+    background: var(--lv-slate-panel);
+    border: 1px solid rgba(184,115,51,0.2);
+    border-radius: var(--lv-radius-card);
+    padding: 1.6rem;
+    position: relative;
+  }
+  .lab-card.gold { border-color: rgba(165,180,252,0.25); background: linear-gradient(180deg, var(--lv-slate-panel) 0%, rgba(99,102,241,0.06) 100%); }
+  .lab-card .role-tag {
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    margin-bottom: 0.7rem;
+  }
+  .lab-card .role-tag.lab { background: rgba(184,115,51,0.18); color: var(--lv-warm-copper); }
+  .lab-card .role-tag.gold { background: rgba(165,180,252,0.18); color: var(--lv-soft-indigo); }
+  .lab-card h3 {
+    font-family: var(--lv-font-display);
+    font-weight: 700; font-size: 1.4rem;
+    margin: 0 0 0.7rem; color: var(--lv-text-frost);
+    display: flex; align-items: center; gap: 0.7rem;
+  }
+  .lab-card h3 img { height: 32px; width: auto; }
+  .lab-card p { color: var(--lv-muted-text); font-size: 0.95rem; line-height: 1.6; margin: 0 0 0.7rem; }
+  .lab-card ul { color: var(--lv-muted-text); font-size: 0.9rem; padding-left: 1.1rem; margin: 0.5rem 0 0; }
+  .lab-card ul li { margin-bottom: 0.35rem; line-height: 1.5; }
+  .lab-arrow {
+    text-align: center;
+    padding: 1rem 0;
+    color: var(--lv-warm-copper);
+    font-family: var(--lv-font-display);
+    font-style: italic;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* Story / philosophy */
+  .principles { list-style: none; padding: 0; margin: 0; }
+  .principles li {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    color: var(--lv-text-frost);
+    font-size: 0.97rem;
+  }
+  .principles li::before {
+    content: "→ ";
+    color: var(--lv-soft-indigo);
+    font-weight: 700;
+    margin-right: 0.4rem;
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15,15,26,0.85);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .modal-backdrop.is-open { display: flex; }
+  .modal {
+    background: var(--lv-slate-panel);
+    color: var(--lv-text-frost);
+    max-width: 640px; width: 100%;
+    max-height: 88vh; overflow-y: auto;
+    border: 1px solid rgba(165,180,252,0.25);
+    border-radius: var(--lv-radius-card);
+    box-shadow: var(--lv-shadow-deep);
+    padding: clamp(1.5rem, 3vw, 2.4rem);
+    position: relative;
+  }
+  .modal-eyebrow {
+    color: var(--lv-soft-indigo);
+    font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .modal h3 {
+    font-family: var(--lv-font-display);
+    font-weight: 700;
+    font-size: clamp(1.4rem, 2.4vw, 1.8rem);
+    margin: 0 0 1.3rem;
+    padding-right: 2rem;
+    color: var(--lv-text-frost);
+  }
+  .modal-close {
+    position: absolute; top: 0.8rem; right: 1rem;
+    background: none; border: none; cursor: pointer;
+    color: var(--lv-muted-text);
+    font-size: 1.7rem; line-height: 1;
+    padding: 0.2rem 0.5rem;
+  }
+  .modal-close:hover { color: var(--lv-soft-indigo); }
+  .modal p { color: var(--lv-muted-text); font-size: 0.95rem; line-height: 1.65; margin: 0 0 0.9rem; }
+  .modal ul { padding-left: 1.2rem; color: var(--lv-muted-text); margin: 0 0 1rem; }
+  .modal ul li { margin-bottom: 0.45rem; line-height: 1.55; font-size: 0.93rem; }
+  .modal a { color: var(--lv-soft-indigo); }
+  .modal .modal-cta {
+    margin-top: 1.4rem;
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 2.5rem 0 2rem;
+    background: rgba(15,15,26,0.5);
+  }
+  footer .container {
+    display: flex; flex-direction: column;
+    align-items: center; text-align: center;
+    gap: 1.4rem;
+  }
+  footer .footer-mark {
+    max-width: 320px;
+    width: 100%;
+    opacity: 0.92;
+  }
+  footer .copy {
+    font-size: 0.85rem;
+    color: var(--lv-muted-text);
+    line-height: 1.6;
+    max-width: 60ch;
+  }
+  footer .links { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; justify-content: center; }
+  footer .links a {
+    color: var(--lv-muted-text);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  footer .links a:hover { color: var(--lv-soft-indigo); }
+  footer .tagline {
+    font-family: var(--lv-font-display);
+    font-style: italic;
+    color: var(--lv-deep-muted);
+    font-size: 0.85rem;
+  }
+
+  /* Reduce motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="/" aria-label="Lorevox">
+      <img src="assets/lorevox-coin.png" alt="" />
+      <div class="brand-text">
+        <span class="word">Lorevox</span>
+        <span class="sub">Private AI memoir studio</span>
+      </div>
+    </a>
+    <nav class="primary" aria-label="Primary">
+      <a href="#about">About</a>
+      <a href="#model">Model</a>
+      <a href="#extraction">Extraction</a>
+      <a href="#capture">Capture</a>
+      <a href="#lab-gold">Hornelore</a>
+      <a href="#founder">Founder</a>
+      <a href="#help">Collaborate</a>
+      <a href="https://github.com/lorevox-hx/lorevox" class="repo" target="_blank" rel="noopener noreferrer">View Repo</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="container">
+    <div>
+      <span class="kicker">Local-first · Private by design · In active development</span>
+      <h1>Preserve a life story with care.</h1>
+      <p class="lede">
+        Lorevox helps older adults preserve their life stories through guided conversation,
+        strengthening memory, identity, and family connection. A conversational guide named
+        <strong style="color:var(--lv-soft-indigo);">Lori</strong> conducts structured
+        life-story interviews, extracting biographical facts from natural speech and
+        organizing them into a living archive that grows into a publishable memoir.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-ghost" href="https://github.com/lorevox-hx/lorevox" target="_blank" rel="noopener noreferrer">Public GitHub Repo</a>
+        <a class="btn btn-ghost" href="mailto:dev@lorevox.com">dev@lorevox.com</a>
+        <button type="button" class="btn btn-ghost" id="open-philosophy">Design Philosophy</button>
+        <button type="button" class="btn btn-ghost" id="open-about-lori">About Lori</button>
+      </div>
+      <p class="note">
+        Lorevox is currently in development and is not a public online app.
+        It is being built for local hosting, with a tightly scoped private narrator universe.
+      </p>
+    </div>
+
+    <aside class="founder-card">
+      <div class="founder-tag">Active development</div>
+      <div class="portrait">
+        <img src="assets/chris-portrait-2026.png" alt="Christopher Horne — founder" />
+      </div>
+      <div class="built-by">Built by</div>
+      <h3>Christopher Horne, OTR/L</h3>
+      <button type="button" class="btn btn-ghost btn-why" id="open-why">Why Lorevox</button>
+      <p>Lorevox grows out of a long career in occupational therapy. The values behind the product are the same values OT teaches: meet the person where they are.</p>
+      <p class="quote">The AI is a guide and scribe. The person remains the author of their own life.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══ CORE MODEL ═══ -->
+<section class="band core-model" id="model">
+  <div class="container">
+    <div class="eyebrow">Core model</div>
+    <span class="flow-arrow">ARCHIVE → HISTORY → MEMOIR</span>
+    <p class="lede">
+      Lorevox preserves original source material, builds a structured historical layer
+      from what is said, and assembles a memoir draft — never collapsing those layers,
+      never crossing them without a human review.
+    </p>
+
+    <div class="flow-stages" aria-hidden="true">
+      <span class="stage">Speech</span>
+      <span class="arrow">→</span>
+      <span class="stage">Transcription</span>
+      <span class="arrow">→</span>
+      <span class="stage">LLM Extraction</span>
+      <span class="arrow">→</span>
+      <span class="stage">Validation</span>
+      <span class="arrow">→</span>
+      <span class="stage">Biography</span>
+      <span class="arrow">→</span>
+      <span class="stage">Memoir</span>
+    </div>
+
+    <div class="three-layer">
+      <div class="layer-card">
+        <div class="label">Archive</div>
+        <p>Is the preserved source record: transcripts, audio, photos, scans, and session material. Nothing is deleted. Everything is timestamped and source-tagged.</p>
+      </div>
+      <div class="layer-card">
+        <div class="label">History</div>
+        <p>Is the structured layer: facts, claims, contradictions, relationships, and timeline events — extracted from the archive and verified by a human reviewer.</p>
+      </div>
+      <div class="layer-card">
+        <div class="label">Memoir</div>
+        <p>Is the narrative draft: assembled with AI assistance, but always treated as editable writing rather than a published claim.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ABOUT (3-card) ═══ -->
+<section class="band" id="about">
+  <div class="container">
+    <div class="three-card">
+      <article class="card is">
+        <h3>What Lorevox is</h3>
+        <ul>
+          <li>A memoir and life-story platform centered on guided conversation.</li>
+          <li>A local-first and privacy-conscious system.</li>
+          <li>A way to turn spoken memory into structured history.</li>
+          <li>A writing environment for human-reviewed memoir drafts.</li>
+        </ul>
+      </article>
+      <article class="card is-not">
+        <h3>What Lorevox is not</h3>
+        <ul>
+          <li>Not a public social platform.</li>
+          <li>Not a cloud memory-mining product.</li>
+          <li>Not a medical records system.</li>
+          <li>Not a replacement for the person's own voice and judgment.</li>
+        </ul>
+      </article>
+      <article class="card why">
+        <h3>Why this direction</h3>
+        <p>Most personal AI tools are built for productivity or conversation, not for preserving a life with dignity. Lorevox starts from the opposite premise: the person is the author, the archive is sacred, and the AI is a careful guide.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ EXTRACTION ═══ -->
+<section class="band" id="extraction">
+  <div class="container">
+    <div class="eyebrow">Structured knowledge extraction</div>
+    <h2>Turning conversation into structured biography.</h2>
+    <p class="lede">
+      When a narrator speaks, Lorevox processes their response through a multi-layer extraction
+      pipeline that produces structured biographical claims with confidence scores, schema-bound
+      field paths, and explicit contradictions — never silently overwritten, never quietly inferred.
+    </p>
+    <div class="feature-grid">
+      <div class="feature">
+        <h3>LLM Extraction</h3>
+        <p>A local language model parses conversational responses into structured field-value pairs with confidence scores. No external API calls, ever.</p>
+      </div>
+      <div class="feature">
+        <h3>Multi-Stage Validation</h3>
+        <p>Extracted claims pass through field-path validation, relation allowlists, confidence floors, and negation guards before reaching the proposal layer.</p>
+      </div>
+      <div class="feature">
+        <h3>Compound Entities</h3>
+        <p>Narrators naturally mention multiple people, places, and events in a single response. The pipeline disambiguates and routes each claim to the right entity.</p>
+      </div>
+      <div class="feature">
+        <h3>Evaluation</h3>
+        <p>A 104-case evaluation suite benchmarks extraction accuracy across three real older-adult narrators, covering single, compound, and narrative response shapes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CAPTURE — audio / video / timestamps ═══ -->
+<section class="band" id="capture">
+  <div class="container">
+    <div class="eyebrow">What gets captured</div>
+    <h2>Voice, video, and synchronized time — all anchored together.</h2>
+    <p class="lede">
+      Every session preserves more than words. Voice, video, and synchronized timestamps stay
+      aligned so a moment in a life story isn't just text — it's something you can return to.
+      A grandchild who never met the narrator can click an extracted fact and hear her say it,
+      see her face when she said it, feel the pause before the word.
+    </p>
+    <div class="capture-grid">
+      <div class="capture-card">
+        <div class="cap-icon">⦿ Audio archive</div>
+        <h3>Every session, archived</h3>
+        <p>Per-turn audio captured locally and kept beside the transcript. Two-sided text + audio for every conversation, in the narrator's own voice. Operator can export the full archive as a single zip at any time.</p>
+      </div>
+      <div class="capture-card">
+        <div class="cap-icon">▶ Video moments</div>
+        <h3>Curated video, on the narrator's terms</h3>
+        <p>Audio is the default. Video is opt-in per session — for moments the family wants to preserve visually. Like audio, every frame stays on the narrator's machine. Family decides what gets kept.</p>
+      </div>
+      <div class="capture-card">
+        <div class="cap-icon">⏱ Shared-clock timestamps</div>
+        <h3>Anchored in time</h3>
+        <p>Audio, video, transcript, and facial-expression signal all share the same capture clock. A weight in the voice, a pause before a memory, a softening of expression — anchored to the exact words that produced them. Memoir becomes multimodal.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TECHNOLOGY / LOCAL-FIRST ═══ -->
+<section class="band" id="tech">
+  <div class="container">
+    <div class="eyebrow">Technology</div>
+    <h2>Local-first, private by design.</h2>
+    <p class="lede">
+      FastAPI backend with local LLM inference (GPU-accelerated), SQLite storage, browser-based
+      WebRTC audio capture, and on-device facial signal processing. Nothing leaves the device.
+      No external API for any modality, including facial recognition. Audio is processed
+      locally and never transmitted.
+    </p>
+    <div class="feature-grid" style="grid-template-columns: 1fr 1fr;">
+      <div class="feature">
+        <h3>Speech &amp; Transcription</h3>
+        <p>Whisper variants run locally for transcription. Web Speech API for browser-side capture. The narrator's voice never reaches a hosted service.</p>
+      </div>
+      <div class="feature">
+        <h3>Language Model</h3>
+        <p>Llama 3.1 8B (4-bit quantized) on a local GPU. Hermes 3 / Qwen swappable as hardware advances. The fusion contract stays stable; only the upstream extractor changes.</p>
+      </div>
+      <div class="feature">
+        <h3>Facial &amp; Acoustic Signal</h3>
+        <p>MediaPipe FaceMesh in the browser; only derived affect labels (steady / engaged / reflective / moved) leave the camera-preview boundary. No video, no landmarks, no raw vectors.</p>
+      </div>
+      <div class="feature">
+        <h3>Storage &amp; Export</h3>
+        <p>SQLite + filesystem on the narrator's machine. Per-session zip export, two-sided text transcripts, per-turn audio archive. Family controls the data.</p>
+      </div>
+    </div>
+    <div class="local-pills">
+      <span class="pill">Speech ➜ local Whisper</span>
+      <span class="pill">LLM ➜ local Llama 3.1</span>
+      <span class="pill">Facial signal ➜ local MediaPipe</span>
+      <span class="pill">Acoustic ➜ local librosa</span>
+      <span class="pill">TTS ➜ local Coqui</span>
+      <span class="pill accent">Zero hosted APIs</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HORNELORE → LOREVOX (lab to gold) ═══ -->
+<section class="band lab-gold" id="lab-gold">
+  <div class="container">
+    <div class="eyebrow">Lab to gold · By deliberate decision</div>
+    <h2>Hornelore is the crucible. Lorevox is the gold.</h2>
+    <p class="lede">
+      Every feature is exercised against three real older-adult narrators in the family-locked
+      Hornelore R&amp;D fork before being considered for promotion to the public Lorevox product.
+      The relationship is one-way and deliberate: features move only by promotion, after they
+      prove themselves with real narrators — never by file-parity backport.
+    </p>
+
+    <div class="pair">
+      <div class="lab-card">
+        <span class="role-tag lab">R&amp;D crucible</span>
+        <h3>
+          <img src="assets/horne-coin.png" alt="" />
+          Hornelore
+        </h3>
+        <p>The family-locked private build. Three real older-adult narrators (Chris, Kent, Janice). Heavy heritage language: coin, metal, stone, runic border. Where every feature meets actual aging-parent use before anything moves forward.</p>
+        <ul>
+          <li>Closed narrator universe — no add/delete</li>
+          <li>Pre-seeded family identity templates</li>
+          <li>Bug Panel + UI Health Check harness</li>
+          <li>Photo intake, document archive, audio archive</li>
+          <li>Adaptive silence ladder + WO-10C cognitive support mode</li>
+        </ul>
+      </div>
+
+      <div class="lab-card gold">
+        <span class="role-tag gold">Distilled product</span>
+        <h3>
+          <img src="assets/lorevox-coin.png" alt="" />
+          Lorevox
+        </h3>
+        <p>The public-facing memory archive and memoir platform. Local-first, private, careful, human-authored. Inherits only what earns the move — the surviving capability gets generalized for arbitrary narrators and the family-specific scaffolding stays behind.</p>
+        <ul>
+          <li>Generalized narrator universe</li>
+          <li>Identity-first onboarding for any older adult</li>
+          <li>Three-pass interview model (seed · spine · scenes)</li>
+          <li>Four-layer truth pipeline (shadow → propose → review → promote)</li>
+          <li>Cognitive Support Model — dementia-safe pacing as a first-class behavior</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="lab-arrow">Lab → Gold · By deliberate decision · Never by file parity</p>
+  </div>
+</section>
+
+<!-- ═══ FOUNDER ═══ -->
+<section class="band" id="founder">
+  <div class="container">
+    <div class="eyebrow">Why I'm building Lorevox</div>
+    <h2>Occupational therapy shaped this project.</h2>
+    <p class="lede">
+      Lorevox is being developed by Christopher Horne, OTR/L. After 40 years in pediatrics,
+      school-based occupational therapy, and family collaboration, I'm retiring January 1, 2026
+      — and starting Lorevox full-time. The values behind it are closely aligned with OT:
+      listening carefully, meeting the person where they are, and treating partial progress as real.
+    </p>
+    <p class="lede">
+      I'm also testing Lorevox directly with my own parents — both 86, with memories starting
+      to slip in different ways. My dad tells long, meandering stories with sudden cynical
+      humor. My mom rarely initiates but with the right cue opens into vivid, passionate
+      stories. They are, in a real sense, the people Lorevox is being built for.
+    </p>
+    <ul class="principles">
+      <li>Human memory is primary.</li>
+      <li>The interface should support reflection, not data entry.</li>
+      <li>Partial progress still matters.</li>
+      <li>Human edits are sacred.</li>
+      <li>Emotionally difficult material should be handled with care.</li>
+      <li>The system should remain calm, respectful, and private by design.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ COLLABORATE ═══ -->
+<section class="band" id="help">
+  <div class="container">
+    <div class="eyebrow">Collaborate</div>
+    <h2>Feedback, ideas, and thoughtful collaboration are welcome.</h2>
+    <p class="lede">
+      Lorevox is in active development. If you work in memoir design, privacy-first AI, family history,
+      occupational therapy, life review with older adults, or open-source local AI — I'd be glad to talk.
+    </p>
+    <div class="cta-row" style="display:flex; flex-wrap:wrap; gap:0.7rem;">
+      <a class="btn btn-primary" href="https://github.com/lorevox-hx/lorevox" target="_blank" rel="noopener noreferrer">Open GitHub Repo</a>
+      <a class="btn" href="mailto:dev@lorevox.com">Email dev@lorevox.com</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div class="container">
+    <img class="footer-mark" src="assets/horne-lorevox-banner.png" alt="HORNE — Lorevox" />
+    <p class="copy">© Lorevox 2026 · Christopher T. Horne · Built locally, owned by the narrator.</p>
+    <p class="tagline">Private memoir studio · Archive → History → Memoir</p>
+    <div class="links">
+      <a href="#about">About</a>
+      <a href="#model">Model</a>
+      <a href="#extraction">Extraction</a>
+      <a href="#capture">Capture</a>
+      <a href="#lab-gold">Hornelore</a>
+      <a href="#founder">Founder</a>
+      <a href="https://github.com/lorevox-hx/lorevox" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="mailto:dev@lorevox.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ DESIGN PHILOSOPHY MODAL ═══ -->
+<div class="modal-backdrop" id="philosophy-modal" role="dialog" aria-labelledby="philosophy-title" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="close-philosophy" aria-label="Close">&times;</button>
+    <div class="modal-eyebrow">Design philosophy</div>
+    <h3 id="philosophy-title">What guides Lorevox</h3>
+    <p>
+      Lorevox is not being designed as a general chatbot. It is being shaped as a
+      <strong style="color:var(--lv-soft-indigo);">human legacy studio</strong> for
+      capturing, reviewing, and assembling a life story across years.
+    </p>
+    <p>
+      The operating doctrine is simple: <strong style="color:var(--lv-text-frost);">human memory stays primary</strong>,
+      AI assistance stays visible but subordinate, and human edits are protected from
+      silent AI replacement.
+    </p>
+    <ul>
+      <li>Memory stays owned by the person and family</li>
+      <li>The interface should feel like a memory studio, not a software console</li>
+      <li>Language should support reflection, not operation</li>
+      <li>Human edits must be protected from silent AI replacement</li>
+      <li>AI wording should stay collaborative, such as "Write with Lori"</li>
+    </ul>
+    <div class="modal-cta">
+      <a class="btn btn-ghost" href="https://github.com/lorevox-hx/lorevox/blob/main/docs/Lorevox_Operating_Doctrine.md" target="_blank" rel="noopener noreferrer">Read Operating Doctrine</a>
+      <a class="btn btn-ghost" href="https://github.com/lorevox-hx/lorevox/blob/main/docs/DESIGN_PHILOSOPHY.md" target="_blank" rel="noopener noreferrer">Read Design Philosophy</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ABOUT LORI MODAL ═══ -->
+<div class="modal-backdrop" id="lori-modal" role="dialog" aria-labelledby="lori-title" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="close-lori" aria-label="Close">&times;</button>
+    <div class="modal-eyebrow">About Lori</div>
+    <h3 id="lori-title">Lori is the guide, not the author</h3>
+    <p>
+      Lori is the conversational guide inside Lorevox. She helps prompt, organize, draft, and
+      gently reframe — without ever silently outranking the person's own voice.
+    </p>
+    <p>
+      Lori is designed to support memoir interviews and life review in a way that feels calm,
+      collaborative, and steady. She knows when to wait, when to reflect a single concrete
+      detail back, and when to ask one focused question.
+    </p>
+    <ul>
+      <li>Lori helps with recollection, not interrogation</li>
+      <li>Lori supports Profile, Family Tree, Timeline, Memoir, and Memory River</li>
+      <li>Lori should feel collaborative, steady, and respectful</li>
+      <li>Lori never silently outranks the person's own voice</li>
+    </ul>
+    <p>
+      Lori is the persistent center of the experience. The person talks to Lori, and the rest
+      of the interface organizes itself around what Lori and the narrator have built together.
+    </p>
+    <div class="modal-cta">
+      <a class="btn btn-ghost" href="https://github.com/lorevox-hx/lorevox" target="_blank" rel="noopener noreferrer">View Repo</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ WHY LOREVOX MODAL ═══ -->
+<div class="modal-backdrop" id="why-modal" role="dialog" aria-labelledby="why-title" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="close-why" aria-label="Close">&times;</button>
+    <div class="modal-eyebrow">Why Lorevox</div>
+    <h3 id="why-title">The stories I never asked for in time</h3>
+
+    <p>
+      I think about my own grandparents the same way — the stories I never asked for in time,
+      the voices I can no longer hear. By the time I had the questions, the people who could
+      answer them were gone. What remains are fragments, and each year they get thinner.
+    </p>
+
+    <p>
+      Now I'm watching it happen again, more slowly, with my parents. They're both 86, and
+      their memories are beginning to slip in different ways. My dad — who has a PhD and
+      multiple master's degrees — recently scored lower than expected on a cognitive
+      assessment. He still tells long, meandering stories with flashes of sharp humor, but
+      there are gaps now, and it frustrates him. My mom, who has always been the more precise
+      and intellectually structured of the two, is facing her own changes. She often needs
+      prompting for basic daily routines, but with the right cue she can still open into
+      vivid, passionate stories.
+    </p>
+
+    <p>
+      What's striking is not just the memory loss, but the awareness of it — and the
+      frustration that comes with it. They are, in a very real sense, the people I'm
+      building this for.
+    </p>
+
+    <p>
+      I've been testing Lorevox directly with them, and it's been humbling. My dad has
+      already managed to crash it a few times just through long, winding responses and
+      conversational edge cases. It's made it very clear how challenging real-world
+      interaction is compared to anything you see in clean datasets.
+    </p>
+
+    <p>
+      That's why <strong style="color:var(--lv-soft-indigo);">Lori is designed the way she is</strong>.
+      Not as an interviewer pushing through questions, but as a listener who knows when to wait,
+      when to reflect a single detail back, when to ask one warm question, and when to simply
+      be present. Older adults — especially with cognitive variability — don't need more
+      questions. They need the right cue at the right moment.
+    </p>
+
+    <h4 style="font-family:var(--lv-font-display); color:var(--lv-text-frost); margin:1.6rem 0 0.5rem; font-size:1rem;">Where things are right now</h4>
+    <p>
+      Lorevox is the public-facing product line, and Hornelore is the family-locked R&amp;D fork
+      where I test and prove ideas. Everything runs locally on the narrator's machine — speech,
+      model, and signal processing — which is a deliberate design choice around privacy and trust.
+    </p>
+
+    <p>
+      In terms of direction, I see Lorevox as both a product and a research path. The product
+      side matters because this needs to exist for real families, but many of the hardest
+      problems — memory, narrative truth, multimodal alignment, human-in-the-loop correction —
+      are fundamentally research problems as well.
+    </p>
+
+    <h4 style="font-family:var(--lv-font-display); color:var(--lv-text-frost); margin:1.6rem 0 0.5rem; font-size:1rem;">What I'm focused on</h4>
+    <ul>
+      <li><strong style="color:var(--lv-text-frost);">Extraction accuracy.</strong> Moving from raw conversation to structured biographical truth without incorrectly binding details to the wrong person, time, or event — while preserving narrative meaning, uncertainty, and cross-turn memory.</li>
+      <li><strong style="color:var(--lv-text-frost);">Session-aware multimodal capture.</strong> A shared-clock model where audio, timing, and visual signals all stay aligned. That now includes storing audio and capturing synchronized video snapshots so moments can be anchored in time — not just what was said, but how it was said.</li>
+    </ul>
+
+    <p class="quote-block" style="margin:1.4rem 0 0; padding:1rem 1.2rem; border-left:3px solid var(--lv-patina-teal); background:rgba(20,184,166,0.06); color:var(--lv-soft-indigo); font-family:var(--lv-font-display); font-style:italic; font-size:0.95rem; line-height:1.6;">
+      A moment in a life story isn't just text — it becomes something you can return to.
+      A future reader could move from a fact to the actual moment it was spoken: hear the
+      voice, see the expression, and feel the pause before the memory.
+    </p>
+
+    <div class="modal-cta">
+      <a class="btn btn-ghost" href="mailto:dev@lorevox.com">Email dev@lorevox.com</a>
+      <a class="btn btn-ghost" href="https://github.com/lorevox-hx/lorevox" target="_blank" rel="noopener noreferrer">View Repo</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    function bindModal(triggerId, modalId, closeId) {
+      const t = document.getElementById(triggerId);
+      const m = document.getElementById(modalId);
+      const c = document.getElementById(closeId);
+      if (!t || !m || !c) {
+        console.warn('[modal] missing element', { triggerId, modalId, closeId, hasTrigger: !!t, hasModal: !!m, hasClose: !!c });
+        return;
+      }
+      const open = (e) => { if (e) e.preventDefault(); m.classList.add('is-open'); document.body.style.overflow='hidden'; c.focus(); };
+      const close = () => { m.classList.remove('is-open'); document.body.style.overflow=''; };
+      t.addEventListener('click', open);
+      c.addEventListener('click', close);
+      m.addEventListener('click', e => { if (e.target === m) close(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape' && m.classList.contains('is-open')) close(); });
+    }
+    bindModal('open-philosophy', 'philosophy-modal', 'close-philosophy');
+    bindModal('open-about-lori', 'lori-modal', 'close-lori');
+    bindModal('open-why', 'why-modal', 'close-why');
+  })();
+</script>
+
+</body>
+</html>
